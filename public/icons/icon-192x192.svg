@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="24" fill="#16a34a"/>
+  <g transform="translate(96,86)">
+    <line x1="0" y1="-50" x2="0" y2="45" stroke="#fff" stroke-width="5"/>
+    <line x1="-45" y1="-36" x2="45" y2="-36" stroke="#fff" stroke-width="4"/>
+    <circle cx="0" cy="-50" r="5" fill="#fff"/>
+    <line x1="-45" y1="-36" x2="-52" y2="-10" stroke="#fff" stroke-width="2.5"/>
+    <line x1="-45" y1="-36" x2="-38" y2="-10" stroke="#fff" stroke-width="2.5"/>
+    <path d="M-58,-10 Q-45,-2 -32,-10" stroke="#fff" stroke-width="2.5" fill="none"/>
+    <line x1="45" y1="-36" x2="52" y2="-10" stroke="#fff" stroke-width="2.5"/>
+    <line x1="45" y1="-36" x2="38" y2="-10" stroke="#fff" stroke-width="2.5"/>
+    <path d="M32,-10 Q45,-2 58,-10" stroke="#fff" stroke-width="2.5" fill="none"/>
+    <rect x="-20" y="45" width="40" height="5" rx="2.5" fill="#fff"/>
+    <text x="0" y="72" text-anchor="middle" font-family="serif" font-weight="bold" font-size="16" fill="#fff">BAR PREP</text>
+  </g>
+</svg>

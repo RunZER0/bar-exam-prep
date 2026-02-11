@@ -10,7 +10,7 @@ import {
 
 let _anthropic: Anthropic | null = null;
 const getAnthropic = () => {
-  if (!_anthropic) {
+  if (!_anthropic && process.env.ANTHROPIC_API_KEY) {
     _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   }
   return _anthropic;
@@ -18,18 +18,23 @@ const getAnthropic = () => {
 
 let _openai: OpenAI | null = null;
 const getOpenAI = () => {
-  if (!_openai) {
+  if (!_openai && process.env.OPENAI_API_KEY) {
     _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   }
   return _openai;
 };
 
+// Check if any AI provider is configured
+export const isAIConfigured = (): boolean => {
+  return Boolean(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY);
+};
+
 // Provider selection - defaults to OpenAI, falls back to Anthropic
-type AIProvider = 'openai' | 'anthropic';
+type AIProvider = 'openai' | 'anthropic' | 'none';
 const getPreferredProvider = (): AIProvider => {
   if (process.env.OPENAI_API_KEY) return 'openai';
   if (process.env.ANTHROPIC_API_KEY) return 'anthropic';
-  return 'openai';
+  return 'none';
 };
 
 export interface AIGuardrails {
@@ -89,6 +94,17 @@ async function validateResponse(
   response: string,
   context: 'drafting' | 'research' | 'oral'
 ): Promise<AIGuardrails> {
+  // Skip validation if AI not configured
+  if (!isAIConfigured()) {
+    return {
+      isHallucination: false,
+      isOffTopic: false,
+      isReliable: true,
+      confidence: 75,
+      warnings: [],
+    };
+  }
+  
   try {
     // Use Claude to validate the response for hallucinations and accuracy
     const validationPrompt = `
@@ -116,20 +132,7 @@ Respond in JSON format:
 }
 `;
 
-    const validation = await getAnthropic().messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 1000,
-      messages: [
-        {
-          role: 'user',
-          content: validationPrompt,
-        },
-      ],
-    });
-
-    const validationText = validation.content[0].type === 'text' 
-      ? validation.content[0].text 
-      : '';
+    const validationText = await callAI(validationPrompt, 1000);
     
     // Extract JSON from the response
     const jsonMatch = validationText.match(/\{[\s\S]*\}/);
@@ -178,20 +181,7 @@ Provide a detailed, accurate response with:
 
 IMPORTANT: Only use real, verifiable Kenyan cases and statutes. If you don't know a specific case, explain the legal principle generally.`;
 
-    const response = await getAnthropic().messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 4000,
-      messages: [
-        {
-          role: 'user',
-          content: fullPrompt,
-        },
-      ],
-    });
-
-    const content = response.content[0].type === 'text' 
-      ? response.content[0].text 
-      : '';
+    const content = await callAI(fullPrompt, 4000);
 
     // Validate the response
     const guardrails = await validateResponse(prompt, content, 'drafting');
@@ -213,8 +203,11 @@ IMPORTANT: Only use real, verifiable Kenyan cases and statutes. If you don't kno
       guardrails,
       filtered: false,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI generation error:', error);
+    if (error.message === 'AI_NOT_CONFIGURED') {
+      throw new Error('AI_NOT_CONFIGURED');
+    }
     throw new Error('Failed to generate response');
   }
 }
@@ -241,20 +234,7 @@ Provide a comprehensive research response that:
 
 If you're uncertain about specific cases, focus on legal principles and direct the student to appropriate research resources.`;
 
-    const response = await getAnthropic().messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 4000,
-      messages: [
-        {
-          role: 'user',
-          content: fullPrompt,
-        },
-      ],
-    });
-
-    const content = response.content[0].type === 'text' 
-      ? response.content[0].text 
-      : '';
+    const content = await callAI(fullPrompt, 4000);
 
     const guardrails = await validateResponse(prompt, content, 'research');
 
@@ -274,8 +254,11 @@ If you're uncertain about specific cases, focus on legal principles and direct t
       guardrails,
       filtered: false,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI generation error:', error);
+    if (error.message === 'AI_NOT_CONFIGURED') {
+      throw new Error('AI_NOT_CONFIGURED');
+    }
     throw new Error('Failed to generate response');
   }
 }
@@ -333,20 +316,7 @@ Be thorough but focused. Aim for depth over breadth.
 
 If the retrieved context doesn't fully address the question, supplement with your knowledge of Kenyan law, but clearly distinguish between retrieved sources and general knowledge.`;
 
-    const response = await getAnthropic().messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 4000,
-      messages: [
-        {
-          role: 'user',
-          content: fullPrompt,
-        },
-      ],
-    });
-
-    const content = response.content[0].type === 'text' 
-      ? response.content[0].text 
-      : '';
+    const content = await callAI(fullPrompt, 4000);
 
     const guardrails = await validateResponse(prompt, content, 'research');
 
@@ -372,8 +342,11 @@ If the retrieved context doesn't fully address the question, supplement with you
       filtered: false,
       sources: ragContext,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('RAG study generation error:', error);
+    if (error.message === 'AI_NOT_CONFIGURED') {
+      throw new Error('AI_NOT_CONFIGURED');
+    }
     throw new Error('Failed to generate study response');
   }
 }
@@ -467,20 +440,7 @@ Provide constructive feedback on the student's oral advocacy including:
 
 Be encouraging but thorough in your assessment.`;
 
-    const response = await getAnthropic().messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 3000,
-      messages: [
-        {
-          role: 'user',
-          content: fullPrompt,
-        },
-      ],
-    });
-
-    const content = response.content[0].type === 'text' 
-      ? response.content[0].text 
-      : '';
+    const content = await callAI(fullPrompt, 3000);
 
     const guardrails = await validateResponse(scenario, content, 'oral');
 
@@ -500,8 +460,11 @@ Be encouraging but thorough in your assessment.`;
       guardrails,
       filtered: false,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI generation error:', error);
+    if (error.message === 'AI_NOT_CONFIGURED') {
+      throw new Error('AI_NOT_CONFIGURED');
+    }
     throw new Error('Failed to generate feedback');
   }
 }
@@ -537,20 +500,7 @@ Format your response as JSON:
   "suggestions": ["suggestion1", "suggestion2"]
 }`;
 
-    const response = await getAnthropic().messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 2000,
-      messages: [
-        {
-          role: 'user',
-          content: fullPrompt,
-        },
-      ],
-    });
-
-    const content = response.content[0].type === 'text' 
-      ? response.content[0].text 
-      : '';
+    const content = await callAI(fullPrompt, 2000);
 
     const guardrails = await validateResponse(question, content, 'research');
 
@@ -571,8 +521,11 @@ Format your response as JSON:
       feedback: content,
       guardrails,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Evaluation error:', error);
+    if (error.message === 'AI_NOT_CONFIGURED') {
+      throw new Error('AI_NOT_CONFIGURED');
+    }
     throw new Error('Failed to evaluate response');
   }
 }
@@ -583,21 +536,33 @@ Format your response as JSON:
 async function callAI(prompt: string, maxTokens: number = 2000): Promise<string> {
   const provider = getPreferredProvider();
   
+  if (provider === 'none') {
+    throw new Error('AI_NOT_CONFIGURED');
+  }
+  
   if (provider === 'openai') {
-    try {
-      const response = await getOpenAI().chat.completions.create({
-        model: 'gpt-4o',
-        max_tokens: maxTokens,
-        messages: [{ role: 'user', content: prompt }],
-      });
-      return response.choices[0]?.message?.content || '';
-    } catch (error) {
-      console.error('OpenAI error, falling back to Anthropic:', error);
-      // Fall back to Anthropic
+    const openai = getOpenAI();
+    if (openai) {
+      try {
+        const response = await openai.chat.completions.create({
+          model: 'gpt-4o',
+          max_tokens: maxTokens,
+          messages: [{ role: 'user', content: prompt }],
+        });
+        return response.choices[0]?.message?.content || '';
+      } catch (error) {
+        console.error('OpenAI error, falling back to Anthropic:', error);
+        // Fall back to Anthropic
+      }
     }
   }
   
-  const response = await getAnthropic().messages.create({
+  const anthropic = getAnthropic();
+  if (!anthropic) {
+    throw new Error('AI_NOT_CONFIGURED');
+  }
+  
+  const response = await anthropic.messages.create({
     model: 'claude-3-5-sonnet-20241022',
     max_tokens: maxTokens,
     messages: [{ role: 'user', content: prompt }],

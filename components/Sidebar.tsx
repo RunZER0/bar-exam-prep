@@ -53,8 +53,8 @@ export default function Sidebar() {
       <div className="flex items-center gap-2.5 px-3 pt-6 pb-8">
         <Scale className="h-7 w-7 text-primary shrink-0" />
         <div className="leading-tight">
-          <p className="font-bold text-base">BarPrep KE</p>
-          <p className="text-[11px] text-muted-foreground">AI-Powered · CLE Aligned</p>
+          <p className="font-bold text-base">Ynai</p>
+          <p className="text-[11px] text-muted-foreground">Kenya Bar Exam Prep</p>
         </div>
       </div>
 
@@ -121,7 +121,7 @@ export default function Sidebar() {
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Scale className="h-6 w-6 text-primary" />
-          <span className="font-bold">BarPrep KE</span>
+          <span className="font-bold">Ynai</span>
         </div>
         <button onClick={() => setMobileOpen(!mobileOpen)} className="p-1.5 rounded-lg hover:bg-accent">
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

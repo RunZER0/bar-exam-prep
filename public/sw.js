@@ -1,4 +1,4 @@
-const CACHE_NAME = 'barprep-ke-v1';
+const CACHE_NAME = 'ynai-v1';
 const STATIC_ASSETS = [
   '/',
   '/dashboard',

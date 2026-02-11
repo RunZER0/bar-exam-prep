@@ -118,10 +118,10 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Scale className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg">BarPrep KE</span>
+            <span className="font-bold text-lg">Ynai</span>
           </div>
           <span className="text-xs text-muted-foreground hidden sm:block">
-            CLE Aligned · AI-Powered
+            Kenya Bar Exam Preparation Platform
           </span>
         </div>
       </nav>
@@ -279,11 +279,11 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm">
             <Scale className="h-4 w-4 text-primary" />
-            <span className="font-semibold">BarPrep KE</span>
-            <span className="text-muted-foreground">· CLE Aligned · Constitution of Kenya 2010</span>
+            <span className="font-semibold">Ynai</span>
+            <span className="text-muted-foreground">· Kenya Bar Exam Preparation Platform</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            AI-powered bar exam preparation for Kenyan law students
+            Empowering Kenya School of Law students to excel in CLE examinations
           </p>
         </div>
       </footer>

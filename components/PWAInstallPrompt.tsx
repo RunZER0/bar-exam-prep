@@ -39,7 +39,7 @@ export default function PWAInstallPrompt() {
       <div className="flex items-start gap-3">
         <Download className="h-5 w-5 text-primary mt-0.5 shrink-0" />
         <div className="flex-1">
-          <p className="font-semibold text-sm">Install BarPrep KE</p>
+          <p className="font-semibold text-sm">Install Ynai</p>
           <p className="text-xs text-muted-foreground mt-1">
             Install this app on your device for quick access, even offline.
           </p>

@@ -1,7 +1,7 @@
 {
-  "name": "Kenya Bar Exam Prep",
-  "short_name": "BarPrep KE",
-  "description": "AI-Powered Bar Exam Preparation Platform for Kenyan Law Students",
+  "name": "Ynai - Kenya Bar Exam Preparation Platform",
+  "short_name": "Ynai",
+  "description": "AI-powered Kenya Bar Exam preparation for Kenya School of Law students. Master ATP subjects and excel in CLE examinations.",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -119,11 +119,11 @@ export default function OnboardingPage() {
             </div>
             <div>
               <h2 className="text-2xl font-bold mb-2">
-                Welcome to BarPrep KE, {user?.displayName?.split(' ')[0] || 'Future Advocate'}!
+                Welcome to Ynai, {user?.displayName?.split(' ')[0] || 'Future Advocate'}!
               </h2>
               <p className="text-muted-foreground max-w-md mx-auto">
-                Let&apos;s personalize your learning experience. Answer a few questions 
-                so we can create a study plan tailored just for you.
+                Let&apos;s personalize your Kenya Bar Exam preparation. Answer a few questions 
+                so we can create a study plan tailored for your success at Kenya School of Law.
               </p>
             </div>
             <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">

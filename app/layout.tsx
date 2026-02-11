@@ -6,7 +6,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://ynai.onrender.com";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://ynai.co.ke";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

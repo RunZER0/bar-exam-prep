@@ -1,11 +1,11 @@
 # Robots.txt for Ynai - Kenya Bar Exam Preparation Platform
-# https://ynai.onrender.com
+# https://ynai.co.ke
 
 User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://ynai.onrender.com/sitemap.xml
+Sitemap: https://ynai.co.ke/sitemap.xml
 
 # Disallow private/dynamic routes
 Disallow: /api/

@@ -3,7 +3,9 @@ import { withAuth } from '@/lib/auth/middleware';
 import { 
   generateDraftingResponse, 
   generateResearchResponse,
-  generateOralAdvocacyFeedback 
+  generateOralAdvocacyFeedback,
+  generateBanterResponse,
+  generateClarificationResponse,
 } from '@/lib/ai/guardrails';
 import { db } from '@/lib/db';
 import { chatHistory } from '@/lib/db/schema';
@@ -42,6 +44,15 @@ export const POST = withAuth(async (req: NextRequest, user) => {
           context?.scenario || message,
           message
         );
+        break;
+
+      case 'banter':
+        aiResponse = await generateBanterResponse(message);
+        break;
+
+      case 'clarification':
+        const hasAttachments = context?.hasAttachments || message.includes('[User attached');
+        aiResponse = await generateClarificationResponse(message, hasAttachments);
         break;
       
       default:

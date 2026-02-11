@@ -18,6 +18,10 @@ import {
   Star,
   Target,
   Flame,
+  Sparkles,
+  GraduationCap,
+  Shuffle,
+  Timer,
 } from 'lucide-react';
 
 interface TriviaQuestion {
@@ -33,27 +37,71 @@ const QUIZ_MODES = [
   {
     id: 'quick',
     name: 'Quick Quiz',
-    description: '5 rapid-fire questions from any unit',
+    description: '5 rapid-fire questions to warm up',
     icon: Zap,
-    color: 'bg-amber-500/10 text-amber-600',
+    gradient: 'from-amber-500 to-orange-600',
+    bgGlow: 'bg-amber-500/20',
     count: 5,
+    difficulty: 'Easy',
+    time: '~3 min',
   },
   {
     id: 'challenge',
     name: 'Challenge Mode',
-    description: '10 questions — can you get them all right?',
+    description: '10 questions — test your mastery',
     icon: Trophy,
-    color: 'bg-violet-500/10 text-violet-600',
+    gradient: 'from-violet-500 to-purple-600',
+    bgGlow: 'bg-violet-500/20',
     count: 10,
+    difficulty: 'Medium',
+    time: '~8 min',
   },
   {
     id: 'blitz',
     name: 'Speed Blitz',
     description: '15 seconds per question. Think fast!',
-    icon: Flame,
-    color: 'bg-rose-500/10 text-rose-600',
+    icon: Timer,
+    gradient: 'from-rose-500 to-pink-600',
+    bgGlow: 'bg-rose-500/20',
     count: 8,
     timed: true,
+    difficulty: 'Hard',
+    time: '~2 min',
+  },
+  {
+    id: 'exam',
+    name: 'Exam Simulation',
+    description: '20 questions across all topics',
+    icon: GraduationCap,
+    gradient: 'from-emerald-500 to-teal-600',
+    bgGlow: 'bg-emerald-500/20',
+    count: 20,
+    difficulty: 'Hard',
+    time: '~15 min',
+  },
+  {
+    id: 'random',
+    name: 'Lucky Draw',
+    description: 'Random mode, random topic — surprise!',
+    icon: Shuffle,
+    gradient: 'from-cyan-500 to-blue-600',
+    bgGlow: 'bg-cyan-500/20',
+    count: 7,
+    random: true,
+    difficulty: 'Mixed',
+    time: '~5 min',
+  },
+  {
+    id: 'legendary',
+    name: 'Legendary',
+    description: 'Only the toughest questions. No mercy.',
+    icon: Sparkles,
+    gradient: 'from-yellow-400 via-amber-500 to-orange-500',
+    bgGlow: 'bg-yellow-500/30',
+    count: 10,
+    difficulty: 'Expert',
+    time: '~10 min',
+    legendary: true,
   },
 ];
 
@@ -187,64 +235,117 @@ Rules:
   // Menu
   if (section === 'menu') {
     return (
-      <div className="p-6 md:p-10 max-w-5xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Quizzes & Trivia</h1>
-          <p className="text-muted-foreground mt-1">
-            Test your knowledge with fun, fast-paced legal quizzes.
+      <div className="p-6 md:p-10 max-w-6xl mx-auto space-y-10">
+        {/* Header with gradient text */}
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary via-violet-500 to-primary bg-clip-text text-transparent">
+            Quizzes & Trivia
+          </h1>
+          <p className="text-muted-foreground max-w-xl mx-auto">
+            Challenge yourself with fun, engaging quizzes. Pick a mode, choose a topic, and let&apos;s go!
           </p>
         </div>
 
-        {/* Mode selection */}
-        <div>
-          <h2 className="text-lg font-semibold mb-3">Choose a Mode</h2>
-          <div className="grid sm:grid-cols-3 gap-3">
+        {/* Mode selection - enhanced grid */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Choose Your Mode</h2>
+            <span className="text-xs text-muted-foreground">{QUIZ_MODES.length} modes available</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {QUIZ_MODES.map((m) => {
               const Icon = m.icon;
               const active = selectedMode === m.id;
               return (
-                <Card
+                <div
                   key={m.id}
-                  className={`cursor-pointer border-2 transition-all ${
-                    active ? 'border-primary bg-primary/5' : 'hover:border-muted-foreground/30'
-                  }`}
                   onClick={() => setSelectedMode(m.id)}
+                  className={`group relative cursor-pointer rounded-2xl p-[2px] transition-all duration-300 ${
+                    active
+                      ? `bg-gradient-to-br ${m.gradient} shadow-lg shadow-primary/20`
+                      : 'bg-border hover:bg-gradient-to-br hover:' + m.gradient.replace('from-', 'hover:from-').replace('to-', 'hover:to-')
+                  }`}
                 >
-                  <CardHeader className="pb-2">
-                    <div className={`p-2 rounded-lg w-fit ${m.color}`}>
-                      <Icon className="h-5 w-5" />
+                  <div className={`relative h-full rounded-2xl p-5 transition-all duration-300 ${
+                    active ? 'bg-card/95' : 'bg-card hover:bg-card/95'
+                  }`}>
+                    {/* Glow effect */}
+                    <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${m.bgGlow} blur-xl -z-10`} />
+                    
+                    {/* Icon with gradient background */}
+                    <div className={`inline-flex items-center justify-center h-12 w-12 rounded-xl bg-gradient-to-br ${m.gradient} text-white shadow-lg mb-4`}>
+                      <Icon className="h-6 w-6" />
                     </div>
-                    <CardTitle className="text-sm mt-2">{m.name}</CardTitle>
-                    <CardDescription className="text-xs">{m.description}</CardDescription>
-                  </CardHeader>
-                </Card>
+
+                    {/* Content */}
+                    <h3 className="font-semibold text-base mb-1">{m.name}</h3>
+                    <p className="text-sm text-muted-foreground mb-4">{m.description}</p>
+
+                    {/* Stats row */}
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className={`px-2 py-0.5 rounded-full ${
+                        m.difficulty === 'Easy' ? 'bg-emerald-500/10 text-emerald-600' :
+                        m.difficulty === 'Medium' ? 'bg-amber-500/10 text-amber-600' :
+                        m.difficulty === 'Hard' ? 'bg-rose-500/10 text-rose-600' :
+                        m.difficulty === 'Expert' ? 'bg-purple-500/10 text-purple-600' :
+                        'bg-cyan-500/10 text-cyan-600'
+                      }`}>
+                        {m.difficulty}
+                      </span>
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {m.time}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {m.count} Q&apos;s
+                      </span>
+                    </div>
+
+                    {/* Selected indicator */}
+                    {active && (
+                      <div className="absolute top-3 right-3">
+                        <CheckCircle2 className={`h-5 w-5 text-transparent bg-gradient-to-br ${m.gradient} bg-clip-text`} style={{ color: 'rgb(var(--primary))' }} />
+                      </div>
+                    )}
+                    
+                    {/* Legendary badge */}
+                    {m.legendary && (
+                      <div className="absolute -top-1 -right-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 text-[10px] font-bold text-white shadow-lg">
+                        ⚡ LEGENDARY
+                      </div>
+                    )}
+                  </div>
+                </div>
               );
             })}
           </div>
         </div>
 
-        {/* Unit selection */}
-        <div>
-          <h2 className="text-lg font-semibold mb-3">Choose a Topic</h2>
+        {/* Unit selection - pill style */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Choose a Topic</h2>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setSelectedUnit('all')}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                 selectedUnit === 'all'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  ? 'bg-gradient-to-r from-primary to-violet-500 text-white shadow-lg shadow-primary/25'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
               }`}
             >
-              All Units
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" />
+                All Topics
+              </span>
             </button>
             {ATP_UNITS.map((u) => (
               <button
                 key={u.id}
                 onClick={() => setSelectedUnit(u.id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                   selectedUnit === u.id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    ? 'bg-gradient-to-r from-primary to-violet-500 text-white shadow-lg shadow-primary/25'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
                 }`}
               >
                 {u.name}
@@ -253,11 +354,21 @@ Rules:
           </div>
         </div>
 
-        <Button size="lg" onClick={startQuiz} className="gap-2">
-          <Lightbulb className="h-5 w-5" />
-          Start Quiz
-          <ArrowRight className="h-4 w-4" />
-        </Button>
+        {/* Start button - enhanced */}
+        <div className="flex flex-col items-center gap-4 pt-4">
+          <Button 
+            size="lg" 
+            onClick={startQuiz} 
+            className="gap-3 px-8 py-6 text-lg font-semibold bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-600/90 shadow-xl shadow-primary/25 transition-all duration-300 hover:scale-[1.02]"
+          >
+            <Lightbulb className="h-6 w-6" />
+            Start {mode.name}
+            <ArrowRight className="h-5 w-5" />
+          </Button>
+          <p className="text-sm text-muted-foreground">
+            {mode.count} questions · {unitName}
+          </p>
+        </div>
       </div>
     );
   }
@@ -276,45 +387,64 @@ Rules:
   // Results
   if (section === 'results') {
     const pct = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
+    const resultConfig = pct >= 80 
+      ? { gradient: 'from-emerald-500 to-teal-500', emoji: '🎉', title: 'Outstanding!', subtitle: 'You crushed it!' }
+      : pct >= 60 
+      ? { gradient: 'from-amber-500 to-orange-500', emoji: '👏', title: 'Well Done!', subtitle: 'Great effort!' }
+      : pct >= 40 
+      ? { gradient: 'from-violet-500 to-purple-500', emoji: '💪', title: 'Not Bad!', subtitle: 'Keep practicing!' }
+      : { gradient: 'from-rose-500 to-pink-500', emoji: '📚', title: 'Keep Going!', subtitle: 'Practice makes perfect!' };
+
     return (
       <div className="p-6 md:p-10 max-w-2xl mx-auto space-y-8 text-center">
-        <div>
-          <div className={`inline-flex items-center justify-center h-24 w-24 rounded-full text-3xl font-bold ${
-            pct >= 80 ? 'bg-emerald-100 text-emerald-700' : pct >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
-          }`}>
-            {pct}%
+        {/* Animated score circle */}
+        <div className="relative inline-block">
+          <div className={`relative inline-flex items-center justify-center h-32 w-32 rounded-full bg-gradient-to-br ${resultConfig.gradient} text-white shadow-2xl`}>
+            <span className="text-4xl font-bold">{pct}%</span>
           </div>
-          <h2 className="text-2xl font-bold mt-4">
-            {pct >= 80 ? 'Excellent!' : pct >= 60 ? 'Good Job!' : pct >= 40 ? 'Not Bad!' : 'Keep Going!'}
+          <span className="absolute -top-2 -right-2 text-4xl animate-bounce">{resultConfig.emoji}</span>
+        </div>
+
+        <div>
+          <h2 className={`text-3xl font-bold bg-gradient-to-r ${resultConfig.gradient} bg-clip-text text-transparent`}>
+            {resultConfig.title}
           </h2>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1">{resultConfig.subtitle}</p>
+          <p className="text-sm text-muted-foreground mt-2">
             {score}/{questions.length} correct · {mode.name}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
-          <Card>
+        <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
+          <Card className="border-2 border-emerald-500/20 bg-emerald-500/5">
             <CardContent className="pt-4 pb-3 text-center">
-              <Target className="h-5 w-5 mx-auto text-primary mb-1" />
-              <p className="text-lg font-bold">{score}</p>
+              <Target className="h-6 w-6 mx-auto text-emerald-500 mb-2" />
+              <p className="text-2xl font-bold text-emerald-600">{score}</p>
               <p className="text-xs text-muted-foreground">Correct</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-2 border-orange-500/20 bg-orange-500/5">
             <CardContent className="pt-4 pb-3 text-center">
-              <Flame className="h-5 w-5 mx-auto text-orange-500 mb-1" />
-              <p className="text-lg font-bold">{bestStreak}</p>
+              <Flame className="h-6 w-6 mx-auto text-orange-500 mb-2" />
+              <p className="text-2xl font-bold text-orange-600">{bestStreak}</p>
               <p className="text-xs text-muted-foreground">Best Streak</p>
+            </CardContent>
+          </Card>
+          <Card className="border-2 border-violet-500/20 bg-violet-500/5">
+            <CardContent className="pt-4 pb-3 text-center">
+              <Star className="h-6 w-6 mx-auto text-violet-500 mb-2" />
+              <p className="text-2xl font-bold text-violet-600">{questions.length - score}</p>
+              <p className="text-xs text-muted-foreground">To Review</p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="flex gap-3 justify-center">
-          <Button onClick={startQuiz} className="gap-2">
+        <div className="flex gap-3 justify-center pt-4">
+          <Button onClick={startQuiz} className="gap-2 bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-600/90 shadow-lg">
             <RotateCcw className="h-4 w-4" />
             Play Again
           </Button>
-          <Button variant="outline" onClick={() => setSection('menu')}>
+          <Button variant="outline" onClick={() => setSection('menu')} className="gap-2">
             Change Mode
           </Button>
         </div>
@@ -328,24 +458,29 @@ Rules:
 
   return (
     <div className="p-6 md:p-10 max-w-3xl mx-auto space-y-6">
-      {/* Header */}
+      {/* Header with mode indicator */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium">
-            {currentIndex + 1}/{questions.length}
+          <div className={`p-1.5 rounded-lg bg-gradient-to-br ${mode.gradient} text-white`}>
+            <mode.icon className="h-4 w-4" />
+          </div>
+          <span className="text-sm font-medium text-muted-foreground">
+            Question {currentIndex + 1} of {questions.length}
           </span>
           {streak > 1 && (
-            <span className="flex items-center gap-1 text-xs text-orange-600 font-medium">
+            <span className="flex items-center gap-1 text-xs bg-orange-500/10 text-orange-600 font-medium px-2 py-0.5 rounded-full">
               <Flame className="h-3.5 w-3.5" />
-              {streak} streak
+              {streak} streak!
             </span>
           )}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium">{score} pts</span>
+          <span className="text-sm font-semibold bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent">
+            {score} pts
+          </span>
           {mode.timed && !revealed && (
-            <span className={`flex items-center gap-1 text-sm font-mono ${
-              questionTimer <= 5 ? 'text-red-600 font-bold' : ''
+            <span className={`flex items-center gap-1 text-sm font-mono px-2 py-0.5 rounded-lg ${
+              questionTimer <= 5 ? 'bg-red-500/10 text-red-600 font-bold animate-pulse' : 'bg-muted text-muted-foreground'
             }`}>
               <Clock className="h-4 w-4" />
               {questionTimer}s
@@ -354,40 +489,45 @@ Rules:
         </div>
       </div>
 
-      {/* Progress */}
-      <div className="flex gap-1">
+      {/* Progress bar - gradient */}
+      <div className="flex gap-1 h-2 bg-muted rounded-full overflow-hidden">
         {questions.map((_, i) => (
           <div
             key={i}
-            className={`h-1.5 flex-1 rounded-full ${
+            className={`flex-1 transition-all duration-300 ${
               i < currentIndex
-                ? 'bg-primary'
+                ? `bg-gradient-to-r ${mode.gradient}`
                 : i === currentIndex
-                ? 'bg-primary/60'
-                : 'bg-muted'
+                ? `bg-gradient-to-r ${mode.gradient} opacity-60`
+                : 'bg-transparent'
             }`}
           />
         ))}
       </div>
 
-      {/* Question */}
-      <Card className="border-2">
-        <CardHeader>
-          <CardTitle className="text-lg leading-relaxed">{q.question}</CardTitle>
+      {/* Question card - enhanced */}
+      <Card className="border-2 shadow-xl overflow-hidden">
+        <div className={`h-1 bg-gradient-to-r ${mode.gradient}`} />
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl leading-relaxed">{q.question}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-3 pb-6">
           {q.options.map((option, i) => {
-            let style = 'bg-muted/50 hover:bg-muted border-transparent';
+            let style = 'bg-muted/50 hover:bg-muted border-transparent hover:border-muted-foreground/20';
+            let iconEl = null;
+            
             if (revealed) {
               if (i === q.correct) {
-                style = 'bg-emerald-50 border-emerald-500 text-emerald-900';
+                style = 'bg-emerald-500/10 border-emerald-500 text-emerald-900 dark:text-emerald-300';
+                iconEl = <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />;
               } else if (i === selected && i !== q.correct) {
-                style = 'bg-red-50 border-red-500 text-red-900';
+                style = 'bg-red-500/10 border-red-500 text-red-900 dark:text-red-300';
+                iconEl = <XCircle className="h-5 w-5 text-red-500 shrink-0" />;
               } else {
-                style = 'bg-muted/30 border-transparent opacity-60';
+                style = 'bg-muted/20 border-transparent opacity-50';
               }
             } else if (i === selected) {
-              style = 'bg-primary/10 border-primary';
+              style = `bg-gradient-to-r ${mode.gradient} bg-opacity-10 border-primary/50`;
             }
 
             return (
@@ -395,16 +535,11 @@ Rules:
                 key={i}
                 onClick={() => handleSelect(i)}
                 disabled={revealed}
-                className={`w-full text-left p-4 rounded-lg border-2 transition-all text-sm ${style}`}
+                className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 text-sm font-medium ${style}`}
               >
-                <div className="flex items-center justify-between">
-                  {option}
-                  {revealed && i === q.correct && (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                  )}
-                  {revealed && i === selected && i !== q.correct && (
-                    <XCircle className="h-5 w-5 text-red-600 shrink-0" />
-                  )}
+                <div className="flex items-center justify-between gap-3">
+                  <span>{option}</span>
+                  {iconEl}
                 </div>
               </button>
             );
@@ -412,20 +547,39 @@ Rules:
         </CardContent>
       </Card>
 
-      {/* Explanation */}
+      {/* Explanation - enhanced */}
       {revealed && (
-        <div className="animate-fade-in bg-muted/50 rounded-lg p-4 text-sm">
-          <p className="font-medium mb-1">
-            {selected === q.correct ? '✓ Correct!' : '✗ Incorrect'}
+        <div className={`animate-fade-in rounded-xl p-5 border-2 ${
+          selected === q.correct 
+            ? 'bg-emerald-500/5 border-emerald-500/30' 
+            : 'bg-rose-500/5 border-rose-500/30'
+        }`}>
+          <p className={`font-semibold mb-2 flex items-center gap-2 ${
+            selected === q.correct ? 'text-emerald-600' : 'text-rose-600'
+          }`}>
+            {selected === q.correct ? (
+              <>
+                <CheckCircle2 className="h-5 w-5" />
+                Correct!
+              </>
+            ) : (
+              <>
+                <XCircle className="h-5 w-5" />
+                Incorrect
+              </>
+            )}
           </p>
-          <p className="text-muted-foreground">{q.explanation}</p>
+          <p className="text-sm text-muted-foreground">{q.explanation}</p>
         </div>
       )}
 
-      {/* Next */}
+      {/* Next button - enhanced */}
       {revealed && (
-        <div className="flex justify-end">
-          <Button onClick={nextQuestion} className="gap-1">
+        <div className="flex justify-end pt-2">
+          <Button 
+            onClick={nextQuestion} 
+            className={`gap-2 bg-gradient-to-r ${mode.gradient} hover:opacity-90 shadow-lg transition-all duration-200 hover:scale-[1.02]`}
+          >
             {currentIndex < questions.length - 1 ? 'Next Question' : 'See Results'}
             <ArrowRight className="h-4 w-4" />
           </Button>

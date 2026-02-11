@@ -16,12 +16,29 @@ import {
   Award,
   ArrowRight,
   BarChart3,
+  Flame,
+  Calendar,
+  Coffee,
+  MessageCircleQuestion,
+  Zap,
 } from 'lucide-react';
 
 interface Stats {
   totalQuestionsAttempted: number;
   totalQuestionsCorrect: number;
   overallAccuracy: number;
+}
+
+interface StreakData {
+  currentStreak: number;
+  longestStreak: number;
+  todayMinutes: number;
+  weeklyData: {
+    date: string;
+    dayName: string;
+    minutes: number;
+    questions: number;
+  }[];
 }
 
 const MODULES = [
@@ -65,33 +82,51 @@ const MODULES = [
     color: 'bg-rose-500/10 text-rose-600',
     borderColor: 'hover:border-rose-500/40',
   },
+  {
+    href: '/clarify',
+    label: 'Get Clarification',
+    description: 'Upload screenshots or voice notes to get help with confusing concepts.',
+    icon: MessageCircleQuestion,
+    color: 'bg-purple-500/10 text-purple-600',
+    borderColor: 'hover:border-purple-500/40',
+  },
 ];
 
 export default function DashboardPage() {
   const { user, getIdToken } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
+  const [streakData, setStreakData] = useState<StreakData | null>(null);
   const [recentSessions, setRecentSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchProgress() {
+    async function fetchData() {
       try {
         const token = await getIdToken();
-        const res = await fetch('/api/progress', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
+        
+        // Fetch progress and streaks in parallel
+        const [progressRes, streakRes] = await Promise.all([
+          fetch('/api/progress', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('/api/streaks', { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+        
+        if (progressRes.ok) {
+          const data = await progressRes.json();
           setStats(data.statistics);
           setRecentSessions(data.sessions || []);
         }
+        
+        if (streakRes.ok) {
+          const data = await streakRes.json();
+          setStreakData(data);
+        }
       } catch (err) {
-        console.error('Failed to fetch progress:', err);
+        console.error('Failed to fetch data:', err);
       } finally {
         setLoading(false);
       }
     }
-    fetchProgress();
+    fetchData();
   }, [getIdToken]);
 
   const greeting = () => {
@@ -113,9 +148,43 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      {/* Streak banner */}
+      {streakData && streakData.currentStreak > 0 && (
+        <div className="relative overflow-hidden rounded-2xl p-4 md:p-6 border border-orange-500/20 bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-yellow-500/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Flame className="w-10 h-10 text-orange-500 animate-flame" />
+                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center">
+                  {streakData.currentStreak}
+                </div>
+              </div>
+              <div>
+                <p className="font-bold text-lg">
+                  {streakData.currentStreak} Day Streak! 🔥
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Keep it up! Study today to maintain your streak.
+                </p>
+              </div>
+            </div>
+            <div className="hidden md:flex items-center gap-6">
+              <div className="text-center">
+                <p className="text-2xl font-bold">{streakData.todayMinutes}</p>
+                <p className="text-xs text-muted-foreground">min today</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold">{streakData.longestStreak}</p>
+                <p className="text-xs text-muted-foreground">best streak</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="stat-gradient-1">
           <CardContent className="pt-5 pb-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-emerald-500/10">
@@ -131,7 +200,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="stat-gradient-2">
           <CardContent className="pt-5 pb-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-blue-500/10">
@@ -147,27 +216,27 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="stat-gradient-3">
           <CardContent className="pt-5 pb-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-violet-500/10">
-                <Award className="h-5 w-5 text-violet-600" />
+              <div className="p-2 rounded-lg bg-amber-500/10">
+                <Flame className="h-5 w-5 text-amber-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {loading ? '—' : stats?.totalQuestionsCorrect ?? 0}
+                  {loading ? '—' : streakData?.currentStreak ?? 0}
                 </p>
-                <p className="text-xs text-muted-foreground">Correct</p>
+                <p className="text-xs text-muted-foreground">Day Streak</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="stat-gradient-4">
           <CardContent className="pt-5 pb-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-500/10">
-                <Clock className="h-5 w-5 text-amber-600" />
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <Clock className="h-5 w-5 text-purple-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">
@@ -179,6 +248,47 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Weekly activity chart */}
+      {streakData && streakData.weeklyData.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                Weekly Activity
+              </CardTitle>
+              <span className="text-xs text-muted-foreground">Last 7 days</span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end justify-between gap-2 h-24">
+              {streakData.weeklyData.map((day, i) => {
+                const maxMinutes = Math.max(...streakData.weeklyData.map(d => d.minutes), 1);
+                const height = (day.minutes / maxMinutes) * 100;
+                const isToday = i === streakData.weeklyData.length - 1;
+                
+                return (
+                  <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
+                    <div className="w-full flex justify-center items-end h-16">
+                      <div
+                        className={`w-full max-w-8 activity-bar ${isToday ? 'opacity-100' : 'opacity-70'}`}
+                        style={{ height: `${Math.max(height, 4)}%` }}
+                      />
+                    </div>
+                    <span className={`text-xs ${isToday ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
+                      {day.dayName}
+                    </span>
+                    {day.minutes > 0 && (
+                      <span className="text-[10px] text-muted-foreground">{day.minutes}m</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Module cards */}
       <div>

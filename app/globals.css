@@ -25,6 +25,33 @@
     --ring: 142 76% 36%;
     --radius: 0.5rem;
     --sidebar: 210 40% 98%;
+    --glass: 0 0% 100% / 0.8;
+    --glow: 142 76% 36% / 0.15;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 142 76% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 142 30% 12%;
+    --accent-foreground: 142 76% 60%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 142 76% 42%;
+    --sidebar: 222 47% 7%;
+    --glass: 222 47% 8% / 0.85;
+    --glow: 142 76% 42% / 0.2;
   }
 }
 
@@ -73,3 +100,124 @@
 }
 .sidebar-link:hover { @apply bg-accent text-accent-foreground; }
 .sidebar-link.active { @apply bg-primary text-primary-foreground; }
+
+/* Glass morphism */
+.glass {
+  @apply backdrop-blur-xl border border-border/50;
+  background: hsl(var(--glass));
+}
+
+.glass-card {
+  @apply rounded-2xl backdrop-blur-xl border border-border/30 shadow-lg;
+  background: hsl(var(--glass));
+}
+
+/* Glow effects */
+.glow-primary {
+  box-shadow: 0 0 40px hsl(var(--glow)), 0 0 80px hsl(var(--glow));
+}
+
+.glow-border {
+  @apply relative overflow-hidden;
+}
+
+.glow-border::before {
+  content: '';
+  @apply absolute inset-0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.2), transparent 50%);
+  pointer-events: none;
+}
+
+/* Streak fire animation */
+@keyframes flame {
+  0%, 100% { transform: scaleY(1) translateY(0); }
+  50% { transform: scaleY(1.1) translateY(-2px); }
+}
+.animate-flame { animation: flame 0.5s ease-in-out infinite; }
+
+/* Pulse ring for live indicators */
+@keyframes ping-slow {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+.animate-ping-slow { animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
+/* Shimmer loading */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, transparent, hsl(var(--muted-foreground) / 0.1), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Smooth transitions for theme changes */
+html.transitioning,
+html.transitioning *,
+html.transitioning *::before,
+html.transitioning *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease !important;
+}
+
+/* Chat bubbles */
+.chat-bubble-user {
+  @apply bg-primary text-primary-foreground rounded-2xl rounded-br-md px-4 py-3;
+}
+
+.chat-bubble-ai {
+  @apply bg-card border border-border rounded-2xl rounded-bl-md px-4 py-3;
+}
+
+/* Streak counter */
+.streak-badge {
+  @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-semibold text-sm;
+  background: linear-gradient(135deg, hsl(25 95% 53%), hsl(15 90% 50%));
+  color: white;
+}
+
+/* Activity chart bars */
+.activity-bar {
+  @apply rounded-t transition-all duration-300 ease-out;
+  background: linear-gradient(to top, hsl(var(--primary)), hsl(var(--primary) / 0.6));
+}
+
+/* Weekly report card */
+.report-card {
+  @apply relative overflow-hidden rounded-2xl p-6 border border-border;
+  background: linear-gradient(135deg, hsl(var(--card)), hsl(var(--accent) / 0.3));
+}
+
+/* Mode selector buttons */
+.mode-button {
+  @apply relative flex flex-col items-center gap-3 p-6 rounded-2xl border-2 border-border transition-all duration-200;
+}
+
+.mode-button:hover {
+  @apply border-primary/50 bg-accent;
+}
+
+.mode-button.selected {
+  @apply border-primary bg-primary/10;
+}
+
+/* Input focus glow */
+input:focus, textarea:focus {
+  @apply ring-2 ring-primary/20 border-primary;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Hide scrollbar but allow scroll */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Stat card gradient backgrounds */
+.stat-gradient-1 { background: linear-gradient(135deg, hsl(142 76% 36% / 0.1), hsl(142 76% 36% / 0.05)); }
+.stat-gradient-2 { background: linear-gradient(135deg, hsl(217 91% 60% / 0.1), hsl(217 91% 60% / 0.05)); }
+.stat-gradient-3 { background: linear-gradient(135deg, hsl(45 93% 47% / 0.1), hsl(45 93% 47% / 0.05)); }
+.stat-gradient-4 { background: linear-gradient(135deg, hsl(280 87% 65% / 0.1), hsl(280 87% 65% / 0.05)); }

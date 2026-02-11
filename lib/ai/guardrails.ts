@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 
 let _anthropic: Anthropic | null = null;
 const getAnthropic = () => {
@@ -8,7 +9,21 @@ const getAnthropic = () => {
   return _anthropic;
 };
 
-// OpenAI is not currently used — remove the eager init that crashes at build time
+let _openai: OpenAI | null = null;
+const getOpenAI = () => {
+  if (!_openai) {
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openai;
+};
+
+// Provider selection - defaults to OpenAI, falls back to Anthropic
+type AIProvider = 'openai' | 'anthropic';
+const getPreferredProvider = (): AIProvider => {
+  if (process.env.OPENAI_API_KEY) return 'openai';
+  if (process.env.ANTHROPIC_API_KEY) return 'anthropic';
+  return 'openai';
+};
 
 export interface AIGuardrails {
   isHallucination: boolean;
@@ -388,5 +403,174 @@ Format your response as JSON:
   } catch (error) {
     console.error('Evaluation error:', error);
     throw new Error('Failed to evaluate response');
+  }
+}
+
+/**
+ * Helper function to call AI provider
+ */
+async function callAI(prompt: string, maxTokens: number = 2000): Promise<string> {
+  const provider = getPreferredProvider();
+  
+  if (provider === 'openai') {
+    try {
+      const response = await getOpenAI().chat.completions.create({
+        model: 'gpt-4o',
+        max_tokens: maxTokens,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      return response.choices[0]?.message?.content || '';
+    } catch (error) {
+      console.error('OpenAI error, falling back to Anthropic:', error);
+      // Fall back to Anthropic
+    }
+  }
+  
+  const response = await getAnthropic().messages.create({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: maxTokens,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  
+  return response.content[0].type === 'text' ? response.content[0].text : '';
+}
+
+/**
+ * Generate legal banter and fun content
+ */
+export async function generateBanterResponse(prompt: string): Promise<AIResponse> {
+  try {
+    const fullPrompt = `You are a witty, knowledgeable legal entertainer helping Kenyan law students take a break from studying.
+
+Your role is to provide:
+- Legal jokes and puns (clean, professional)
+- Fascinating legal facts from around the world
+- Bizarre but real court cases
+- Legal trivia and fun stories
+- Pop culture references to law
+- Historical legal oddities
+
+Be entertaining, light-hearted, and factual. When mentioning real cases, ensure they actually happened.
+Keep responses engaging and suitable for stressed law students who need a laugh.
+
+User request: ${prompt}
+
+Respond in a fun, conversational tone with appropriate humor.`;
+
+    const content = await callAI(fullPrompt, 1500);
+
+    // Banter doesn't need strict guardrails
+    return {
+      content,
+      guardrails: {
+        isHallucination: false,
+        isOffTopic: false,
+        isReliable: true,
+        confidence: 90,
+      },
+      filtered: false,
+    };
+  } catch (error) {
+    console.error('Banter generation error:', error);
+    throw new Error('Failed to generate banter');
+  }
+}
+
+/**
+ * Generate response for clarification requests
+ */
+export async function generateClarificationResponse(
+  prompt: string,
+  hasAttachments: boolean = false
+): Promise<AIResponse> {
+  try {
+    const attachmentContext = hasAttachments 
+      ? "The user has attached materials (images, documents, or voice notes) for context."
+      : "";
+
+    const fullPrompt = `${KENYA_LEGAL_CONTEXT}
+
+You are helping a Kenyan law student who needs clarification on something they find confusing or difficult to understand.
+
+${attachmentContext}
+
+Student's question/confusion: ${prompt}
+
+Provide a clear, patient, and thorough explanation that:
+1. Breaks down complex concepts into simpler terms
+2. Uses analogies and examples relevant to Kenyan context
+3. Connects to real-world legal practice
+4. Addresses the specific confusion
+5. Offers alternative ways of understanding if helpful
+6. Suggests related concepts they might want to review
+
+Be supportive and encouraging - remember they're seeking help because they're stuck.`;
+
+    const content = await callAI(fullPrompt, 3000);
+    const guardrails = await validateResponse(prompt, content, 'research');
+
+    return {
+      content,
+      guardrails,
+      filtered: guardrails.isHallucination && guardrails.confidence > 80,
+    };
+  } catch (error) {
+    console.error('Clarification generation error:', error);
+    throw new Error('Failed to generate clarification');
+  }
+}
+
+/**
+ * Generate quiz questions dynamically
+ */
+export async function generateQuizQuestions(
+  topic: string,
+  count: number = 5,
+  difficulty: 'beginner' | 'intermediate' | 'advanced' = 'intermediate'
+): Promise<{ questions: any[]; guardrails: AIGuardrails }> {
+  try {
+    const fullPrompt = `${KENYA_LEGAL_CONTEXT}
+
+Generate ${count} multiple-choice quiz questions about ${topic} for Kenyan bar exam preparation.
+Difficulty level: ${difficulty}
+
+Each question must:
+1. Be factually accurate regarding Kenyan law
+2. Have exactly 4 options (A, B, C, D)
+3. Have one clearly correct answer
+4. Include a brief explanation of why the answer is correct
+5. Reference specific Kenyan legal provisions where applicable
+
+Format as JSON array:
+[
+  {
+    "question": "Question text?",
+    "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
+    "correct": "A",
+    "explanation": "Explanation with legal reference"
+  }
+]`;
+
+    const content = await callAI(fullPrompt, 4000);
+    
+    // Extract JSON array
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      const questions = JSON.parse(jsonMatch[0]);
+      return {
+        questions,
+        guardrails: {
+          isHallucination: false,
+          isOffTopic: false,
+          isReliable: true,
+          confidence: 85,
+        },
+      };
+    }
+
+    throw new Error('Failed to parse questions');
+  } catch (error) {
+    console.error('Quiz generation error:', error);
+    throw new Error('Failed to generate quiz questions');
   }
 }

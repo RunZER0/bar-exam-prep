@@ -1,11 +1,13 @@
-import { pgTable, text, timestamp, uuid, boolean, integer, jsonb, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, boolean, integer, jsonb, pgEnum, date } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Enums
 export const userRoleEnum = pgEnum('user_role', ['student', 'admin']);
-export const competencyTypeEnum = pgEnum('competency_type', ['drafting', 'research', 'oral']);
+export const competencyTypeEnum = pgEnum('competency_type', ['drafting', 'research', 'oral', 'banter', 'clarification']);
 export const difficultyLevelEnum = pgEnum('difficulty_level', ['beginner', 'intermediate', 'advanced']);
 export const questionTypeEnum = pgEnum('question_type', ['multiple_choice', 'essay', 'case_analysis', 'practical']);
+export const themeEnum = pgEnum('theme', ['light', 'dark', 'system']);
+export const studyPaceEnum = pgEnum('study_pace', ['relaxed', 'moderate', 'intensive']);
 
 // Users table
 export const users = pgTable('users', {
@@ -15,9 +17,79 @@ export const users = pgTable('users', {
   displayName: text('display_name'),
   photoURL: text('photo_url'),
   role: userRoleEnum('role').default('student').notNull(),
+  theme: themeEnum('theme').default('system').notNull(),
   isActive: boolean('is_active').default(true).notNull(),
+  onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// User profile for adaptive learning
+export const userProfiles = pgTable('user_profiles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull().unique(),
+  currentOccupation: text('current_occupation'), // law student, paralegal, etc.
+  yearsOfStudy: integer('years_of_study'),
+  targetExamDate: date('target_exam_date'),
+  studyPace: studyPaceEnum('study_pace').default('moderate'),
+  weakAreas: jsonb('weak_areas').$type<string[]>(), // ATP units they struggle with
+  strongAreas: jsonb('strong_areas').$type<string[]>(),
+  preferredStudyTime: text('preferred_study_time'), // morning, afternoon, evening
+  dailyStudyGoal: integer('daily_study_goal').default(60), // minutes
+  weeklyQuizGoal: integer('weekly_quiz_goal').default(3),
+  learningStyle: text('learning_style'), // visual, reading, practice
+  goals: jsonb('goals').$type<string[]>(), // pass bar, improve drafting, etc.
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Study streaks
+export const studyStreaks = pgTable('study_streaks', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  date: date('date').notNull(),
+  minutesStudied: integer('minutes_studied').default(0).notNull(),
+  questionsAnswered: integer('questions_answered').default(0).notNull(),
+  sessionsCompleted: integer('sessions_completed').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Chat sessions for persistent conversations
+export const chatSessions = pgTable('chat_sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  title: text('title').notNull(),
+  competencyType: competencyTypeEnum('competency_type').notNull(),
+  context: text('context'), // document type, unit, etc.
+  isArchived: boolean('is_archived').default(false).notNull(),
+  lastMessageAt: timestamp('last_message_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Chat messages within sessions
+export const chatMessages = pgTable('chat_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sessionId: uuid('session_id').references(() => chatSessions.id).notNull(),
+  role: text('role').notNull(), // 'user' | 'assistant'
+  content: text('content').notNull(),
+  attachments: jsonb('attachments').$type<{ type: string; url: string; name: string }[]>(),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Clarification requests with uploads
+export const clarificationRequests = pgTable('clarification_requests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  sessionId: uuid('session_id').references(() => chatSessions.id),
+  content: text('content'),
+  attachmentType: text('attachment_type'), // 'image', 'audio', 'document'
+  attachmentUrl: text('attachment_url'),
+  attachmentName: text('attachment_name'),
+  transcription: text('transcription'), // for audio
+  aiResponse: text('ai_response'),
+  isResolved: boolean('is_resolved').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 // Study topics based on Kenyan ATP
@@ -117,11 +189,44 @@ export const contentUpdates = pgTable('content_updates', {
 });
 
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
+  profile: one(userProfiles),
+  streaks: many(studyStreaks),
+  chatSessions: many(chatSessions),
+  clarifications: many(clarificationRequests),
   progress: many(userProgress),
   responses: many(userResponses),
   sessions: many(practiceSessions),
   chatHistory: many(chatHistory),
+}));
+
+export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [userProfiles.userId],
+    references: [users.id],
+  }),
+}));
+
+export const studyStreaksRelations = relations(studyStreaks, ({ one }) => ({
+  user: one(users, {
+    fields: [studyStreaks.userId],
+    references: [users.id],
+  }),
+}));
+
+export const chatSessionsRelations = relations(chatSessions, ({ one, many }) => ({
+  user: one(users, {
+    fields: [chatSessions.userId],
+    references: [users.id],
+  }),
+  messages: many(chatMessages),
+}));
+
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  session: one(chatSessions, {
+    fields: [chatMessages.sessionId],
+    references: [chatSessions.id],
+  }),
 }));
 
 export const topicsRelations = relations(topics, ({ many }) => ({

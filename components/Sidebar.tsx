@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   LayoutDashboard,
   FileText,
@@ -15,6 +16,10 @@ import {
   Menu,
   X,
   Scale,
+  Coffee,
+  MessageCircleQuestion,
+  Flame,
+  History,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -25,6 +30,9 @@ const NAV_ITEMS = [
   { href: '/exams', label: 'Examinations', icon: ClipboardCheck },
   { href: '/quizzes', label: 'Quizzes & Trivia', icon: Lightbulb },
   { href: '/research', label: 'Research', icon: Search },
+  { href: '/clarify', label: 'Get Clarification', icon: MessageCircleQuestion },
+  { href: '/banter', label: 'Legal Banter', icon: Coffee },
+  { href: '/history', label: 'Chat History', icon: History },
 ];
 
 const ADMIN_ITEM = { href: '/admin', label: 'Admin Panel', icon: Shield };
@@ -81,8 +89,9 @@ export default function Sidebar() {
       </nav>
 
       {/* User footer */}
-      <div className="border-t px-3 py-4">
-        <div className="flex items-center gap-2 mb-3">
+      <div className="border-t px-3 py-4 space-y-2">
+        <ThemeToggle />
+        <div className="flex items-center gap-2 pt-2">
           {user?.photoURL ? (
             <img src={user.photoURL} alt="" className="h-8 w-8 rounded-full" />
           ) : (

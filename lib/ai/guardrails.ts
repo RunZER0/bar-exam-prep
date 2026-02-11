@@ -1,5 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
+import { 
+  getRelevantContext, 
+  formatProvisionForContext, 
+  formatCaseForContext,
+  type LegalProvision,
+  type CaseLaw 
+} from '@/lib/knowledge/kenyan-law-base';
 
 let _anthropic: Anthropic | null = null;
 const getAnthropic = () => {
@@ -270,6 +277,170 @@ If you're uncertain about specific cases, focus on legal principles and direct t
   } catch (error) {
     console.error('AI generation error:', error);
     throw new Error('Failed to generate response');
+  }
+}
+
+/**
+ * RAG-Enhanced Study Response
+ * Uses retrieved legal provisions and case law to provide accurate, grounded responses
+ */
+export async function generateStudyResponseWithRAG(
+  prompt: string,
+  unitId: string,
+  unitName: string,
+  statutes: string[]
+): Promise<AIResponse & { sources: { provisions: LegalProvision[]; cases: CaseLaw[] } }> {
+  try {
+    // Retrieve relevant legal context using RAG
+    const ragContext = getRelevantContext(prompt, unitId);
+    
+    const provisionsContext = ragContext.provisions.length > 0
+      ? ragContext.provisions.map(formatProvisionForContext).join('\n\n---\n\n')
+      : '';
+    
+    const casesContext = ragContext.cases.length > 0
+      ? ragContext.cases.map(formatCaseForContext).join('\n\n---\n\n')
+      : '';
+    
+    const fullPrompt = `${KENYA_LEGAL_CONTEXT}
+
+You are an expert Kenyan law tutor helping a student prepare for the bar examination.
+
+Study Unit: ${unitName}
+Relevant Statutes: ${statutes.join(', ')}
+
+===== RETRIEVED LEGAL PROVISIONS =====
+${provisionsContext || 'No specific provisions retrieved. Use your knowledge of Kenyan law.'}
+
+===== RELEVANT CASE LAW =====
+${casesContext || 'No specific cases retrieved. Focus on legal principles.'}
+
+===== STUDENT'S QUESTION =====
+${prompt}
+
+===== INSTRUCTIONS =====
+Provide a comprehensive, educational response that:
+
+1. **Directly answers the question** with accurate Kenyan legal information
+2. **Cites specific sections** of relevant statutes (use the retrieved provisions above when applicable)
+3. **References landmark cases** (use the retrieved cases above when applicable)
+4. **Explains practical application** - how this applies in legal practice
+5. **Highlights exam tips** - what bar examiners look for on this topic
+6. **Connects related concepts** - help the student build a complete understanding
+
+Format your response clearly with headings and bullet points where appropriate.
+Be thorough but focused. Aim for depth over breadth.
+
+If the retrieved context doesn't fully address the question, supplement with your knowledge of Kenyan law, but clearly distinguish between retrieved sources and general knowledge.`;
+
+    const response = await getAnthropic().messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 4000,
+      messages: [
+        {
+          role: 'user',
+          content: fullPrompt,
+        },
+      ],
+    });
+
+    const content = response.content[0].type === 'text' 
+      ? response.content[0].text 
+      : '';
+
+    const guardrails = await validateResponse(prompt, content, 'research');
+
+    // Only filter in extreme cases - we want to give helpful responses
+    const filtered = guardrails.isHallucination && guardrails.confidence > 85;
+
+    if (filtered) {
+      return {
+        content: `I want to give you accurate information on this topic within ${unitName}. Let me focus on the verified legal principles:\n\n${ragContext.provisions.length > 0 
+          ? ragContext.provisions.map(formatProvisionForContext).join('\n\n') 
+          : 'For detailed provisions, please consult the ' + statutes.join(', ')}.${ragContext.cases.length > 0 
+          ? '\n\nRelevant cases include:\n' + ragContext.cases.map(c => `- **${c.name}** ${c.citation}: ${c.ratio}`).join('\n') 
+          : ''}\n\nWould you like me to explain any of these provisions in more detail?`,
+        guardrails,
+        filtered: true,
+        sources: ragContext,
+      };
+    }
+
+    return {
+      content,
+      guardrails,
+      filtered: false,
+      sources: ragContext,
+    };
+  } catch (error) {
+    console.error('RAG study generation error:', error);
+    throw new Error('Failed to generate study response');
+  }
+}
+
+/**
+ * Generate smart study suggestions based on user's weaknesses
+ */
+export async function generateSmartStudySuggestions(
+  unitId: string,
+  unitName: string,
+  recentTopics: string[] = [],
+  weakAreas: string[] = []
+): Promise<{ suggestions: Array<{ topic: string; reason: string; prompt: string }> }> {
+  try {
+    const prompt = `You are helping a Kenyan bar exam student decide what to study in ${unitName}.
+
+${weakAreas.length > 0 ? `The student has shown weakness in these areas: ${weakAreas.join(', ')}` : ''}
+${recentTopics.length > 0 ? `They recently studied: ${recentTopics.join(', ')}` : ''}
+
+Suggest 4 specific study topics that would be most beneficial. For each topic, provide:
+1. The topic name (be specific, e.g., "Interlocutory Injunctions under Order 39" not just "Injunctions")
+2. A brief reason why this is important (connect to bar exam or practice)
+3. A starter prompt the student can use to begin studying
+
+Format as JSON:
+[
+  {
+    "topic": "Topic Name",
+    "reason": "Why this is important for bar exam/practice",
+    "prompt": "A good question to start learning this topic"
+  }
+]`;
+
+    const content = await callAI(prompt, 2000);
+    
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      const suggestions = JSON.parse(jsonMatch[0]);
+      return { suggestions };
+    }
+
+    // Default suggestions if parsing fails
+    return {
+      suggestions: [
+        {
+          topic: 'Key Concepts',
+          reason: 'Foundation for understanding the entire unit',
+          prompt: `What are the fundamental concepts I need to understand in ${unitName}?`,
+        },
+        {
+          topic: 'Exam Hot Topics',
+          reason: 'Frequently tested areas in bar examinations',
+          prompt: `What topics in ${unitName} are most commonly tested in the Kenya bar exam?`,
+        },
+      ],
+    };
+  } catch (error) {
+    console.error('Smart suggestions error:', error);
+    return {
+      suggestions: [
+        {
+          topic: 'Getting Started',
+          reason: 'Build a strong foundation',
+          prompt: `Give me an overview of ${unitName} and what I need to know for the bar exam.`,
+        },
+      ],
+    };
   }
 }
 

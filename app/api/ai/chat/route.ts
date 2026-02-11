@@ -6,6 +6,8 @@ import {
   generateOralAdvocacyFeedback,
   generateBanterResponse,
   generateClarificationResponse,
+  generateStudyResponseWithRAG,
+  generateSmartStudySuggestions,
 } from '@/lib/ai/guardrails';
 import { db } from '@/lib/db';
 import { chatHistory } from '@/lib/db/schema';
@@ -23,6 +25,7 @@ export const POST = withAuth(async (req: NextRequest, user) => {
     }
 
     let aiResponse;
+    let sources;
 
     switch (competencyType) {
       case 'drafting':
@@ -37,6 +40,18 @@ export const POST = withAuth(async (req: NextRequest, user) => {
           message,
           context?.topicArea || 'General Legal Research'
         );
+        break;
+      
+      case 'study':
+        // RAG-enhanced study response
+        const studyResponse = await generateStudyResponseWithRAG(
+          message,
+          context?.unitId || 'atp-100',
+          context?.topicArea || 'General Study',
+          context?.statutes || []
+        );
+        aiResponse = studyResponse;
+        sources = studyResponse.sources;
         break;
       
       case 'oral':
@@ -73,6 +88,7 @@ export const POST = withAuth(async (req: NextRequest, user) => {
       metadata: {
         guardrails: aiResponse.guardrails,
         context,
+        sources,
       },
     });
 
@@ -80,6 +96,7 @@ export const POST = withAuth(async (req: NextRequest, user) => {
       response: aiResponse.content,
       filtered: aiResponse.filtered,
       guardrails: aiResponse.guardrails,
+      sources,
     });
   } catch (error) {
     console.error('Error generating AI response:', error);

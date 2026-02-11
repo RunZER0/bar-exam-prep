@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSidebar } from '@/contexts/SidebarContext';
 import Sidebar from '@/components/Sidebar';
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 
@@ -13,6 +14,7 @@ export default function AuthenticatedLayout({
 }) {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const { collapsed } = useSidebar();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -34,9 +36,9 @@ export default function AuthenticatedLayout({
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       <Sidebar />
-      <main className="flex-1 md:ml-0 mt-14 md:mt-0 overflow-y-auto bg-muted/30">
+      <main className={`mt-14 md:mt-0 overflow-y-auto bg-muted/30 min-h-screen transition-all duration-300 ${collapsed ? 'ml-0 md:ml-[72px]' : 'ml-0 md:ml-64'}`}>
         <div className="min-h-full">
           {children}
         </div>

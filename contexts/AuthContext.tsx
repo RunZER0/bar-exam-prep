@@ -11,6 +11,7 @@ import {
   onAuthStateChanged 
 } from 'firebase/auth';
 import { getFirebaseAuth } from '@/lib/firebase/client';
+import { isDisposableEmail, getDisposableEmailError } from '@/lib/utils/disposable-emails';
 
 interface AuthContextType {
   user: User | null;
@@ -47,6 +48,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUpWithEmail = async (email: string, password: string) => {
+    // Block disposable/temporary email addresses
+    if (isDisposableEmail(email)) {
+      throw new Error(getDisposableEmailError());
+    }
     await createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
   };
 

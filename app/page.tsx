@@ -54,25 +54,25 @@ const FEATURES = [
 const TESTIMONIALS = [
   {
     name: 'Wanjiku Mwangi',
-    role: 'KSL Student, Year 1',
+    role: 'KSL (26/27)',
     content: 'This platform is exactly what I needed. The interface is so clean and the study materials are well organized. A game changer for my bar prep!',
     rating: 5,
   },
   {
     name: 'Brian Ochieng',
-    role: 'KSL Student, Year 2',
+    role: 'KSL (26/27)',
     content: 'The exam simulations feel just like the real thing and the instant feedback helps me understand where I need to improve.',
     rating: 5,
   },
   {
     name: 'Amina Hassan',
-    role: 'KSL Student, Year 1',
+    role: 'KSL (26/27)',
     content: 'Finally a platform built specifically for Kenyan law students. The drafting module has been incredibly helpful.',
     rating: 5,
   },
   {
     name: 'Kevin Mutua',
-    role: 'KSL Student, Year 2',
+    role: 'KSL (26/27)',
     content: 'The quiz feature is addictive in the best way. I find myself studying more because the platform makes it engaging.',
     rating: 5,
   },
@@ -154,14 +154,15 @@ export default function Home() {
             <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
               <Scale className="h-6 w-6 text-emerald-500" />
             </div>
-            <div>
-              <span className="font-bold text-2xl tracking-tight">Ynai</span>
-              <span className="text-zinc-500 text-sm ml-2 hidden sm:inline">Lawyer</span>
-            </div>
+            <span className="font-bold text-2xl tracking-tight">Ynai</span>
           </div>
-          <span className="text-sm text-zinc-500 hidden md:block">
-            Kenya Bar Exam Preparation
-          </span>
+          <div className="flex items-center gap-6">
+            <span className="text-sm text-zinc-500 hidden md:block">
+              Kenya Bar Exam Preparation
+            </span>
+            <a href="/about" className="text-sm text-zinc-400 hover:text-emerald-400 transition-colors hidden sm:block">About Us</a>
+            <a href="/pricing" className="text-sm text-zinc-400 hover:text-emerald-400 transition-colors hidden sm:block">Pricing</a>
+          </div>
         </div>
       </nav>
 
@@ -185,7 +186,6 @@ export default function Home() {
               <div>
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] tracking-tight">
                   <span className="text-emerald-400">Ynai</span>
-                  <span className="text-zinc-300"> Lawyer</span>
                 </h1>
                 <p className="text-xl md:text-2xl text-zinc-400 mt-4 max-w-lg">
                   Your path to passing the Kenya Bar Exam starts here.
@@ -396,18 +396,18 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-zinc-800/50 bg-[#0a0a0b]">
         <div className="max-w-6xl mx-auto px-4 py-12">
-          {/* Top section */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 pb-10 border-b border-zinc-800/50">
+          {/* Top section - 5 columns */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 pb-10 border-b border-zinc-800/50">
             {/* Brand */}
-            <div className="md:col-span-2">
+            <div className="col-span-2">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
                   <Scale className="h-5 w-5 text-emerald-500" />
                 </div>
-                <span className="font-bold text-xl">Ynai Lawyer</span>
+                <span className="font-bold text-xl">Ynai</span>
               </div>
-              <p className="text-sm text-zinc-500 leading-relaxed max-w-sm">
-                Kenya Bar Exam Preparation Platform. Empowering Kenya School of Law students to excel in their Advocates Training Programme examinations.
+              <p className="text-sm text-zinc-500 leading-relaxed">
+                Kenya Bar Exam Preparation Platform. Empowering KSL students to excel in their ATP examinations.
               </p>
             </div>
 
@@ -418,7 +418,16 @@ export default function Home() {
                 <li><a href="#" className="hover:text-zinc-300 transition-colors">Study Materials</a></li>
                 <li><a href="#" className="hover:text-zinc-300 transition-colors">Practice Exams</a></li>
                 <li><a href="#" className="hover:text-zinc-300 transition-colors">Legal Drafting</a></li>
-                <li><a href="#" className="hover:text-zinc-300 transition-colors">Progress Tracking</a></li>
+              </ul>
+            </div>
+
+            {/* Resources */}
+            <div>
+              <h4 className="font-medium text-zinc-200 text-sm mb-4">Resources</h4>
+              <ul className="space-y-3 text-sm text-zinc-500">
+                <li><a href="/about" className="hover:text-zinc-300 transition-colors">About Us</a></li>
+                <li><a href="/pricing" className="hover:text-zinc-300 transition-colors">Pricing</a></li>
+                <li><a href="#" className="hover:text-zinc-300 transition-colors">Contact</a></li>
               </ul>
             </div>
 
@@ -436,7 +445,7 @@ export default function Home() {
           {/* Bottom section */}
           <div className="pt-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <p className="text-sm text-zinc-600">
-              2026 Ynai. All rights reserved.
+              © 2026 Ynai. All rights reserved.
             </p>
             <p className="text-sm text-zinc-600">
               Ynai is an independent platform and is not officially affiliated with the Kenya School of Law or Council of Legal Education.

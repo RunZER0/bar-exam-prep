@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   LayoutDashboard,
@@ -22,7 +23,6 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -44,19 +44,10 @@ const ADMIN_EMAILS = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(',') || [];
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-
-  // Load collapsed state from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('sidebar-collapsed');
-    if (saved === 'true') setCollapsed(true);
-  }, []);
+  const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar();
 
   const toggleCollapse = () => {
-    const newState = !collapsed;
-    setCollapsed(newState);
-    localStorage.setItem('sidebar-collapsed', String(newState));
+    setCollapsed(!collapsed);
   };
 
   const isActive = (href: string) => {
@@ -76,7 +67,7 @@ export default function Sidebar() {
         {!collapsed && (
           <div className="leading-tight">
             <p className="font-bold text-base">Ynai</p>
-            <p className="text-[11px] text-muted-foreground">Lawyer</p>
+            <p className="text-[10px] text-muted-foreground">Bar Exam Prep</p>
           </div>
         )}
       </div>
@@ -189,12 +180,12 @@ export default function Sidebar() {
         />
       )}
 
-      {/* Sidebar - desktop always visible, mobile slide-in */}
+      {/* Sidebar - always fixed, desktop always visible, mobile slide-in */}
       <aside
         className={`
           fixed top-0 left-0 z-40 h-screen bg-card/95 backdrop-blur-xl border-r border-border/50 flex flex-col
           transition-all duration-300 ease-in-out
-          md:translate-x-0 md:static md:z-0
+          md:translate-x-0
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
           ${collapsed ? 'w-[72px]' : 'w-64'}
         `}

@@ -16,6 +16,9 @@ import {
   Handshake,
   Calculator,
   ArrowRight,
+  PenTool,
+  Mic,
+  TrendingUp,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -30,6 +33,9 @@ const ICON_MAP: Record<string, any> = {
   Building2,
   Handshake,
   Calculator,
+  PenTool,
+  Mic,
+  TrendingUp,
 };
 
 const COLORS = [
@@ -69,8 +75,13 @@ export default function StudyPage() {
                 className={`group cursor-pointer border transition-all duration-200 hover:shadow-md h-full ${hoverBorder}`}
               >
                 <CardHeader className="pb-3">
-                  <div className={`p-2.5 rounded-lg w-fit ${bgColor} ${textColor}`}>
-                    <Icon className="h-5 w-5" />
+                  <div className="flex items-start justify-between">
+                    <div className={`p-2.5 rounded-lg w-fit ${bgColor} ${textColor}`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                      {(unit as any).code}
+                    </span>
                   </div>
                   <CardTitle className="text-base mt-3 flex items-center justify-between">
                     {unit.name}

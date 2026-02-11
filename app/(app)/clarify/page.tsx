@@ -2,12 +2,11 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { 
-  MessageCircleQuestion, Send, Upload, Image, Mic, MicOff, 
-  X, FileText, Paperclip, Camera, StopCircle, Play, Trash2
+  MessageCircleQuestion, Send, Image, Mic, MicOff, 
+  X, FileText, Paperclip, StopCircle, Sparkles
 } from 'lucide-react';
 
 type Attachment = {
@@ -172,8 +171,6 @@ export default function ClarifyPage() {
     try {
       const token = await getIdToken();
       
-      // For now, we'll describe attachments in the message
-      // In production, you'd upload to cloud storage and include URLs
       let enhancedMessage = currentInput;
       if (currentAttachments.length > 0) {
         const attachmentDescriptions = currentAttachments.map(a => {
@@ -223,155 +220,172 @@ export default function ClarifyPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] md:h-screen">
       {/* Header */}
-      <div className="border-b bg-card/50 backdrop-blur-sm px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-purple-500/10">
-            <MessageCircleQuestion className="w-6 h-6 text-purple-600" />
+      <div className="shrink-0 border-b border-border/50 bg-card/50 backdrop-blur-xl px-6 py-4">
+        <div className="flex items-center gap-4 max-w-4xl mx-auto">
+          <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+            <MessageCircleQuestion className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Get Clarification</h1>
+            <h1 className="text-lg font-semibold">Get Clarification</h1>
             <p className="text-sm text-muted-foreground">
-              Upload screenshots, voice notes, or describe what you need help with
+              Ask questions, upload screenshots, or record voice notes
             </p>
           </div>
         </div>
       </div>
 
       {/* Chat area */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center mb-4">
-              <MessageCircleQuestion className="w-8 h-8 text-purple-600" />
-            </div>
-            <h2 className="text-xl font-semibold mb-2">Need Help Understanding Something?</h2>
-            <p className="text-muted-foreground max-w-md mb-8">
-              Upload a screenshot of confusing material, record a voice note with your question, 
-              or simply type what you need clarified.
-            </p>
-            
-            <div className="grid grid-cols-3 gap-4 w-full max-w-sm">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-card hover:bg-accent transition-all"
-              >
-                <Image className="w-6 h-6 text-blue-500" />
-                <span className="text-sm">Screenshot</span>
-              </button>
-              <button
-                onClick={startRecording}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-card hover:bg-accent transition-all"
-              >
-                <Mic className="w-6 h-6 text-red-500" />
-                <span className="text-sm">Voice Note</span>
-              </button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-card hover:bg-accent transition-all"
-              >
-                <FileText className="w-6 h-6 text-green-500" />
-                <span className="text-sm">Document</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
-              >
-                <div
-                  className={`max-w-[85%] md:max-w-[70%] ${
-                    message.role === 'user'
-                      ? 'chat-bubble-user'
-                      : 'chat-bubble-ai'
-                  }`}
-                >
-                  {message.attachments && message.attachments.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {message.attachments.map((att, i) => (
-                        <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded bg-black/10 text-xs">
-                          {att.type === 'image' && <Image className="w-3 h-3" />}
-                          {att.type === 'audio' && <Mic className="w-3 h-3" />}
-                          {att.type === 'document' && <FileText className="w-3 h-3" />}
-                          <span className="truncate max-w-[100px]">{att.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="prose-ai text-sm">{message.content}</div>
-                </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-4">
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center mb-6">
+                <Sparkles className="w-10 h-10 text-primary" />
               </div>
-            ))}
-            
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="chat-bubble-ai">
-                  <div className="flex items-center gap-2">
-                    <div className="dot-pulse flex gap-1">
-                      <span className="w-2 h-2 bg-primary rounded-full"></span>
-                      <span className="w-2 h-2 bg-primary rounded-full"></span>
-                      <span className="w-2 h-2 bg-primary rounded-full"></span>
+              <h2 className="text-2xl font-bold mb-2">Need Help Understanding Something?</h2>
+              <p className="text-muted-foreground max-w-md mb-10">
+                Upload a screenshot of confusing material, record a voice note with your question, 
+                or simply type what you need clarified.
+              </p>
+              
+              <div className="grid grid-cols-3 gap-4 w-full max-w-sm">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-border/50 bg-card hover:bg-accent hover:border-primary/30 transition-all duration-300"
+                >
+                  <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 group-hover:scale-110 transition-transform">
+                    <Image className="w-5 h-5 text-blue-500" />
+                  </div>
+                  <span className="text-sm font-medium">Screenshot</span>
+                </button>
+                <button
+                  onClick={startRecording}
+                  className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-border/50 bg-card hover:bg-accent hover:border-primary/30 transition-all duration-300"
+                >
+                  <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 group-hover:scale-110 transition-transform">
+                    <Mic className="w-5 h-5 text-red-500" />
+                  </div>
+                  <span className="text-sm font-medium">Voice Note</span>
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-border/50 bg-card hover:bg-accent hover:border-primary/30 transition-all duration-300"
+                >
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 group-hover:scale-110 transition-transform">
+                    <FileText className="w-5 h-5 text-emerald-500" />
+                  </div>
+                  <span className="text-sm font-medium">Document</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
+                >
+                  <div
+                    className={`max-w-[85%] md:max-w-[75%] px-4 py-3 rounded-2xl ${
+                      message.role === 'user'
+                        ? 'bg-primary text-primary-foreground rounded-br-md'
+                        : 'bg-card border border-border/50 rounded-bl-md'
+                    }`}
+                  >
+                    {message.attachments && message.attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {message.attachments.map((att, i) => (
+                          <div 
+                            key={i} 
+                            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs ${
+                              message.role === 'user' ? 'bg-white/10' : 'bg-muted'
+                            }`}
+                          >
+                            {att.type === 'image' && <Image className="w-3 h-3" />}
+                            {att.type === 'audio' && <Mic className="w-3 h-3" />}
+                            {att.type === 'document' && <FileText className="w-3 h-3" />}
+                            <span className="truncate max-w-[100px]">{att.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="prose-ai text-sm whitespace-pre-wrap">{message.content}</div>
+                  </div>
+                </div>
+              ))}
+              
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-card border border-border/50 px-4 py-3 rounded-2xl rounded-bl-md">
+                    <div className="flex items-center gap-2">
+                      <div className="dot-pulse flex gap-1">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </>
-        )}
+              )}
+              <div ref={messagesEndRef} />
+            </>
+          )}
+        </div>
       </div>
 
       {/* Recording indicator */}
       {isRecording && (
-        <div className="px-4 pb-2">
-          <div className="flex items-center justify-center gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
-            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-sm font-medium text-red-600">Recording: {formatTime(recordingTime)}</span>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={stopRecording}
-              className="gap-1"
-            >
-              <StopCircle className="w-4 h-4" />
-              Stop
-            </Button>
+        <div className="shrink-0 px-4 pb-2">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-center gap-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+              <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-sm font-medium text-red-500">Recording: {formatTime(recordingTime)}</span>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={stopRecording}
+                className="gap-1.5"
+              >
+                <StopCircle className="w-4 h-4" />
+                Stop
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Attachments preview */}
       {attachments.length > 0 && (
-        <div className="px-4 pb-2">
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
-            {attachments.map((att) => (
-              <div key={att.id} className="relative flex-shrink-0">
-                {att.type === 'image' && att.preview ? (
-                  <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-border">
-                    <img src={att.preview} alt="" className="w-full h-full object-cover" />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card">
-                    {att.type === 'audio' ? <Mic className="w-4 h-4 text-red-500" /> : <FileText className="w-4 h-4 text-blue-500" />}
-                    <span className="text-xs truncate max-w-[80px]">{att.file.name}</span>
-                  </div>
-                )}
-                <button
-                  onClick={() => removeAttachment(att.id)}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
+        <div className="shrink-0 px-4 pb-2">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+              {attachments.map((att) => (
+                <div key={att.id} className="relative flex-shrink-0 group">
+                  {att.type === 'image' && att.preview ? (
+                    <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-border">
+                      <img src={att.preview} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-card">
+                      {att.type === 'audio' ? <Mic className="w-4 h-4 text-red-500" /> : <FileText className="w-4 h-4 text-blue-500" />}
+                      <span className="text-xs truncate max-w-[80px]">{att.file.name}</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => removeAttachment(att.id)}
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
       {/* Input */}
-      <div className="border-t bg-card/50 backdrop-blur-sm p-4">
+      <div className="shrink-0 border-t border-border/50 bg-card/50 backdrop-blur-xl p-4">
         <input
           ref={fileInputRef}
           type="file"
@@ -381,12 +395,13 @@ export default function ClarifyPage() {
           className="hidden"
         />
         
-        <div className="flex gap-2 max-w-4xl mx-auto">
-          <div className="flex gap-1">
+        <div className="flex gap-3 max-w-4xl mx-auto">
+          <div className="flex gap-1.5">
             <Button
               type="button"
               variant="outline"
               size="icon"
+              className="shrink-0 h-11 w-11 rounded-xl border-border/50 hover:border-border"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="w-4 h-4" />
@@ -395,8 +410,8 @@ export default function ClarifyPage() {
               type="button"
               variant="outline"
               size="icon"
+              className={`shrink-0 h-11 w-11 rounded-xl border-border/50 hover:border-border ${isRecording ? 'text-red-500 border-red-500/50' : ''}`}
               onClick={isRecording ? stopRecording : startRecording}
-              className={isRecording ? 'text-red-500 border-red-500' : ''}
             >
               {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </Button>
@@ -404,9 +419,9 @@ export default function ClarifyPage() {
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Describe what you need help with..."
+            placeholder="What do you need help understanding?"
             disabled={isLoading}
-            className="flex-1 min-h-[44px] max-h-32 resize-none"
+            className="flex-1 min-h-[44px] max-h-32 resize-none rounded-xl bg-background border-border/50 focus:border-primary/50"
             rows={1}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -415,7 +430,12 @@ export default function ClarifyPage() {
               }
             }}
           />
-          <Button onClick={sendMessage} disabled={isLoading || (!input.trim() && attachments.length === 0)}>
+          <Button 
+            onClick={sendMessage} 
+            disabled={isLoading || (!input.trim() && attachments.length === 0)}
+            className="shrink-0 h-11 w-11 rounded-xl"
+            size="icon"
+          >
             <Send className="w-4 h-4" />
           </Button>
         </div>

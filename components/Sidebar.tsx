@@ -18,10 +18,11 @@ import {
   Scale,
   Coffee,
   MessageCircleQuestion,
-  Flame,
   History,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -37,79 +38,129 @@ const NAV_ITEMS = [
 
 const ADMIN_ITEM = { href: '/admin', label: 'Admin Panel', icon: Shield };
 
+// Admin emails - you can add more or use an API check
+const ADMIN_EMAILS = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(',') || [];
+
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Load collapsed state from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('sidebar-collapsed');
+    if (saved === 'true') setCollapsed(true);
+  }, []);
+
+  const toggleCollapse = () => {
+    const newState = !collapsed;
+    setCollapsed(newState);
+    localStorage.setItem('sidebar-collapsed', String(newState));
+  };
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard';
     return pathname.startsWith(href);
   };
 
+  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+
   const nav = (
     <>
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-3 pt-6 pb-8">
-        <Scale className="h-7 w-7 text-primary shrink-0" />
-        <div className="leading-tight">
-          <p className="font-bold text-base">Ynai</p>
-          <p className="text-[11px] text-muted-foreground">Kenya Bar Exam Prep</p>
+      <div className={`flex items-center gap-3 px-4 pt-6 pb-6 ${collapsed ? 'justify-center' : ''}`}>
+        <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 shrink-0">
+          <Scale className="h-5 w-5 text-emerald-500" />
         </div>
+        {!collapsed && (
+          <div className="leading-tight">
+            <p className="font-bold text-base">Ynai</p>
+            <p className="text-[11px] text-muted-foreground">Lawyer</p>
+          </div>
+        )}
       </div>
 
       {/* Nav links */}
-      <nav className="flex-1 px-2 space-y-1">
+      <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
+          const active = isActive(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
               onClick={() => setMobileOpen(false)}
-              className={`sidebar-link ${isActive(item.href) ? 'active' : 'text-muted-foreground'}`}
+              title={collapsed ? item.label : undefined}
+              className={`
+                flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+                ${active 
+                  ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                }
+                ${collapsed ? 'justify-center' : ''}
+              `}
             >
               <Icon className="h-[18px] w-[18px] shrink-0" />
-              {item.label}
+              {!collapsed && <span>{item.label}</span>}
             </Link>
           );
         })}
 
-        {/* Admin (only hinted visually; server-side checks enforce role) */}
-        <div className="pt-4 mt-4 border-t">
-          <Link
-            href={ADMIN_ITEM.href}
-            onClick={() => setMobileOpen(false)}
-            className={`sidebar-link ${isActive(ADMIN_ITEM.href) ? 'active' : 'text-muted-foreground'}`}
-          >
-            <ADMIN_ITEM.icon className="h-[18px] w-[18px] shrink-0" />
-            {ADMIN_ITEM.label}
-          </Link>
-        </div>
+        {/* Admin - only show to admin users */}
+        {isAdmin && (
+          <div className="pt-4 mt-4 border-t border-border/50">
+            <Link
+              href={ADMIN_ITEM.href}
+              onClick={() => setMobileOpen(false)}
+              title={collapsed ? ADMIN_ITEM.label : undefined}
+              className={`
+                flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+                ${isActive(ADMIN_ITEM.href) 
+                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                }
+                ${collapsed ? 'justify-center' : ''}
+              `}
+            >
+              <ADMIN_ITEM.icon className="h-[18px] w-[18px] shrink-0" />
+              {!collapsed && <span>{ADMIN_ITEM.label}</span>}
+            </Link>
+          </div>
+        )}
       </nav>
 
       {/* User footer */}
-      <div className="border-t px-3 py-4 space-y-2">
-        <ThemeToggle />
-        <div className="flex items-center gap-2 pt-2">
+      <div className="border-t border-border/50 px-3 py-4 space-y-3">
+        {!collapsed && <ThemeToggle />}
+        
+        <div className={`flex items-center gap-2 ${collapsed ? 'justify-center' : ''}`}>
           {user?.photoURL ? (
-            <img src={user.photoURL} alt="" className="h-8 w-8 rounded-full" />
+            <img src={user.photoURL} alt="" className="h-9 w-9 rounded-full shrink-0" />
           ) : (
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
+            <div className="h-9 w-9 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 font-semibold text-sm shrink-0">
               {user?.displayName?.charAt(0) || user?.email?.charAt(0) || '?'}
             </div>
           )}
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium truncate">{user?.displayName || 'Student'}</p>
-            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-          </div>
+          {!collapsed && (
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">{user?.displayName || 'Student'}</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+            </div>
+          )}
         </div>
+        
         <button
           onClick={signOut}
-          className="sidebar-link text-muted-foreground w-full"
+          title={collapsed ? 'Sign Out' : undefined}
+          className={`
+            flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full
+            text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200
+            ${collapsed ? 'justify-center' : ''}
+          `}
         >
           <LogOut className="h-[18px] w-[18px] shrink-0" />
-          Sign Out
+          {!collapsed && <span>Sign Out</span>}
         </button>
       </div>
     </>
@@ -118,31 +169,49 @@ export default function Sidebar() {
   return (
     <>
       {/* Mobile top bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Scale className="h-6 w-6 text-primary" />
-          <span className="font-bold">Ynai</span>
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card/80 backdrop-blur-xl border-b border-border/50 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-1.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+            <Scale className="h-5 w-5 text-emerald-500" />
+          </div>
+          <span className="font-bold text-lg">Ynai</span>
         </div>
-        <button onClick={() => setMobileOpen(!mobileOpen)} className="p-1.5 rounded-lg hover:bg-accent">
+        <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-xl hover:bg-accent">
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
       {/* Mobile overlay */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-30 bg-black/40" onClick={() => setMobileOpen(false)} />
+        <div 
+          className="md:hidden fixed inset-0 z-30 bg-black/60 backdrop-blur-sm" 
+          onClick={() => setMobileOpen(false)} 
+        />
       )}
 
-      {/* Sidebar — desktop always visible, mobile slide-in */}
+      {/* Sidebar - desktop always visible, mobile slide-in */}
       <aside
         className={`
-          fixed top-0 left-0 z-40 h-screen w-64 bg-card border-r flex flex-col
-          transition-transform duration-200
+          fixed top-0 left-0 z-40 h-screen bg-card/95 backdrop-blur-xl border-r border-border/50 flex flex-col
+          transition-all duration-300 ease-in-out
           md:translate-x-0 md:static md:z-0
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${collapsed ? 'w-[72px]' : 'w-64'}
         `}
       >
         {nav}
+        
+        {/* Collapse toggle - desktop only */}
+        <button
+          onClick={toggleCollapse}
+          className="hidden md:flex absolute -right-3 top-20 h-6 w-6 items-center justify-center rounded-full bg-card border border-border hover:bg-accent transition-colors"
+        >
+          {collapsed ? (
+            <ChevronRight className="h-3 w-3" />
+          ) : (
+            <ChevronLeft className="h-3 w-3" />
+          )}
+        </button>
       </aside>
     </>
   );

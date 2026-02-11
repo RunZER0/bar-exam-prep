@@ -34,10 +34,12 @@ export default function AuthenticatedLayout({
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
       <Sidebar />
-      <main className="flex-1 md:ml-0 mt-14 md:mt-0 overflow-y-auto">
-        {children}
+      <main className="flex-1 md:ml-0 mt-14 md:mt-0 overflow-y-auto bg-muted/30">
+        <div className="min-h-full">
+          {children}
+        </div>
       </main>
       <PWAInstallPrompt />
     </div>

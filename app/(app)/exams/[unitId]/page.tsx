@@ -4,13 +4,14 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUnitById } from '@/lib/constants/legal-content';
+import { usePreloading } from '@/lib/services/preloading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import {
   ArrowLeft, ArrowRight, Clock, CheckCircle2, XCircle, Loader2, BarChart3,
   RotateCcw, BookOpen, Lightbulb, ChevronDown, ChevronUp, Trophy, Target,
-  Brain, TrendingUp, AlertTriangle, Sparkles, GraduationCap, FileText,
+  Brain, TrendingUp, AlertTriangle, Sparkles, GraduationCap, FileText, Zap,
 } from 'lucide-react';
 
 // ============================================================
@@ -97,6 +98,7 @@ export default function ExamSessionPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { getIdToken } = useAuth();
+  const { setAuthToken, getPreloadedExam, onExamStart, onExamComplete } = usePreloading();
 
   const unitId = params.unitId as string;
   const examType = (searchParams.get('type') || 'abcd') as ExamType;
@@ -113,14 +115,34 @@ export default function ExamSessionPage() {
   const [result, setResult] = useState<ExamResult | null>(null);
   const [error, setError] = useState('');
   const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
+  const [usedPreload, setUsedPreload] = useState(false);
 
-  // Generate exam questions
+  // Generate exam questions - Try preloaded first, then generate
   useEffect(() => {
-    async function generateExam() {
+    async function loadExam() {
       if (!unit) return;
       try {
         const token = await getIdToken();
+        if (!token) throw new Error('Not authenticated');
         
+        setAuthToken(token);
+        
+        // 1. First, try to get preloaded questions (instant load!)
+        const preloaded = await getPreloadedExam(unitId, examType, paperSize);
+        
+        if (preloaded.found && preloaded.content) {
+          console.log('Using preloaded exam questions!');
+          setUsedPreload(true);
+          setQuestions(preloaded.content);
+          setPhase('exam');
+          
+          // Notify service that exam started (triggers next exam preload)
+          onExamStart(unitId, examType, paperSize);
+          return;
+        }
+        
+        // 2. No preload available - generate using AI
+        console.log('No preload available, generating...');
         const marksPerQuestion = examType === 'abcd' ? 1 : Math.floor(config.marks / config.questions);
         
         const prompt = examType === 'abcd'
@@ -204,13 +226,16 @@ Rules:
 
         setQuestions(parsed);
         setPhase('exam');
+        
+        // Notify service that exam started (triggers next exam preload)
+        onExamStart(unitId, examType, paperSize);
       } catch (err) {
         setError('Failed to generate exam. Please try again.');
       }
     }
 
-    generateExam();
-  }, [unit, examType, paperSize, config, getIdToken]);
+    loadExam();
+  }, [unit, examType, paperSize, config, unitId, getIdToken, setAuthToken, getPreloadedExam, onExamStart]);
 
   // Countdown timer
   useEffect(() => {
@@ -362,11 +387,15 @@ Respond with ONLY valid JSON:
         });
       }
       setPhase('results');
+      
+      // Notify preloading service about exam completion
+      // This triggers preloading of next exam with updated user progress
+      onExamComplete(unitId, examType, paperSize, result || undefined);
     } catch {
       setError('Failed to grade exam. Please try again.');
       setPhase('exam');
     }
-  }, [answers, questions, unit, config, examType, getIdToken]);
+  }, [answers, questions, unit, config, examType, unitId, paperSize, getIdToken, onExamComplete]);
 
   // ============================================================
   // RENDER: Not found

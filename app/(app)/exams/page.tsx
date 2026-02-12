@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
+import { useAuth } from '@/contexts/AuthContext';
+import { usePreloading } from '@/lib/services/preloading';
 import {
   Gavel, Scale, FileText, Shield, Building, Briefcase, Users, BookOpen,
   Building2, Handshake, Calculator, ClipboardCheck, Clock, ArrowRight, X,
@@ -132,6 +134,8 @@ function AnimatedModal({ isOpen, onClose, children, size = 'md' }: AnimatedModal
 
 export default function ExamsPage() {
   const router = useRouter();
+  const { getIdToken } = useAuth();
+  const { setAuthToken, onExamsPageVisit } = usePreloading();
   
   // Selection flow state
   const [step, setStep] = useState<'type' | 'paper' | 'unit' | 'confirm'>('type');
@@ -141,6 +145,23 @@ export default function ExamsPage() {
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Trigger preloading when page loads
+  useEffect(() => {
+    async function initPreloading() {
+      try {
+        const token = await getIdToken();
+        if (token) {
+          setAuthToken(token);
+          // Start preloading likely exams in background
+          onExamsPageVisit();
+        }
+      } catch (error) {
+        console.error('Failed to init preloading:', error);
+      }
+    }
+    initPreloading();
+  }, [getIdToken, setAuthToken, onExamsPageVisit]);
 
   const openModal = () => {
     setStep('type');

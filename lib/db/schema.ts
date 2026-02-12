@@ -333,12 +333,22 @@ export const weeklyRankings = pgTable('weekly_rankings', {
 });
 
 // Preloaded content cache for instant loading
+// Supports smart staleness detection - if user's progress changes significantly,
+// preloaded content based on old data is discarded and regenerated
 export const preloadedContent = pgTable('preloaded_content', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').references(() => users.id).notNull(),
-  contentType: text('content_type').notNull(), // 'quiz', 'exam', 'questions'
-  contextKey: text('context_key').notNull(), // e.g., 'quiz_adaptive_all', 'exam_civil_intermediate'
+  contentType: text('content_type').notNull(), // 'quiz', 'exam', 'study'
+  contextKey: text('context_key').notNull(), // e.g., 'exam_atp100_abcd_semi', 'quiz_civil'
   content: jsonb('content').notNull(),
+  // Staleness tracking - hash of user progress data at generation time
+  // If current progress hash differs, content is stale and should be regenerated
+  dataVersionHash: text('data_version_hash'),
+  // For exams: track type and paper size
+  examType: text('exam_type'), // 'abcd' | 'cle'
+  paperSize: text('paper_size'), // 'mini' | 'semi' | 'full'
+  // Whether this preload is currently being generated (prevents duplicates)
+  isGenerating: boolean('is_generating').default(false),
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

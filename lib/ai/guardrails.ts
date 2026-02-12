@@ -572,6 +572,51 @@ async function callAI(prompt: string, maxTokens: number = 2000): Promise<string>
 }
 
 /**
+ * Fast AI call using ChatGPT 5.2 Instant for speed-critical generation
+ * Used for preloading content in background where speed > quality
+ */
+export async function callAIFast(prompt: string, maxTokens: number = 2000): Promise<string> {
+  const openai = getOpenAI();
+  
+  if (openai) {
+    try {
+      // Use GPT-4o-mini for fast, cost-effective generation
+      // In production, switch to 'gpt-5.2-instant' when available
+      const response = await openai.chat.completions.create({
+        model: process.env.OPENAI_FAST_MODEL || 'gpt-4o-mini',
+        max_tokens: maxTokens,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+      });
+      return response.choices[0]?.message?.content || '';
+    } catch (error) {
+      console.error('Fast AI error:', error);
+    }
+  }
+  
+  // Fallback to standard call
+  return callAI(prompt, maxTokens);
+}
+
+/**
+ * Generate structured JSON using fast model
+ * Optimized for preloading exam questions
+ */
+export async function generateFastJSON<T>(prompt: string, maxTokens: number = 3000): Promise<T | null> {
+  try {
+    const response = await callAIFast(prompt, maxTokens);
+    const jsonMatch = response.match(/\[\s*\{[\s\S]*\}\s*\]|\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]) as T;
+    }
+    return null;
+  } catch (error) {
+    console.error('Fast JSON generation error:', error);
+    return null;
+  }
+}
+
+/**
  * Generate legal banter and fun content
  */
 export async function generateBanterResponse(prompt: string): Promise<AIResponse> {

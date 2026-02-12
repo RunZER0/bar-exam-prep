@@ -276,3 +276,74 @@ export const QUESTION_TYPES_SIMPLE = [
   'case_analysis',
   'practical',
 ] as const;
+
+// -----------------------------------------------
+// TOPICS BY UNIT - Topics for each ATP unit
+// -----------------------------------------------
+export const TOPICS_BY_UNIT: Record<string, { id: string; name: string; description: string }[]> = {
+  'atp-100': [
+    { id: 'civil-jurisdiction', name: 'Jurisdiction & Venue', description: 'Courts hierarchy, territorial and pecuniary jurisdiction' },
+    { id: 'civil-pleadings', name: 'Pleadings', description: 'Plaints, defences, counterclaims, and amendments' },
+    { id: 'civil-interlocutory', name: 'Interlocutory Applications', description: 'Injunctions, stay orders, security for costs' },
+    { id: 'civil-discovery', name: 'Discovery & Inspection', description: 'Interrogatories, discovery of documents, admissions' },
+    { id: 'civil-trial', name: 'Trial & Judgment', description: 'Trial procedure, evidence, judgment and decree' },
+    { id: 'civil-appeals', name: 'Appeals & Reviews', description: 'Filing appeals, grounds, stay pending appeal' },
+    { id: 'civil-execution', name: 'Execution', description: 'Enforcement of decrees, attachment, garnishee orders' },
+  ],
+  'atp-101': [
+    { id: 'criminal-procedure', name: 'Criminal Procedure Overview', description: 'Investigation, arrest, charge sheet, first appearance' },
+    { id: 'criminal-bail', name: 'Bail & Bond', description: 'Types of bail, conditions, forfeiture, surety' },
+    { id: 'criminal-charge', name: 'Charges & Pleas', description: 'Framing charges, plea taking, plea bargaining' },
+    { id: 'criminal-trial', name: 'Criminal Trial', description: 'Prosecution evidence, defence case, submissions' },
+    { id: 'criminal-sentencing', name: 'Sentencing', description: 'Sentencing guidelines, mitigation, probation' },
+    { id: 'criminal-appeals', name: 'Criminal Appeals', description: 'Appeal process, grounds of appeal, revision' },
+  ],
+  'atp-102': [
+    { id: 'prob-wills', name: 'Wills & Testaments', description: 'Execution, revocation, interpretation of wills' },
+    { id: 'prob-intestate', name: 'Intestate Succession', description: 'Distribution rules, dependants, surviving spouse' },
+    { id: 'prob-grants', name: 'Grants of Representation', description: 'Probate, letters of administration, resealing' },
+    { id: 'prob-admin', name: 'Administration of Estates', description: 'Duties of executors/administrators, distribution' },
+    { id: 'prob-disputes', name: 'Probate Disputes', description: 'Caveats, citations, contentious matters' },
+  ],
+  'atp-103': [
+    { id: 'draft-pleadings', name: 'Pleadings Drafting', description: 'Structure, style, prayers, verification' },
+    { id: 'draft-affidavits', name: 'Affidavits', description: 'Sworn statements, supporting affidavits, format' },
+    { id: 'draft-contracts', name: 'Contract Drafting', description: 'Terms, conditions, boilerplate clauses' },
+    { id: 'draft-conveyancing', name: 'Conveyancing Documents', description: 'Transfers, charges, leases' },
+    { id: 'draft-opinions', name: 'Legal Opinions', description: 'Structure, analysis, recommendations' },
+  ],
+  'atp-104': [
+    { id: 'trial-opening', name: 'Opening Statements', description: 'Theory of case, persuasion techniques' },
+    { id: 'trial-examination', name: 'Examination-in-Chief', description: 'Leading evidence, refreshing memory' },
+    { id: 'trial-cross', name: 'Cross-Examination', description: 'Techniques, impeachment, prior inconsistent statements' },
+    { id: 'trial-objections', name: 'Objections', description: 'Grounds, timing, preserving record' },
+    { id: 'trial-closing', name: 'Closing Arguments', description: 'Summarizing evidence, legal arguments' },
+  ],
+  'atp-105': [
+    { id: 'ethics-relationship', name: 'Advocate-Client Relationship', description: 'Retainer, confidentiality, privilege' },
+    { id: 'ethics-conflict', name: 'Conflict of Interest', description: 'Identifying conflicts, waivers, screening' },
+    { id: 'ethics-fees', name: 'Fees & Billing', description: 'Fee agreements, taxation of costs, contingency' },
+    { id: 'ethics-trust', name: 'Trust Accounts', description: 'Client money, accounting requirements' },
+    { id: 'ethics-misconduct', name: 'Professional Misconduct', description: 'Disciplinary process, sanctions' },
+  ],
+  'atp-106': [
+    { id: 'practice-firm', name: 'Law Firm Setup', description: 'Sole practice, partnerships, LLPs' },
+    { id: 'practice-client', name: 'Client Management', description: 'Intake, communication, file management' },
+    { id: 'practice-billing', name: 'Billing & Collections', description: 'Time recording, invoicing, debt recovery' },
+    { id: 'practice-tech', name: 'Legal Technology', description: 'Case management, research tools, cybersecurity' },
+  ],
+  'atp-107': [
+    { id: 'conv-due-diligence', name: 'Due Diligence', description: 'Searches, encumbrances, title investigation' },
+    { id: 'conv-transfer', name: 'Land Transfer', description: 'Sale agreements, transfer instruments, registration' },
+    { id: 'conv-charge', name: 'Charges & Mortgages', description: 'Creating charges, discharge, foreclosure' },
+    { id: 'conv-leases', name: 'Leases', description: 'Commercial leases, residential tenancies' },
+    { id: 'conv-sectional', name: 'Sectional Properties', description: 'Sectional titles, management corporations' },
+  ],
+  'atp-108': [
+    { id: 'comm-sale', name: 'Sale of Goods', description: 'Formation, terms, passing of property, remedies' },
+    { id: 'comm-agency', name: 'Agency', description: 'Creation, authority, duties, termination' },
+    { id: 'comm-partnership', name: 'Partnerships', description: 'Formation, rights, dissolution' },
+    { id: 'comm-negotiable', name: 'Negotiable Instruments', description: 'Bills of exchange, cheques, promissory notes' },
+    { id: 'comm-insurance', name: 'Insurance', description: 'Principles, claims, subrogation' },
+  ],
+};

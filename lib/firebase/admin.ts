@@ -1,5 +1,5 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
+import { getAuth, DecodedIdToken } from 'firebase-admin/auth';
 
 export function getFirebaseAdmin() {
   if (getApps().length === 0) {
@@ -12,4 +12,9 @@ export function getFirebaseAdmin() {
     });
   }
   return getAuth();
+}
+
+export async function verifyIdToken(token: string): Promise<DecodedIdToken> {
+  const auth = getFirebaseAdmin();
+  return auth.verifyIdToken(token);
 }

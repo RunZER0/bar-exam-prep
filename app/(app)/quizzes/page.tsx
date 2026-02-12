@@ -22,6 +22,8 @@ import {
   GraduationCap,
   Shuffle,
   Timer,
+  Brain,
+  TrendingUp,
 } from 'lucide-react';
 
 interface TriviaQuestion {
@@ -29,11 +31,33 @@ interface TriviaQuestion {
   options: string[];
   correct: number; // index
   explanation: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+}
+
+interface UserPerformance {
+  overallMastery: number;
+  currentLevel: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  weakAreas: string[];
+  strongAreas: string[];
+  totalQuizzes: number;
 }
 
 type Section = 'menu' | 'playing' | 'results';
 
 const QUIZ_MODES = [
+  {
+    id: 'adaptive',
+    name: 'Adaptive Mode',
+    description: 'AI adapts difficulty to your level',
+    icon: Brain,
+    gradient: 'from-indigo-500 to-purple-600',
+    bgGlow: 'bg-indigo-500/20',
+    count: 10,
+    difficulty: 'Personalized',
+    time: '~7 min',
+    adaptive: true,
+    isDefault: true,
+  },
   {
     id: 'quick',
     name: 'Quick Quiz',
@@ -42,7 +66,7 @@ const QUIZ_MODES = [
     gradient: 'from-amber-500 to-orange-600',
     bgGlow: 'bg-amber-500/20',
     count: 5,
-    difficulty: 'Easy',
+    difficulty: 'Mixed',
     time: '~3 min',
   },
   {
@@ -109,7 +133,7 @@ export default function QuizzesPage() {
   const { getIdToken } = useAuth();
 
   const [section, setSection] = useState<Section>('menu');
-  const [selectedMode, setSelectedMode] = useState<string>('quick');
+  const [selectedMode, setSelectedMode] = useState<string>('adaptive');
   const [selectedUnit, setSelectedUnit] = useState<string>('all');
   const [questions, setQuestions] = useState<TriviaQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -120,9 +144,63 @@ export default function QuizzesPage() {
   const [revealed, setRevealed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [questionTimer, setQuestionTimer] = useState(15);
+  const [userPerformance, setUserPerformance] = useState<UserPerformance | null>(null);
+  const [responsesTracked, setResponsesTracked] = useState<Array<{ questionIndex: number; isCorrect: boolean }>>([]);
 
   const mode = QUIZ_MODES.find((m) => m.id === selectedMode)!;
   const unitName = selectedUnit === 'all' ? 'All Units' : ATP_UNITS.find((u) => u.id === selectedUnit)?.name || 'All Units';
+
+  // Fetch user performance on mount
+  useEffect(() => {
+    const fetchPerformance = async () => {
+      try {
+        const token = await getIdToken();
+        const res = await fetch('/api/progress', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUserPerformance({
+            overallMastery: data.overallMastery,
+            currentLevel: data.currentLevel,
+            weakAreas: data.weakAreas?.map((a: { name: string }) => a.name) || [],
+            strongAreas: data.strongAreas?.map((a: { name: string }) => a.name) || [],
+            totalQuizzes: data.totalQuizzes,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch performance:', err);
+      }
+    };
+    fetchPerformance();
+  }, [getIdToken]);
+
+  const getAdaptiveDifficulty = (): string => {
+    if (!userPerformance) return 'mixed difficulty';
+    
+    switch (userPerformance.currentLevel) {
+      case 'beginner':
+        return 'mostly easy with some medium difficulty questions';
+      case 'intermediate':
+        return 'mostly medium with some challenging questions';
+      case 'advanced':
+        return 'mostly hard with some expert-level questions';
+      case 'expert':
+        return 'expert-level and tricky edge-case questions';
+      default:
+        return 'mixed difficulty';
+    }
+  };
+
+  const getTopicFocus = (): string => {
+    if (!userPerformance || selectedUnit !== 'all') return '';
+    
+    if (userPerformance.weakAreas.length > 0) {
+      // Focus 60% on weak areas, 40% on general
+      return `Focus about 60% of questions on these weak areas: ${userPerformance.weakAreas.slice(0, 3).join(', ')}. Mix in questions from other topics for variety.`;
+    }
+    return '';
+  };
 
   const startQuiz = useCallback(async () => {
     setLoading(true);
@@ -133,10 +211,26 @@ export default function QuizzesPage() {
     setBestStreak(0);
     setSelected(null);
     setRevealed(false);
+    setResponsesTracked([]);
 
     try {
       const token = await getIdToken();
       const unitInfo = selectedUnit !== 'all' ? ATP_UNITS.find((u) => u.id === selectedUnit) : null;
+      
+      // Build adaptive prompt
+      let difficultyInstruction = '';
+      let topicInstruction = '';
+      
+      if (mode.adaptive) {
+        difficultyInstruction = getAdaptiveDifficulty();
+        topicInstruction = getTopicFocus();
+      } else if (mode.legendary) {
+        difficultyInstruction = 'expert-level, tricky edge cases, and nuanced legal scenarios only';
+      } else if (mode.id === 'blitz') {
+        difficultyInstruction = 'quick-recall questions that can be answered in seconds';
+      } else if (mode.id === 'exam') {
+        difficultyInstruction = 'exam-style questions with realistic complexity';
+      }  
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
@@ -146,25 +240,33 @@ export default function QuizzesPage() {
         body: JSON.stringify({
           message: `Generate ${mode.count} trivia/quiz questions about Kenyan law${unitInfo ? ` specifically on ${unitInfo.name} covering ${unitInfo.statutes.join(', ')}` : ' across all ATP units'}.
 
+${difficultyInstruction ? `Difficulty: ${difficultyInstruction}.` : ''}
+${topicInstruction}
+
 Format as a JSON array:
 [
   {
     "question": "What is...?",
     "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
     "correct": 0,
-    "explanation": "Brief explanation of the correct answer"
+    "explanation": "Brief explanation of the correct answer",
+    "difficulty": "easy|medium|hard"
   }
 ]
 
 Rules:
-- Make questions fun and engaging, mixing straightforward recall with tricky scenarios
+- Make questions engaging, mixing straightforward recall with practical scenarios
 - Include questions about statutes, case law, legal principles, and procedures
 - The "correct" field is the 0-based index of the correct option
 - Keep explanations concise (1-2 sentences)
-- Vary difficulty — some easy, some challenging
 - Output ONLY the JSON array`,
           competencyType: 'research',
-          context: { topicArea: unitInfo?.name || 'General Kenyan Law', quizMode: mode.id },
+          context: { 
+            topicArea: unitInfo?.name || 'General Kenyan Law', 
+            quizMode: mode.id,
+            userLevel: userPerformance?.currentLevel || 'unknown',
+            weakAreas: userPerformance?.weakAreas || [],
+          },
         }),
       });
 
@@ -188,7 +290,7 @@ Rules:
     } finally {
       setLoading(false);
     }
-  }, [getIdToken, mode, selectedUnit]);
+  }, [getIdToken, mode, selectedUnit, userPerformance]);
 
   // Speed blitz timer
   useEffect(() => {
@@ -203,13 +305,15 @@ Rules:
     return () => clearInterval(interval);
   }, [section, mode.timed, revealed, questionTimer, loading]);
 
-  const handleSelect = (index: number) => {
+  const handleSelect = async (index: number) => {
     if (revealed) return;
     setSelected(index);
     setRevealed(true);
 
     const q = questions[currentIndex];
-    if (index === q.correct) {
+    const isCorrect = index === q.correct;
+    
+    if (isCorrect) {
       setScore((s) => s + 1);
       setStreak((s) => {
         const newStreak = s + 1;
@@ -219,6 +323,30 @@ Rules:
     } else {
       setStreak(0);
     }
+
+    // Track response for analytics
+    setResponsesTracked((prev) => [...prev, { questionIndex: currentIndex, isCorrect }]);
+
+    // Submit response to backend (non-blocking)
+    try {
+      const token = await getIdToken();
+      fetch('/api/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          questionText: q.question,
+          userAnswer: q.options[index],
+          correctAnswer: q.options[q.correct],
+          isCorrect,
+          difficulty: q.difficulty || 'medium',
+          topicArea: unitName,
+          quizMode: mode.id,
+        }),
+      }).catch(() => {}); // Ignore errors - this is fire-and-forget
+    } catch {}
   };
 
   const nextQuestion = () => {
@@ -244,6 +372,23 @@ Rules:
           <p className="text-muted-foreground max-w-xl mx-auto">
             Challenge yourself with fun, engaging quizzes. Pick a mode, choose a topic, and let&apos;s go!
           </p>
+          {/* User level indicator */}
+          {userPerformance && (
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
+                userPerformance.currentLevel === 'expert' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                userPerformance.currentLevel === 'advanced' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                userPerformance.currentLevel === 'intermediate' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+              }`}>
+                <TrendingUp className="h-3 w-3" />
+                {userPerformance.currentLevel.charAt(0).toUpperCase() + userPerformance.currentLevel.slice(1)} Level
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {userPerformance.overallMastery}% Mastery
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Mode selection - enhanced grid */}
@@ -284,7 +429,8 @@ Rules:
                     {/* Stats row */}
                     <div className="flex items-center gap-3 text-xs">
                       <span className={`px-2 py-0.5 rounded-full ${
-                        m.difficulty === 'Easy' ? 'bg-emerald-500/10 text-emerald-600' :
+                        m.difficulty === 'Personalized' ? 'bg-indigo-500/10 text-indigo-600' :
+                        m.difficulty === 'Easy' || m.difficulty === 'Mixed' ? 'bg-emerald-500/10 text-emerald-600' :
                         m.difficulty === 'Medium' ? 'bg-amber-500/10 text-amber-600' :
                         m.difficulty === 'Hard' ? 'bg-rose-500/10 text-rose-600' :
                         m.difficulty === 'Expert' ? 'bg-purple-500/10 text-purple-600' :
@@ -305,6 +451,13 @@ Rules:
                     {active && (
                       <div className="absolute top-3 right-3">
                         <CheckCircle2 className={`h-5 w-5 text-transparent bg-gradient-to-br ${m.gradient} bg-clip-text`} style={{ color: 'rgb(var(--primary))' }} />
+                      </div>
+                    )}
+                    
+                    {/* Adaptive badge */}
+                    {m.adaptive && (
+                      <div className="absolute -top-1 -right-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-[10px] font-bold text-white shadow-lg">
+                        🎯 RECOMMENDED
                       </div>
                     )}
                     

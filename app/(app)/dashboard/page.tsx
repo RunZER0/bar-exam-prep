@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import {
   FileText,
   BookOpen,
@@ -21,6 +22,9 @@ import {
   Coffee,
   MessageCircleQuestion,
   Zap,
+  Sparkles,
+  Brain,
+  AlertCircle,
 } from 'lucide-react';
 
 interface Stats {
@@ -39,6 +43,22 @@ interface StreakData {
     minutes: number;
     questions: number;
   }[];
+}
+
+interface Recommendation {
+  title: string;
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  action: string;
+  href: string;
+}
+
+interface UserProfile {
+  overallMastery: number;
+  currentLevel: string;
+  weakAreas: Array<{ name: string; performance: number }>;
+  strongAreas: Array<{ name: string; performance: number }>;
+  recommendations: Recommendation[];
 }
 
 const MODULES = [
@@ -97,6 +117,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [streakData, setStreakData] = useState<StreakData | null>(null);
   const [recentSessions, setRecentSessions] = useState<any[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -112,8 +133,25 @@ export default function DashboardPage() {
         
         if (progressRes.ok) {
           const data = await progressRes.json();
-          setStats(data.statistics);
-          setRecentSessions(data.sessions || []);
+          // Handle both old and new API response formats
+          if (data.statistics) {
+            setStats(data.statistics);
+            setRecentSessions(data.sessions || []);
+          } else {
+            // New format from updated API
+            setStats({
+              totalQuestionsAttempted: data.totalAttempts || 0,
+              totalQuestionsCorrect: data.totalCorrect || 0,
+              overallAccuracy: data.overallMastery || 0,
+            });
+            setUserProfile({
+              overallMastery: data.overallMastery,
+              currentLevel: data.currentLevel,
+              weakAreas: data.weakAreas || [],
+              strongAreas: data.strongAreas || [],
+              recommendations: data.recommendations || [],
+            });
+          }
         }
         
         if (streakRes.ok) {
@@ -129,24 +167,85 @@ export default function DashboardPage() {
     fetchData();
   }, [getIdToken]);
 
-  const greeting = () => {
+  const getIntelligentGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+    const firstName = user?.displayName?.split(' ')[0] || 'Counsel';
+    
+    let timeGreeting = 'Good morning';
+    if (hour >= 12 && hour < 17) timeGreeting = 'Good afternoon';
+    else if (hour >= 17 && hour < 21) timeGreeting = 'Good evening';
+    else if (hour >= 21 || hour < 5) timeGreeting = 'Burning the midnight oil';
+    
+    return { timeGreeting, firstName };
   };
+
+  const getMotivationalMessage = () => {
+    if (!userProfile) return 'Continue your bar exam preparation journey.';
+    
+    if (userProfile.weakAreas.length > 0) {
+      return `I noticed you could use some practice with ${userProfile.weakAreas[0]?.name}. Let's strengthen that area today!`;
+    }
+    
+    if (streakData && streakData.currentStreak >= 3) {
+      return `Amazing ${streakData.currentStreak}-day streak! Your consistency is paying off.`;
+    }
+    
+    if (userProfile.overallMastery >= 75) {
+      return `Your performance is excellent! Ready to challenge yourself with harder questions?`;
+    }
+    
+    return 'Continue your bar exam preparation journey.';
+  };
+
+  const { timeGreeting, firstName } = getIntelligentGreeting();
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
-      {/* Header */}
+      {/* Header with intelligent greeting */}
       <div>
         <h1 className="text-2xl md:text-3xl font-bold">
-          {greeting()}, {user?.displayName?.split(' ')[0] || 'Counsel'}
+          {timeGreeting}, {firstName}
         </h1>
         <p className="text-muted-foreground mt-1">
-          Continue your bar exam preparation journey.
+          {getMotivationalMessage()}
         </p>
       </div>
+
+      {/* AI Recommendation Card */}
+      {userProfile && userProfile.recommendations.length > 0 && (
+        <div className="relative overflow-hidden rounded-2xl p-5 md:p-6 border border-indigo-500/20 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5">
+          <div className="flex items-start gap-4">
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 text-white shrink-0">
+              <Brain className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="font-semibold text-sm">AI Study Recommendation</h3>
+                <Sparkles className="h-4 w-4 text-amber-500" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">
+                {userProfile.recommendations[0].description}
+              </p>
+              <Link href={userProfile.recommendations[0].href}>
+                <Button size="sm" className="gap-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600">
+                  {userProfile.recommendations[0].title}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </Link>
+            </div>
+            {userProfile.weakAreas.length > 0 && (
+              <div className="hidden md:block text-right shrink-0">
+                <p className="text-xs text-muted-foreground mb-1">Focus Area</p>
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm font-medium">{userProfile.weakAreas[0].name}</span>
+                </div>
+                <p className="text-xs text-amber-600 mt-0.5">{userProfile.weakAreas[0].performance}% accuracy</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Streak banner */}
       {streakData && streakData.currentStreak > 0 && (

@@ -22,10 +22,13 @@ import {
   History,
   ChevronLeft,
   ChevronRight,
+  TrendingUp,
+  Crown,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/progress', label: 'My Progress', icon: TrendingUp },
   { href: '/drafting', label: 'Legal Drafting', icon: FileText },
   { href: '/study', label: 'Study', icon: BookOpen },
   { href: '/exams', label: 'Examinations', icon: ClipboardCheck },
@@ -35,6 +38,8 @@ const NAV_ITEMS = [
   { href: '/banter', label: 'Legal Banter', icon: Coffee },
   { href: '/history', label: 'Chat History', icon: History },
 ];
+
+const PREMIUM_ITEM = { href: '/subscribe', label: 'Upgrade', icon: Crown };
 
 const ADMIN_ITEM = { href: '/admin', label: 'Admin Panel', icon: Shield };
 
@@ -97,6 +102,26 @@ export default function Sidebar() {
             </Link>
           );
         })}
+
+        {/* Upgrade to Premium */}
+        <div className="pt-4 mt-4 border-t border-border/50">
+          <Link
+            href={PREMIUM_ITEM.href}
+            onClick={() => setMobileOpen(false)}
+            title={collapsed ? PREMIUM_ITEM.label : undefined}
+            className={`
+              flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+              ${isActive(PREMIUM_ITEM.href) 
+                ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-500 border border-amber-500/30' 
+                : 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-600 dark:text-amber-400 hover:from-amber-500/20 hover:to-orange-500/20'
+              }
+              ${collapsed ? 'justify-center' : ''}
+            `}
+          >
+            <PREMIUM_ITEM.icon className="h-[18px] w-[18px] shrink-0" />
+            {!collapsed && <span>{PREMIUM_ITEM.label}</span>}
+          </Link>
+        </div>
 
         {/* Admin - only show to admin users */}
         {isAdmin && (

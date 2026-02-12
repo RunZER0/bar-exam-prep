@@ -32,10 +32,28 @@ interface Answer {
   answer: string;
 }
 
+interface RubricScore {
+  score: number;
+  feedback: string;
+}
+
+interface QuestionFeedback {
+  questionId: string;
+  correct: boolean;
+  score?: number;
+  explanation: string;
+  rubricBreakdown?: {
+    legalKnowledge?: RubricScore;
+    analysis?: RubricScore;
+    structure?: RubricScore;
+    writing?: RubricScore;
+  };
+}
+
 interface ExamResult {
   score: number;
   total: number;
-  feedback: { questionId: string; correct: boolean; explanation: string }[];
+  feedback: QuestionFeedback[];
 }
 
 const EXAM_CONFIG: Record<string, { questions: number; time: number }> = {
@@ -159,6 +177,11 @@ Rules:
     setPhase('submitting');
     try {
       const token = await getIdToken();
+      
+      // Separate MCQ and essay grading
+      const mcQuestions = questions.filter(q => q.type === 'multiple_choice');
+      const essayQuestions = questions.filter(q => q.type === 'essay');
+      
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
@@ -176,23 +199,40 @@ Student Answer: ${answers[q.id] || '(not answered)'}
 
 Respond with ONLY a valid JSON object:
 {
-  "score": <number of correct answers>,
+  "score": <total score out of ${questions.length}>,
   "total": ${questions.length},
   "feedback": [
     {
       "questionId": "q1",
       "correct": true/false,
-      "explanation": "Brief explanation of the correct answer"
+      "score": 0-100,
+      "explanation": "Brief explanation",
+      "rubricBreakdown": {
+        "legalKnowledge": { "score": 0-25, "feedback": "..." },
+        "analysis": { "score": 0-25, "feedback": "..." },
+        "structure": { "score": 0-25, "feedback": "..." },
+        "writing": { "score": 0-25, "feedback": "..." }
+      }
     }
   ]
 }
 
-For essay questions, grade on a pass/fail basis based on legal accuracy and completeness.
+GRADING RULES:
+1. For MULTIPLE CHOICE: Mark as correct/incorrect based on the right answer
+2. For ESSAY questions, use this detailed rubric:
+   - Legal Knowledge & Accuracy (0-25): Does the answer demonstrate understanding of relevant Kenyan law and cite specific statutes/cases?
+   - Analysis & Application (0-25): Does the answer apply legal principles to the facts effectively?
+   - Structure & Organization (0-25): Is the answer well-organized (IRAC format preferred)?
+   - Legal Writing (0-25): Is the language clear, professional, and legally precise?
+   
+   An essay scoring 70+ (combined rubric) is considered "correct" (passing).
+
 Output ONLY the JSON, nothing else.`,
           competencyType: 'research',
           context: {
             topicArea: unit?.name,
             examGrading: true,
+            includeRubricGrading: true,
           },
         }),
       });
@@ -296,6 +336,7 @@ Output ONLY the JSON, nothing else.`,
           </h3>
           {questions.map((q, i) => {
             const fb = result.feedback.find((f) => f.questionId === q.id);
+            const isEssay = q.type === 'essay';
             return (
               <Card key={q.id} className={`border-l-4 ${fb?.correct ? 'border-l-emerald-500' : 'border-l-red-500'}`}>
                 <CardHeader className="pb-2">
@@ -305,16 +346,107 @@ Output ONLY the JSON, nothing else.`,
                     ) : (
                       <XCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
                     )}
-                    <div>
-                      <CardTitle className="text-sm">Q{i + 1}. {q.question}</CardTitle>
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between">
+                        <CardTitle className="text-sm">Q{i + 1}. {q.question}</CardTitle>
+                        {isEssay && fb?.score !== undefined && (
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                            fb.score >= 70 ? 'bg-emerald-100 text-emerald-700' :
+                            fb.score >= 50 ? 'bg-amber-100 text-amber-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {fb.score}/100
+                          </span>
+                        )}
+                      </div>
+                      {isEssay && (
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full mt-1 inline-block">
+                          Essay Question
+                        </span>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="text-sm space-y-2">
+                <CardContent className="text-sm space-y-3">
                   <p>
                     <span className="font-medium">Your answer:</span>{' '}
                     {answers[q.id] || <span className="text-muted-foreground italic">Not answered</span>}
                   </p>
+                  
+                  {/* Rubric breakdown for essay questions */}
+                  {isEssay && fb?.rubricBreakdown && (
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      {fb.rubricBreakdown.legalKnowledge && (
+                        <div className="bg-muted/30 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium">Legal Knowledge</span>
+                            <span className={`text-xs font-bold ${
+                              fb.rubricBreakdown.legalKnowledge.score >= 18 ? 'text-emerald-600' :
+                              fb.rubricBreakdown.legalKnowledge.score >= 12 ? 'text-amber-600' :
+                              'text-red-600'
+                            }`}>
+                              {fb.rubricBreakdown.legalKnowledge.score}/25
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {fb.rubricBreakdown.legalKnowledge.feedback}
+                          </p>
+                        </div>
+                      )}
+                      {fb.rubricBreakdown.analysis && (
+                        <div className="bg-muted/30 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium">Analysis</span>
+                            <span className={`text-xs font-bold ${
+                              fb.rubricBreakdown.analysis.score >= 18 ? 'text-emerald-600' :
+                              fb.rubricBreakdown.analysis.score >= 12 ? 'text-amber-600' :
+                              'text-red-600'
+                            }`}>
+                              {fb.rubricBreakdown.analysis.score}/25
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {fb.rubricBreakdown.analysis.feedback}
+                          </p>
+                        </div>
+                      )}
+                      {fb.rubricBreakdown.structure && (
+                        <div className="bg-muted/30 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium">Structure</span>
+                            <span className={`text-xs font-bold ${
+                              fb.rubricBreakdown.structure.score >= 18 ? 'text-emerald-600' :
+                              fb.rubricBreakdown.structure.score >= 12 ? 'text-amber-600' :
+                              'text-red-600'
+                            }`}>
+                              {fb.rubricBreakdown.structure.score}/25
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {fb.rubricBreakdown.structure.feedback}
+                          </p>
+                        </div>
+                      )}
+                      {fb.rubricBreakdown.writing && (
+                        <div className="bg-muted/30 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium">Writing</span>
+                            <span className={`text-xs font-bold ${
+                              fb.rubricBreakdown.writing.score >= 18 ? 'text-emerald-600' :
+                              fb.rubricBreakdown.writing.score >= 12 ? 'text-amber-600' :
+                              'text-red-600'
+                            }`}>
+                              {fb.rubricBreakdown.writing.score}/25
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {fb.rubricBreakdown.writing.feedback}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   {fb?.explanation && (
                     <p className="text-muted-foreground bg-muted/50 p-3 rounded-lg">
                       {fb.explanation}

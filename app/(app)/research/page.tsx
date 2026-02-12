@@ -5,11 +5,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
+import { SmartChatInput } from '@/components/SmartChatInput';
 import {
   Search,
-  Send,
   Loader2,
   AlertTriangle,
   Copy,
@@ -316,29 +314,27 @@ export default function ResearchPage() {
         )}
       </div>
 
-      {/* Input */}
-      <div className="border-t px-4 md:px-6 py-3 bg-card shrink-0">
-        <div className="max-w-4xl mx-auto flex gap-2">
-          <Textarea
-            placeholder="Ask a legal research question…"
+      {/* Input - ChatGPT Style */}
+      <div className="border-t px-4 md:px-6 py-4 bg-card shrink-0">
+        <div className="max-w-4xl mx-auto">
+          <SmartChatInput
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            rows={2}
-            className="resize-none flex-1"
+            onChange={setInput}
+            onSend={() => sendMessage()}
+            isLoading={sending}
+            placeholder="Ask a legal research question…"
+            suggestions={[
+              { label: 'Statutory Interpretation', prompt: 'Explain the rules of statutory interpretation under Kenyan law' },
+              { label: 'Constitutional Rights', prompt: 'What are the key provisions of the Bill of Rights?' },
+              { label: 'Land Law', prompt: 'Explain land transfer under the Land Registration Act' },
+              { label: 'Case Analysis', prompt: 'Analyze the Njoya v Attorney General case' },
+            ]}
+            onSuggestionClick={(prompt) => sendMessage(prompt)}
           />
-          <Button
-            onClick={() => sendMessage()}
-            disabled={!input.trim() || sending}
-            size="sm"
-            className="self-end px-3"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+          <p className="text-[10px] text-muted-foreground/60 text-center mt-1">
+            {webSearchEnabled ? 'Web search enabled · ' : ''}AI responses are guardrailed for Kenyan law accuracy
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground text-center mt-2">
-          {webSearchEnabled ? 'Web search enabled · ' : ''}AI responses are guardrailed for Kenyan law accuracy.
-        </p>
       </div>
     </div>
   );

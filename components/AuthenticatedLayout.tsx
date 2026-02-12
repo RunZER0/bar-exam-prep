@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSidebar } from '@/contexts/SidebarContext';
 import Sidebar from '@/components/Sidebar';
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
+import FloatingChat from '@/components/FloatingChat';
 
 export default function AuthenticatedLayout({
   children,
@@ -43,6 +44,7 @@ export default function AuthenticatedLayout({
           {children}
         </div>
       </main>
+      <FloatingChat />
       <PWAInstallPrompt />
     </div>
   );

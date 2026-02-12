@@ -207,8 +207,9 @@ export async function POST(req: NextRequest) {
         eventId,
         userId,
         score: 0,
-        completedTasks: 0,
-        status: 'participating',
+        questionsAnswered: 0,
+        correctAnswers: 0,
+        timeSpent: 0,
       });
 
       return NextResponse.json({ message: 'Joined event successfully' });
@@ -237,9 +238,7 @@ export async function POST(req: NextRequest) {
         .update(eventParticipants)
         .set({
           score: sql`${eventParticipants.score} + ${score || 0}`,
-          completedTasks: sql`${eventParticipants.completedTasks} + 1`,
-          submissionData: submissionData || participation.submissionData,
-          updatedAt: new Date(),
+          questionsAnswered: sql`${eventParticipants.questionsAnswered} + 1`,
         })
         .where(and(
           eq(eventParticipants.eventId, eventId),

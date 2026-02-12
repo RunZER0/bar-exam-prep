@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
             photoURL: user?.photoURL,
             matchScore: friendship.matchScore || 0,
             sharedInterests: friendship.sharedInterests as string[] || [],
-            connectedAt: friendship.updatedAt,
+            connectedAt: friendship.acceptedAt || friendship.createdAt,
           };
         })
       );
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
         .from(friendSuggestions)
         .where(and(
           eq(friendSuggestions.userId, userId),
-          eq(friendSuggestions.status, 'pending')
+          eq(friendSuggestions.dismissed, false)
         ))
         .orderBy(desc(friendSuggestions.matchScore))
         .limit(10);
@@ -248,10 +248,10 @@ export async function POST(req: NextRequest) {
         sharedInterests,
       });
 
-      // Mark suggestion as accepted if it exists
+      // Mark suggestion as dismissed if it exists
       await db
         .update(friendSuggestions)
-        .set({ status: 'accepted' })
+        .set({ dismissed: true })
         .where(and(
           eq(friendSuggestions.userId, userId),
           eq(friendSuggestions.suggestedUserId, targetUserId)
@@ -282,7 +282,7 @@ export async function POST(req: NextRequest) {
 
       await db
         .update(userFriends)
-        .set({ status: 'accepted', updatedAt: new Date() })
+        .set({ status: 'accepted', acceptedAt: new Date() })
         .where(eq(userFriends.id, requestId));
 
       return NextResponse.json({ message: 'Friend request accepted' });
@@ -294,9 +294,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Request ID required' }, { status: 400 });
       }
 
+      // Delete the rejected request instead of setting status
       await db
-        .update(userFriends)
-        .set({ status: 'rejected', updatedAt: new Date() })
+        .delete(userFriends)
         .where(eq(userFriends.id, requestId));
 
       return NextResponse.json({ message: 'Friend request rejected' });
@@ -324,7 +324,7 @@ export async function POST(req: NextRequest) {
 
       await db
         .update(friendSuggestions)
-        .set({ status: 'dismissed' })
+        .set({ dismissed: true })
         .where(and(
           eq(friendSuggestions.userId, userId),
           eq(friendSuggestions.suggestedUserId, targetUserId)
@@ -350,12 +350,11 @@ async function generateAISuggestions(userId: string) {
     const userStudyData = await db
       .select({
         topicId: userProgress.topicId,
-        correct: sql<number>`SUM(CASE WHEN ${userProgress.isCorrect} THEN 1 ELSE 0 END)`,
-        total: sql<number>`COUNT(*)`,
+        correct: userProgress.questionsCorrect,
+        total: userProgress.questionsAttempted,
       })
       .from(userProgress)
-      .where(eq(userProgress.userId, userId))
-      .groupBy(userProgress.topicId);
+      .where(eq(userProgress.userId, userId));
 
     // Get user's room memberships
     const userRooms = await db
@@ -396,7 +395,7 @@ async function generateAISuggestions(userId: string) {
           suggestedUserId: pf.suggestedUserId,
           matchScore,
           reasons: reasons.length > 0 ? reasons : ['Fellow bar exam student'],
-          status: 'pending' as const,
+          dismissed: false,
         };
       })
     );
@@ -412,7 +411,18 @@ async function generateAISuggestions(userId: string) {
       await db.insert(friendSuggestions).values(filteredSuggestions).onConflictDoNothing();
     }
 
-    return filteredSuggestions;
+    // Re-fetch from database to get full records with id and createdAt
+    const savedSuggestions = await db
+      .select()
+      .from(friendSuggestions)
+      .where(and(
+        eq(friendSuggestions.userId, userId),
+        eq(friendSuggestions.dismissed, false)
+      ))
+      .orderBy(desc(friendSuggestions.matchScore))
+      .limit(10);
+
+    return savedSuggestions;
   } catch (error) {
     console.error('Error generating AI suggestions:', error);
     return [];

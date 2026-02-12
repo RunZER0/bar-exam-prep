@@ -44,31 +44,32 @@ export async function GET(req: NextRequest) {
       .select()
       .from(weeklyRankings)
       .where(and(
-        gte(weeklyRankings.weekStartDate, currentWeekStart),
-        lte(weeklyRankings.weekStartDate, currentWeekEnd)
+        gte(weeklyRankings.weekStart, currentWeekStart.toISOString().split('T')[0]),
+        lte(weeklyRankings.weekStart, currentWeekEnd.toISOString().split('T')[0])
       ))
       .orderBy(desc(weeklyRankings.totalPoints))
       .limit(limit);
 
     // If no rankings exist for current week, generate from user progress
     if (rankings.length === 0 && weekOffset === 0) {
-      // Get user progress data
+      // Get user progress data - use questionsCorrect from userProgress
       const progressData = await db
         .select({
           userId: userProgress.userId,
           totalQuizzes: sql<number>`COUNT(*)`,
-          totalPoints: sql<number>`SUM(CASE WHEN ${userProgress.isCorrect} THEN 10 ELSE 1 END)`,
+          totalPoints: sql<number>`SUM(${userProgress.questionsCorrect} * 10)`,
         })
         .from(userProgress)
-        .where(gte(userProgress.answeredAt, currentWeekStart))
+        .where(gte(userProgress.updatedAt, currentWeekStart))
         .groupBy(userProgress.userId)
-        .orderBy(sql`SUM(CASE WHEN ${userProgress.isCorrect} THEN 10 ELSE 1 END) DESC`)
+        .orderBy(sql`SUM(${userProgress.questionsCorrect} * 10) DESC`)
         .limit(limit);
 
       // Create rankings from progress
       const rankingsToInsert = progressData.map((data, index) => ({
         userId: data.userId,
-        weekStartDate: currentWeekStart,
+        weekStart: currentWeekStart.toISOString().split('T')[0],
+        weekEnd: currentWeekEnd.toISOString().split('T')[0],
         rank: index + 1,
         totalPoints: data.totalPoints || 0,
         quizzesCompleted: data.totalQuizzes || 0,
@@ -81,8 +82,8 @@ export async function GET(req: NextRequest) {
           .select()
           .from(weeklyRankings)
           .where(and(
-            gte(weeklyRankings.weekStartDate, currentWeekStart),
-            lte(weeklyRankings.weekStartDate, currentWeekEnd)
+            gte(weeklyRankings.weekStart, currentWeekStart.toISOString().split('T')[0]),
+            lte(weeklyRankings.weekStart, currentWeekEnd.toISOString().split('T')[0])
           ))
           .orderBy(desc(weeklyRankings.totalPoints))
           .limit(limit);
@@ -125,8 +126,8 @@ export async function GET(req: NextRequest) {
           .select()
           .from(weeklyRankings)
           .where(and(
-            gte(weeklyRankings.weekStartDate, currentWeekStart),
-            lte(weeklyRankings.weekStartDate, currentWeekEnd)
+            gte(weeklyRankings.weekStart, currentWeekStart.toISOString().split('T')[0]),
+            lte(weeklyRankings.weekStart, currentWeekEnd.toISOString().split('T')[0])
           ))
           .orderBy(desc(weeklyRankings.totalPoints));
 
@@ -203,6 +204,10 @@ export async function POST(req: NextRequest) {
     const { points, quizzesCompleted } = body;
 
     const weekStart = getWeekStart(new Date());
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+    const weekEndDate = new Date(weekStart);
+    weekEndDate.setDate(weekEndDate.getDate() + 6);
+    const weekEndStr = weekEndDate.toISOString().split('T')[0];
 
     // Update or create ranking entry
     const [existingRanking] = await db
@@ -210,7 +215,7 @@ export async function POST(req: NextRequest) {
       .from(weeklyRankings)
       .where(and(
         eq(weeklyRankings.userId, userId),
-        eq(weeklyRankings.weekStartDate, weekStart)
+        eq(weeklyRankings.weekStart, weekStartStr)
       ))
       .limit(1);
 
@@ -225,13 +230,14 @@ export async function POST(req: NextRequest) {
         })
         .where(and(
           eq(weeklyRankings.userId, userId),
-          eq(weeklyRankings.weekStartDate, weekStart)
+          eq(weeklyRankings.weekStart, weekStartStr)
         ));
     } else {
       // Create new ranking entry
       await db.insert(weeklyRankings).values({
         userId,
-        weekStartDate: weekStart,
+        weekStart: weekStartStr,
+        weekEnd: weekEndStr,
         rank: 0, // Will be updated when rankings are recalculated
         totalPoints: points || 0,
         quizzesCompleted: quizzesCompleted || 0,
@@ -243,7 +249,7 @@ export async function POST(req: NextRequest) {
     const allRankings = await db
       .select()
       .from(weeklyRankings)
-      .where(eq(weeklyRankings.weekStartDate, weekStart))
+      .where(eq(weeklyRankings.weekStart, weekStartStr))
       .orderBy(desc(weeklyRankings.totalPoints));
 
     // Update ranks and bonuses
@@ -263,7 +269,7 @@ export async function POST(req: NextRequest) {
       .from(weeklyRankings)
       .where(and(
         eq(weeklyRankings.userId, userId),
-        eq(weeklyRankings.weekStartDate, weekStart)
+        eq(weeklyRankings.weekStart, weekStartStr)
       ))
       .limit(1);
 

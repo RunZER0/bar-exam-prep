@@ -164,9 +164,9 @@ export async function POST(req: NextRequest) {
         name,
         description: description || `Custom study room: ${name}`,
         roomType: 'custom',
-        createdBy: userId,
+        createdById: userId,
         maxMembers: 100,
-        isActive: true,
+        isPublic: true,
       }).returning();
 
       // Add creator as owner
@@ -200,9 +200,9 @@ export async function POST(req: NextRequest) {
       }
 
       await db.insert(roomRequests).values({
-        requestedBy: userId,
-        roomName: name,
-        description: description || '',
+        userId,
+        roomId: 'pending', // Placeholder until room is created
+        message: `Request to create room: ${name}. ${description || ''}`,
         status: 'pending',
       });
 

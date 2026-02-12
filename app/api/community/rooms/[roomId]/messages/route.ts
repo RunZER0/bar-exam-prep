@@ -45,7 +45,7 @@ export async function GET(
           content: msg.content,
           createdAt: msg.createdAt,
           isPinned: msg.isPinned,
-          likes: msg.likes || 0,
+          reactions: msg.reactions || {},
           replies: 0, // Could implement reply counting
           isLiked: false, // Would need to check against current user
         };
@@ -124,9 +124,8 @@ export async function POST(
       roomId,
       userId,
       content: content.trim(),
-      replyToId: replyToId || null,
+      parentId: replyToId || null,
       isPinned: false,
-      likes: 0,
     }).returning();
 
     // Get user details
@@ -190,21 +189,50 @@ export async function PATCH(
     }
 
     if (action === 'like') {
-      // Increment likes
-      await db
-        .update(roomMessages)
-        .set({ likes: sql`${roomMessages.likes} + 1` })
-        .where(eq(roomMessages.id, messageId));
+      // Add like reaction using reactions jsonb field
+      const [message] = await db
+        .select()
+        .from(roomMessages)
+        .where(eq(roomMessages.id, messageId))
+        .limit(1);
+      
+      if (message) {
+        const reactions = message.reactions || {};
+        const likes = reactions['👍'] || [];
+        if (!likes.includes(userId)) {
+          likes.push(userId);
+          reactions['👍'] = likes;
+          await db
+            .update(roomMessages)
+            .set({ reactions })
+            .where(eq(roomMessages.id, messageId));
+        }
+      }
 
       return NextResponse.json({ message: 'Liked' });
     }
 
     if (action === 'unlike') {
-      // Decrement likes
-      await db
-        .update(roomMessages)
-        .set({ likes: sql`GREATEST(${roomMessages.likes} - 1, 0)` })
-        .where(eq(roomMessages.id, messageId));
+      // Remove like reaction
+      const [message] = await db
+        .select()
+        .from(roomMessages)
+        .where(eq(roomMessages.id, messageId))
+        .limit(1);
+      
+      if (message) {
+        const reactions = message.reactions || {};
+        const likes = reactions['👍'] || [];
+        const index = likes.indexOf(userId);
+        if (index > -1) {
+          likes.splice(index, 1);
+          reactions['👍'] = likes;
+          await db
+            .update(roomMessages)
+            .set({ reactions })
+            .where(eq(roomMessages.id, messageId));
+        }
+      }
 
       return NextResponse.json({ message: 'Unliked' });
     }

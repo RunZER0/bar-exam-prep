@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Find preloaded content
-    const cacheKey = topicId || unitId || '';
+    const contextKey = topicId || unitId || '';
     const now = new Date();
     const preloaded = await db
       .select()
@@ -55,8 +55,7 @@ export async function GET(req: NextRequest) {
       .where(and(
         eq(preloadedContent.userId, userId),
         eq(preloadedContent.contentType, contentType),
-        eq(preloadedContent.cacheKey, cacheKey),
-        eq(preloadedContent.isUsed, false),
+        eq(preloadedContent.contextKey, contextKey),
         gte(preloadedContent.expiresAt, now)
       ))
       .orderBy(desc(preloadedContent.createdAt))
@@ -69,10 +68,9 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Mark as used
+    // Delete used content to prevent reuse
     await db
-      .update(preloadedContent)
-      .set({ isUsed: true })
+      .delete(preloadedContent)
       .where(eq(preloadedContent.id, preloaded[0].id));
 
     return NextResponse.json({
@@ -106,7 +104,7 @@ export async function POST(req: NextRequest) {
 
     if (action === 'preload') {
       // Check if preloaded content already exists
-      const cacheKey = topicId || unitId;
+      const contextKey = topicId || unitId || '';
       const now = new Date();
       const existing = await db
         .select()
@@ -114,8 +112,7 @@ export async function POST(req: NextRequest) {
         .where(and(
           eq(preloadedContent.userId, userId),
           eq(preloadedContent.contentType, contentType),
-          eq(preloadedContent.cacheKey, cacheKey),
-          eq(preloadedContent.isUsed, false),
+          eq(preloadedContent.contextKey, contextKey),
           gte(preloadedContent.expiresAt, now)
         ))
         .limit(1);
@@ -142,10 +139,9 @@ export async function POST(req: NextRequest) {
       await db.insert(preloadedContent).values({
         userId,
         contentType,
-        cacheKey,
+        contextKey,
         content,
         expiresAt,
-        isUsed: false,
       });
 
       return NextResponse.json({ 
@@ -160,7 +156,7 @@ export async function POST(req: NextRequest) {
       
       const preloadResults = await Promise.all(
         predictions.slice(0, 3).map(async (prediction) => {
-          const cacheKey = prediction.topicId || prediction.unitId;
+          const contextKey = prediction.topicId || prediction.unitId;
           const now = new Date();
           
           // Check if already preloaded
@@ -170,8 +166,7 @@ export async function POST(req: NextRequest) {
             .where(and(
               eq(preloadedContent.userId, userId),
               eq(preloadedContent.contentType, 'quiz'),
-              eq(preloadedContent.cacheKey, cacheKey),
-              eq(preloadedContent.isUsed, false),
+              eq(preloadedContent.contextKey, contextKey),
               gte(preloadedContent.expiresAt, now)
             ))
             .limit(1);
@@ -181,16 +176,15 @@ export async function POST(req: NextRequest) {
           }
 
           // Generate content
-          const content = await generateQuizQuestions(prediction.unitId, prediction.topicId, userId);
+          const content = await generateQuizQuestions(prediction.unitId, prediction.topicId || null, userId);
           const expiresAt = new Date(now.getTime() + CACHE_DURATION_HOURS * 60 * 60 * 1000);
           
           await db.insert(preloadedContent).values({
             userId,
             contentType: 'quiz',
-            cacheKey,
+            contextKey,
             content,
             expiresAt,
-            isUsed: false,
           });
 
           return { ...prediction, status: 'preloaded' };
@@ -292,31 +286,32 @@ async function generateStudyContent(unitId: string | null, topicId: string | nul
   };
 }
 
-// Get user's weak areas for a unit
+// Get user's weak areas for a unit (simplified to work with current schema)
 async function getUserWeakAreas(userId: string, unitId: string): Promise<string[]> {
   try {
+    // Get user progress grouped by topic, using questionsCorrect/questionsAttempted
     const progress = await db
       .select({
         topicId: userProgress.topicId,
-        correct: sql<number>`SUM(CASE WHEN ${userProgress.isCorrect} THEN 1 ELSE 0 END)`,
-        total: sql<number>`COUNT(*)`,
+        correct: userProgress.questionsCorrect,
+        attempted: userProgress.questionsAttempted,
       })
       .from(userProgress)
-      .where(and(
-        eq(userProgress.userId, userId),
-        eq(userProgress.unitId, unitId)
-      ))
-      .groupBy(userProgress.topicId);
+      .where(eq(userProgress.userId, userId));
 
     // Find topics with less than 60% accuracy
     const weakAreas = progress
-      .filter(p => p.total > 0 && (p.correct / p.total) < 0.6)
+      .filter(p => p.attempted > 0 && (p.correct / p.attempted) < 0.6)
       .map(p => {
-        const topics = TOPICS_BY_UNIT[unitId] || [];
-        const topic = topics.find(t => String(t.id) === p.topicId);
-        return topic?.name || p.topicId;
+        // Try to match topic to a unit
+        for (const [uid, topics] of Object.entries(TOPICS_BY_UNIT)) {
+          if (unitId && uid !== unitId) continue;
+          const topic = topics.find(t => t.id === p.topicId);
+          if (topic) return topic.name;
+        }
+        return null;
       })
-      .filter(Boolean);
+      .filter(Boolean) as string[];
 
     return weakAreas;
   } catch (error) {
@@ -339,53 +334,63 @@ async function predictNextContent(userId: string): Promise<Array<{
       reason: string;
     }> = [];
 
-    // Get user's recent activity
+    // Get user's recent activity (using topicId to infer unitId)
     const recentActivity = await db
       .select({
-        unitId: userProgress.unitId,
         topicId: userProgress.topicId,
         count: sql<number>`COUNT(*)`,
       })
       .from(userProgress)
       .where(eq(userProgress.userId, userId))
-      .groupBy(userProgress.unitId, userProgress.topicId)
+      .groupBy(userProgress.topicId)
       .orderBy(desc(sql`COUNT(*)`))
       .limit(10);
 
     // Predict next unit/topic based on patterns
     if (recentActivity.length > 0) {
-      // Most studied unit - likely to continue
-      const mostStudied = recentActivity[0];
-      predictions.push({
-        unitId: mostStudied.unitId,
-        topicId: mostStudied.topicId || undefined,
-        probability: 0.8,
-        reason: 'Continuing recent study pattern',
-      });
-
-      // Next unit in sequence
-      const unitIndex = ATP_UNITS.findIndex(u => u.id === mostStudied.unitId);
-      if (unitIndex < ATP_UNITS.length - 1) {
-        predictions.push({
-          unitId: ATP_UNITS[unitIndex + 1].id,
-          probability: 0.6,
-          reason: 'Next unit in curriculum',
-        });
+      // Find which unit the most studied topic belongs to
+      const mostStudiedTopicId = recentActivity[0].topicId;
+      let mostStudiedUnit: string | null = null;
+      
+      for (const [unitId, topics] of Object.entries(TOPICS_BY_UNIT)) {
+        if (topics.some(t => t.id === mostStudiedTopicId)) {
+          mostStudiedUnit = unitId;
+          break;
+        }
       }
 
-      // Weak areas need attention
-      const weakAreas = await getUserWeakAreas(userId, mostStudied.unitId);
-      if (weakAreas.length > 0) {
+      if (mostStudiedUnit) {
         predictions.push({
-          unitId: mostStudied.unitId,
-          probability: 0.7,
-          reason: 'Needs practice in weak areas',
+          unitId: mostStudiedUnit,
+          topicId: mostStudiedTopicId,
+          probability: 0.8,
+          reason: 'Continuing recent study pattern',
         });
+
+        // Next unit in sequence
+        const unitIndex = ATP_UNITS.findIndex(u => u.id === mostStudiedUnit);
+        if (unitIndex < ATP_UNITS.length - 1) {
+          predictions.push({
+            unitId: ATP_UNITS[unitIndex + 1].id,
+            probability: 0.6,
+            reason: 'Next unit in curriculum',
+          });
+        }
+
+        // Weak areas need attention
+        const weakAreas = await getUserWeakAreas(userId, mostStudiedUnit);
+        if (weakAreas.length > 0) {
+          predictions.push({
+            unitId: mostStudiedUnit,
+            probability: 0.7,
+            reason: 'Needs practice in weak areas',
+          });
+        }
       }
     } else {
       // New user - predict first units
       predictions.push({
-        unitId: ATP_UNITS[0]?.id || 'constitutional-law',
+        unitId: ATP_UNITS[0]?.id || 'atp-100',
         probability: 0.9,
         reason: 'Starting with foundational content',
       });

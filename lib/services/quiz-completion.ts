@@ -34,7 +34,11 @@ export async function updateWeeklyRanking(
   quizzesCompleted: number = 1
 ): Promise<void> {
   try {
-    const weekStart = getWeekStart(new Date());
+    const weekStartDate = getWeekStart(new Date());
+    const weekStart = weekStartDate.toISOString().split('T')[0];
+    const weekEndDate = new Date(weekStartDate);
+    weekEndDate.setDate(weekEndDate.getDate() + 6);
+    const weekEnd = weekEndDate.toISOString().split('T')[0];
 
     // Check if user has a ranking entry this week
     const [existingRanking] = await db
@@ -42,7 +46,7 @@ export async function updateWeeklyRanking(
       .from(weeklyRankings)
       .where(and(
         eq(weeklyRankings.userId, userId),
-        eq(weeklyRankings.weekStartDate, weekStart)
+        eq(weeklyRankings.weekStart, weekStart)
       ))
       .limit(1);
 
@@ -60,7 +64,8 @@ export async function updateWeeklyRanking(
       // Create new ranking entry
       await db.insert(weeklyRankings).values({
         userId,
-        weekStartDate: weekStart,
+        weekStart,
+        weekEnd,
         rank: 0,
         totalPoints: points,
         quizzesCompleted,
@@ -72,7 +77,7 @@ export async function updateWeeklyRanking(
     const allRankings = await db
       .select()
       .from(weeklyRankings)
-      .where(eq(weeklyRankings.weekStartDate, weekStart))
+      .where(eq(weeklyRankings.weekStart, weekStart))
       .orderBy(desc(weeklyRankings.totalPoints));
 
     // Update ranks and bonuses
@@ -99,7 +104,7 @@ export async function triggerPreloadAfterQuiz(
   topicId?: string
 ): Promise<void> {
   try {
-    const cacheKey = topicId || unitId;
+    const contextKey = topicId || unitId;
     const now = new Date();
 
     // Check if content already preloaded
@@ -109,8 +114,7 @@ export async function triggerPreloadAfterQuiz(
       .where(and(
         eq(preloadedContent.userId, userId),
         eq(preloadedContent.contentType, 'quiz'),
-        eq(preloadedContent.cacheKey, cacheKey),
-        eq(preloadedContent.isUsed, false),
+        eq(preloadedContent.contextKey, contextKey),
         gte(preloadedContent.expiresAt, now)
       ))
       .limit(1);
@@ -128,10 +132,9 @@ export async function triggerPreloadAfterQuiz(
     await db.insert(preloadedContent).values({
       userId,
       contentType: 'quiz',
-      cacheKey,
+      contextKey,
       content,
       expiresAt,
-      isUsed: false,
     });
 
     console.log(`Preloaded quiz content for user ${userId}, unit ${unitId}`);

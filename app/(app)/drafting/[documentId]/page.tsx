@@ -331,7 +331,7 @@ export default function DraftingDocumentPage() {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground text-center mt-2">
-          AI responses are guardrailed for Kenyan law accuracy. Always verify with primary sources.
+          Always verify responses against primary legal sources before relying on them.
         </p>
       </div>
     </div>

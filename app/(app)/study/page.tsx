@@ -222,8 +222,8 @@ export default function StudyPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Study</h1>
           <p className="text-muted-foreground mt-1">
-            Choose an ATP unit to begin AI-powered study. Each session uses retrieval-augmented
-            generation to provide accurate, cited responses.
+            Select an ATP unit to start your study session. Get explanations grounded in Kenyan
+            statutes and case law with proper legal citations.
           </p>
         </div>
         <Button

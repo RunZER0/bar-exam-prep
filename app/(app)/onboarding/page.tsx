@@ -63,7 +63,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: 'welcome',
     question: 'Welcome to Ynai',
-    subtitle: 'Your AI-powered path to the Kenyan Bar. Let us know a bit about you so we can create your perfect study plan.',
+    subtitle: 'Your personal study companion for the Kenyan Bar. Tell us a bit about yourself so we can tailor your preparation journey.',
     type: 'info',
     field: 'fullName',
   },
@@ -472,9 +472,9 @@ export default function OnboardingPage() {
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
                   {[
-                    { icon: Brain, label: 'AI-Powered Learning', color: 'text-purple-500' },
-                    { icon: Flame, label: 'Spaced Repetition', color: 'text-orange-500' },
-                    { icon: Calendar, label: 'Smart Scheduling', color: 'text-blue-500' },
+                    { icon: Brain, label: 'Adaptive Learning', color: 'text-purple-500' },
+                    { icon: Flame, label: 'Smart Review', color: 'text-orange-500' },
+                    { icon: Calendar, label: 'Study Planning', color: 'text-blue-500' },
                   ].map((item, i) => (
                     <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/50">
                       <item.icon className={`w-4 h-4 ${item.color}`} />

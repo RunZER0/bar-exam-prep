@@ -147,7 +147,7 @@ export default function ResearchPage() {
       <div className="border-b px-4 md:px-6 py-3 flex items-center justify-between shrink-0 bg-card">
         <div>
           <h1 className="text-base font-semibold">Legal Research</h1>
-          <p className="text-xs text-muted-foreground">AI-powered research on Kenyan law</p>
+          <p className="text-xs text-muted-foreground">Research Kenyan statutes, case law & legal principles</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Web search toggle */}
@@ -216,8 +216,8 @@ export default function ResearchPage() {
               </div>
               <h2 className="text-xl font-bold">Legal Research Assistant</h2>
               <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-                Research Kenyan statutes, case law, and legal principles. AI-powered with
-                guardrails for accuracy.
+                Research Kenyan statutes, case law, and legal principles. Get answers with
+                proper citations and references to authoritative sources.
               </p>
             </div>
 
@@ -332,7 +332,7 @@ export default function ResearchPage() {
             onSuggestionClick={(prompt) => sendMessage(prompt)}
           />
           <p className="text-[10px] text-muted-foreground/60 text-center mt-1">
-            {webSearchEnabled ? 'Web search enabled · ' : ''}AI responses are guardrailed for Kenyan law accuracy
+            {webSearchEnabled ? 'Web search enabled · ' : ''}Verify all responses against primary sources
           </p>
         </div>
       </div>

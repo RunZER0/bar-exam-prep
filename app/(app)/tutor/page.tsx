@@ -48,13 +48,13 @@ const MOCK_TODAY_ITEMS: StudyItem[] = [
   {
     id: '1',
     type: 'review',
-    title: 'Daily Spaced Repetition Review',
+    title: 'Daily Review Session',
     description: 'Review your due cards from all subjects. 12 cards due today.',
     unitName: 'All Areas',
     estimatedMinutes: 15,
     priority: 1,
     status: 'pending',
-    rationale: 'Spaced repetition ensures you don\'t forget what you\'ve learned.',
+    rationale: 'Regular review ensures you retain what you\'ve learned.',
   },
   {
     id: '2',
@@ -466,7 +466,7 @@ export default function TutorDashboard() {
             </CardContent>
           </Card>
 
-          {/* Spaced Repetition Card */}
+          {/* Review Card */}
           {stats.reviewsDue > 0 && (
             <Card className="bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/20">
               <CardContent className="pt-6">
@@ -475,12 +475,12 @@ export default function TutorDashboard() {
                     <RefreshCw className="w-5 h-5 text-pink-500" />
                   </div>
                   <div>
-                    <h3 className="font-semibold">Spaced Repetition</h3>
+                    <h3 className="font-semibold">Smart Review</h3>
                     <p className="text-sm text-muted-foreground">{stats.reviewsDue} cards due</p>
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mb-4">
-                  Review these concepts to strengthen your memory. Our SM-2 algorithm ensures optimal retention.
+                  Review these concepts to strengthen your memory. We\'ll bring them back at the right time for optimal retention.
                 </p>
                 <Button className="w-full gap-2">
                   <RefreshCw className="w-4 h-4" />

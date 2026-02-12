@@ -708,6 +708,54 @@ export const curriculumUnits = pgTable('curriculum_units', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Pre-generated study recommendations (system-guided mode)
+export const studyRecommendations = pgTable('study_recommendations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  // Recommendation details
+  activityType: text('activity_type').notNull(), // 'quiz', 'study', 'drafting', 'research', 'review', 'case_study', 'exam'
+  unitId: text('unit_id'), // ATP unit
+  unitName: text('unit_name'),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  rationale: text('rationale').notNull(), // Why this was recommended
+  // Priority and ordering
+  priority: integer('priority').notNull(), // 1=highest, lower is more urgent
+  urgencyScore: integer('urgency_score').notNull(), // 0-100 computed score
+  // Contextual data
+  estimatedMinutes: integer('estimated_minutes').default(30),
+  difficulty: text('difficulty'), // beginner, intermediate, advanced
+  targetHref: text('target_href').notNull(), // URL to navigate to
+  // Algorithm metadata
+  decisionFactors: jsonb('decision_factors').$type<{
+    performanceWeight: number;
+    recencyWeight: number;
+    spacedRepWeight: number;
+    weaknessWeight: number;
+    examProximityWeight: number;
+    streakWeight: number;
+    activityBalanceWeight: number;
+    timeOfDayWeight: number;
+  }>(),
+  inputSnapshot: jsonb('input_snapshot'), // User data at time of generation
+  algorithmVersion: text('algorithm_version').default('v1').notNull(),
+  // Lifecycle
+  isActive: boolean('is_active').default(true).notNull(),
+  wasActedOn: boolean('was_acted_on').default(false),
+  actedOnAt: timestamp('acted_on_at'),
+  dismissedAt: timestamp('dismissed_at'),
+  expiresAt: timestamp('expires_at').notNull(),
+  generatedAt: timestamp('generated_at').defaultNow().notNull(),
+});
+
+// Index for efficient queries
+export const studyRecommendationsRelations = relations(studyRecommendations, ({ one }) => ({
+  user: one(users, {
+    fields: [studyRecommendations.userId],
+    references: [users.id],
+  }),
+}));
+
 // RAG knowledge base entries (for admin to manage)
 export const ragKnowledgeEntries = pgTable('rag_knowledge_entries', {
   id: uuid('id').defaultRandom().primaryKey(),

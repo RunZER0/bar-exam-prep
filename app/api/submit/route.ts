@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { userResponses, questions, userProgress, topics, weeklyRankings, quizHistory, studyStreaks } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { evaluateEssayResponse } from '@/lib/ai/guardrails';
-import { triggerPreloadAfterQuiz, updateWeeklyRanking } from '@/lib/services/quiz-completion';
+import { triggerPreloadAfterQuiz, updateWeeklyRanking, triggerStudyGuideRegeneration } from '@/lib/services/quiz-completion';
 import { randomUUID } from 'crypto';
 
 export const POST = withAuth(async (req: NextRequest, user) => {
@@ -108,6 +108,17 @@ export const POST = withAuth(async (req: NextRequest, user) => {
           console.error('Weekly ranking update error:', err);
         }
       });
+
+      // Regenerate study guide recommendations every 5th question (async, non-blocking)
+      if (questionNumber && questionNumber % 5 === 0) {
+        setImmediate(async () => {
+          try {
+            await triggerStudyGuideRegeneration(user.id);
+          } catch (err) {
+            console.error('Study guide regeneration error:', err);
+          }
+        });
+      }
 
       return NextResponse.json({
         success: true,

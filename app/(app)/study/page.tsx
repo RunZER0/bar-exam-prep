@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,11 +23,13 @@ import {
   PenTool,
   Mic,
   TrendingUp,
-  Sparkles,
-  X,
-  Loader2,
-  Lightbulb,
+  Zap,
   Target,
+  Clock,
+  RefreshCw,
+  Check,
+  ChevronRight,
+  Compass,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -47,247 +49,373 @@ const ICON_MAP: Record<string, any> = {
   TrendingUp,
 };
 
-const COLORS = [
-  'bg-emerald-500/10 text-emerald-600 hover:border-emerald-500/40',
-  'bg-red-500/10 text-red-600 hover:border-red-500/40',
-  'bg-blue-500/10 text-blue-600 hover:border-blue-500/40',
-  'bg-violet-500/10 text-violet-600 hover:border-violet-500/40',
-  'bg-amber-500/10 text-amber-600 hover:border-amber-500/40',
-  'bg-cyan-500/10 text-cyan-600 hover:border-cyan-500/40',
-  'bg-pink-500/10 text-pink-600 hover:border-pink-500/40',
-  'bg-indigo-500/10 text-indigo-600 hover:border-indigo-500/40',
-  'bg-teal-500/10 text-teal-600 hover:border-teal-500/40',
-  'bg-orange-500/10 text-orange-600 hover:border-orange-500/40',
-  'bg-lime-500/10 text-lime-600 hover:border-lime-500/40',
-  'bg-fuchsia-500/10 text-fuchsia-600 hover:border-fuchsia-500/40',
-];
-
-interface SmartSuggestion {
-  unitId: string;
-  unitName: string;
-  topic: string;
-  reason: string;
-  prompt: string;
+interface Recommendation {
+  id: string | null;
+  activityType: string;
+  unitId: string | null;
+  unitName: string | null;
+  title: string;
+  description: string;
+  rationale: string;
+  priority: number;
+  urgencyScore: number;
+  estimatedMinutes: number;
+  difficulty: string;
+  targetHref: string;
+  generatedAt: string;
 }
 
 export default function StudyPage() {
   const router = useRouter();
   const { getIdToken } = useAuth();
-  const [showSuggestionModal, setShowSuggestionModal] = useState(false);
-  const [suggestions, setSuggestions] = useState<SmartSuggestion[]>([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [mode, setMode] = useState<'guided' | 'manual'>('guided');
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Show suggestions on first load
-  useEffect(() => {
-    const hasSeenSuggestions = sessionStorage.getItem('study-suggestions-shown');
-    if (!hasSeenSuggestions) {
-      setShowSuggestionModal(true);
-      loadSmartSuggestions();
-      sessionStorage.setItem('study-suggestions-shown', 'true');
-    }
-  }, []);
-
-  const loadSmartSuggestions = async () => {
-    setLoadingSuggestions(true);
+  const loadRecommendations = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    
     try {
       const token = await getIdToken();
-      // Get suggestions for the first 3 units (most commonly studied)
-      const priorityUnits = ATP_UNITS.slice(0, 3);
-      const allSuggestions: SmartSuggestion[] = [];
+      const res = await fetch('/api/tutor/guide', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      for (const unit of priorityUnits) {
-        const res = await fetch('/api/ai/suggestions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            unitId: unit.id,
-            unitName: unit.name,
-          }),
-        });
+      if (res.ok) {
+        const data = await res.json();
+        setRecommendations(data.recommendations || []);
+        setLastUpdated(new Date(data.generatedAt));
+      }
+    } catch (err) {
+      console.error('Failed to load recommendations:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [getIdToken]);
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.suggestions && data.suggestions.length > 0) {
-            allSuggestions.push({
-              unitId: unit.id,
-              unitName: unit.name,
-              ...data.suggestions[0],
-            });
-          }
+  // Load recommendations on mount
+  useEffect(() => {
+    loadRecommendations();
+  }, [loadRecommendations]);
+
+  // Preload recommendations on visibility change (user returns to tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Check if recommendations are stale (older than 1 hour)
+        if (lastUpdated && Date.now() - lastUpdated.getTime() > 60 * 60 * 1000) {
+          loadRecommendations(true);
         }
       }
+    };
 
-      setSuggestions(allSuggestions.slice(0, 3));
-    } catch (err) {
-      console.error('Failed to load suggestions:', err);
-    } finally {
-      setLoadingSuggestions(false);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [lastUpdated, loadRecommendations]);
+
+  const handleRecommendationClick = async (rec: Recommendation) => {
+    // Mark as acted on (fire and forget)
+    if (rec.id) {
+      const token = await getIdToken();
+      fetch('/api/tutor/guide', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ recommendationId: rec.id, action: 'acted_on' }),
+      }).catch(console.error);
+    }
+    
+    router.push(rec.targetHref);
+  };
+
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'quiz': return Target;
+      case 'study': return BookOpen;
+      case 'case_study': return Scale;
+      case 'drafting': return PenTool;
+      case 'research': return FileText;
+      case 'review': return RefreshCw;
+      case 'exam': return FileText;
+      default: return BookOpen;
     }
   };
 
-  const handleSuggestionClick = (suggestion: SmartSuggestion) => {
-    setShowSuggestionModal(false);
-    router.push(`/study/${suggestion.unitId}`);
+  const getActivityLabel = (type: string) => {
+    switch (type) {
+      case 'quiz': return 'Quiz';
+      case 'study': return 'Study';
+      case 'case_study': return 'Case Study';
+      case 'drafting': return 'Drafting';
+      case 'research': return 'Research';
+      case 'review': return 'Review';
+      case 'exam': return 'Exam';
+      default: return 'Activity';
+    }
+  };
+
+  const formatTimeAgo = (date: Date) => {
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ago`;
   };
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
-      {/* Smart Suggestions Modal */}
-      {showSuggestionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 pb-4">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold">Ready to study?</h2>
-                    <p className="text-sm text-muted-foreground">Here are some smart suggestions for you</p>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSuggestionModal(false)}
-                  className="h-8 w-8 p-0 text-muted-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {loadingSuggestions ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">Generating personalized suggestions...</p>
-                  </div>
-                </div>
-              ) : suggestions.length > 0 ? (
-                <div className="space-y-3">
-                  {suggestions.map((suggestion, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleSuggestionClick(suggestion)}
-                      className="w-full text-left p-4 rounded-xl bg-muted/50 border border-border/50 hover:border-primary/50 hover:bg-muted/80 transition-all group"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                          <Target className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">
-                              {suggestion.unitName}
-                            </span>
-                          </div>
-                          <p className="text-sm font-medium group-hover:text-primary transition-colors">
-                            {suggestion.topic}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                            {suggestion.reason}
-                          </p>
-                        </div>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0 mt-1" />
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-8 text-center">
-                  <Lightbulb className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-muted-foreground">Select a unit below to start studying</p>
-                </div>
-              )}
-            </div>
-
-            <div className="border-t bg-muted/30 px-6 py-4">
-              <Button
-                variant="ghost"
-                className="w-full text-muted-foreground"
-                onClick={() => setShowSuggestionModal(false)}
-              >
-                Browse all units instead
-              </Button>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header */}
+      <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="max-w-5xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                Study
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+                Master the Kenyan Bar Exam curriculum
+              </p>
             </div>
           </div>
         </div>
-      )}
-
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Study</h1>
-          <p className="text-muted-foreground mt-1">
-            Select an ATP unit to start your study session. Get explanations grounded in Kenyan
-            statutes and case law with proper legal citations.
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setShowSuggestionModal(true);
-            loadSmartSuggestions();
-          }}
-          className="shrink-0"
-        >
-          <Sparkles className="h-4 w-4 mr-1" />
-          <span className="hidden sm:inline">Get Suggestions</span>
-        </Button>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {ATP_UNITS.map((unit, i) => {
-          const Icon = ICON_MAP[unit.icon] || BookOpen;
-          const color = COLORS[i % COLORS.length];
-          const [bgColor, textColor, hoverBorder] = color.split(' ');
-          return (
-            <Link key={unit.id} href={`/study/${unit.id}`}>
-              <Card
-                className={`group cursor-pointer border transition-all duration-200 hover:shadow-md h-full ${hoverBorder}`}
+      {/* Mode Toggle */}
+      <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="flex gap-8">
+            <button
+              onClick={() => setMode('guided')}
+              className={`flex items-center gap-2 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                mode === 'guided'
+                  ? 'border-green-600 text-green-600 dark:text-green-500'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+              }`}
+            >
+              <Compass className="h-4 w-4" />
+              System Guided
+            </button>
+            <button
+              onClick={() => setMode('manual')}
+              className={`flex items-center gap-2 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                mode === 'manual'
+                  ? 'border-green-600 text-green-600 dark:text-green-500'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+              }`}
+            >
+              <BookOpen className="h-4 w-4" />
+              Browse Units
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        {/* System Guided Mode */}
+        {mode === 'guided' && (
+          <div className="space-y-6">
+            {/* Header with refresh */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  Recommended For You
+                </h2>
+                {lastUpdated && (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    Updated {formatTimeAgo(lastUpdated)}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => loadRecommendations(true)}
+                disabled={refreshing}
+                className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 disabled:opacity-50"
               >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className={`p-2.5 rounded-lg w-fit ${bgColor} ${textColor}`}>
-                      <Icon className="h-5 w-5" />
+                <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+
+            {/* Loading State */}
+            {loading && (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-24 bg-gray-100 dark:bg-gray-800 rounded-lg"></div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Recommendations List */}
+            {!loading && recommendations.length > 0 && (
+              <div className="space-y-3">
+                {recommendations.map((rec, idx) => {
+                  const Icon = getActivityIcon(rec.activityType);
+                  return (
+                    <button
+                      key={rec.id || idx}
+                      onClick={() => handleRecommendationClick(rec)}
+                      className="w-full text-left group"
+                    >
+                      <div className="flex items-start gap-4 py-4 px-4 -mx-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors">
+                        {/* Priority indicator */}
+                        <div className="flex flex-col items-center gap-1 pt-1">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            idx === 0 
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                              : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                          }`}>
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          {idx === 0 && (
+                            <span className="text-[10px] text-green-600 dark:text-green-500 font-medium">
+                              TOP
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                              {getActivityLabel(rec.activityType)}
+                            </span>
+                            {rec.unitName && (
+                              <>
+                                <span className="text-gray-300 dark:text-gray-600">•</span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  {rec.unitName}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          <h3 className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-500 transition-colors">
+                            {rec.title}
+                          </h3>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                            {rec.rationale}
+                          </p>
+                          <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 dark:text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {rec.estimatedMinutes} min
+                            </span>
+                            <span className="capitalize">{rec.difficulty}</span>
+                            <span className="flex items-center gap-1">
+                              <Zap className="h-3 w-3" />
+                              {rec.urgencyScore}% match
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Arrow */}
+                        <ChevronRight className="h-5 w-5 text-gray-300 dark:text-gray-600 group-hover:text-green-500 transition-colors flex-shrink-0 mt-2" />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!loading && recommendations.length === 0 && (
+              <div className="text-center py-12">
+                <Compass className="h-10 w-10 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+                <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
+                  No recommendations yet. Start taking quizzes to get personalized guidance.
+                </p>
+                <Link
+                  href="/quizzes"
+                  className="text-green-600 hover:text-green-700 text-sm font-medium"
+                >
+                  Take your first quiz →
+                </Link>
+              </div>
+            )}
+
+            {/* How it works */}
+            <div className="mt-8 pt-8 border-t border-gray-100 dark:border-gray-800">
+              <h3 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">
+                How System Guided Works
+              </h3>
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 text-xs font-bold flex-shrink-0">
+                    1
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">Analyzes your performance</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Tracks your strengths and weaknesses across all subjects</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 text-xs font-bold flex-shrink-0">
+                    2
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">Optimizes your time</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Balances quizzes, study, drafting, and review activities</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 text-xs font-bold flex-shrink-0">
+                    3
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">Prepares for your exam</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Adjusts intensity based on how close your exam date is</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Manual Mode - Browse Units */}
+        {mode === 'manual' && (
+          <div className="space-y-6">
+            <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+              ATP Units ({ATP_UNITS.length})
+            </h2>
+
+            <div className="space-y-2">
+              {ATP_UNITS.map((unit, i) => {
+                const Icon = ICON_MAP[unit.icon] || BookOpen;
+                return (
+                  <Link key={unit.id} href={`/study/${unit.id}`}>
+                    <div className="flex items-center gap-4 py-4 px-4 -mx-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors group">
+                      <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 group-hover:bg-green-100 dark:group-hover:bg-green-900/30 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-500 transition-colors">
+                            {unit.name}
+                          </h3>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">
+                            {(unit as any).code}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">
+                          {unit.description}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-gray-300 dark:text-gray-600 group-hover:text-green-500 transition-colors flex-shrink-0" />
                     </div>
-                    <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-1 rounded-full">
-                      {(unit as any).code}
-                    </span>
-                  </div>
-                  <CardTitle className="text-base mt-3 flex items-center justify-between">
-                    {unit.name}
-                    <ArrowRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-muted-foreground" />
-                  </CardTitle>
-                  <CardDescription className="text-sm">
-                    {unit.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex flex-wrap gap-1.5">
-                    {unit.statutes.slice(0, 3).map((statute, j) => (
-                      <span
-                        key={j}
-                        className="text-[10px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground"
-                      >
-                        {statute.length > 30 ? statute.slice(0, 28) + '…' : statute}
-                      </span>
-                    ))}
-                    {unit.statutes.length > 3 && (
-                      <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground">
-                        +{unit.statutes.length - 3} more
-                      </span>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

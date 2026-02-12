@@ -49,7 +49,7 @@ export const GET = withAdminAuth(async (req: NextRequest, user) => {
 export const POST = withAdminAuth(async (req: NextRequest, user) => {
   try {
     const body = await req.json();
-    const { key, value, description } = body;
+    const { key, value, description, category } = body;
 
     if (!key) {
       return NextResponse.json(
@@ -72,7 +72,7 @@ export const POST = withAdminAuth(async (req: NextRequest, user) => {
           value,
           description: description ?? existing.description,
           updatedAt: new Date(),
-          updatedBy: user.uid,
+          updatedById: user.id,
         })
         .where(eq(adminSettings.key, key))
         .returning();
@@ -84,7 +84,8 @@ export const POST = withAdminAuth(async (req: NextRequest, user) => {
           key,
           value,
           description: description || '',
-          updatedBy: user.uid,
+          category: category || 'general',
+          updatedById: user.id,
         })
         .returning();
     }
@@ -125,7 +126,7 @@ export const PATCH = withAdminAuth(async (req: NextRequest, user) => {
           .set({
             value,
             updatedAt: new Date(),
-            updatedBy: user.uid,
+            updatedById: user.id,
           })
           .where(eq(adminSettings.key, key))
           .returning();
@@ -137,7 +138,8 @@ export const PATCH = withAdminAuth(async (req: NextRequest, user) => {
             key,
             value,
             description: '',
-            updatedBy: user.uid,
+            category: 'general',
+            updatedById: user.id,
           })
           .returning();
         results.push(setting);

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
-import { userResponses, questions, userProgress } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { userResponses, questions, userProgress, topics, weeklyRankings } from '@/lib/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 import { evaluateEssayResponse } from '@/lib/ai/guardrails';
+import { triggerPreloadAfterQuiz, updateWeeklyRanking } from '@/lib/services/quiz-completion';
 
 export const POST = withAuth(async (req: NextRequest, user) => {
   try {
@@ -101,6 +102,28 @@ export const POST = withAuth(async (req: NextRequest, user) => {
         completionPercentage: 0,
       });
     }
+
+    // Trigger background tasks (non-blocking)
+    // 1. Update weekly rankings
+    // 2. Preload next quiz content for instant loading
+    setImmediate(async () => {
+      try {
+        // Update rankings with points (10 for correct, 1 for attempt)
+        await updateWeeklyRanking(user.id, isCorrect ? 10 : 1, 1);
+        
+        // Preload next quiz questions for this topic
+        // Get the topic to find the unit/category
+        const topic = await db.query.topics.findFirst({
+          where: eq(topics.id, question.topicId),
+        });
+        
+        if (topic?.category) {
+          await triggerPreloadAfterQuiz(user.id, topic.category, question.topicId);
+        }
+      } catch (err) {
+        console.error('Background task error:', err);
+      }
+    });
 
     return NextResponse.json({
       success: true,

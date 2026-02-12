@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Scale, ArrowLeft, AlertTriangle } from 'lucide-react';
+import Image from 'next/image';
+import { ArrowLeft, AlertTriangle } from 'lucide-react';
 
 export default function DisclaimerPage() {
   return (
@@ -10,9 +11,13 @@ export default function DisclaimerPage() {
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-              <Scale className="h-5 w-5 text-emerald-500" />
-            </div>
+            <Image
+              src="/favicon-32x32.png"
+              alt="Ynai Logo"
+              width={28}
+              height={28}
+              className="shrink-0"
+            />
             <span className="font-bold text-lg">Ynai</span>
           </Link>
           <div className="flex-1" />

@@ -188,6 +188,172 @@ export const contentUpdates = pgTable('content_updates', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// ============================================
+// COMMUNITY SYSTEM
+// ============================================
+
+// Study room status enum
+export const roomStatusEnum = pgEnum('room_status', ['active', 'archived', 'pending']);
+export const roomTypeEnum = pgEnum('room_type', ['official', 'custom']);
+export const memberRoleEnum = pgEnum('member_role', ['owner', 'moderator', 'member']);
+export const challengeStatusEnum = pgEnum('challenge_status', ['upcoming', 'active', 'completed']);
+export const challengeTypeEnum = pgEnum('challenge_type', ['trivia', 'reading', 'quiz_marathon', 'drafting', 'research']);
+export const friendStatusEnum = pgEnum('friend_status', ['pending', 'accepted', 'blocked']);
+
+// Study Rooms - both official (pre-created) and user-created
+export const studyRooms = pgTable('study_rooms', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  unitId: text('unit_id'), // Links to ATP unit for official rooms
+  roomType: roomTypeEnum('room_type').default('custom').notNull(),
+  status: roomStatusEnum('status').default('active').notNull(),
+  coverImage: text('cover_image'),
+  createdById: uuid('created_by_id').references(() => users.id),
+  maxMembers: integer('max_members').default(100),
+  isPublic: boolean('is_public').default(true).notNull(),
+  tags: jsonb('tags').$type<string[]>(),
+  memberCount: integer('member_count').default(0).notNull(),
+  messageCount: integer('message_count').default(0).notNull(),
+  lastActivityAt: timestamp('last_activity_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Room membership
+export const roomMembers = pgTable('room_members', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  roomId: uuid('room_id').references(() => studyRooms.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  role: memberRoleEnum('role').default('member').notNull(),
+  joinedAt: timestamp('joined_at').defaultNow().notNull(),
+  lastReadAt: timestamp('last_read_at').defaultNow(),
+  isMuted: boolean('is_muted').default(false).notNull(),
+});
+
+// Room messages/discussions
+export const roomMessages = pgTable('room_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  roomId: uuid('room_id').references(() => studyRooms.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  content: text('content').notNull(),
+  parentId: uuid('parent_id'), // For replies/threads
+  attachments: jsonb('attachments').$type<{ type: string; url: string; name: string }[]>(),
+  reactions: jsonb('reactions').$type<Record<string, string[]>>(), // emoji -> userIds
+  isPinned: boolean('is_pinned').default(false).notNull(),
+  isEdited: boolean('is_edited').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  editedAt: timestamp('edited_at'),
+});
+
+// Room join requests (for private rooms)
+export const roomRequests = pgTable('room_requests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  roomId: uuid('room_id').references(() => studyRooms.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  message: text('message'),
+  status: text('status').default('pending').notNull(), // pending, approved, rejected
+  reviewedById: uuid('reviewed_by_id').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  reviewedAt: timestamp('reviewed_at'),
+});
+
+// Community Events/Challenges
+export const communityEvents = pgTable('community_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  type: challengeTypeEnum('type').notNull(),
+  status: challengeStatusEnum('status').default('upcoming').notNull(),
+  coverImage: text('cover_image'),
+  unitId: text('unit_id'), // Optional - specific to a unit
+  targetTopics: jsonb('target_topics').$type<string[]>(),
+  rules: text('rules'),
+  rewards: jsonb('rewards').$type<{ position: number; reward: string; value: number }[]>(),
+  pointsPerCorrect: integer('points_per_correct').default(10).notNull(),
+  bonusPoints: integer('bonus_points').default(0), // Bonus for completion
+  maxParticipants: integer('max_participants'),
+  participantCount: integer('participant_count').default(0).notNull(),
+  startsAt: timestamp('starts_at').notNull(),
+  endsAt: timestamp('ends_at').notNull(),
+  createdById: uuid('created_by_id').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Event/Challenge participants
+export const eventParticipants = pgTable('event_participants', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  eventId: uuid('event_id').references(() => communityEvents.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  score: integer('score').default(0).notNull(),
+  questionsAnswered: integer('questions_answered').default(0).notNull(),
+  correctAnswers: integer('correct_answers').default(0).notNull(),
+  timeSpent: integer('time_spent').default(0).notNull(), // seconds
+  rank: integer('rank'),
+  completedAt: timestamp('completed_at'),
+  joinedAt: timestamp('joined_at').defaultNow().notNull(),
+});
+
+// User friendships
+export const userFriends = pgTable('user_friends', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  friendId: uuid('friend_id').references(() => users.id).notNull(),
+  status: friendStatusEnum('status').default('pending').notNull(),
+  matchScore: integer('match_score').default(0), // AI-calculated compatibility
+  sharedInterests: jsonb('shared_interests').$type<string[]>(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  acceptedAt: timestamp('accepted_at'),
+});
+
+// User achievements and points
+export const userAchievements = pgTable('user_achievements', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  achievementType: text('achievement_type').notNull(),
+  achievementId: text('achievement_id').notNull(),
+  points: integer('points').default(0).notNull(),
+  metadata: jsonb('metadata'),
+  earnedAt: timestamp('earned_at').defaultNow().notNull(),
+});
+
+// Weekly rankings
+export const weeklyRankings = pgTable('weekly_rankings', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  weekStart: date('week_start').notNull(),
+  weekEnd: date('week_end').notNull(),
+  totalPoints: integer('total_points').default(0).notNull(),
+  rank: integer('rank'),
+  quizzesCompleted: integer('quizzes_completed').default(0).notNull(),
+  challengesWon: integer('challenges_won').default(0).notNull(),
+  studyMinutes: integer('study_minutes').default(0).notNull(),
+  bonusEarned: integer('bonus_earned').default(0), // KES discount earned
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Preloaded content cache for instant loading
+export const preloadedContent = pgTable('preloaded_content', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  contentType: text('content_type').notNull(), // 'quiz', 'exam', 'questions'
+  contextKey: text('context_key').notNull(), // e.g., 'quiz_adaptive_all', 'exam_civil_intermediate'
+  content: jsonb('content').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Friend suggestions based on AI analysis
+export const friendSuggestions = pgTable('friend_suggestions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  suggestedUserId: uuid('suggested_user_id').references(() => users.id).notNull(),
+  matchScore: integer('match_score').default(0).notNull(),
+  reasons: jsonb('reasons').$type<string[]>(),
+  dismissed: boolean('dismissed').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   profile: one(userProfiles),
@@ -251,5 +417,82 @@ export const userProgressRelations = relations(userProgress, ({ one }) => ({
   topic: one(topics, {
     fields: [userProgress.topicId],
     references: [topics.id],
+  }),
+}));
+
+// Community Relations
+export const studyRoomsRelations = relations(studyRooms, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [studyRooms.createdById],
+    references: [users.id],
+  }),
+  members: many(roomMembers),
+  messages: many(roomMessages),
+  requests: many(roomRequests),
+}));
+
+export const roomMembersRelations = relations(roomMembers, ({ one }) => ({
+  room: one(studyRooms, {
+    fields: [roomMembers.roomId],
+    references: [studyRooms.id],
+  }),
+  user: one(users, {
+    fields: [roomMembers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const roomMessagesRelations = relations(roomMessages, ({ one }) => ({
+  room: one(studyRooms, {
+    fields: [roomMessages.roomId],
+    references: [studyRooms.id],
+  }),
+  user: one(users, {
+    fields: [roomMessages.userId],
+    references: [users.id],
+  }),
+}));
+
+export const communityEventsRelations = relations(communityEvents, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [communityEvents.createdById],
+    references: [users.id],
+  }),
+  participants: many(eventParticipants),
+}));
+
+export const eventParticipantsRelations = relations(eventParticipants, ({ one }) => ({
+  event: one(communityEvents, {
+    fields: [eventParticipants.eventId],
+    references: [communityEvents.id],
+  }),
+  user: one(users, {
+    fields: [eventParticipants.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userFriendsRelations = relations(userFriends, ({ one }) => ({
+  user: one(users, {
+    fields: [userFriends.userId],
+    references: [users.id],
+  }),
+  friend: one(users, {
+    fields: [userFriends.friendId],
+    references: [users.id],
+  }),
+}));
+
+export const weeklyRankingsRelations = relations(weeklyRankings, ({ one }) => ({
+  user: one(users, {
+    fields: [weeklyRankings.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userAchievementsRelations = relations(userAchievements, ({ one }) => ({
+  user: one(users, {
+    fields: [userAchievements.userId],
+    references: [users.id],
   }),
 }));

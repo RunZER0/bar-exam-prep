@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Scale,
   FileText,
   BookOpen,
   ClipboardCheck,
@@ -151,9 +151,14 @@ export default function Home() {
       <nav className="sticky top-0 z-50 bg-[#0a0a0b]/80 backdrop-blur-xl border-b border-zinc-800/50">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-              <Scale className="h-6 w-6 text-emerald-500" />
-            </div>
+            <Image
+              src="/favicon-32x32.png"
+              alt="Ynai Logo"
+              width={36}
+              height={36}
+              className="shrink-0"
+              priority
+            />
             <span className="font-bold text-2xl tracking-tight">Ynai</span>
           </div>
           <div className="flex items-center gap-6">
@@ -179,7 +184,13 @@ export default function Home() {
             {/* Left - copy */}
             <div className="space-y-8">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                <Scale className="h-4 w-4 text-emerald-400" />
+                <Image
+                  src="/favicon-32x32.png"
+                  alt="Ynai Logo"
+                  width={16}
+                  height={16}
+                  className="shrink-0"
+                />
                 <span className="text-sm font-medium text-emerald-400">For Kenya School of Law Students</span>
               </div>
               
@@ -401,9 +412,13 @@ export default function Home() {
             {/* Brand */}
             <div className="col-span-2">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-                  <Scale className="h-5 w-5 text-emerald-500" />
-                </div>
+                <Image
+                  src="/favicon-32x32.png"
+                  alt="Ynai Logo"
+                  width={32}
+                  height={32}
+                  className="shrink-0"
+                />
                 <span className="font-bold text-xl">Ynai</span>
               </div>
               <p className="text-sm text-zinc-500 leading-relaxed">

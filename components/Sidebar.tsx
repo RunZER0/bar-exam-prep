@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSidebar } from '@/contexts/SidebarContext';
@@ -16,7 +17,6 @@ import {
   LogOut,
   Menu,
   X,
-  Scale,
   Coffee,
   MessageCircleQuestion,
   History,
@@ -24,6 +24,7 @@ import {
   ChevronRight,
   TrendingUp,
   Crown,
+  Users,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { href: '/study', label: 'Study', icon: BookOpen },
   { href: '/exams', label: 'Examinations', icon: ClipboardCheck },
   { href: '/quizzes', label: 'Quizzes & Trivia', icon: Lightbulb },
+  { href: '/community', label: 'Community', icon: Users },
   { href: '/research', label: 'Research', icon: Search },
   { href: '/clarify', label: 'Get Clarification', icon: MessageCircleQuestion },
   { href: '/banter', label: 'Legal Banter', icon: Coffee },
@@ -66,9 +68,14 @@ export default function Sidebar() {
     <>
       {/* Logo */}
       <div className={`flex items-center gap-3 px-4 pt-6 pb-6 ${collapsed ? 'justify-center' : ''}`}>
-        <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 shrink-0">
-          <Scale className="h-5 w-5 text-emerald-500" />
-        </div>
+        <Image
+          src="/favicon-32x32.png"
+          alt="Ynai Logo"
+          width={32}
+          height={32}
+          className="shrink-0"
+          priority
+        />
         {!collapsed && (
           <div className="leading-tight">
             <p className="font-bold text-base">Ynai</p>
@@ -187,9 +194,14 @@ export default function Sidebar() {
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card/80 backdrop-blur-xl border-b border-border/50 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-1.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-            <Scale className="h-5 w-5 text-emerald-500" />
-          </div>
+          <Image
+            src="/favicon-32x32.png"
+            alt="Ynai Logo"
+            width={28}
+            height={28}
+            className="shrink-0"
+            priority
+          />
           <span className="font-bold text-lg">Ynai</span>
         </div>
         <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-xl hover:bg-accent">

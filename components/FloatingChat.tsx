@@ -117,7 +117,7 @@ export default function FloatingChat() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          fixed bottom-6 left-6 z-50
+          fixed bottom-6 right-6 z-50
           w-14 h-14 rounded-full
           bg-emerald-500 hover:bg-emerald-600
           text-white shadow-lg hover:shadow-xl
@@ -136,11 +136,11 @@ export default function FloatingChat() {
       {/* Chat Panel */}
       <div
         className={`
-          fixed bottom-6 left-6 z-50
+          fixed bottom-6 right-6 z-50
           w-[360px] max-w-[calc(100vw-3rem)]
           bg-card border border-border/50 rounded-2xl shadow-2xl
           flex flex-col
-          transition-all duration-300 ease-out origin-bottom-left
+          transition-all duration-300 ease-out origin-bottom-right
           ${isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'}
         `}
         style={{ height: 'min(500px, calc(100vh - 6rem))' }}

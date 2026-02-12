@@ -253,8 +253,8 @@ export default function ClarifyPage() {
                   onClick={() => fileInputRef.current?.click()}
                   className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-border/50 bg-card hover:bg-accent hover:border-primary/30 transition-all duration-300"
                 >
-                  <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 group-hover:scale-110 transition-transform">
-                    <Image className="w-5 h-5 text-blue-500" />
+                  <div className="p-3 rounded-xl bg-gray-500/10 border border-gray-500/20 group-hover:scale-110 transition-transform">
+                    <Image className="w-5 h-5 text-gray-500" />
                   </div>
                   <span className="text-sm font-medium">Screenshot</span>
                 </button>
@@ -367,7 +367,7 @@ export default function ClarifyPage() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-card">
-                      {att.type === 'audio' ? <Mic className="w-4 h-4 text-red-500" /> : <FileText className="w-4 h-4 text-blue-500" />}
+                      {att.type === 'audio' ? <Mic className="w-4 h-4 text-red-500" /> : <FileText className="w-4 h-4 text-gray-500" />}
                       <span className="text-xs truncate max-w-[80px]">{att.file.name}</span>
                     </div>
                   )}

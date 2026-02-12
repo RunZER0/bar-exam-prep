@@ -129,8 +129,8 @@ const ITEM_ICONS: Record<StudyItem['type'], React.ElementType> = {
 };
 
 const ITEM_COLORS: Record<StudyItem['type'], string> = {
-  reading: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  case_study: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+  reading: 'bg-gray-500/10 text-gray-500 border-gray-500/20',
+  case_study: 'bg-gray-500/10 text-gray-500 border-gray-500/20',
   practice_questions: 'bg-green-500/10 text-green-500 border-green-500/20',
   quiz: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
   review: 'bg-pink-500/10 text-pink-500 border-pink-500/20',
@@ -240,11 +240,11 @@ export default function TutorDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20">
+        <Card className="bg-gradient-to-br from-gray-500/10 to-gray-500/5 border-gray-500/20 dark:from-gray-800/20 dark:to-gray-800/10">
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                <Timer className="w-5 h-5 text-blue-500" />
+              <div className="w-10 h-10 rounded-full bg-gray-500/20 dark:bg-gray-700 flex items-center justify-center">
+                <Timer className="w-5 h-5 text-gray-500" />
               </div>
               <div>
                 <div className="text-2xl font-bold">{stats.minutesStudied}m</div>
@@ -432,7 +432,7 @@ export default function TutorDashboard() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <BookMarked className="w-4 h-4 text-purple-500" />
+                <BookMarked className="w-4 h-4 text-gray-500" />
                 Cases for Today
               </CardTitle>
               <CardDescription>
@@ -447,10 +447,10 @@ export default function TutorDashboard() {
                       <p className="font-medium text-sm">{caseItem.name}</p>
                       <p className="text-xs text-muted-foreground font-mono">{caseItem.citation}</p>
                     </div>
-                    <Scale className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                    <Scale className="w-4 h-4 text-gray-500 flex-shrink-0" />
                   </div>
                   <div className="mt-2 flex items-center gap-2 flex-wrap">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-500">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500/10 text-gray-500">
                       {caseItem.topic}
                     </span>
                     <span className="text-xs text-muted-foreground">{caseItem.unitName}</span>
@@ -494,7 +494,7 @@ export default function TutorDashboard() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-blue-500" />
+                <BarChart3 className="w-4 h-4 text-gray-500" />
                 This Week
               </CardTitle>
             </CardHeader>
@@ -547,7 +547,7 @@ export default function TutorDashboard() {
               </Link>
               <Link href="/clarify">
                 <Button variant="outline" size="sm" className="w-full justify-start gap-2">
-                  <HelpCircle className="w-4 h-4 text-purple-500" />
+                  <HelpCircle className="w-4 h-4 text-gray-500" />
                   Ask a Question
                 </Button>
               </Link>

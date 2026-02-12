@@ -469,7 +469,7 @@ Respond with ONLY valid JSON:
   if (phase === 'results' && result) {
     const gradeColors: Record<string, string> = {
       A: 'from-emerald-500 to-green-600',
-      B: 'from-blue-500 to-cyan-600',
+      B: 'from-green-500 to-emerald-600',
       C: 'from-amber-500 to-yellow-600',
       D: 'from-orange-500 to-red-500',
       F: 'from-red-600 to-rose-700',
@@ -517,7 +517,7 @@ Respond with ONLY valid JSON:
             </Card>
             <Card className="bg-card shadow-lg border-0">
               <CardContent className="pt-6 text-center">
-                <Target className="h-6 w-6 mx-auto text-blue-500 mb-2" />
+                <Target className="h-6 w-6 mx-auto text-green-500 mb-2" />
                 <p className="text-2xl font-bold">{result.totalMarks}</p>
                 <p className="text-xs text-muted-foreground">Total Marks</p>
               </CardContent>
@@ -531,7 +531,7 @@ Respond with ONLY valid JSON:
             </Card>
             <Card className="bg-card shadow-lg border-0">
               <CardContent className="pt-6 text-center">
-                <Brain className="h-6 w-6 mx-auto text-purple-500 mb-2" />
+                <Brain className="h-6 w-6 mx-auto text-gray-500" />
                 <p className="text-2xl font-bold">{result.challengingConcepts?.length || 0}</p>
                 <p className="text-xs text-muted-foreground">Areas to Study</p>
               </CardContent>
@@ -694,8 +694,8 @@ Respond with ONLY valid JSON:
                         )}
 
                         {/* Explanation */}
-                        <div className="bg-blue-500/10 rounded-lg p-3">
-                          <p className="text-xs font-medium text-blue-600 mb-1">Explanation</p>
+                        <div className="bg-green-500/10 rounded-lg p-3">
+                          <p className="text-xs font-medium text-green-600 mb-1">Explanation</p>
                           <p className="text-sm text-muted-foreground">{fb?.explanation}</p>
                         </div>
                       </div>
@@ -744,7 +744,7 @@ Respond with ONLY valid JSON:
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold">{unit.name}</p>
               <span className={`text-xs px-2 py-0.5 rounded-full ${
-                examType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-blue-500/10 text-blue-600'
+                examType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
               }`}>
                 {examType === 'abcd' ? 'ABCD' : 'CLE'}
               </span>

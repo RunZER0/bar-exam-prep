@@ -230,8 +230,8 @@ export default function AdminPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <Users className="w-5 h-5 text-blue-500" />
+              <div className="w-10 h-10 rounded-lg bg-gray-500/10 dark:bg-gray-800 flex items-center justify-center">
+                <Users className="w-5 h-5 text-gray-500" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{analytics?.totalUsers || 0}</p>
@@ -258,8 +258,8 @@ export default function AdminPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-purple-500" />
+              <div className="w-10 h-10 rounded-lg bg-gray-500/10 dark:bg-gray-800 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-gray-500" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{analytics?.totalResponses || 0}</p>
@@ -292,7 +292,7 @@ export default function AdminPage() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Button variant="outline" className="h-auto py-4 flex-col gap-2" onClick={() => setActiveTab('timelines')}>
-              <Calendar className="w-5 h-5 text-blue-500" />
+              <Calendar className="w-5 h-5 text-gray-500" />
               <span className="text-xs">Update KSL Dates</span>
             </Button>
             <Button variant="outline" className="h-auto py-4 flex-col gap-2" onClick={() => setActiveTab('questions')}>
@@ -300,7 +300,7 @@ export default function AdminPage() {
               <span className="text-xs">Add Questions</span>
             </Button>
             <Button variant="outline" className="h-auto py-4 flex-col gap-2" onClick={() => setActiveTab('knowledge')}>
-              <Database className="w-5 h-5 text-purple-500" />
+              <Database className="w-5 h-5 text-gray-500" />
               <span className="text-xs">Manage RAG</span>
             </Button>
             <Button variant="outline" className="h-auto py-4 flex-col gap-2" onClick={() => setActiveTab('users')}>

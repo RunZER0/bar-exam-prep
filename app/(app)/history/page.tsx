@@ -23,10 +23,10 @@ type ChatSession = {
 };
 
 const COMPETENCY_ICONS: Record<string, { icon: typeof FileText; color: string; bg: string }> = {
-  drafting: { icon: FileText, color: 'text-blue-600', bg: 'bg-blue-500/10' },
+  drafting: { icon: FileText, color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-500/10 dark:bg-gray-800' },
   research: { icon: Search, color: 'text-green-600', bg: 'bg-green-500/10' },
   banter: { icon: Coffee, color: 'text-amber-600', bg: 'bg-amber-500/10' },
-  clarification: { icon: MessageCircleQuestion, color: 'text-purple-600', bg: 'bg-purple-500/10' },
+  clarification: { icon: MessageCircleQuestion, color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-500/10 dark:bg-gray-800' },
   oral: { icon: BookOpen, color: 'text-red-600', bg: 'bg-red-500/10' },
 };
 

@@ -194,7 +194,7 @@ export default function RoomDetailPage() {
   const getRoleBadge = (role: string) => {
     switch (role) {
       case 'owner': return <Crown className="h-3 w-3 text-amber-500" />;
-      case 'admin': return <Shield className="h-3 w-3 text-indigo-500" />;
+      case 'admin': return <Shield className="h-3 w-3 text-green-500" />;
       case 'moderator': return <Star className="h-3 w-3 text-emerald-500" />;
       default: return null;
     }
@@ -227,11 +227,11 @@ export default function RoomDetailPage() {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="p-2 bg-indigo-500/10 rounded-lg">
+            <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
               {isOfficialRoom ? (
-                <BookOpen className="h-5 w-5 text-indigo-500" />
+                <BookOpen className="h-5 w-5 text-green-600 dark:text-green-500" />
               ) : (
-                <Hash className="h-5 w-5 text-indigo-500" />
+                <Hash className="h-5 w-5 text-green-600 dark:text-green-500" />
               )}
             </div>
             <div>
@@ -265,7 +265,7 @@ export default function RoomDetailPage() {
               variant="ghost"
               size="icon"
               onClick={() => setShowMembers(!showMembers)}
-              className={`h-8 w-8 ${showMembers ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30' : ''}`}
+              className={`h-8 w-8 ${showMembers ? 'bg-green-100 text-green-600 dark:bg-green-900/30' : ''}`}
             >
               <Users className="h-4 w-4" />
             </Button>
@@ -278,10 +278,10 @@ export default function RoomDetailPage() {
         {/* Messages Area */}
         <div className="flex-1 flex flex-col">
           {/* Room Info Card */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-500/5 to-purple-500/5">
+          <div className="p-4 border-b border-gray-100 dark:border-gray-800">
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-indigo-500/10 rounded-lg">
-                <BookOpen className="h-5 w-5 text-indigo-500" />
+              <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <BookOpen className="h-5 w-5 text-green-600 dark:text-green-500" />
               </div>
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -321,7 +321,7 @@ export default function RoomDetailPage() {
                     className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 mb-2"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-medium shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300 text-xs font-medium shrink-0">
                         {message.userName.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -344,7 +344,7 @@ export default function RoomDetailPage() {
             {messages.filter(m => !m.isPinned).map((message) => (
               <div key={message.id} className="group">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300 font-medium shrink-0">
                     {message.userName.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -371,7 +371,7 @@ export default function RoomDetailPage() {
                         <Heart className={`h-3.5 w-3.5 ${message.isLiked ? 'fill-current' : ''}`} />
                         {message.likes > 0 && message.likes}
                       </button>
-                      <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-indigo-500 transition-colors">
+                      <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-green-500 transition-colors">
                         <Reply className="h-3.5 w-3.5" />
                         {message.replies > 0 && message.replies}
                       </button>
@@ -415,7 +415,7 @@ export default function RoomDetailPage() {
               <Button 
                 onClick={handleSendMessage}
                 disabled={!newMessage.trim()}
-                className="bg-indigo-500 hover:bg-indigo-600 h-10 w-10 p-0"
+                className="bg-green-600 hover:bg-green-700 h-10 w-10 p-0"
               >
                 <Send className="h-4 w-4" />
               </Button>
@@ -441,7 +441,7 @@ export default function RoomDetailPage() {
                   {members.filter(m => m.isOnline).map((member) => (
                     <div key={member.id} className="flex items-center gap-2 group">
                       <div className="relative">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
+                        <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300 text-xs font-medium">
                           {member.displayName.charAt(0)}
                         </div>
                         <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-gray-800 rounded-full" />

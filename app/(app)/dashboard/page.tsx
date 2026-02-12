@@ -75,16 +75,16 @@ const MODULES = [
     label: 'Study',
     description: 'Deep dive into all 9 ATP units - from Civil Litigation to Commercial Transactions.',
     icon: BookOpen,
-    color: 'bg-blue-500/10 text-blue-500',
-    borderColor: 'hover:border-blue-500/30',
+    color: 'bg-gray-500/10 text-gray-500',
+    borderColor: 'hover:border-gray-500/30',
   },
   {
     href: '/exams',
     label: 'Examinations',
     description: 'Take CLE-style exams by unit with timed conditions and intelligent grading.',
     icon: ClipboardCheck,
-    color: 'bg-violet-500/10 text-violet-500',
-    borderColor: 'hover:border-violet-500/30',
+    color: 'bg-green-500/10 text-green-500',
+    borderColor: 'hover:border-green-500/30',
   },
   {
     href: '/quizzes',
@@ -107,8 +107,8 @@ const MODULES = [
     label: 'Get Clarification',
     description: 'Upload screenshots or voice notes to get help with confusing concepts.',
     icon: MessageCircleQuestion,
-    color: 'bg-purple-500/10 text-purple-500',
-    borderColor: 'hover:border-purple-500/30',
+    color: 'bg-gray-500/10 text-gray-500',
+    borderColor: 'hover:border-gray-500/30',
   },
 ];
 
@@ -213,9 +213,9 @@ export default function DashboardPage() {
 
       {/* AI Recommendation Card */}
       {userProfile && userProfile.recommendations.length > 0 && (
-        <div className="relative overflow-hidden rounded-2xl p-5 md:p-6 border border-indigo-500/20 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5">
+        <div className="relative overflow-hidden rounded-2xl p-5 md:p-6 border border-green-500/20 bg-green-500/5">
           <div className="flex items-start gap-4">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 text-white shrink-0">
+            <div className="p-2.5 rounded-xl bg-green-600 text-white shrink-0">
               <Brain className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
@@ -227,7 +227,7 @@ export default function DashboardPage() {
                 {userProfile.recommendations[0].description}
               </p>
               <Link href={userProfile.recommendations[0].href}>
-                <Button size="sm" className="gap-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600">
+                <Button size="sm" className="gap-2 bg-green-600 hover:bg-green-700">
                   {userProfile.recommendations[0].title}
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
@@ -302,8 +302,8 @@ export default function DashboardPage() {
         <Card className="stat-gradient-2">
           <CardContent className="pt-5 pb-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <TrendingUp className="h-5 w-5 text-green-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">
@@ -334,8 +334,8 @@ export default function DashboardPage() {
         <Card className="stat-gradient-4">
           <CardContent className="pt-5 pb-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-500/10">
-                <Clock className="h-5 w-5 text-purple-600" />
+              <div className="p-2 rounded-lg bg-gray-500/10 dark:bg-gray-800">
+                <Clock className="h-5 w-5 text-gray-600 dark:text-gray-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold">

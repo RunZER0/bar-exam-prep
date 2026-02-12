@@ -46,7 +46,7 @@ const EXAM_TYPES = [
     name: 'CLE Standard (Typed)',
     description: 'Written exam format with AI-powered grading and feedback',
     icon: Edit3,
-    color: 'blue',
+    color: 'gray',
   },
 ];
 
@@ -237,11 +237,11 @@ export default function ExamsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20">
+        <Card className="bg-gradient-to-br from-gray-500/10 to-gray-500/5 border-gray-500/20 dark:from-gray-800/20 dark:to-gray-800/10">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/20">
-                <Timer className="h-4 w-4 text-blue-600" />
+              <div className="p-2 rounded-lg bg-gray-500/20 dark:bg-gray-700">
+                <Timer className="h-4 w-4 text-gray-600 dark:text-gray-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold">3h</p>
@@ -250,11 +250,11 @@ export default function ExamsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border-purple-500/20">
+        <Card className="bg-gradient-to-br from-gray-500/10 to-gray-500/5 border-gray-500/20 dark:from-gray-800/20 dark:to-gray-800/10">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-500/20">
-                <FileQuestion className="h-4 w-4 text-purple-600" />
+              <div className="p-2 rounded-lg bg-gray-500/20 dark:bg-gray-700">
+                <FileQuestion className="h-4 w-4 text-gray-600 dark:text-gray-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold">2</p>
@@ -286,7 +286,7 @@ export default function ExamsPage() {
             className={`group cursor-pointer border-2 transition-all duration-300 hover:shadow-lg ${
               type.color === 'emerald'
                 ? 'border-emerald-500/30 hover:border-emerald-500/50 hover:shadow-emerald-500/10'
-                : 'border-blue-500/30 hover:border-blue-500/50 hover:shadow-blue-500/10'
+                : 'border-gray-500/30 hover:border-gray-500/50 hover:shadow-gray-500/10'
             }`}
             onClick={() => {
               setSelectedType(type.id);
@@ -296,10 +296,10 @@ export default function ExamsPage() {
           >
             <CardHeader>
               <div className={`p-3 rounded-xl w-fit ${
-                type.color === 'emerald' ? 'bg-emerald-500/10' : 'bg-blue-500/10'
+                type.color === 'emerald' ? 'bg-emerald-500/10' : 'bg-gray-500/10 dark:bg-gray-800'
               }`}>
                 <type.icon className={`h-6 w-6 ${
-                  type.color === 'emerald' ? 'text-emerald-500' : 'text-blue-500'
+                  type.color === 'emerald' ? 'text-emerald-500' : 'text-gray-500'
                 }`} />
               </div>
               <CardTitle className="text-lg mt-3">{type.name}</CardTitle>
@@ -430,14 +430,14 @@ export default function ExamsPage() {
                     className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-200 flex items-center gap-4 ${
                       type.color === 'emerald'
                         ? 'border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-500/50'
-                        : 'border-blue-500/30 bg-blue-500/5 hover:border-blue-500/50'
+                        : 'border-gray-500/30 bg-gray-500/5 hover:border-gray-500/50 dark:bg-gray-800/20'
                     }`}
                   >
                     <div className={`p-3 rounded-xl ${
-                      type.color === 'emerald' ? 'bg-emerald-500/20' : 'bg-blue-500/20'
+                      type.color === 'emerald' ? 'bg-emerald-500/20' : 'bg-gray-500/20 dark:bg-gray-700'
                     }`}>
                       <type.icon className={`h-5 w-5 ${
-                        type.color === 'emerald' ? 'text-emerald-600' : 'text-blue-600'
+                        type.color === 'emerald' ? 'text-emerald-600' : 'text-gray-600 dark:text-gray-400'
                       }`} />
                     </div>
                     <div className="flex-1">
@@ -456,7 +456,7 @@ export default function ExamsPage() {
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                  selectedType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-blue-500/10 text-blue-600'
+                  selectedType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
                 }`}>
                   {selectedType === 'abcd' ? 'Multiple Choice' : 'CLE Standard'}
                 </span>
@@ -467,7 +467,7 @@ export default function ExamsPage() {
                   const cfg = PAPER_SIZES[selectedType][size];
                   const iconColors = {
                     mini: 'bg-amber-500/20 text-amber-600',
-                    semi: 'bg-purple-500/20 text-purple-600',
+                    semi: 'bg-gray-500/20 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
                     full: 'bg-rose-500/20 text-rose-600',
                   };
                   return (
@@ -509,7 +509,7 @@ export default function ExamsPage() {
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                  selectedType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-blue-500/10 text-blue-600'
+                  selectedType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
                 }`}>
                   {selectedType === 'abcd' ? 'ABCD' : 'CLE'}
                 </span>
@@ -558,7 +558,7 @@ export default function ExamsPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Exam Type</span>
                   <span className={`font-medium px-2 py-0.5 rounded-full text-xs ${
-                    selectedType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-blue-500/10 text-blue-600'
+                    selectedType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
                   }`}>
                     {examTypeInfo.name}
                   </span>

@@ -34,7 +34,7 @@ const PLANS = [
       'Legal drafting practice',
     ],
     popular: false,
-    gradient: 'from-blue-500 to-cyan-500',
+    gradient: 'from-gray-500 to-gray-600',
     icon: Zap,
   },
   {
@@ -69,7 +69,7 @@ const PLANS = [
       'Community access',
     ],
     popular: false,
-    gradient: 'from-purple-500 to-pink-500',
+    gradient: 'from-green-500 to-emerald-500',
     savings: 'Save over 40% vs weekly',
     icon: Rocket,
   },
@@ -261,14 +261,14 @@ export default function SubscribePage() {
             </div>
 
             {/* Account info */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800 mb-6">
+            <div className="bg-gray-50 dark:bg-gray-800/30 rounded-xl p-4 border border-gray-200 dark:border-gray-700 mb-6">
               <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5" />
+                <AlertCircle className="h-5 w-5 text-gray-500 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-blue-900 dark:text-blue-300">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-300">
                     Subscribing as {user?.email}
                   </p>
-                  <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                     Your subscription will be activated immediately after payment
                   </p>
                 </div>
@@ -351,7 +351,7 @@ export default function SubscribePage() {
                 </p>
               </div>
               <div className="text-center">
-                <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 mb-4">
+                <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 mb-4">
                   <Clock className="h-6 w-6" />
                 </div>
                 <h3 className="font-medium text-gray-900 dark:text-white mb-2">Study Anytime</h3>

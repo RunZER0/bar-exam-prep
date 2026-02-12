@@ -51,8 +51,8 @@ const QUIZ_MODES = [
     name: 'Adaptive Mode',
     description: 'AI adapts difficulty to your level',
     icon: Brain,
-    gradient: 'from-indigo-500 to-purple-600',
-    bgGlow: 'bg-indigo-500/20',
+    gradient: 'from-green-500 to-emerald-600',
+    bgGlow: 'bg-green-500/20',
     count: 10,
     difficulty: 'Personalized',
     time: '~7 min',
@@ -75,8 +75,8 @@ const QUIZ_MODES = [
     name: 'Challenge Mode',
     description: '10 questions — test your mastery',
     icon: Trophy,
-    gradient: 'from-violet-500 to-purple-600',
-    bgGlow: 'bg-violet-500/20',
+    gradient: 'from-gray-500 to-gray-600',
+    bgGlow: 'bg-gray-500/20',
     count: 10,
     difficulty: 'Medium',
     time: '~8 min',
@@ -109,8 +109,8 @@ const QUIZ_MODES = [
     name: 'Lucky Draw',
     description: 'Random mode, random topic — surprise!',
     icon: Shuffle,
-    gradient: 'from-cyan-500 to-blue-600',
-    bgGlow: 'bg-cyan-500/20',
+    gradient: 'from-gray-400 to-gray-600',
+    bgGlow: 'bg-gray-500/20',
     count: 7,
     random: true,
     difficulty: 'Mixed',
@@ -402,7 +402,7 @@ Rules:
       <div className="p-6 md:p-10 max-w-6xl mx-auto space-y-10">
         {/* Header with gradient text */}
         <div className="text-center space-y-2">
-          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary via-violet-500 to-primary bg-clip-text text-transparent">
+          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary via-green-500 to-primary bg-clip-text text-transparent">
             Quizzes & Trivia
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto">
@@ -412,8 +412,8 @@ Rules:
           {userPerformance && (
             <div className="flex items-center justify-center gap-2 mt-3">
               <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
-                userPerformance.currentLevel === 'expert' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
-                userPerformance.currentLevel === 'advanced' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                userPerformance.currentLevel === 'expert' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                userPerformance.currentLevel === 'advanced' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                 userPerformance.currentLevel === 'intermediate' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
               }`}>
@@ -465,12 +465,12 @@ Rules:
                     {/* Stats row */}
                     <div className="flex items-center gap-3 text-xs">
                       <span className={`px-2 py-0.5 rounded-full ${
-                        m.difficulty === 'Personalized' ? 'bg-indigo-500/10 text-indigo-600' :
+                        m.difficulty === 'Personalized' ? 'bg-green-500/10 text-green-600' :
                         m.difficulty === 'Easy' || m.difficulty === 'Mixed' ? 'bg-emerald-500/10 text-emerald-600' :
                         m.difficulty === 'Medium' ? 'bg-amber-500/10 text-amber-600' :
                         m.difficulty === 'Hard' ? 'bg-rose-500/10 text-rose-600' :
-                        m.difficulty === 'Expert' ? 'bg-purple-500/10 text-purple-600' :
-                        'bg-cyan-500/10 text-cyan-600'
+                        m.difficulty === 'Expert' ? 'bg-gray-500/10 text-gray-600' :
+                        'bg-gray-500/10 text-gray-600'
                       }`}>
                         {m.difficulty}
                       </span>
@@ -492,7 +492,7 @@ Rules:
                     
                     {/* Adaptive badge */}
                     {m.adaptive && (
-                      <div className="absolute -top-1 -right-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-[10px] font-bold text-white shadow-lg">
+                      <div className="absolute -top-1 -right-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-[10px] font-bold text-white shadow-lg">
                         🎯 RECOMMENDED
                       </div>
                     )}
@@ -581,7 +581,7 @@ Rules:
       : pct >= 60 
       ? { gradient: 'from-amber-500 to-orange-500', emoji: '👏', title: 'Well Done!', subtitle: 'Great effort!' }
       : pct >= 40 
-      ? { gradient: 'from-violet-500 to-purple-500', emoji: '💪', title: 'Not Bad!', subtitle: 'Keep practicing!' }
+      ? { gradient: 'from-gray-500 to-gray-600', emoji: '💪', title: 'Not Bad!', subtitle: 'Keep practicing!' }
       : { gradient: 'from-rose-500 to-pink-500', emoji: '📚', title: 'Keep Going!', subtitle: 'Practice makes perfect!' };
 
     return (

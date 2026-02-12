@@ -385,7 +385,7 @@ async function buildUserStudyStateForRegeneration(userId: string): Promise<UserS
     else if (totalQuizzes > 10) currentLevel = 'intermediate';
 
     // Exam date
-    const targetExamDate = profile?.barExamDate ? new Date(profile.barExamDate) : null;
+    const targetExamDate = profile?.targetExamDate ? new Date(profile.targetExamDate) : null;
     const daysUntilExam = targetExamDate 
       ? Math.ceil((targetExamDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
       : null;
@@ -418,7 +418,7 @@ async function buildUserStudyStateForRegeneration(userId: string): Promise<UserS
       unitPerformance,
       recentActivities,
       preferredStudyTime,
-      dailyStudyGoal: profile?.studyGoalMinutes || 60,
+      dailyStudyGoal: profile?.dailyStudyGoal || 60,
       studyStreak: streakDays,
       minutesStudiedToday: todayStreak?.minutesStudied || 0,
       targetExamDate,

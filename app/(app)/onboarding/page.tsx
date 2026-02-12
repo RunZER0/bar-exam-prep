@@ -147,7 +147,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     type: 'single',
     field: 'dailyStudyHours',
     options: [
-      { id: '1', label: '1 hour', description: 'Light commitment', color: 'bg-blue-500' },
+      { id: '1', label: '1 hour', description: 'Light commitment', color: 'bg-gray-500' },
       { id: '2', label: '2 hours', description: 'Moderate pace', color: 'bg-green-500' },
       { id: '3', label: '3 hours', description: 'Dedicated study', color: 'bg-yellow-500' },
       { id: '4+', label: '4+ hours', description: 'Intensive prep', color: 'bg-orange-500' },
@@ -172,7 +172,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     type: 'single',
     field: 'commitmentLevel',
     options: [
-      { id: 'casual', label: 'Casual', description: 'Steady but relaxed pace', emoji: '🌊', color: 'bg-blue-500' },
+      { id: 'casual', label: 'Casual', description: 'Steady but relaxed pace', emoji: '🌊', color: 'bg-gray-500' },
       { id: 'moderate', label: 'Moderate', description: 'Balanced approach', emoji: '⚖️', color: 'bg-green-500' },
       { id: 'intensive', label: 'Intensive', description: 'Going all in', emoji: '🔥', color: 'bg-orange-500' },
     ],
@@ -472,9 +472,9 @@ export default function OnboardingPage() {
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
                   {[
-                    { icon: Brain, label: 'Adaptive Learning', color: 'text-purple-500' },
+                    { icon: Brain, label: 'Adaptive Learning', color: 'text-green-500' },
                     { icon: Flame, label: 'Smart Review', color: 'text-orange-500' },
-                    { icon: Calendar, label: 'Study Planning', color: 'text-blue-500' },
+                    { icon: Calendar, label: 'Study Planning', color: 'text-gray-500' },
                   ].map((item, i) => (
                     <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/50">
                       <item.icon className={`w-4 h-4 ${item.color}`} />

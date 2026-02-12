@@ -185,12 +185,12 @@ export default function DraftingDocumentPage() {
           </Card>
 
           <Card
-            className="cursor-pointer border-2 hover:border-blue-500 transition-colors group"
+            className="cursor-pointer border-2 hover:border-gray-500 transition-colors group"
             onClick={() => startMode('study')}
           >
             <CardHeader>
-              <div className="p-3 rounded-lg bg-blue-500/10 w-fit mb-2 group-hover:bg-blue-500/20 transition-colors">
-                <BookOpen className="h-6 w-6 text-blue-600" />
+              <div className="p-3 rounded-lg bg-gray-500/10 dark:bg-gray-800 w-fit mb-2 group-hover:bg-gray-500/20 transition-colors">
+                <BookOpen className="h-6 w-6 text-gray-600 dark:text-gray-400" />
               </div>
               <CardTitle className="text-lg">Study How to Draft</CardTitle>
               <CardDescription>

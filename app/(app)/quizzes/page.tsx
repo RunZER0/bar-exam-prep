@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
+import { usePreloading } from '@/lib/services/preloading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -131,6 +132,7 @@ const QUIZ_MODES = [
 
 export default function QuizzesPage() {
   const { getIdToken } = useAuth();
+  const { setAuthToken, getPreloaded, afterQuizCompletion } = usePreloading();
 
   const [section, setSection] = useState<Section>('menu');
   const [selectedMode, setSelectedMode] = useState<string>('adaptive');
@@ -146,6 +148,21 @@ export default function QuizzesPage() {
   const [questionTimer, setQuestionTimer] = useState(15);
   const [userPerformance, setUserPerformance] = useState<UserPerformance | null>(null);
   const [responsesTracked, setResponsesTracked] = useState<Array<{ questionIndex: number; isCorrect: boolean }>>([]);
+
+  // Initialize preloading with auth token
+  useEffect(() => {
+    const initPreload = async () => {
+      try {
+        const token = await getIdToken();
+        if (token) {
+          setAuthToken(token);
+        }
+      } catch (err) {
+        console.error('Failed to initialize preloading:', err);
+      }
+    };
+    initPreload();
+  }, [getIdToken, setAuthToken]);
 
   const mode = QUIZ_MODES.find((m) => m.id === selectedMode)!;
   const unitName = selectedUnit === 'all' ? 'All Units' : ATP_UNITS.find((u) => u.id === selectedUnit)?.name || 'All Units';
@@ -217,6 +234,15 @@ export default function QuizzesPage() {
       const token = await getIdToken();
       const unitInfo = selectedUnit !== 'all' ? ATP_UNITS.find((u) => u.id === selectedUnit) : null;
       
+      // Try to use preloaded questions first for instant start
+      const preloaded = await getPreloaded(selectedUnit !== 'all' ? selectedUnit : 'all', undefined, 'quiz');
+      if (preloaded?.found && preloaded.content?.questions && Array.isArray(preloaded.content.questions) && preloaded.content.questions.length > 0) {
+        console.log('Using preloaded quiz questions');
+        setQuestions(preloaded.content.questions.slice(0, mode.count));
+        setLoading(false);
+        return;
+      }
+      
       // Build adaptive prompt
       let difficultyInstruction = '';
       let topicInstruction = '';
@@ -249,7 +275,7 @@ Format as a JSON array:
     "question": "What is...?",
     "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
     "correct": 0,
-    "explanation": "Brief explanation of the correct answer",
+    "explanation": "Must cite specific legal source - e.g., Section X of Act, Article Y of Constitution, Case Name [Year] eKLR",
     "difficulty": "easy|medium|hard"
   }
 ]
@@ -258,7 +284,8 @@ Rules:
 - Make questions engaging, mixing straightforward recall with practical scenarios
 - Include questions about statutes, case law, legal principles, and procedures
 - The "correct" field is the 0-based index of the correct option
-- Keep explanations concise (1-2 sentences)
+- EVERY explanation MUST cite a specific legal source (e.g., "Section 107(1) of the Evidence Act, Cap 80", "Article 50(2)(a) of the Constitution of Kenya 2010", "Republic v Mbugua [2019] eKLR")
+- No vague references like "according to the law" - be specific
 - Output ONLY the JSON array`,
           competencyType: 'research',
           context: { 
@@ -352,6 +379,8 @@ Rules:
   const nextQuestion = () => {
     if (currentIndex >= questions.length - 1) {
       setSection('results');
+      // Trigger preloading of next quiz questions in background
+      afterQuizCompletion(selectedUnit !== 'all' ? selectedUnit : 'all');
     } else {
       setCurrentIndex((i) => i + 1);
       setSelected(null);

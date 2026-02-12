@@ -54,6 +54,7 @@ export interface AIResponse {
 
 /**
  * Kenya-specific legal context for the bar exam
+ * CRITICAL: All responses MUST cite specific legal sources
  */
 const KENYA_LEGAL_CONTEXT = `
 You are an AI assistant helping Kenyan law students prepare for their bar examination.
@@ -70,13 +71,46 @@ Kenyan Legal Framework:
 - Kenyan case law and precedents
 - Professional conduct rules for Kenyan advocates
 
+=== MANDATORY CITATION REQUIREMENTS ===
+
+EVERY legal statement you make MUST be grounded in a specific, verifiable source. Law is a precise discipline - vague references are unacceptable.
+
+REQUIRED FORMAT FOR ALL LEGAL CLAIMS:
+
+1. **Constitutional Provisions**: Always cite the specific Article and clause
+   ✓ "Article 50(2)(a) of the Constitution of Kenya 2010"
+   ✓ "Article 159(2)(c) of the Constitution"
+   ✗ "According to the Constitution..." (TOO VAGUE - NEVER DO THIS)
+
+2. **Statutory Provisions**: Always cite Section, Subsection, and Act name
+   ✓ "Section 107(1) of the Evidence Act, Cap 80"
+   ✓ "Section 23(1)(a) of the Law of Contract Act"
+   ✓ "Order 39 Rule 1 of the Civil Procedure Rules"
+   ✗ "The Evidence Act provides..." (TOO VAGUE - NEVER DO THIS)
+
+3. **Case Law**: Always cite the case name, year, and court
+   ✓ "Republic v Judicial Service Commission ex parte Pareno [2004] eKLR (High Court)"
+   ✓ "Mumo Matemu v Trusted Society of Human Rights Alliance & 5 Others [2013] eKLR (Supreme Court)"
+   ✗ "In a case, the court held..." (TOO VAGUE - NEVER DO THIS)
+
+4. **Regulations & Rules**: Cite the specific rule/regulation number
+   ✓ "Regulation 5(1) of the Advocates (Practice) Rules, 2014"
+   ✓ "Rule 27 of the Supreme Court Rules"
+   ✗ "The rules state..." (TOO VAGUE - NEVER DO THIS)
+
+IF YOU CANNOT CITE A SPECIFIC SOURCE:
+- Say: "I cannot identify the specific provision for this. The student should research [specific statute/topic] to find the applicable section."
+- Do NOT make up citations
+- Do NOT give vague references
+
 CRITICAL RULES:
 1. NEVER provide information that contradicts established Kenyan law
 2. NEVER make up case citations or statutes
 3. ALWAYS cite specific legal sources when making legal arguments
-4. If uncertain, acknowledge limitations and suggest research directions
-5. Focus on practical application relevant to Kenyan legal practice
-6. Stay strictly within the scope of bar exam preparation
+4. EVERY explanation must include the specific section/article number
+5. If uncertain, acknowledge limitations and specify what to research
+6. Focus on practical application relevant to Kenyan legal practice
+7. Stay strictly within the scope of bar exam preparation
 
 Topics covered include:
 - Constitutional Law, Administrative Law, Criminal Law & Procedure
@@ -175,11 +209,17 @@ Student's request: ${prompt}
 
 Provide a detailed, accurate response with:
 1. Proper legal structure and formatting
-2. Relevant Kenyan law references
+2. SPECIFIC Kenyan law references (cite exact Section/Article numbers)
 3. Practical guidance for bar exam standards
 4. Professional drafting conventions
 
-IMPORTANT: Only use real, verifiable Kenyan cases and statutes. If you don't know a specific case, explain the legal principle generally.`;
+CITATION REQUIREMENTS FOR THIS RESPONSE:
+- For every legal principle mentioned, cite the specific Section (e.g., "Section 3(1) of the Law of Contract Act")
+- For constitutional rights, cite specific Articles (e.g., "Article 40(1) of the Constitution")
+- For procedural requirements, cite specific Rules/Orders (e.g., "Order 1 Rule 3 of the Civil Procedure Rules")
+- Do NOT use vague phrases like "the law provides" or "according to the Act"
+
+IMPORTANT: Only use real, verifiable Kenyan cases and statutes. If you don't know a specific provision, clearly state this and suggest where to find it.`;
 
     const content = await callAI(fullPrompt, 4000);
 
@@ -227,12 +267,19 @@ Research Question: ${prompt}
 
 Provide a comprehensive research response that:
 1. Identifies the key legal issues
-2. References relevant Kenyan constitutional provisions, statutes, and regulations
-3. Discusses applicable case law (ONLY real, verifiable Kenyan cases)
-4. Provides legal analysis and reasoning
-5. Suggests research methodology for deeper investigation
+2. References SPECIFIC Kenyan constitutional provisions (Article X, Clause Y)
+3. Cites SPECIFIC statutory sections (Section X(1) of the Y Act)
+4. Discusses applicable case law with FULL CITATIONS (Case Name [Year] eKLR, Court)
+5. Provides legal analysis grounded in these specific sources
+6. Suggests specific provisions to research further
 
-If you're uncertain about specific cases, focus on legal principles and direct the student to appropriate research resources.`;
+CITATION FORMAT REQUIRED:
+- Constitution: "Article 22(1) of the Constitution of Kenya 2010 provides that..."
+- Statutes: "Under Section 4(2) of the Limitation of Actions Act, Cap 22..."
+- Cases: "In Mwangi v Republic [2019] eKLR, the Court of Appeal held..."
+
+DO NOT use vague phrases like "the law states" or "according to statute" without the specific section number.
+If you cannot identify the specific provision, say so explicitly.`;
 
     const content = await callAI(fullPrompt, 4000);
 
@@ -305,16 +352,23 @@ ${prompt}
 Provide a comprehensive, educational response that:
 
 1. **Directly answers the question** with accurate Kenyan legal information
-2. **Cites specific sections** of relevant statutes (use the retrieved provisions above when applicable)
-3. **References landmark cases** (use the retrieved cases above when applicable)
+2. **Cites SPECIFIC sections** - ALWAYS include the Section number (e.g., "Section 4(1) of the Evidence Act")
+3. **References cases with FULL citations** - Include case name, year, and court (e.g., "[2019] eKLR (Court of Appeal)")
 4. **Explains practical application** - how this applies in legal practice
 5. **Highlights exam tips** - what bar examiners look for on this topic
-6. **Connects related concepts** - help the student build a complete understanding
+6. **Connects related provisions** - cite the specific sections of related law
+
+CITATION FORMAT (MANDATORY):
+- Constitution: "Under Article 50(2)(a) of the Constitution of Kenya 2010..."
+- Statute: "Section 107(1) of the Evidence Act, Cap 80 provides that..."
+- Case: "In Kariuki v Republic [2015] eKLR, the High Court held..."
+- Rules: "Order 39 Rule 1(a) of the Civil Procedure Rules..."
+
+DO NOT provide any legal statement without citing the specific Section, Article, or Case.
+If you cannot identify the exact provision, say: "The specific section should be verified in [Act name]."
 
 Format your response clearly with headings and bullet points where appropriate.
-Be thorough but focused. Aim for depth over breadth.
-
-If the retrieved context doesn't fully address the question, supplement with your knowledge of Kenyan law, but clearly distinguish between retrieved sources and general knowledge.`;
+Be thorough but focused. Aim for depth over breadth.`;
 
     const content = await callAI(fullPrompt, 4000);
 
@@ -431,12 +485,17 @@ Oral Advocacy Scenario: ${scenario}
 Student's Response: ${studentResponse}
 
 Provide constructive feedback on the student's oral advocacy including:
-1. Legal accuracy and use of authorities
-2. Structure and organization of argument
-3. Persuasiveness and rhetoric
-4. Court etiquette and professional conduct
-5. Areas for improvement
+1. Legal accuracy - did they cite SPECIFIC sections/articles correctly?
+2. Structure and organization of argument (IRAC/ILAC method)
+3. Persuasiveness and use of authorities (case law with proper citations)
+4. Court etiquette under the Advocates Act and Professional Rules
+5. Areas for improvement with SPECIFIC legal provisions they should cite
 6. Specific suggestions for bar exam standards
+
+In your feedback:
+- Point out where specific citations were missing (e.g., "You mentioned constitutional rights but should cite Article 50(2)(a) specifically")
+- Suggest exact provisions they should have referenced
+- Model correct citation format
 
 Be encouraging but thorough in your assessment.`;
 
@@ -680,10 +739,15 @@ Student's question/confusion: ${prompt}
 Provide a clear, patient, and thorough explanation that:
 1. Breaks down complex concepts into simpler terms
 2. Uses analogies and examples relevant to Kenyan context
-3. Connects to real-world legal practice
+3. Connects to real-world legal practice with SPECIFIC provisions
 4. Addresses the specific confusion
-5. Offers alternative ways of understanding if helpful
-6. Suggests related concepts they might want to review
+5. ALWAYS CITE the specific Section/Article being discussed
+6. Suggests related provisions they should read
+
+CITATION REQUIREMENT:
+- Even when simplifying, always ground explanations in specific provisions
+- Example: "Think of Article 47 (right to fair administrative action) like this... The specific requirements under Section 4 of the Fair Administrative Action Act include..."
+- Never explain a legal concept without referencing the specific source
 
 Be supportive and encouraging - remember they're seeking help because they're stuck.`;
 
@@ -719,8 +783,13 @@ Each question must:
 1. Be factually accurate regarding Kenyan law
 2. Have exactly 4 options (A, B, C, D)
 3. Have one clearly correct answer
-4. Include a brief explanation of why the answer is correct
-5. Reference specific Kenyan legal provisions where applicable
+4. Include an explanation that CITES THE SPECIFIC LEGAL SOURCE
+
+CRITICAL - EXPLANATION FORMAT:
+The explanation MUST cite the specific Section, Article, or Case that supports the correct answer.
+✓ GOOD: "Under Section 107(1) of the Evidence Act, Cap 80, the burden of proof lies on the party who would fail if no evidence were given."
+✓ GOOD: "Article 50(2)(j) of the Constitution guarantees the right to have an advocate assigned at State expense."
+✗ BAD: "The law provides that the burden of proof lies on the party making a claim." (TOO VAGUE)
 
 Format as JSON array:
 [
@@ -728,7 +797,7 @@ Format as JSON array:
     "question": "Question text?",
     "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
     "correct": "A",
-    "explanation": "Explanation with legal reference"
+    "explanation": "Under Section X(Y) of the [Act Name]... OR Article X of the Constitution... OR In [Case Name] [Year] eKLR..."
   }
 ]`;
 

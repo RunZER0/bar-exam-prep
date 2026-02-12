@@ -114,6 +114,7 @@ Format as JSON array:
     "question": "Question text?",
     "options": ["A) option1", "B) option2", "C) option3", "D) option4"],
     "correctAnswer": "A) option1",
+    "explanation": "Under Section X(Y) of [Act Name] / Article X of the Constitution / In [Case] [Year] eKLR...",
     "marks": 1,
     "topic": "Sub-topic name"
   }
@@ -121,7 +122,8 @@ Format as JSON array:
 
 Rules:
 - Each question worth 1 mark
-- Reference Kenyan statutes: ${unit.statutes.slice(0, 3).join(', ')}
+- Reference these Kenyan statutes: ${unit.statutes.slice(0, 3).join(', ')}
+- EVERY explanation MUST cite the specific Section, Article, or Case (e.g., "Section 107(1) of the Evidence Act")
 - Mix difficulty levels (easy, medium, hard)
 ${weakAreas.length > 0 ? `- FOCUS ON THESE WEAK AREAS: ${weakAreas.join(', ')}` : ''}
 - Cover different sub-topics of ${unit.name}
@@ -137,17 +139,17 @@ Format as JSON array:
     "marks": ${marksPerQuestion},
     "topic": "Sub-topic name",
     "gradingRubric": {
-      "legalKnowledge": "What legal principles to look for",
+      "legalKnowledge": "Specific provisions to look for (e.g., Section 3 of Contract Act, Article 40 of Constitution)",
       "analysis": "How should the analysis be structured",
-      "keyPoints": ["Point 1", "Point 2", "Point 3"]
+      "keyPoints": ["Point 1 citing specific Section", "Point 2 citing specific Article", "Point 3 citing specific Case"]
     }
   }
 ]
 
 Rules:
 - Questions require detailed IRAC analysis
-- Include hypothetical scenarios
-- Reference statutes: ${unit.statutes.slice(0, 3).join(', ')}
+- Include hypothetical scenarios citing these statutes: ${unit.statutes.slice(0, 3).join(', ')}
+- Grading rubric MUST specify exact Sections/Articles students should cite
 ${weakAreas.length > 0 ? `- FOCUS ON THESE WEAK AREAS: ${weakAreas.join(', ')}` : ''}
 - Each question worth ${marksPerQuestion} marks
 - Output ONLY valid JSON array`;
@@ -210,17 +212,18 @@ Format as JSON:
       "question": "Question text?",
       "options": ["A) opt1", "B) opt2", "C) opt3", "D) opt4"],
       "correctIndex": 0,
-      "explanation": "Why this is correct",
+      "explanation": "Under Section X(Y) of [Act Name]... / Article X of the Constitution provides... / In [Case Name] [Year] eKLR, the court held...",
       "difficulty": "medium"
     }
   ]
 }
 
-Requirements:
+CRITICAL REQUIREMENTS:
+- EVERY explanation MUST cite a specific Section, Article, or Case
+- Example: "Under Section 107(1) of the Evidence Act, Cap 80, the burden of proof..."
 - Test understanding, not just memorization
 - Mix difficulty levels
 - Exactly 4 options per question
-- Reference Kenyan law where applicable
 - Output ONLY valid JSON`;
 
   const result = await generateFastJSON<{ questions: any[] }>(prompt, 2000);

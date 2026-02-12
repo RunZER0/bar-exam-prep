@@ -31,11 +31,10 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status'); // 'upcoming' | 'active' | 'completed'
     const type = searchParams.get('type'); // 'trivia' | 'reading' | 'quiz_marathon' | 'drafting' | 'research'
 
-    // Fetch events from database
+    // Fetch events from database (active or upcoming)
     let events = await db
       .select()
       .from(communityEvents)
-      .where(eq(communityEvents.isActive, true))
       .orderBy(desc(communityEvents.createdAt));
 
     // If no events exist, create sample events
@@ -50,8 +49,6 @@ export async function GET(req: NextRequest) {
           startsAt: now,
           endsAt: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
           rewards: WEEKLY_PRIZES,
-          createdBy: 'system',
-          isActive: true,
         },
         {
           title: 'Land Law Reading Marathon',
@@ -61,8 +58,6 @@ export async function GET(req: NextRequest) {
           startsAt: now,
           endsAt: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
           rewards: WEEKLY_PRIZES,
-          createdBy: 'system',
-          isActive: true,
         },
         {
           title: 'Criminal Procedure Quiz Blitz',
@@ -72,8 +67,6 @@ export async function GET(req: NextRequest) {
           startsAt: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
           endsAt: new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000),
           rewards: WEEKLY_PRIZES,
-          createdBy: 'system',
-          isActive: true,
         },
         {
           title: 'Legal Drafting Championship',
@@ -83,8 +76,6 @@ export async function GET(req: NextRequest) {
           startsAt: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
           endsAt: new Date(now.getTime() + 12 * 24 * 60 * 60 * 1000),
           rewards: WEEKLY_PRIZES,
-          createdBy: 'system',
-          isActive: true,
         },
         {
           title: 'Evidence Law Deep Dive',
@@ -94,8 +85,6 @@ export async function GET(req: NextRequest) {
           startsAt: now,
           endsAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
           rewards: WEEKLY_PRIZES,
-          createdBy: 'system',
-          isActive: true,
         },
       ];
 

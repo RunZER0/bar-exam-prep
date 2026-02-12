@@ -496,3 +496,250 @@ export const userAchievementsRelations = relations(userAchievements, ({ one }) =
     references: [users.id],
   }),
 }));
+
+// ============================================
+// AI TUTOR SYSTEM
+// ============================================
+
+// KSL Timeline tracking (exam dates, intake periods)
+export const kslTimelines = pgTable('ksl_timelines', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  intakeName: text('intake_name').notNull(), // e.g., "January 2025 Intake"
+  registrationOpens: date('registration_opens').notNull(),
+  registrationCloses: date('registration_closes').notNull(),
+  examDate: date('exam_date').notNull(),
+  examEndDate: date('exam_end_date'), // For multi-day exams
+  resultsDate: date('results_date'),
+  isActive: boolean('is_active').default(true).notNull(),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Study plan status enum
+export const studyPlanStatusEnum = pgEnum('study_plan_status', ['active', 'paused', 'completed', 'abandoned']);
+export const studyItemTypeEnum = pgEnum('study_item_type', ['reading', 'case_study', 'practice_questions', 'quiz', 'review', 'drafting', 'research']);
+export const studyItemStatusEnum = pgEnum('study_item_status', ['pending', 'in_progress', 'completed', 'skipped']);
+
+// AI-generated study plans
+export const studyPlans = pgTable('study_plans', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  targetExamDate: date('target_exam_date'),
+  kslTimelineId: uuid('ksl_timeline_id').references(() => kslTimelines.id),
+  status: studyPlanStatusEnum('status').default('active').notNull(),
+  totalItems: integer('total_items').default(0).notNull(),
+  completedItems: integer('completed_items').default(0).notNull(),
+  currentWeek: integer('current_week').default(1).notNull(),
+  totalWeeks: integer('total_weeks').default(12).notNull(),
+  dailyMinutes: integer('daily_minutes').default(60).notNull(),
+  focusAreas: jsonb('focus_areas').$type<string[]>(),
+  aiGeneratedAt: timestamp('ai_generated_at').defaultNow().notNull(),
+  lastUpdatedByAi: timestamp('last_updated_by_ai'),
+  nextReviewDate: date('next_review_date'),
+  metadata: jsonb('metadata'), // Store AI reasoning, adjustments made
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Individual items in a study plan (daily tasks)
+export const studyPlanItems = pgTable('study_plan_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  studyPlanId: uuid('study_plan_id').references(() => studyPlans.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  scheduledDate: date('scheduled_date').notNull(),
+  itemType: studyItemTypeEnum('item_type').notNull(),
+  status: studyItemStatusEnum('status').default('pending').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  unitId: text('unit_id'), // ATP unit reference
+  topicId: uuid('topic_id').references(() => topics.id),
+  caseReference: text('case_reference'), // For case studies
+  estimatedMinutes: integer('estimated_minutes').default(30).notNull(),
+  actualMinutes: integer('actual_minutes'),
+  priority: integer('priority').default(1).notNull(), // 1=high, 2=medium, 3=low
+  isSpacedRepetition: boolean('is_spaced_repetition').default(false).notNull(),
+  aiRationale: text('ai_rationale'), // Why AI scheduled this
+  completedAt: timestamp('completed_at'),
+  skippedAt: timestamp('skipped_at'),
+  rescheduledFrom: date('rescheduled_from'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Spaced repetition cards (SM-2 algorithm)
+export const spacedRepetitionCards = pgTable('spaced_repetition_cards', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  contentType: text('content_type').notNull(), // 'case', 'concept', 'provision', 'question'
+  contentId: text('content_id').notNull(), // Reference to the content
+  title: text('title').notNull(),
+  content: text('content').notNull(), // The actual content to review
+  unitId: text('unit_id'),
+  // SM-2 algorithm fields
+  easinessFactor: integer('easiness_factor').default(250).notNull(), // EF * 100 (2.5 default)
+  interval: integer('interval').default(1).notNull(), // Days until next review
+  repetitions: integer('repetitions').default(0).notNull(),
+  nextReviewDate: date('next_review_date').notNull(),
+  lastReviewDate: date('last_review_date'),
+  lastQuality: integer('last_quality'), // 0-5 rating from last review
+  totalReviews: integer('total_reviews').default(0).notNull(),
+  correctReviews: integer('correct_reviews').default(0).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  metadata: jsonb('metadata'), // Store extra context
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Detailed onboarding responses for AI analysis
+export const onboardingResponses = pgTable('onboarding_responses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull().unique(),
+  // Basic info
+  fullName: text('full_name'),
+  currentOccupation: text('current_occupation'),
+  yearsInLaw: integer('years_in_law'),
+  // Experience and background
+  hasAttemptedBar: boolean('has_attempted_bar').default(false),
+  previousAttempts: integer('previous_attempts').default(0),
+  lawSchool: text('law_school'),
+  graduationYear: integer('graduation_year'),
+  // Study preferences
+  preferredStudyTime: text('preferred_study_time'), // morning, afternoon, evening, flexible
+  dailyStudyHours: integer('daily_study_hours'),
+  weekendStudyHours: integer('weekend_study_hours'),
+  learningStyle: text('learning_style'), // visual, reading, practice, mixed
+  // Self-assessment
+  weakUnits: jsonb('weak_units').$type<string[]>(), // ATP units they struggle with
+  strongUnits: jsonb('strong_units').$type<string[]>(),
+  confidenceLevel: integer('confidence_level'), // 1-10
+  biggestChallenge: text('biggest_challenge'),
+  // Goals and timeline
+  targetExamDate: date('target_exam_date'),
+  selectedKslIntake: uuid('selected_ksl_intake').references(() => kslTimelines.id),
+  primaryGoal: text('primary_goal'), // pass_bar, improve_drafting, career_change
+  secondaryGoals: jsonb('secondary_goals').$type<string[]>(),
+  // Commitment
+  commitmentLevel: text('commitment_level'), // casual, moderate, intensive
+  hasStudyGroup: boolean('has_study_group').default(false),
+  wantsMentorship: boolean('wants_mentorship').default(false),
+  // Raw AI analysis
+  aiAnalysis: jsonb('ai_analysis'), // AI's interpretation of responses
+  aiRecommendations: jsonb('ai_recommendations'), // Initial recommendations
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Admin settings for site-wide configuration
+export const adminSettings = pgTable('admin_settings', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  key: text('key').notNull().unique(),
+  value: jsonb('value').notNull(),
+  description: text('description'),
+  category: text('category').notNull(), // 'tutor', 'content', 'pricing', 'ai', 'general'
+  updatedById: uuid('updated_by_id').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Curriculum management (ATP units and structure)
+export const curriculumUnits = pgTable('curriculum_units', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: text('code').notNull().unique(), // e.g., 'ATP1', 'ATP2'
+  name: text('name').notNull(),
+  description: text('description'),
+  order: integer('order').notNull(),
+  estimatedHours: integer('estimated_hours').default(40).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  color: text('color'), // For UI theming
+  icon: text('icon'),
+  syllabus: jsonb('syllabus').$type<{ topic: string; subtopics: string[] }[]>(),
+  keyStatutes: jsonb('key_statutes').$type<string[]>(),
+  keyCases: jsonb('key_cases').$type<{ name: string; citation: string; importance: string }[]>(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// RAG knowledge base entries (for admin to manage)
+export const ragKnowledgeEntries = pgTable('rag_knowledge_entries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  contentType: text('content_type').notNull(), // 'case_law', 'statute', 'concept', 'procedure'
+  unitId: text('unit_id'),
+  tags: jsonb('tags').$type<string[]>(),
+  citation: text('citation'),
+  sourceUrl: text('source_url'),
+  importance: text('importance').default('medium'), // high, medium, low
+  isVerified: boolean('is_verified').default(false).notNull(),
+  verifiedById: uuid('verified_by_id').references(() => users.id),
+  addedById: uuid('added_by_id').references(() => users.id),
+  lastUsedAt: timestamp('last_used_at'),
+  usageCount: integer('usage_count').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Tutor system relations
+export const studyPlansRelations = relations(studyPlans, ({ one, many }) => ({
+  user: one(users, {
+    fields: [studyPlans.userId],
+    references: [users.id],
+  }),
+  kslTimeline: one(kslTimelines, {
+    fields: [studyPlans.kslTimelineId],
+    references: [kslTimelines.id],
+  }),
+  items: many(studyPlanItems),
+}));
+
+export const studyPlanItemsRelations = relations(studyPlanItems, ({ one }) => ({
+  studyPlan: one(studyPlans, {
+    fields: [studyPlanItems.studyPlanId],
+    references: [studyPlans.id],
+  }),
+  user: one(users, {
+    fields: [studyPlanItems.userId],
+    references: [users.id],
+  }),
+  topic: one(topics, {
+    fields: [studyPlanItems.topicId],
+    references: [topics.id],
+  }),
+}));
+
+export const spacedRepetitionCardsRelations = relations(spacedRepetitionCards, ({ one }) => ({
+  user: one(users, {
+    fields: [spacedRepetitionCards.userId],
+    references: [users.id],
+  }),
+}));
+
+export const onboardingResponsesRelations = relations(onboardingResponses, ({ one }) => ({
+  user: one(users, {
+    fields: [onboardingResponses.userId],
+    references: [users.id],
+  }),
+  kslTimeline: one(kslTimelines, {
+    fields: [onboardingResponses.selectedKslIntake],
+    references: [kslTimelines.id],
+  }),
+}));
+
+export const curriculumUnitsRelations = relations(curriculumUnits, ({ many }) => ({
+  topics: many(topics),
+}));
+
+export const ragKnowledgeEntriesRelations = relations(ragKnowledgeEntries, ({ one }) => ({
+  verifier: one(users, {
+    fields: [ragKnowledgeEntries.verifiedById],
+    references: [users.id],
+  }),
+  addedBy: one(users, {
+    fields: [ragKnowledgeEntries.addedById],
+    references: [users.id],
+  }),
+}));

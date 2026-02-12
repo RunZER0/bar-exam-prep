@@ -149,6 +149,33 @@ export const userResponses = pgTable('user_responses', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// Quiz history for AI-generated quiz questions (no questionId needed)
+// This is separate from userResponses which requires database questions
+export const quizHistory = pgTable('quiz_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  // Quiz metadata
+  quizMode: text('quiz_mode').notNull(), // adaptive, legendary, blitz, exam
+  unitId: text('unit_id'), // atp100, atp200, etc. or 'all'
+  unitName: text('unit_name'),
+  // Question data (stored for review)
+  questionText: text('question_text').notNull(),
+  options: jsonb('options').$type<string[]>(),
+  correctAnswer: text('correct_answer').notNull(),
+  userAnswer: text('user_answer').notNull(),
+  explanation: text('explanation'),
+  // Results
+  isCorrect: boolean('is_correct').notNull(),
+  difficulty: text('difficulty'), // easy, medium, hard
+  // Topic categorization for analytics
+  topicCategory: text('topic_category'), // e.g., "Constitutional Law", "Evidence"
+  // Session tracking
+  sessionId: uuid('session_id'), // Group questions from same quiz session
+  questionNumber: integer('question_number'), // Order within session
+  timeSpent: integer('time_spent'), // Seconds to answer
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // Practice sessions
 export const practiceSessions = pgTable('practice_sessions', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -374,6 +401,14 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   responses: many(userResponses),
   sessions: many(practiceSessions),
   chatHistory: many(chatHistory),
+  quizHistory: many(quizHistory),
+}));
+
+export const quizHistoryRelations = relations(quizHistory, ({ one }) => ({
+  user: one(users, {
+    fields: [quizHistory.userId],
+    references: [users.id],
+  }),
 }));
 
 export const userProfilesRelations = relations(userProfiles, ({ one }) => ({

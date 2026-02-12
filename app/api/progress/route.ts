@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
-import { userProgress, practiceSessions, userResponses, topics, studyStreaks, userProfiles } from '@/lib/db/schema';
+import { userProgress, practiceSessions, userResponses, topics, studyStreaks, userProfiles, quizHistory } from '@/lib/db/schema';
 import { eq, desc, sql, and, gte } from 'drizzle-orm';
 import { 
   calculateMasteryLevel, 
@@ -22,6 +22,64 @@ export const GET = withAuth(async (req: NextRequest, user) => {
     const profile = await db.query.userProfiles.findFirst({
       where: eq(userProfiles.userId, user.id),
     });
+
+    // Get quiz history for AI-generated quizzes
+    const recentQuizHistory = await db.query.quizHistory.findMany({
+      where: eq(quizHistory.userId, user.id),
+      orderBy: [desc(quizHistory.createdAt)],
+      limit: 500, // Get enough for meaningful analysis
+    });
+
+    // Calculate quiz stats from quiz history
+    const totalQuizQuestions = recentQuizHistory.length;
+    const correctQuizQuestions = recentQuizHistory.filter(q => q.isCorrect).length;
+    const quizAccuracy = totalQuizQuestions > 0 
+      ? Math.round((correctQuizQuestions / totalQuizQuestions) * 100) 
+      : 0;
+
+    // Get unique quiz sessions
+    const uniqueSessions = new Set(recentQuizHistory.map(q => q.sessionId).filter(Boolean));
+    const totalQuizSessions = uniqueSessions.size;
+
+    // Analyze performance by unit/subject
+    const unitPerformance = new Map<string, { correct: number; total: number; unitId: string }>();
+    for (const q of recentQuizHistory) {
+      const unit = q.unitName || 'General';
+      const existing = unitPerformance.get(unit) || { correct: 0, total: 0, unitId: q.unitId || 'all' };
+      existing.correct += q.isCorrect ? 1 : 0;
+      existing.total += 1;
+      unitPerformance.set(unit, existing);
+    }
+
+    // Analyze by topic category
+    const topicPerformance = new Map<string, { correct: number; total: number }>();
+    for (const q of recentQuizHistory) {
+      const topic = q.topicCategory || q.unitName || 'General';
+      const existing = topicPerformance.get(topic) || { correct: 0, total: 0 };
+      existing.correct += q.isCorrect ? 1 : 0;
+      existing.total += 1;
+      topicPerformance.set(topic, existing);
+    }
+
+    // Analyze by difficulty
+    const difficultyPerformance = new Map<string, { correct: number; total: number }>();
+    for (const q of recentQuizHistory) {
+      const diff = q.difficulty || 'medium';
+      const existing = difficultyPerformance.get(diff) || { correct: 0, total: 0 };
+      existing.correct += q.isCorrect ? 1 : 0;
+      existing.total += 1;
+      difficultyPerformance.set(diff, existing);
+    }
+
+    // Analyze by quiz mode
+    const modePerformance = new Map<string, { correct: number; total: number }>();
+    for (const q of recentQuizHistory) {
+      const mode = q.quizMode || 'adaptive';
+      const existing = modePerformance.get(mode) || { correct: 0, total: 0 };
+      existing.correct += q.isCorrect ? 1 : 0;
+      existing.total += 1;
+      modePerformance.set(mode, existing);
+    }
 
     // Get streak data
     const today = new Date().toISOString().split('T')[0];
@@ -76,16 +134,16 @@ export const GET = withAuth(async (req: NextRequest, user) => {
       ? Math.round((totalQuestionsCorrect / totalQuestionsAttempted) * 100)
       : 0;
 
-    // Analyze topic performance for strengths/weaknesses
-    const topicPerformance = new Map<string, { correct: number; total: number }>();
+    // Analyze database topic performance for strengths/weaknesses (legacy)
+    const dbTopicPerformance = new Map<string, { correct: number; total: number }>();
     
     for (const p of progress) {
       if (p.topic) {
         const topicName = p.topic.title;
-        const existing = topicPerformance.get(topicName) || { correct: 0, total: 0 };
+        const existing = dbTopicPerformance.get(topicName) || { correct: 0, total: 0 };
         existing.correct += p.questionsCorrect;
         existing.total += p.questionsAttempted;
-        topicPerformance.set(topicName, existing);
+        dbTopicPerformance.set(topicName, existing);
       }
     }
 
@@ -93,7 +151,7 @@ export const GET = withAuth(async (req: NextRequest, user) => {
     const strongAreas: Array<{ name: string; performance: number }> = [];
     const weakAreas: Array<{ name: string; performance: number }> = [];
 
-    topicPerformance.forEach((stats, name) => {
+    dbTopicPerformance.forEach((stats, name) => {
       if (stats.total >= 3) {
         const performance = Math.round((stats.correct / stats.total) * 100);
         if (performance >= 70) {
@@ -117,25 +175,26 @@ export const GET = withAuth(async (req: NextRequest, user) => {
     const quizCount = Number(totalQuizzes[0]?.count) || 0;
     const currentLevel = calculateMasteryLevel(overallAccuracy, quizCount);
 
-    // Get weekly progress (last 7 days)
+    // Get weekly progress from quiz history (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
-    const weeklyResponses = await db
+    // Get weekly quiz history stats
+    const weeklyQuizHistory = await db
       .select({
-        date: sql<string>`DATE(${userResponses.createdAt})`,
-        correct: sql<number>`SUM(CASE WHEN ${userResponses.isCorrect} THEN 1 ELSE 0 END)`,
+        date: sql<string>`DATE(${quizHistory.createdAt})`,
+        correct: sql<number>`SUM(CASE WHEN ${quizHistory.isCorrect} THEN 1 ELSE 0 END)`,
         total: sql<number>`COUNT(*)`,
       })
-      .from(userResponses)
+      .from(quizHistory)
       .where(
         and(
-          eq(userResponses.userId, user.id),
-          gte(userResponses.createdAt, sevenDaysAgo)
+          eq(quizHistory.userId, user.id),
+          gte(quizHistory.createdAt, sevenDaysAgo)
         )
       )
-      .groupBy(sql`DATE(${userResponses.createdAt})`)
-      .orderBy(sql`DATE(${userResponses.createdAt})`);
+      .groupBy(sql`DATE(${quizHistory.createdAt})`)
+      .orderBy(sql`DATE(${quizHistory.createdAt})`);
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weeklyProgress = [];
@@ -143,24 +202,105 @@ export const GET = withAuth(async (req: NextRequest, user) => {
       const date = new Date();
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
-      const dayData = weeklyResponses.find(r => r.date === dateStr);
+      const dayData = weeklyQuizHistory.find(r => r.date === dateStr);
       weeklyProgress.push({
         day: dayNames[date.getDay()],
+        date: dateStr,
         correct: Number(dayData?.correct) || 0,
         total: Number(dayData?.total) || 0,
+        accuracy: dayData?.total ? Math.round((Number(dayData.correct) / Number(dayData.total)) * 100) : 0,
       });
     }
 
+    // Convert unit performance to array format for subjects report
+    const subjectReports = Array.from(unitPerformance.entries())
+      .map(([name, stats]) => ({
+        name,
+        unitId: stats.unitId,
+        correct: stats.correct,
+        total: stats.total,
+        accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    // Generate strong and weak areas from quiz history
+    const quizStrongAreas: Array<{ name: string; performance: number }> = [];
+    const quizWeakAreas: Array<{ name: string; performance: number }> = [];
+
+    topicPerformance.forEach((stats, name) => {
+      if (stats.total >= 3) {
+        const performance = Math.round((stats.correct / stats.total) * 100);
+        if (performance >= 70) {
+          quizStrongAreas.push({ name, performance });
+        } else if (performance < 50) {
+          quizWeakAreas.push({ name, performance });
+        }
+      }
+    });
+
+    quizStrongAreas.sort((a, b) => b.performance - a.performance);
+    quizWeakAreas.sort((a, b) => a.performance - b.performance);
+
+    // Difficulty breakdown
+    const difficultyBreakdown = Array.from(difficultyPerformance.entries())
+      .map(([difficulty, stats]) => ({
+        difficulty,
+        correct: stats.correct,
+        total: stats.total,
+        accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
+      }));
+
+    // Quiz mode breakdown
+    const modeBreakdown = Array.from(modePerformance.entries())
+      .map(([mode, stats]) => ({
+        mode,
+        correct: stats.correct,
+        total: stats.total,
+        accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
+      }));
+
+    // Recent quiz sessions (last 10)
+    const recentSessions = [];
+    const sessionMap = new Map<string, typeof recentQuizHistory>();
+    for (const q of recentQuizHistory) {
+      if (!q.sessionId) continue;
+      const existing = sessionMap.get(q.sessionId) || [];
+      existing.push(q);
+      sessionMap.set(q.sessionId, existing);
+    }
+    
+    let sessionCount = 0;
+    for (const [sessionId, questions] of sessionMap.entries()) {
+      if (sessionCount >= 10) break;
+      const correct = questions.filter(q => q.isCorrect).length;
+      const mode = questions[0]?.quizMode || 'adaptive';
+      const unit = questions[0]?.unitName || 'General';
+      const date = questions[0]?.createdAt;
+      recentSessions.push({
+        sessionId,
+        totalQuestions: questions.length,
+        correctAnswers: correct,
+        accuracy: Math.round((correct / questions.length) * 100),
+        mode,
+        unit,
+        date: date?.toISOString() || '',
+      });
+      sessionCount++;
+    }
+
     // Generate recommendations
+    const mergedStrongAreas = quizStrongAreas.length > 0 ? quizStrongAreas : strongAreas;
+    const mergedWeakAreas = quizWeakAreas.length > 0 ? quizWeakAreas : weakAreas;
+
     const adaptiveProfile = {
       userId: user.id,
-      overallMastery: overallAccuracy,
+      overallMastery: totalQuizQuestions > 0 ? quizAccuracy : overallAccuracy,
       currentLevel,
-      strongAreas: strongAreas.map(a => a.name),
-      weakAreas: weakAreas.map(a => a.name),
-      recommendedFocus: weakAreas.slice(0, 3).map(a => a.name),
+      strongAreas: mergedStrongAreas.map(a => a.name),
+      weakAreas: mergedWeakAreas.map(a => a.name),
+      recommendedFocus: mergedWeakAreas.slice(0, 3).map(a => a.name),
       studyStreak: currentStreak,
-      totalQuizzesTaken: quizCount,
+      totalQuizzesTaken: totalQuizSessions || quizCount,
       performanceByTopic: [],
       lastUpdated: new Date(),
     };
@@ -183,23 +323,40 @@ export const GET = withAuth(async (req: NextRequest, user) => {
         : '/study',
     }));
 
-    // Return formatted data for the progress page
+    // Return comprehensive report data
     return NextResponse.json({
-      overallMastery: overallAccuracy,
+      // Overall Stats
+      overallMastery: totalQuizQuestions > 0 ? quizAccuracy : overallAccuracy,
       currentLevel,
-      totalQuizzes: quizCount,
-      totalCorrect: totalQuestionsCorrect,
-      totalAttempts: totalQuestionsAttempted,
+      totalQuizzes: totalQuizSessions || quizCount,
+      totalCorrect: correctQuizQuestions || totalQuestionsCorrect,
+      totalAttempts: totalQuizQuestions || totalQuestionsAttempted,
       studyStreak: currentStreak,
-      strongAreas: strongAreas.slice(0, 5),
-      weakAreas: weakAreas.slice(0, 5),
-      recentActivity: responses.slice(0, 10).map(r => ({
-        date: r.createdAt?.toISOString() || '',
-        type: 'quiz',
-        score: r.isCorrect ? 100 : 0,
-      })),
-      recommendations: recommendations.slice(0, 5),
+      
+      // Historical performance
+      strongAreas: mergedStrongAreas.slice(0, 5),
+      weakAreas: mergedWeakAreas.slice(0, 5),
+      
+      // Subject-level reports
+      subjectReports,
+      
+      // Difficulty breakdown
+      difficultyBreakdown,
+      
+      // Quiz mode breakdown
+      modeBreakdown,
+      
+      // Recent quiz sessions
+      recentSessions,
+      
+      // Weekly progress
       weeklyProgress,
+      
+      // AI Recommendations
+      recommendations: recommendations.slice(0, 5),
+      
+      // Target exam info
+      targetExamDate: profile?.targetExamDate || null,
     });
   } catch (error) {
     console.error('Error fetching progress:', error);

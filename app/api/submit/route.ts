@@ -1,14 +1,122 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
-import { userResponses, questions, userProgress, topics, weeklyRankings } from '@/lib/db/schema';
+import { userResponses, questions, userProgress, topics, weeklyRankings, quizHistory, studyStreaks } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { evaluateEssayResponse } from '@/lib/ai/guardrails';
 import { triggerPreloadAfterQuiz, updateWeeklyRanking } from '@/lib/services/quiz-completion';
+import { randomUUID } from 'crypto';
 
 export const POST = withAuth(async (req: NextRequest, user) => {
   try {
     const body = await req.json();
+    
+    // Check if this is an AI-generated quiz submission (has questionText instead of questionId)
+    if (body.questionText) {
+      // Handle AI-generated quiz question submission
+      const {
+        questionText,
+        userAnswer,
+        correctAnswer,
+        isCorrect,
+        difficulty,
+        topicArea,
+        quizMode,
+        sessionId,
+        questionNumber,
+        timeSpent,
+        options,
+        explanation,
+      } = body;
+
+      // Map topicArea to a unit if possible
+      let unitId = 'all';
+      let unitName = topicArea || 'General Kenyan Law';
+      
+      // Try to match to ATP units
+      const unitMappings: Record<string, string> = {
+        'Civil Litigation': 'atp100',
+        'Criminal Litigation': 'atp200',
+        'Legal Writing & Drafting': 'atp300',
+        'Professional Conduct & Ethics': 'atp400',
+        'Trial Advocacy': 'atp500',
+        'Probate & Administration': 'atp600',
+        'Commercial Transactions': 'atp700',
+        'Conveyancing': 'atp800',
+        'Family Law': 'atp900', 
+        'Alternative Dispute Resolution': 'atp1000',
+      };
+      
+      for (const [name, id] of Object.entries(unitMappings)) {
+        if (topicArea?.toLowerCase().includes(name.toLowerCase()) || 
+            name.toLowerCase().includes(topicArea?.toLowerCase() || '')) {
+          unitId = id;
+          unitName = name;
+          break;
+        }
+      }
+
+      // Save to quiz history
+      await db.insert(quizHistory).values({
+        userId: user.id,
+        quizMode: quizMode || 'adaptive',
+        unitId,
+        unitName,
+        questionText,
+        options: options || null,
+        correctAnswer,
+        userAnswer,
+        explanation: explanation || null,
+        isCorrect,
+        difficulty: difficulty || 'medium',
+        topicCategory: topicArea || null,
+        sessionId: sessionId || randomUUID(),
+        questionNumber: questionNumber || 1,
+        timeSpent: timeSpent || null,
+      });
+
+      // Update study streak for today
+      const today = new Date().toISOString().split('T')[0];
+      const existingStreak = await db.query.studyStreaks.findFirst({
+        where: and(
+          eq(studyStreaks.userId, user.id),
+          eq(studyStreaks.date, today)
+        ),
+      });
+
+      if (existingStreak) {
+        await db.update(studyStreaks)
+          .set({
+            questionsAnswered: existingStreak.questionsAnswered + 1,
+          })
+          .where(eq(studyStreaks.id, existingStreak.id));
+      } else {
+        await db.insert(studyStreaks).values({
+          userId: user.id,
+          date: today,
+          minutesStudied: 0,
+          questionsAnswered: 1,
+          sessionsCompleted: 0,
+        });
+      }
+
+      // Update weekly rankings
+      setImmediate(async () => {
+        try {
+          await updateWeeklyRanking(user.id, isCorrect ? 10 : 1, 1);
+        } catch (err) {
+          console.error('Weekly ranking update error:', err);
+        }
+      });
+
+      return NextResponse.json({
+        success: true,
+        isCorrect,
+        recorded: true,
+      });
+    }
+
+    // Original logic for database questions (questionId provided)
     const { questionId, userAnswer, timeSpent } = body;
 
     if (!questionId || !userAnswer) {

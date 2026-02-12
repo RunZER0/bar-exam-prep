@@ -138,6 +138,7 @@ export default function QuizzesPage() {
   const [selectedMode, setSelectedMode] = useState<string>('adaptive');
   const [selectedUnit, setSelectedUnit] = useState<string>('all');
   const [questions, setQuestions] = useState<TriviaQuestion[]>([]);
+  const [quizSessionId, setQuizSessionId] = useState<string>('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -229,6 +230,8 @@ export default function QuizzesPage() {
     setSelected(null);
     setRevealed(false);
     setResponsesTracked([]);
+    // Generate unique session ID for this quiz
+    setQuizSessionId(crypto.randomUUID());
 
     try {
       const token = await getIdToken();
@@ -371,6 +374,10 @@ Rules:
           difficulty: q.difficulty || 'medium',
           topicArea: unitName,
           quizMode: mode.id,
+          sessionId: quizSessionId,
+          questionNumber: currentIndex + 1,
+          options: q.options,
+          explanation: q.explanation,
         }),
       }).catch(() => {}); // Ignore errors - this is fire-and-forget
     } catch {}

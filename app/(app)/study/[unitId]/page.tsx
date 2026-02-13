@@ -65,6 +65,7 @@ export default function StudyUnitPage() {
   const [smartSuggestions, setSmartSuggestions] = useState<SmartSuggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [showSources, setShowSources] = useState<string | null>(null);
+  const [autoLoadTriggered, setAutoLoadTriggered] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -77,9 +78,68 @@ export default function StudyUnitPage() {
   useEffect(() => {
     if (unit) {
       loadSmartSuggestions();
+      // Auto-load study introduction when visiting the page
+      autoLoadStudyIntro();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unit?.id]);
+
+  // Auto-load study content when page first loads
+  const autoLoadStudyIntro = async () => {
+    if (!unit || autoLoadTriggered || messages.length > 0) return;
+    setAutoLoadTriggered(true);
+    setSending(true);
+
+    // Generate a comprehensive intro prompt
+    const introPrompt = `Give me a comprehensive study guide introduction for ${unit.name}. Include:
+1. **Overview** - What this area of law covers and why it matters for the bar exam
+2. **Key Statutes & Provisions** - The most important statutory provisions I must know (${unit.statutes.slice(0, 3).join(', ')})
+3. **Fundamental Concepts** - Core principles and definitions
+4. **Common Exam Topics** - What examiners typically test
+
+Make this practical and exam-focused for the Kenya bar exam.`;
+
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          message: introPrompt,
+          competencyType: 'study',
+          context: {
+            topicArea: unit.name,
+            unitId: unit.id,
+            statutes: unit.statutes,
+          },
+          sessionId,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to load study guide');
+
+      const data = await res.json();
+      
+      const assistantMsg: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: data.response,
+        filtered: data.filtered,
+        sources: data.sources,
+        timestamp: new Date(),
+      };
+
+      setMessages([assistantMsg]);
+    } catch (err) {
+      console.error('Failed to auto-load study intro:', err);
+      // Don't show error message, just let user use quick prompts
+    } finally {
+      setSending(false);
+    }
+  };
 
   const loadSmartSuggestions = async () => {
     if (!unit) return;
@@ -181,6 +241,9 @@ export default function StudyUnitPage() {
   const resetChat = () => {
     setMessages([]);
     setInput('');
+    setAutoLoadTriggered(false);
+    // Re-trigger auto-load
+    setTimeout(() => autoLoadStudyIntro(), 100);
   };
 
   if (!unit) {
@@ -194,6 +257,42 @@ export default function StudyUnitPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Study
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (messages.length === 0 && sending) {
+    // Loading state - auto-loading study guide
+    return (
+      <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen">
+        <div className="border-b px-4 md:px-6 py-3 flex items-center gap-3 shrink-0 bg-card/50 backdrop-blur-sm">
+          <Button variant="ghost" size="sm" onClick={() => router.push('/study')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">
+                {unit.code}
+              </span>
+              <h1 className="text-sm font-semibold truncate">{unit.name}</h1>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 flex items-center justify-center px-4 md:px-6 py-8">
+          <div className="text-center space-y-4">
+            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mx-auto animate-pulse">
+              <BookOpen className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Loading Study Guide...</h2>
+              <p className="text-muted-foreground">
+                Preparing your comprehensive notes for {unit.name}
+              </p>
+            </div>
+            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+          </div>
         </div>
       </div>
     );

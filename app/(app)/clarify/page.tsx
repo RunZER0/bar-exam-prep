@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { 
   MessageCircleQuestion, Send, Image, Mic, MicOff, 
   X, FileText, Paperclip, StopCircle, Sparkles
@@ -15,6 +16,7 @@ type Attachment = {
   file: File;
   preview?: string;
   duration?: number;
+  transcription?: string;
 };
 
 type Message = {
@@ -32,6 +34,7 @@ export default function ClarifyPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [sessionId] = useState(() => crypto.randomUUID()); // Session for context awareness
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,16 +106,48 @@ export default function ClarifyPage() {
         audioChunksRef.current.push(e.data);
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const audioFile = new File([audioBlob], `voice-note-${Date.now()}.webm`, { type: 'audio/webm' });
+        const duration = recordingTime;
         
-        setAttachments(prev => [...prev, {
-          id: Date.now().toString(),
-          type: 'audio',
-          file: audioFile,
-          duration: recordingTime,
-        }]);
+        // Transcribe the audio
+        try {
+          const token = await getIdToken();
+          const formData = new FormData();
+          formData.append('audio', audioFile);
+          
+          const response = await fetch('/api/transcribe', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData,
+          });
+          
+          const data = await response.json();
+          
+          if (data.text) {
+            // Add transcribed text directly to input for convenience
+            setInput(prev => prev + (prev ? ' ' : '') + data.text);
+          }
+          
+          // Also add as attachment for reference
+          setAttachments(prev => [...prev, {
+            id: Date.now().toString(),
+            type: 'audio',
+            file: audioFile,
+            duration,
+            transcription: data.text || undefined,
+          }]);
+        } catch (error) {
+          console.error('Transcription error:', error);
+          // Add without transcription if it fails
+          setAttachments(prev => [...prev, {
+            id: Date.now().toString(),
+            type: 'audio',
+            file: audioFile,
+            duration,
+          }]);
+        }
 
         stream.getTracks().forEach(track => track.stop());
         setRecordingTime(0);
@@ -171,6 +206,32 @@ export default function ClarifyPage() {
     try {
       const token = await getIdToken();
       
+      // Prepare attachment data for context-aware AI
+      const attachmentData = await Promise.all(currentAttachments.map(async (att) => {
+        if (att.type === 'image') {
+          // Convert image to data URL for vision context
+          return new Promise<any>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              resolve({
+                type: att.type,
+                fileName: att.file.name,
+                dataUrl: reader.result,
+              });
+            };
+            reader.readAsDataURL(att.file);
+          });
+        }
+        if (att.type === 'audio') {
+          return {
+            type: att.type,
+            fileName: att.file.name,
+            transcription: att.transcription || `[Voice note: ${att.duration || 0}s]`,
+          };
+        }
+        return { type: att.type, fileName: att.file.name };
+      }));
+      
       let enhancedMessage = currentInput;
       if (currentAttachments.length > 0) {
         const attachmentDescriptions = currentAttachments.map(a => {
@@ -190,7 +251,12 @@ export default function ClarifyPage() {
         body: JSON.stringify({
           message: enhancedMessage,
           competencyType: 'clarification',
-          context: 'clarification_request',
+          sessionId, // Context-aware session
+          attachments: attachmentData.length > 0 ? attachmentData : undefined,
+          context: {
+            source: 'clarify-page',
+            hasAttachments: attachmentData.length > 0,
+          },
         }),
       });
 
@@ -309,7 +375,11 @@ export default function ClarifyPage() {
                         ))}
                       </div>
                     )}
-                    <div className="prose-ai text-sm whitespace-pre-wrap">{message.content}</div>
+                    {message.role === 'assistant' ? (
+                      <MarkdownRenderer content={message.content} size="sm" />
+                    ) : (
+                      <div className="prose-ai text-sm whitespace-pre-wrap">{message.content}</div>
+                    )}
                   </div>
                 </div>
               ))}

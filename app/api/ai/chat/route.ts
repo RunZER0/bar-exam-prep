@@ -8,10 +8,33 @@ import {
   generateClarificationResponse,
   generateStudyResponseWithRAG,
   generateSmartStudySuggestions,
+  generateContextAwareResponse,
   isAIConfigured,
 } from '@/lib/ai/guardrails';
 import { db } from '@/lib/db';
-import { chatHistory } from '@/lib/db/schema';
+import { chatHistory, chatMessages, chatSessions, users } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
+
+// Helper to get conversation history for context
+async function getConversationHistory(sessionId: string, limit: number = 10) {
+  try {
+    const messages = await db
+      .select({
+        role: chatMessages.role,
+        content: chatMessages.content,
+      })
+      .from(chatMessages)
+      .where(eq(chatMessages.sessionId, sessionId))
+      .orderBy(desc(chatMessages.createdAt))
+      .limit(limit);
+    
+    // Reverse to get chronological order
+    return messages.reverse();
+  } catch (error) {
+    console.error('Error fetching conversation history:', error);
+    return [];
+  }
+}
 
 export const POST = withAuth(async (req: NextRequest, user) => {
   try {
@@ -32,7 +55,20 @@ export const POST = withAuth(async (req: NextRequest, user) => {
     }
 
     const body = await req.json();
-    const { message, competencyType, context, sessionId } = body;
+    const { 
+      message, 
+      competencyType, 
+      context, 
+      sessionId,
+      attachments, // Array of { type, dataUrl?, transcription?, fileName }
+      useWebSearch, // Whether to enable web search for this request
+    } = body;
+    
+    // Load conversation history if sessionId is provided (context awareness)
+    let conversationHistory: { role: string; content: string }[] = [];
+    if (sessionId) {
+      conversationHistory = await getConversationHistory(sessionId);
+    }
 
     if (!message || !competencyType) {
       return NextResponse.json(
@@ -83,8 +119,36 @@ export const POST = withAuth(async (req: NextRequest, user) => {
         break;
 
       case 'clarification':
-        const hasAttachments = context?.hasAttachments || message.includes('[User attached');
-        aiResponse = await generateClarificationResponse(message, hasAttachments);
+        // Build enhanced message with attachments and history
+        let enhancedMessage = message;
+        
+        // Add attachment context
+        if (attachments && attachments.length > 0) {
+          const attachmentDescriptions = attachments.map((att: any) => {
+            if (att.type === 'audio' && att.transcription) {
+              return `[Voice note transcription: "${att.transcription}"]`;
+            } else if (att.type === 'image') {
+              return `[User attached an image: ${att.fileName || 'image'}]`;
+            } else {
+              return `[User attached a ${att.type}: ${att.fileName || 'file'}]`;
+            }
+          }).join('\n');
+          enhancedMessage = `${attachmentDescriptions}\n\nUser's question: ${message}`;
+        }
+        
+        // Use context-aware response if we have conversation history
+        if (conversationHistory.length > 0) {
+          aiResponse = await generateContextAwareResponse(
+            enhancedMessage,
+            conversationHistory,
+            'clarification',
+            context,
+            attachments
+          );
+        } else {
+          const hasAttachments = (attachments && attachments.length > 0) || message.includes('[User attached');
+          aiResponse = await generateClarificationResponse(enhancedMessage, hasAttachments);
+        }
         break;
       
       default:

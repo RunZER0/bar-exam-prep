@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { 
   Coffee, Send, Sparkles, Scale, BookOpen, Gavel, 
   MessageCircle, RefreshCw, Heart, Share2
@@ -150,7 +151,11 @@ export default function BanterPage() {
                       : 'chat-bubble-ai'
                   }`}
                 >
-                  <div className="prose-ai text-sm">{message.content}</div>
+                  {message.role === 'assistant' ? (
+                    <MarkdownRenderer content={message.content} size="sm" />
+                  ) : (
+                    <div className="prose-ai text-sm">{message.content}</div>
+                  )}
                 </div>
               </div>
             ))}

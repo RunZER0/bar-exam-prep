@@ -590,6 +590,65 @@ Format your response as JSON:
 }
 
 /**
+ * Generate context-aware response using conversation history
+ * This enables the AI to remember previous messages in the session
+ */
+export async function generateContextAwareResponse(
+  message: string,
+  conversationHistory: { role: string; content: string }[],
+  competencyType: 'clarification' | 'research' | 'drafting' | 'study',
+  context?: any,
+  attachments?: any[]
+): Promise<AIResponse> {
+  try {
+    // Build conversation context
+    const historyText = conversationHistory
+      .slice(-10) // Last 10 messages for context window management
+      .map(msg => `${msg.role === 'user' ? 'Student' : 'Assistant'}: ${msg.content}`)
+      .join('\n\n');
+
+    // Build attachment context for vision-capable models
+    const attachmentContext = attachments?.length 
+      ? `\n\nThe user has attached ${attachments.length} file(s) with their message. Please consider this context.`
+      : '';
+
+    const fullPrompt = `${KENYA_LEGAL_CONTEXT}
+
+You are having a continuing conversation with a Kenyan law student. Use the previous messages for context to provide relevant, helpful responses.
+
+=== CONVERSATION HISTORY ===
+${historyText || '(This is the start of the conversation)'}
+
+=== CURRENT MESSAGE ===
+${message}${attachmentContext}
+
+=== INSTRUCTIONS ===
+1. Reference previous messages when relevant
+2. Build on concepts already discussed
+3. Maintain consistency with previous responses
+4. If the student is following up on a topic, go deeper rather than repeating basics
+5. Always cite specific legal provisions (Articles, Sections, Cases)
+
+Provide a helpful, context-aware response:`;
+
+    const content = await callAI(fullPrompt, 3000);
+    const guardrails = await validateResponse(message, content, 'research');
+
+    return {
+      content,
+      guardrails,
+      filtered: guardrails.isHallucination && guardrails.confidence > 80,
+    };
+  } catch (error: any) {
+    console.error('Context-aware generation error:', error);
+    if (error.message === 'AI_NOT_CONFIGURED') {
+      throw new Error('AI_NOT_CONFIGURED');
+    }
+    throw new Error('Failed to generate response');
+  }
+}
+
+/**
  * Helper function to call AI provider
  */
 async function callAI(prompt: string, maxTokens: number = 2000): Promise<string> {

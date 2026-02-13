@@ -3,13 +3,26 @@
 import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { MessageCircle, X, Send, Loader2, Sparkles, AlertTriangle } from 'lucide-react';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import { 
+  MessageCircle, X, Send, Loader2, Sparkles, 
+  Paperclip, Mic, MicOff, Image, FileText 
+} from 'lucide-react';
+
+interface Attachment {
+  id: string;
+  type: 'image' | 'audio' | 'document';
+  file: File;
+  preview?: string;
+  transcription?: string;
+}
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  attachments?: { type: string; name: string }[];
 }
 
 // Pages where chat should be disabled to prevent cheating
@@ -25,8 +38,17 @@ export default function FloatingChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionId] = useState(() => crypto.randomUUID()); // Session for context awareness
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check if we're on a restricted page
   const isRestricted = RESTRICTED_PATHS.some(path => pathname.includes(path));
@@ -43,19 +65,173 @@ export default function FloatingChat() {
     }
   }, [isOpen]);
 
+  // Cleanup recording on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach(file => {
+      const type = file.type.startsWith('image/') ? 'image' 
+        : file.type.startsWith('audio/') ? 'audio' 
+        : 'document';
+      
+      const attachment: Attachment = {
+        id: crypto.randomUUID(),
+        type,
+        file,
+      };
+
+      if (type === 'image') {
+        attachment.preview = URL.createObjectURL(file);
+      }
+
+      setAttachments(prev => [...prev, attachment]);
+    });
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments(prev => {
+      const att = prev.find(a => a.id === id);
+      if (att?.preview) {
+        URL.revokeObjectURL(att.preview);
+      }
+      return prev.filter(a => a.id !== id);
+    });
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
+        
+        // Transcribe the audio
+        try {
+          const token = await getIdToken();
+          const formData = new FormData();
+          formData.append('audio', audioFile);
+          
+          const response = await fetch('/api/transcribe', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData,
+          });
+          
+          const data = await response.json();
+          
+          if (data.text) {
+            // Add transcribed text directly to input
+            setInput(prev => prev + (prev ? ' ' : '') + data.text);
+          } else {
+            // Add as audio attachment if transcription fails
+            setAttachments(prev => [...prev, {
+              id: crypto.randomUUID(),
+              type: 'audio',
+              file: audioFile,
+            }]);
+          }
+        } catch (error) {
+          console.error('Transcription error:', error);
+          setAttachments(prev => [...prev, {
+            id: crypto.randomUUID(),
+            type: 'audio',
+            file: audioFile,
+          }]);
+        }
+
+        stream.getTracks().forEach(track => track.stop());
+        setRecordingTime(0);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && attachments.length === 0) || isLoading) return;
+
+    const userAttachments = attachments.map(a => ({
+      type: a.type,
+      name: a.file.name,
+    }));
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: 'user',
-      content: input.trim(),
+      content: input.trim() || 'Please help with this:',
       timestamp: new Date(),
+      attachments: userAttachments.length > 0 ? userAttachments : undefined,
     };
 
     setMessages(prev => [...prev, userMessage]);
+    
+    // Prepare attachment data for API
+    const attachmentData = await Promise.all(attachments.map(async (att) => {
+      if (att.type === 'image') {
+        // Convert image to data URL for vision context
+        return new Promise<any>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            resolve({
+              type: att.type,
+              fileName: att.file.name,
+              dataUrl: reader.result,
+            });
+          };
+          reader.readAsDataURL(att.file);
+        });
+      }
+      return { type: att.type, fileName: att.file.name };
+    }));
+    
+    const currentInput = input;
     setInput('');
+    setAttachments([]);
     setIsLoading(true);
 
     try {
@@ -67,11 +243,14 @@ export default function FloatingChat() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          message: userMessage.content,
+          message: currentInput || 'Please help with this:',
           competencyType: 'clarification',
+          sessionId, // Context-aware session
+          attachments: attachmentData.length > 0 ? attachmentData : undefined,
           context: {
             source: 'floating-chat',
             currentPage: pathname,
+            hasAttachments: attachmentData.length > 0,
           },
         }),
       });
@@ -113,6 +292,16 @@ export default function FloatingChat() {
 
   return (
     <>
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,.pdf,.doc,.docx,.txt"
+        onChange={handleFileSelect}
+        className="hidden"
+        multiple
+      />
+
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -137,13 +326,13 @@ export default function FloatingChat() {
       <div
         className={`
           fixed bottom-6 right-6 z-50
-          w-[360px] max-w-[calc(100vw-3rem)]
+          w-[400px] max-w-[calc(100vw-3rem)]
           bg-card border border-border/50 rounded-2xl shadow-2xl
           flex flex-col
           transition-all duration-300 ease-out origin-bottom-right
           ${isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'}
         `}
-        style={{ height: 'min(500px, calc(100vh - 6rem))' }}
+        style={{ height: 'min(600px, calc(100vh - 6rem))' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-muted/30 rounded-t-2xl">
@@ -174,7 +363,7 @@ export default function FloatingChat() {
               </div>
               <h4 className="font-medium mb-1">Need quick help?</h4>
               <p className="text-sm text-muted-foreground mb-4">
-                Ask me anything about Kenyan law or your bar exam preparation.
+                Ask questions, attach screenshots, or use voice notes.
               </p>
               <div className="space-y-2 w-full">
                 {[
@@ -200,25 +389,54 @@ export default function FloatingChat() {
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
                 >
                   <div
                     className={`
-                      max-w-[85%] px-3 py-2 rounded-2xl text-sm
+                      max-w-[90%] px-3 py-2 rounded-2xl
                       ${msg.role === 'user'
                         ? 'bg-emerald-500 text-white rounded-br-md'
                         : 'bg-muted rounded-bl-md'
                       }
                     `}
                   >
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    {msg.attachments && msg.attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {msg.attachments.map((att, i) => (
+                          <span 
+                            key={i} 
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
+                              msg.role === 'user' 
+                                ? 'bg-emerald-600/50' 
+                                : 'bg-background/50'
+                            }`}
+                          >
+                            {att.type === 'image' && <Image className="h-3 w-3" />}
+                            {att.type === 'document' && <FileText className="h-3 w-3" />}
+                            {att.type === 'audio' && <Mic className="h-3 w-3" />}
+                            {att.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {msg.role === 'assistant' ? (
+                      <MarkdownRenderer content={msg.content} size="sm" />
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    )}
                   </div>
                 </div>
               ))}
               {isLoading && (
                 <div className="flex justify-start">
                   <div className="bg-muted px-4 py-2 rounded-2xl rounded-bl-md">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <div className="flex items-center gap-2">
+                      <div className="dot-pulse flex gap-1">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -227,22 +445,92 @@ export default function FloatingChat() {
           )}
         </div>
 
+        {/* Attachments preview */}
+        {attachments.length > 0 && (
+          <div className="px-3 py-2 border-t border-border/50">
+            <div className="flex flex-wrap gap-2">
+              {attachments.map((att) => (
+                <div 
+                  key={att.id}
+                  className="relative group flex items-center gap-1.5 px-2 py-1 bg-muted rounded-lg text-xs"
+                >
+                  {att.type === 'image' && att.preview && (
+                    <img src={att.preview} alt="" className="h-6 w-6 rounded object-cover" />
+                  )}
+                  {att.type === 'image' && !att.preview && <Image className="h-4 w-4" />}
+                  {att.type === 'document' && <FileText className="h-4 w-4" />}
+                  {att.type === 'audio' && <Mic className="h-4 w-4" />}
+                  <span className="max-w-[80px] truncate">{att.file.name}</span>
+                  <button
+                    onClick={() => removeAttachment(att.id)}
+                    className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-destructive/20 rounded transition-opacity"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recording indicator */}
+        {isRecording && (
+          <div className="px-3 py-2 border-t border-border/50 bg-red-500/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                <span className="text-sm text-red-500">Recording... {formatTime(recordingTime)}</span>
+              </div>
+              <button
+                onClick={stopRecording}
+                className="p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              >
+                <MicOff className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Input */}
         <form onSubmit={handleSubmit} className="p-3 border-t border-border/50">
           <div className="flex items-end gap-2">
+            {/* Attachment button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isRecording}
+              className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
+            >
+              <Paperclip className="h-4 w-4" />
+            </button>
+            
+            {/* Voice button */}
+            <button
+              type="button"
+              onClick={isRecording ? stopRecording : startRecording}
+              className={`p-2 rounded-lg transition-colors ${
+                isRecording 
+                  ? 'bg-red-500 text-white hover:bg-red-600' 
+                  : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </button>
+
             <textarea
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask a quick question..."
+              placeholder="Ask a question..."
               rows={1}
-              className="flex-1 resize-none bg-muted/50 border border-border/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 max-h-24"
+              disabled={isRecording}
+              className="flex-1 resize-none bg-muted/50 border border-border/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 max-h-24 disabled:opacity-50"
               style={{ minHeight: '40px' }}
             />
             <button
               type="submit"
-              disabled={!input.trim() || isLoading}
+              disabled={(!input.trim() && attachments.length === 0) || isLoading || isRecording}
               className="p-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
             >
               {isLoading ? (

@@ -518,7 +518,7 @@ Rules:
               onClick={() => setSelectedUnit('all')}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                 selectedUnit === 'all'
-                  ? 'bg-gradient-to-r from-primary to-violet-500 text-white shadow-lg shadow-primary/25'
+                  ? 'bg-gradient-to-r from-primary to-emerald-600 text-white shadow-lg shadow-primary/25'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
               }`}
             >
@@ -533,7 +533,7 @@ Rules:
                 onClick={() => setSelectedUnit(u.id)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                   selectedUnit === u.id
-                    ? 'bg-gradient-to-r from-primary to-violet-500 text-white shadow-lg shadow-primary/25'
+                    ? 'bg-gradient-to-r from-primary to-emerald-600 text-white shadow-lg shadow-primary/25'
                     : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
                 }`}
               >
@@ -548,7 +548,7 @@ Rules:
           <Button 
             size="lg" 
             onClick={startQuiz} 
-            className="gap-3 px-8 py-6 text-lg font-semibold bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-600/90 shadow-xl shadow-primary/25 transition-all duration-300 hover:scale-[1.02]"
+            className="gap-3 px-8 py-6 text-lg font-semibold bg-gradient-to-r from-primary to-emerald-600 hover:from-primary/90 hover:to-emerald-600/90 shadow-xl shadow-primary/25 transition-all duration-300 hover:scale-[1.02]"
           >
             <Lightbulb className="h-6 w-6" />
             Start {mode.name}
@@ -619,17 +619,17 @@ Rules:
               <p className="text-xs text-muted-foreground">Best Streak</p>
             </CardContent>
           </Card>
-          <Card className="border-2 border-violet-500/20 bg-violet-500/5">
+          <Card className="border-2 border-gray-500/20 bg-gray-500/5">
             <CardContent className="pt-4 pb-3 text-center">
-              <Star className="h-6 w-6 mx-auto text-violet-500 mb-2" />
-              <p className="text-2xl font-bold text-violet-600">{questions.length - score}</p>
+              <Star className="h-6 w-6 mx-auto text-gray-500 mb-2" />
+              <p className="text-2xl font-bold text-gray-600">{questions.length - score}</p>
               <p className="text-xs text-muted-foreground">To Review</p>
             </CardContent>
           </Card>
         </div>
 
         <div className="flex gap-3 justify-center pt-4">
-          <Button onClick={startQuiz} className="gap-2 bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-600/90 shadow-lg">
+          <Button onClick={startQuiz} className="gap-2 bg-gradient-to-r from-primary to-emerald-600 hover:from-primary/90 hover:to-emerald-600/90 shadow-lg">
             <RotateCcw className="h-4 w-4" />
             Play Again
           </Button>
@@ -664,7 +664,7 @@ Rules:
           )}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent">
+          <span className="text-sm font-semibold bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">
             {score} pts
           </span>
           {mode.timed && !revealed && (

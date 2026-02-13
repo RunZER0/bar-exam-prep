@@ -73,6 +73,7 @@ export default function StudyPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   const loadRecommendations = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -88,6 +89,11 @@ export default function StudyPage() {
         const data = await res.json();
         setRecommendations(data.recommendations || []);
         setLastUpdated(new Date(data.generatedAt));
+        
+        // Check if user needs to complete onboarding
+        if (data.hasCompletedOnboarding === false) {
+          setNeedsOnboarding(true);
+        }
       }
     } catch (err) {
       console.error('Failed to load recommendations:', err);
@@ -170,7 +176,7 @@ export default function StudyPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <div className="max-w-5xl mx-auto px-4 py-6">
@@ -325,19 +331,40 @@ export default function StudyPage() {
               </div>
             )}
 
-            {/* Empty State */}
-            {!loading && recommendations.length === 0 && (
+            {/* Empty State - Needs Onboarding */}
+            {!loading && needsOnboarding && (
+              <div className="text-center py-12">
+                <Target className="h-10 w-10 mx-auto text-green-500 mb-3" />
+                <h3 className="text-gray-900 dark:text-white font-medium mb-2">
+                  Complete Your Profile
+                </h3>
+                <p className="text-gray-500 dark:text-gray-400 text-sm mb-4 max-w-md mx-auto">
+                  Tell us about your study goals and areas you want to focus on. 
+                  This helps us create personalized recommendations just for you!
+                </p>
+                <Link
+                  href="/onboarding"
+                  className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Set Up My Study Plan
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            )}
+
+            {/* Empty State - Loading Issue (rare fallback) */}
+            {!loading && !needsOnboarding && recommendations.length === 0 && (
               <div className="text-center py-12">
                 <Compass className="h-10 w-10 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
                 <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
-                  No recommendations yet. Start taking quizzes to get personalized guidance.
+                  Unable to load recommendations. Please try refreshing.
                 </p>
-                <Link
-                  href="/quizzes"
+                <button
+                  onClick={() => loadRecommendations(true)}
                   className="text-green-600 hover:text-green-700 text-sm font-medium"
                 >
-                  Take your first quiz →
-                </Link>
+                  Refresh Recommendations
+                </button>
               </div>
             )}
 

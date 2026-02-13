@@ -42,6 +42,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    // Check if user has completed onboarding (has profile)
+    const [profile] = await db.select().from(userProfiles)
+      .where(eq(userProfiles.userId, user.id))
+      .limit(1);
+    
+    const hasCompletedOnboarding = user.onboardingCompleted && profile !== undefined;
+
     const now = new Date();
 
     // Check for existing valid recommendations
@@ -61,6 +68,7 @@ export async function GET(req: NextRequest) {
         recommendations: existingRecommendations.map(formatRecommendation),
         source: 'cached',
         generatedAt: existingRecommendations[0].generatedAt,
+        hasCompletedOnboarding,
       });
     }
 
@@ -101,6 +109,7 @@ export async function GET(req: NextRequest) {
       recommendations: recommendations.map(formatNewRecommendation),
       source: 'generated',
       generatedAt: now.toISOString(),
+      hasCompletedOnboarding,
     });
 
   } catch (error) {

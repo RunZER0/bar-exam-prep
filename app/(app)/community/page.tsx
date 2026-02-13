@@ -179,7 +179,7 @@ export default function CommunityPage() {
   const upcomingEvents = filteredEvents.filter(e => e.status === 'upcoming');
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <div className="max-w-5xl mx-auto px-4 py-6">
@@ -253,7 +253,7 @@ export default function CommunityPage() {
                 <Link
                   key={room.id}
                   href={`/community/rooms/${room.id}`}
-                  className="flex items-center justify-between py-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 -mx-2 px-2 rounded transition-colors"
+                  className="flex items-center justify-between py-4 border-b border-border hover:bg-muted -mx-2 px-2 rounded transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">

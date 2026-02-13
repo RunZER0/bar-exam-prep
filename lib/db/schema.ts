@@ -43,6 +43,63 @@ export const userProfiles = pgTable('user_profiles', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// User engagement signals - TikTok-style continuous learning
+export const userEngagementSignals = pgTable('user_engagement_signals', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  // Session tracking
+  sessionStartedAt: timestamp('session_started_at').notNull(),
+  sessionEndedAt: timestamp('session_ended_at'),
+  sessionDurationMinutes: integer('session_duration_minutes'),
+  // Activity patterns
+  activityType: text('activity_type').notNull(), // quiz, study, drafting, research, review, chat
+  unitId: text('unit_id'),
+  // Engagement metrics
+  contentInteractionCount: integer('content_interaction_count').default(0), // clicks, scrolls, etc.
+  completionRate: integer('completion_rate'), // 0-100% for activities
+  focusTimePercent: integer('focus_time_percent'), // Time actively engaged vs idle
+  // Behavioral signals
+  timeOfDay: text('time_of_day').notNull(), // morning, afternoon, evening, night
+  dayOfWeek: integer('day_of_week').notNull(), // 0-6 (Sunday-Saturday)
+  // User signals (implicit)
+  exitedEarly: boolean('exited_early').default(false),
+  completedActivity: boolean('completed_activity').default(false),
+  returnedWithin24h: boolean('returned_within_24h'),
+  // Performance signals
+  performanceScore: integer('performance_score'), // How well they did
+  difficultyFelt: text('difficulty_felt'), // inferred from time/accuracy
+  // Device & context
+  deviceType: text('device_type'), // mobile, tablet, desktop
+  // Mood signals (inferred)
+  engagementLevel: text('engagement_level'), // low, medium, high (inferred from behavior)
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// User engagement patterns - aggregated insights
+export const userEngagementPatterns = pgTable('user_engagement_patterns', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull().unique(),
+  // Time patterns
+  peakStudyHour: integer('peak_study_hour'), // 0-23
+  peakStudyDay: integer('peak_study_day'), // 0-6
+  averageSessionMinutes: integer('average_session_minutes'),
+  preferredSessionLength: text('preferred_session_length'), // short, medium, long
+  // Activity preferences (learned)
+  preferredActivityWeights: jsonb('preferred_activity_weights').$type<Record<string, number>>(),
+  // Unit affinity (learned)
+  unitEngagementScores: jsonb('unit_engagement_scores').$type<Record<string, number>>(),
+  // Learning patterns
+  optimalDifficulty: text('optimal_difficulty'), // beginner, intermediate, advanced
+  learningVelocity: text('learning_velocity'), // slow, moderate, fast
+  retentionStrength: text('retention_strength'), // weak, moderate, strong
+  // Engagement trends
+  weeklyEngagementTrend: text('weekly_engagement_trend'), // increasing, stable, decreasing
+  averageWeeklyMinutes: integer('average_weekly_minutes'),
+  // Last computed
+  lastComputedAt: timestamp('last_computed_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // Study streaks
 export const studyStreaks = pgTable('study_streaks', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -833,6 +890,21 @@ export const ragKnowledgeEntriesRelations = relations(ragKnowledgeEntries, ({ on
   }),
   addedBy: one(users, {
     fields: [ragKnowledgeEntries.addedById],
+    references: [users.id],
+  }),
+}));
+
+// User engagement relations
+export const userEngagementSignalsRelations = relations(userEngagementSignals, ({ one }) => ({
+  user: one(users, {
+    fields: [userEngagementSignals.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userEngagementPatternsRelations = relations(userEngagementPatterns, ({ one }) => ({
+  user: one(users, {
+    fields: [userEngagementPatterns.userId],
     references: [users.id],
   }),
 }));

@@ -100,7 +100,7 @@ export default function SubscribePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
+    <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
@@ -261,7 +261,7 @@ export default function SubscribePage() {
             </div>
 
             {/* Account info */}
-            <div className="bg-gray-50 dark:bg-gray-800/30 rounded-xl p-4 border border-gray-200 dark:border-gray-700 mb-6">
+            <div className="bg-muted rounded-xl p-4 border border-border mb-6">
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-gray-500 mt-0.5" />
                 <div>
@@ -314,7 +314,7 @@ export default function SubscribePage() {
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 Your {plan.name} subscription is now active. Enjoy full access to all premium features.
               </p>
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 mb-6">
+              <div className="bg-muted rounded-xl p-4 mb-6">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Plan</span>
                   <span className="font-medium text-gray-900 dark:text-white">{plan.name}</span>

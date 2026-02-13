@@ -136,7 +136,7 @@ export default function ProgressPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-green-600 border-t-transparent mx-auto mb-4"></div>
           <p className="text-gray-500 dark:text-gray-400 text-sm">Loading your report...</p>
@@ -175,7 +175,7 @@ export default function ProgressPage() {
   const overallGrade = getGradeFromAccuracy(data.overallMastery);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <div className="max-w-5xl mx-auto px-4 py-6">
@@ -385,7 +385,7 @@ export default function ProgressPage() {
                     <Link
                       key={idx}
                       href={rec.href}
-                      className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 -mx-2 px-2 rounded transition-colors"
+                      className="flex items-center justify-between py-3 border-b border-border hover:bg-muted -mx-2 px-2 rounded transition-colors"
                     >
                       <div>
                         <div className="text-sm font-medium text-gray-900 dark:text-white">{rec.title}</div>
@@ -432,7 +432,7 @@ export default function ProgressPage() {
                       <>
                         <tr 
                           key={idx} 
-                          className="border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors"
+                          className="border-t border-border hover:bg-muted cursor-pointer transition-colors"
                           onClick={() => setExpandedSubject(isExpanded ? null : subject.unitId)}
                         >
                           <td className="py-4 text-gray-900 dark:text-white font-medium">
@@ -459,7 +459,7 @@ export default function ProgressPage() {
                           </td>
                         </tr>
                         {isExpanded && (
-                          <tr className="border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
+                          <tr className="border-t border-border bg-muted/50">
                             <td colSpan={6} className="px-4 py-4">
                               <div className="flex items-center justify-between">
                                 <div className="space-y-1">

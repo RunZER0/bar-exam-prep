@@ -1,17 +1,19 @@
 /**
- * Intelligent Study Guide Algorithm v1
+ * Intelligent Study Guide Algorithm v2
  * 
  * A sophisticated decision engine that determines what the user should do next.
  * Uses weighted scoring across multiple factors to generate personalized recommendations.
  * 
  * Key principles:
- * 1. Weakness Priority - Focus more on weak areas but don't neglect strong ones
- * 2. Activity Balance - Vary between study, quiz, drafting, research to prevent burnout
- * 3. Spaced Repetition - Integrate review cycles for long-term retention
- * 4. Exam Proximity - Intensify and change focus as exam approaches
- * 5. Time Optimization - Consider user's current time of day and patterns
- * 6. Streak Protection - Encourage continuation of study streaks
- * 7. Adaptive Difficulty - Match challenge level to current mastery
+ * 1. ALWAYS Generate Recommendations - Never return empty (use profile as baseline)
+ * 2. Weakness Priority - Focus more on weak areas but don't neglect strong ones
+ * 3. Activity Balance - Vary between study, quiz, drafting, research to prevent burnout
+ * 4. Spaced Repetition - Integrate review cycles for long-term retention
+ * 5. Exam Proximity - Intensify and change focus as exam approaches
+ * 6. Time Optimization - Consider user's current time of day and patterns
+ * 7. Streak Protection - Encourage continuation of study streaks
+ * 8. Adaptive Difficulty - Match challenge level to current mastery
+ * 9. Continuous Learning - Like TikTok, learn from every interaction
  */
 
 import { ATP_UNITS } from '@/lib/constants/legal-content';
@@ -98,7 +100,7 @@ interface ScoredActivity {
 // CONSTANTS & WEIGHTS
 // ============================================
 
-const ALGORITHM_VERSION = 'v1';
+const ALGORITHM_VERSION = 'v2';
 
 // Base weights for each factor (0-1, sum should conceptually represent overall importance)
 const BASE_WEIGHTS = {
@@ -110,6 +112,15 @@ const BASE_WEIGHTS = {
   streak: 0.05,           // Streak maintenance
   activityBalance: 0.10,  // Variety in activities
   timeOfDay: 0.05,        // Time-based optimization
+};
+
+// New user weighting - prioritizes profile data when no activity history exists
+const NEW_USER_WEIGHTS = {
+  profileWeakness: 0.35,    // Heavily weight what user says they're weak at
+  profileStrength: 0.10,    // Still some attention to strong areas
+  unitImportance: 0.25,     // High-value units for exam
+  timeOfDay: 0.15,          // Match to preferred study time
+  defaultActivity: 0.15,    // Starter activity preferences
 };
 
 // Activity type base weights (preference when other factors equal)
@@ -541,17 +552,152 @@ function calculateTotalScore(
 }
 
 // ============================================
+// NEW USER RECOMMENDATIONS (Profile-Based)
+// ============================================
+
+/**
+ * Generate starter recommendations for users with no activity history.
+ * Uses profile data (weakAreas, preferredStudyTime, targetExamDate) as baseline.
+ */
+function generateNewUserRecommendations(state: UserStudyState): ScoredActivity[] {
+  const scoredActivities: ScoredActivity[] = [];
+  const examMods = getExamProximityModifiers(state.daysUntilExam);
+  
+  // Prioritize units based on profile
+  const units = ATP_UNITS.map(u => ({
+    id: u.id,
+    name: u.name,
+    importance: UNIT_IMPORTANCE[u.id] || 1.0,
+    isWeak: state.weakUnits.includes(u.id),
+    isStrong: state.strongUnits.includes(u.id),
+  }));
+  
+  // For new users, recommend beginner-friendly activities
+  const starterActivities: ActivityType[] = ['study', 'quiz'];
+  const secondaryActivities: ActivityType[] = ['case_study'];
+  
+  // Time of day optimization
+  const timeScore = calculateTimeOfDayScore('study');
+  
+  // Score weak units with highest priority
+  for (const unit of units) {
+    for (const activity of starterActivities) {
+      let score = 0.5; // Base score for new user
+      
+      // Profile-based weighting
+      if (unit.isWeak) {
+        score += NEW_USER_WEIGHTS.profileWeakness;
+      } else if (unit.isStrong) {
+        score += NEW_USER_WEIGHTS.profileStrength;
+      }
+      
+      // Unit importance boost
+      score += (unit.importance - 1) * NEW_USER_WEIGHTS.unitImportance;
+      
+      // Time of day optimization
+      score *= calculateTimeOfDayScore(activity);
+      
+      // Activity type preference (study first for new users)
+      if (activity === 'study') {
+        score *= 1.2;
+      }
+      
+      // Exam proximity boost
+      if (state.daysUntilExam !== null && state.daysUntilExam <= 60) {
+        score *= examMods.studyMod;
+      }
+      
+      const factors: DecisionFactors = {
+        performanceWeight: 0.5, // Unknown
+        recencyWeight: 1.0, // Never studied
+        spacedRepWeight: 0,
+        weaknessWeight: unit.isWeak ? 0.9 : 0.3,
+        examProximityWeight: state.daysUntilExam !== null ? Math.min(1, (90 - state.daysUntilExam) / 90) : 0.3,
+        streakWeight: 0.1,
+        activityBalanceWeight: 0.5,
+        timeOfDayWeight: timeScore,
+      };
+      
+      scoredActivities.push({
+        type: activity,
+        unitId: unit.id,
+        score: Math.min(1, Math.max(0, score)),
+        factors,
+        metadata: {
+          unitName: unit.name,
+          isWeak: unit.isWeak,
+          isStrong: unit.isStrong,
+          accuracy: null,
+          trend: 'stable',
+          questionsAnswered: 0,
+          isNewUser: true,
+        },
+      });
+    }
+  }
+  
+  // Also add some case study options for variety
+  for (const unit of units.slice(0, 3)) {
+    const factors: DecisionFactors = {
+      performanceWeight: 0.5,
+      recencyWeight: 1.0,
+      spacedRepWeight: 0,
+      weaknessWeight: unit.isWeak ? 0.9 : 0.3,
+      examProximityWeight: 0.3,
+      streakWeight: 0.1,
+      activityBalanceWeight: 0.6,
+      timeOfDayWeight: calculateTimeOfDayScore('case_study'),
+    };
+    
+    scoredActivities.push({
+      type: 'case_study',
+      unitId: unit.id,
+      score: 0.4 + (unit.isWeak ? 0.2 : 0),
+      factors,
+      metadata: {
+        unitName: unit.name,
+        isWeak: unit.isWeak,
+        isStrong: unit.isStrong,
+        accuracy: null,
+        trend: 'stable',
+        questionsAnswered: 0,
+        isNewUser: true,
+      },
+    });
+  }
+  
+  // Sort by score descending
+  scoredActivities.sort((a, b) => b.score - a.score);
+  
+  return scoredActivities;
+}
+
+/**
+ * Check if user is new (no activity history)
+ */
+function isNewUser(state: UserStudyState): boolean {
+  return state.totalQuizzes === 0 && state.totalQuestionsAnswered === 0 && state.recentActivities.length === 0;
+}
+
+// ============================================
 // RECOMMENDATION GENERATION
 // ============================================
 
 /**
  * Convert scored activities to user-friendly recommendations
+ * IMPORTANT: This function ALWAYS returns recommendations.
+ * For new users, it uses profile-based recommendations.
+ * For returning users, it uses activity-based recommendations.
  */
 export function generateRecommendations(
   state: UserStudyState,
   count: number = 5
 ): StudyRecommendation[] {
-  const scoredActivities = scoreAllActivities(state);
+  // Select appropriate scoring strategy
+  const scoredActivities = isNewUser(state) 
+    ? generateNewUserRecommendations(state)
+    : scoreAllActivities(state);
+    
   const recommendations: StudyRecommendation[] = [];
   const seenUnits = new Set<string>();
   const seenTypes = new Set<string>();
@@ -614,13 +760,27 @@ function generateContent(
   state: UserStudyState
 ): { title: string; description: string; rationale: string } {
   const unitName = activity.metadata.unitName || 'General';
+  const isNewUser = activity.metadata.isNewUser === true;
+  
+  // Special messages for new users based on profile
+  const getNewUserRationale = () => {
+    if (activity.metadata.isWeak) {
+      return `Based on your profile, you mentioned ${unitName} as a challenge area. Let's strengthen it!`;
+    }
+    if (activity.metadata.isStrong) {
+      return `You're confident in ${unitName}. Start here to build momentum!`;
+    }
+    return `This is a high-value topic for the bar exam. Great place to start!`;
+  };
   
   switch (activity.type) {
     case 'quiz':
       return {
         title: `Quiz: ${unitName}`,
         description: `Test your knowledge with adaptive questions tailored to your level.`,
-        rationale: activity.metadata.isWeak
+        rationale: isNewUser
+          ? getNewUserRationale()
+          : activity.metadata.isWeak
           ? `This is one of your weaker areas. Regular testing improves retention.`
           : activity.metadata.accuracy !== null && activity.metadata.accuracy < 70
           ? `Your accuracy here is ${Math.round(activity.metadata.accuracy)}%. Let's improve it.`
@@ -631,7 +791,9 @@ function generateContent(
       return {
         title: `Study: ${unitName}`,
         description: `Deep dive into ${unitName} concepts with interactive learning.`,
-        rationale: activity.metadata.questionsAnswered === 0
+        rationale: isNewUser
+          ? getNewUserRationale()
+          : activity.metadata.questionsAnswered === 0
           ? `You haven't started this unit yet. Let's begin!`
           : `Build stronger foundations in ${unitName}.`,
       };
@@ -640,7 +802,9 @@ function generateContent(
       return {
         title: `Case Analysis: ${unitName}`,
         description: `Analyze landmark cases and extract key legal principles.`,
-        rationale: `Case law forms the backbone of legal practice. Master these precedents.`,
+        rationale: isNewUser
+          ? `Case law is essential for ${unitName}. Learn through real examples!`
+          : `Case law forms the backbone of legal practice. Master these precedents.`,
       };
     
     case 'drafting':

@@ -52,15 +52,21 @@ export async function GET(req: NextRequest) {
     const now = new Date();
 
     // Check for existing valid recommendations
-    const existingRecommendations = await db.select()
-      .from(studyRecommendations)
-      .where(and(
-        eq(studyRecommendations.userId, user.id),
-        eq(studyRecommendations.isActive, true),
-        gte(studyRecommendations.expiresAt, now)
-      ))
-      .orderBy(studyRecommendations.priority)
-      .limit(10);
+    let existingRecommendations: typeof studyRecommendations.$inferSelect[] = [];
+    try {
+      existingRecommendations = await db.select()
+        .from(studyRecommendations)
+        .where(and(
+          eq(studyRecommendations.userId, user.id),
+          eq(studyRecommendations.isActive, true),
+          gte(studyRecommendations.expiresAt, now)
+        ))
+        .orderBy(studyRecommendations.priority)
+        .limit(10);
+    } catch (e) {
+      // Table might not exist yet, continue to generate fresh recommendations
+      console.warn('Could not fetch existing recommendations:', e);
+    }
 
     if (existingRecommendations.length >= 3) {
       // Return existing recommendations
@@ -73,36 +79,60 @@ export async function GET(req: NextRequest) {
     }
 
     // Generate fresh recommendations
-    const state = await buildUserStudyState(user.id);
-    const recommendations = generateRecommendations(state, 5);
+    let recommendations;
+    let state: UserStudyState | null = null;
+    
+    try {
+      state = await buildUserStudyState(user.id);
+      recommendations = generateRecommendations(state, 5);
+    } catch (algorithmError) {
+      console.error('Error in recommendation algorithm, using fallback:', algorithmError);
+      // Fallback: Generate basic recommendations based on ATP units
+      recommendations = generateFallbackRecommendations();
+    }
+    
+    // If still no recommendations, create starter recommendations
+    if (!recommendations || recommendations.length === 0) {
+      recommendations = generateFallbackRecommendations();
+    }
     
     // Clear old recommendations
-    await db.update(studyRecommendations)
-      .set({ isActive: false })
-      .where(eq(studyRecommendations.userId, user.id));
+    try {
+      await db.update(studyRecommendations)
+        .set({ isActive: false })
+        .where(eq(studyRecommendations.userId, user.id));
+    } catch (e) {
+      // Table might not exist yet, continue
+      console.warn('Could not clear old recommendations:', e);
+    }
 
     // Store new recommendations
     const expiresAt = new Date(now.getTime() + 4 * 60 * 60 * 1000); // 4 hours
     
-    for (const rec of recommendations) {
-      await db.insert(studyRecommendations).values({
-        userId: user.id,
-        activityType: rec.activityType,
-        unitId: rec.unitId,
-        unitName: rec.unitName,
-        title: rec.title,
-        description: rec.description,
-        rationale: rec.rationale,
-        priority: rec.priority,
-        urgencyScore: rec.urgencyScore,
-        estimatedMinutes: rec.estimatedMinutes,
-        difficulty: rec.difficulty,
-        targetHref: rec.targetHref,
-        decisionFactors: rec.decisionFactors,
-        inputSnapshot: state,
-        algorithmVersion: ALGORITHM_VERSION,
-        expiresAt,
-      });
+    try {
+      for (const rec of recommendations) {
+        await db.insert(studyRecommendations).values({
+          userId: user.id,
+          activityType: rec.activityType,
+          unitId: rec.unitId,
+          unitName: rec.unitName,
+          title: rec.title,
+          description: rec.description,
+          rationale: rec.rationale,
+          priority: rec.priority,
+          urgencyScore: rec.urgencyScore,
+          estimatedMinutes: rec.estimatedMinutes,
+          difficulty: rec.difficulty,
+          targetHref: rec.targetHref,
+          decisionFactors: rec.decisionFactors,
+          inputSnapshot: state || null,
+          algorithmVersion: ALGORITHM_VERSION,
+          expiresAt,
+        });
+      }
+    } catch (e) {
+      // Database insert failed, but still return recommendations
+      console.warn('Could not store recommendations:', e);
     }
 
     return NextResponse.json({
@@ -114,10 +144,22 @@ export async function GET(req: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching study guide:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch study recommendations' },
-      { status: 500 }
-    );
+    // Even on error, try to return fallback recommendations
+    // so user always sees something useful
+    try {
+      const fallbackRecs = generateFallbackRecommendations();
+      return NextResponse.json({
+        recommendations: fallbackRecs.map(formatNewRecommendation),
+        source: 'fallback',
+        generatedAt: new Date().toISOString(),
+        hasCompletedOnboarding: false,
+      });
+    } catch {
+      return NextResponse.json(
+        { error: 'Failed to fetch study recommendations' },
+        { status: 500 }
+      );
+    }
   }
 }
 
@@ -145,37 +187,58 @@ export async function POST(req: NextRequest) {
 
     const now = new Date();
 
-    // Generate fresh recommendations
-    const state = await buildUserStudyState(user.id);
-    const recommendations = generateRecommendations(state, 5);
+    // Generate fresh recommendations with fallback
+    let recommendations;
+    let state: UserStudyState | null = null;
+    
+    try {
+      state = await buildUserStudyState(user.id);
+      recommendations = generateRecommendations(state, 5);
+    } catch (algorithmError) {
+      console.error('Error in recommendation algorithm, using fallback:', algorithmError);
+      recommendations = generateFallbackRecommendations();
+    }
+    
+    if (!recommendations || recommendations.length === 0) {
+      recommendations = generateFallbackRecommendations();
+    }
     
     // Clear old recommendations
-    await db.update(studyRecommendations)
-      .set({ isActive: false })
-      .where(eq(studyRecommendations.userId, user.id));
+    try {
+      await db.update(studyRecommendations)
+        .set({ isActive: false })
+        .where(eq(studyRecommendations.userId, user.id));
+    } catch (e) {
+      console.warn('Could not clear old recommendations:', e);
+    }
 
     // Store new recommendations
     const expiresAt = new Date(now.getTime() + 4 * 60 * 60 * 1000);
     
-    for (const rec of recommendations) {
-      await db.insert(studyRecommendations).values({
-        userId: user.id,
-        activityType: rec.activityType,
-        unitId: rec.unitId,
-        unitName: rec.unitName,
-        title: rec.title,
-        description: rec.description,
-        rationale: rec.rationale,
-        priority: rec.priority,
-        urgencyScore: rec.urgencyScore,
-        estimatedMinutes: rec.estimatedMinutes,
-        difficulty: rec.difficulty,
-        targetHref: rec.targetHref,
-        decisionFactors: rec.decisionFactors,
-        inputSnapshot: state,
-        algorithmVersion: ALGORITHM_VERSION,
-        expiresAt,
-      });
+    try {
+      for (const rec of recommendations) {
+        await db.insert(studyRecommendations).values({
+          userId: user.id,
+          activityType: rec.activityType,
+          unitId: rec.unitId,
+          unitName: rec.unitName,
+          title: rec.title,
+          description: rec.description,
+          rationale: rec.rationale,
+          priority: rec.priority,
+          urgencyScore: rec.urgencyScore,
+          estimatedMinutes: rec.estimatedMinutes,
+          difficulty: rec.difficulty,
+          targetHref: rec.targetHref,
+          decisionFactors: rec.decisionFactors,
+          inputSnapshot: state || null,
+          algorithmVersion: ALGORITHM_VERSION,
+          expiresAt,
+        });
+      }
+    } catch (e) {
+      // Database insert failed but we continue
+      console.warn('Could not store recommendations:', e);
     }
 
     return NextResponse.json({
@@ -467,4 +530,40 @@ function formatNewRecommendation(rec: ReturnType<typeof generateRecommendations>
     targetHref: rec.targetHref,
     generatedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Generate fallback recommendations when algorithm fails
+ * This ensures users always see something useful
+ */
+function generateFallbackRecommendations(): ReturnType<typeof generateRecommendations> {
+  const topUnits = ATP_UNITS.slice(0, 5);
+  
+  const fallbackFactors = {
+    performanceWeight: 0.5,
+    recencyWeight: 1.0,
+    spacedRepWeight: 0,
+    weaknessWeight: 0.5,
+    examProximityWeight: 0.3,
+    streakWeight: 0.1,
+    activityBalanceWeight: 0.5,
+    timeOfDayWeight: 1.0,
+  };
+  
+  return topUnits.map((unit, index) => ({
+    activityType: (index % 2 === 0 ? 'study' : 'quiz') as 'study' | 'quiz',
+    unitId: unit.id,
+    unitName: unit.name,
+    title: index % 2 === 0 ? `Study: ${unit.name}` : `Quiz: ${unit.name}`,
+    description: index % 2 === 0 
+      ? `Deep dive into ${unit.name} concepts.`
+      : `Test your ${unit.name} knowledge.`,
+    rationale: `Start with this high-priority topic for the bar exam.`,
+    priority: index + 1,
+    urgencyScore: 80 - (index * 10),
+    estimatedMinutes: index % 2 === 0 ? 30 : 15,
+    difficulty: 'beginner' as const,
+    targetHref: index % 2 === 0 ? `/study/${unit.id}` : `/quizzes?unit=${unit.id}`,
+    decisionFactors: fallbackFactors,
+  }));
 }

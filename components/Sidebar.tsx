@@ -220,7 +220,7 @@ export default function Sidebar() {
       {/* Sidebar - always fixed, desktop always visible, mobile slide-in */}
       <aside
         className={`
-          fixed top-0 left-0 z-40 h-screen bg-card/95 backdrop-blur-xl border-r border-border/50 flex flex-col
+          fixed top-0 left-0 z-40 h-screen bg-background border-r border-border/50 flex flex-col
           transition-all duration-300 ease-in-out
           md:translate-x-0
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}

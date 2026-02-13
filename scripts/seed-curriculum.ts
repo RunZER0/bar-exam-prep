@@ -262,7 +262,7 @@ async function seedCurriculum() {
       ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name
       RETURNING id
     `);
-    const domainId = domainResult.rows[0].id;
+    const domainId = (domainResult.rows[0] as { id: string }).id;
     console.log(`   ✓ Domain created: ${domainId}\n`);
     
     // 2. Create micro-skills
@@ -286,7 +286,7 @@ async function seedCurriculum() {
         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name
         RETURNING id
       `);
-      skillIdMap.set(skill.code, result.rows[0].id);
+      skillIdMap.set(skill.code, (result.rows[0] as { id: string }).id);
       console.log(`   ✓ ${skill.name}`);
     }
     console.log(`   Total: ${skillIdMap.size} skills\n`);
@@ -341,7 +341,7 @@ async function seedCurriculum() {
           )
           RETURNING id
         `);
-        const itemId = itemResult.rows[0].id;
+        const itemId = (itemResult.rows[0] as { id: string }).id;
         itemCount++;
         
         // Create item-skill mapping

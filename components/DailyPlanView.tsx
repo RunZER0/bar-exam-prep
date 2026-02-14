@@ -44,6 +44,46 @@ export interface PlanTask {
   completedAt?: string;
 }
 
+export interface DailyPlanResponse {
+  plan: {
+    id: string;
+    date: string;
+    examPhase: string;
+    totalMinutesPlanned: number;
+    totalMinutesCompleted: number;
+    daysUntilWritten: number;
+    daysUntilOral: number;
+    isGenerated: boolean;
+    generatedAt: string;
+  };
+  tasks: Array<{
+    id: string;
+    taskType: string;
+    itemId: string | null;
+    skillId: string;
+    format: string;
+    mode: string;
+    title: string;
+    description: string;
+    estimatedMinutes: number;
+    order: number;
+    priorityScore: number;
+    scoringFactors: {
+      learningGain: number;
+      retentionGain: number;
+      examRoi: number;
+      errorClosure: number;
+    };
+    rationale: string;
+    status: string;
+  }>;
+  summary: {
+    primaryObjective: string;
+    focusUnits: string[];
+    totalTasks: number;
+  };
+}
+
 export interface DailyPlanData {
   id: string;
   date: string;
@@ -97,8 +137,36 @@ export default function DailyPlanView() {
         throw new Error('Failed to fetch daily plan');
       }
 
-      const data = await response.json();
-      setPlan(data);
+      const data: DailyPlanResponse = await response.json();
+      
+      // Transform API response to component format
+      const transformedPlan: DailyPlanData = {
+        id: data.plan.id,
+        date: data.plan.date,
+        totalTasks: data.tasks.length,
+        completedTasks: data.tasks.filter(t => t.status === 'completed').length,
+        totalMinutes: data.plan.totalMinutesPlanned || data.tasks.reduce((sum, t) => sum + t.estimatedMinutes, 0),
+        completedMinutes: data.plan.totalMinutesCompleted || 0,
+        tasks: data.tasks.map(t => ({
+          id: t.id,
+          skillId: t.skillId,
+          skillName: t.title.replace(/^[A-Z_\s]+:\s*/, ''), // Extract skill name from title
+          itemId: t.itemId || '',
+          itemType: t.format as PlanTask['itemType'],
+          mode: t.mode as PlanTask['mode'],
+          unitId: t.skillId.split('-')[0] || 'atp-100',
+          unitName: t.description.split(' with ')[0].replace('Practice ', ''),
+          estimatedMinutes: t.estimatedMinutes,
+          score: t.priorityScore,
+          scoringFactors: t.scoringFactors,
+          reason: t.rationale,
+          status: (t.status === 'pending' ? 'not_started' : t.status) as PlanTask['status'],
+        })),
+        generatedAt: data.plan.generatedAt,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      };
+      
+      setPlan(transformedPlan);
     } catch (err) {
       console.error('Error fetching plan:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');

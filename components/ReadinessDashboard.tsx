@@ -83,39 +83,16 @@ export default function ReadinessDashboard() {
       setLoading(true);
       const token = await getIdToken();
       
-      // TODO: Replace with actual API endpoint
-      // const response = await fetch('/api/mastery/readiness', {
-      //   headers: { Authorization: `Bearer ${token}` },
-      // });
+      const response = await fetch('/api/mastery/readiness', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       
-      // Demo data
-      const demoData: ReadinessData = {
-        overall: {
-          score: 62,
-          trend: 'improving',
-          trendDelta: 4,
-          confidenceInterval: [58, 66],
-          lastUpdated: new Date().toISOString(),
-        },
-        formats: {
-          written: { score: 65, trend: 'improving' },
-          oral: { score: 55, trend: 'stable' },
-          drafting: { score: 58, trend: 'declining' },
-        },
-        units: [
-          { unitId: 'atp-100', unitName: 'Civil Procedure', score: 72, trend: 'improving', skillsTotal: 12, skillsVerified: 5, skillsAtRisk: 1, examWeight: 0.15, gateProgress: 42 },
-          { unitId: 'atp-101', unitName: 'Criminal Litigation', score: 58, trend: 'stable', skillsTotal: 10, skillsVerified: 2, skillsAtRisk: 3, topIssue: 'Evidence Act hearsay rules', examWeight: 0.12, gateProgress: 20 },
-          { unitId: 'atp-201', unitName: 'Trial Advocacy', score: 45, trend: 'declining', skillsTotal: 8, skillsVerified: 0, skillsAtRisk: 4, topIssue: 'Cross-examination technique', examWeight: 0.10, gateProgress: 0 },
-          { unitId: 'atp-102', unitName: 'Professional Conduct', score: 78, trend: 'improving', skillsTotal: 6, skillsVerified: 4, skillsAtRisk: 0, examWeight: 0.08, gateProgress: 67 },
-          { unitId: 'atp-103', unitName: 'Land Law', score: 55, trend: 'stable', skillsTotal: 9, skillsVerified: 1, skillsAtRisk: 2, examWeight: 0.12, gateProgress: 11 },
-          { unitId: 'atp-104', unitName: 'Commercial Transactions', score: 48, trend: 'declining', skillsTotal: 11, skillsVerified: 0, skillsAtRisk: 5, topIssue: 'Contract formation', examWeight: 0.10, gateProgress: 0 },
-        ],
-        examDate: '2026-04-15',
-        daysUntilExam: 85,
-        examPhase: 'approaching',
-      };
+      if (!response.ok) {
+        throw new Error('Failed to fetch readiness data');
+      }
       
-      setReadiness(demoData);
+      const data = await response.json();
+      setReadiness(data);
     } catch (err) {
       console.error('Error fetching readiness:', err);
     } finally {

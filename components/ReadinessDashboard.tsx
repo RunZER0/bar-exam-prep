@@ -16,6 +16,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetHeader, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 
 // ============================================
 // TYPES
@@ -40,7 +41,8 @@ interface ReadinessData {
   
   examDate?: string;
   daysUntilExam?: number;
-  examPhase?: 'distant' | 'approaching' | 'critical' | 'exam_week' | 'post_exam';
+  // Product spec: >= 60 = distant, 8-59 = approaching, 0-7 = critical
+  examPhase?: 'distant' | 'approaching' | 'critical' | 'post_exam';
 }
 
 interface UnitReadiness {
@@ -115,14 +117,16 @@ export default function ReadinessDashboard() {
   };
 
   const handleUnitClick = (unitId: string) => {
-    if (selectedUnit === unitId) {
-      setSelectedUnit(null);
-      setUnitSkills([]);
-    } else {
-      setSelectedUnit(unitId);
-      fetchUnitSkills(unitId);
-    }
+    setSelectedUnit(unitId);
+    fetchUnitSkills(unitId);
   };
+
+  const handleCloseSheet = () => {
+    setSelectedUnit(null);
+    setUnitSkills([]);
+  };
+
+  const selectedUnitData = readiness?.units.find(u => u.unitId === selectedUnit);
 
   if (loading) {
     return (
@@ -223,17 +227,20 @@ export default function ReadinessDashboard() {
       {/* Unit Breakdown */}
       <Card>
         <CardHeader>
-          <CardTitle>Unit Readiness</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Unit Readiness</CardTitle>
+            <p className="text-xs text-muted-foreground">Click a subject to see details</p>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
+          <div className="space-y-2 stagger-children">
             {readiness.units
               .sort((a, b) => a.score - b.score) // Lowest first (needs attention)
               .map(unit => (
                 <UnitRow
                   key={unit.unitId}
                   unit={unit}
-                  isSelected={selectedUnit === unit.unitId}
+                  isSelected={false}
                   onClick={() => handleUnitClick(unit.unitId)}
                 />
               ))}
@@ -241,23 +248,81 @@ export default function ReadinessDashboard() {
         </CardContent>
       </Card>
 
-      {/* Selected Unit Details */}
-      {selectedUnit && unitSkills.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              Skills in {readiness.units.find(u => u.unitId === selectedUnit)?.unitName}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {unitSkills.map(skill => (
-                <SkillRow key={skill.skillId} skill={skill} />
-              ))}
+      {/* Unit Details Sheet Modal */}
+      <Sheet open={!!selectedUnit} onClose={handleCloseSheet}>
+        <SheetHeader onClose={handleCloseSheet}>
+          <SheetTitle>{selectedUnitData?.unitName || 'Unit Details'}</SheetTitle>
+          <SheetDescription>
+            {selectedUnitData && (
+              <span className="flex items-center gap-3 mt-1">
+                <span className={`font-semibold ${getScoreColor(selectedUnitData.score)}`}>
+                  {selectedUnitData.score}% mastery
+                </span>
+                <span>•</span>
+                <span>{selectedUnitData.skillsVerified}/{selectedUnitData.skillsTotal} verified</span>
+                {selectedUnitData.skillsAtRisk > 0 && (
+                  <>
+                    <span>•</span>
+                    <span className="text-amber-600">⚠ {selectedUnitData.skillsAtRisk} at risk</span>
+                  </>
+                )}
+              </span>
+            )}
+          </SheetDescription>
+        </SheetHeader>
+        <SheetContent>
+          {/* Weak Areas Alert */}
+          {selectedUnitData?.topIssue && (
+            <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
+              <h4 className="font-semibold text-amber-700 dark:text-amber-300 mb-1">🎯 Focus Area</h4>
+              <p className="text-sm text-amber-600 dark:text-amber-400">{selectedUnitData.topIssue}</p>
+              <Button variant="outline" size="sm" className="mt-3 border-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900">
+                Practice This Now →
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+
+          {/* Skills List */}
+          <div>
+            <h4 className="font-semibold mb-3 flex items-center gap-2">
+              Skills Breakdown
+              <span className="text-xs font-normal text-muted-foreground">({unitSkills.length} skills)</span>
+            </h4>
+            {unitSkills.length > 0 ? (
+              <div className="space-y-3">
+                {unitSkills
+                  .sort((a, b) => a.pMastery - b.pMastery) // Weakest first
+                  .map(skill => (
+                    <SkillRow key={skill.skillId} skill={skill} />
+                  ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-24">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+              </div>
+            )}
+          </div>
+
+          {/* Gate Progress */}
+          {selectedUnitData && (
+            <div className="mt-6 p-4 bg-muted rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium text-sm">Gate Progress</h4>
+                <span className="text-sm font-semibold">{selectedUnitData.gateProgress}%</span>
+              </div>
+              <div className="w-full bg-background rounded-full h-3">
+                <div 
+                  className="h-3 rounded-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all duration-500"
+                  style={{ width: `${selectedUnitData.gateProgress}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Pass the gate by achieving 85%+ mastery with timed verification
+              </p>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* At-Risk Skills Alert */}
       {readiness.units.some(u => u.skillsAtRisk > 0) && (
@@ -330,8 +395,8 @@ function UnitRow({
 }) {
   return (
     <div 
-      className={`p-3 rounded-lg cursor-pointer transition-colors ${
-        isSelected ? 'bg-primary/10' : 'hover:bg-muted'
+      className={`group p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-muted hover:scale-[1.01] hover:shadow-sm active:scale-[0.99] ${
+        isSelected ? 'bg-primary/10' : ''
       }`}
       onClick={onClick}
     >
@@ -373,9 +438,9 @@ function UnitRow({
           </div>
         </div>
 
-        {/* Expand Arrow */}
-        <span className="text-muted-foreground">
-          {isSelected ? '▲' : '▼'}
+        {/* View Details Icon */}
+        <span className="text-muted-foreground transition-transform group-hover:translate-x-1">
+          →
         </span>
       </div>
 
@@ -485,11 +550,9 @@ function getPhaseColor(phase?: string): string {
 
 function getPhaseLabel(phase?: string): string {
   switch (phase) {
-    case 'distant': return 'Building Foundation';
-    case 'approaching': return 'Exam Approaching';
-    case 'critical': return 'Critical Phase';
-    case 'exam_week': return 'Exam Week';
-    case 'post_exam': return 'Post Exam';
+    case 'distant': return 'Building Foundation';  // >= 60 days
+    case 'approaching': return 'Exam Approaching'; // 8-59 days
+    case 'critical': return 'Critical Phase';      // 0-7 days
     default: return 'Active Study';
   }
 }

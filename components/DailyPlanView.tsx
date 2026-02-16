@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetHeader, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 
 // ============================================
 // TYPES
@@ -123,7 +124,7 @@ export default function DailyPlanView() {
   const [plan, setPlan] = useState<DailyPlanData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<PlanTask | null>(null);
 
   const fetchPlan = useCallback(async () => {
     try {
@@ -293,30 +294,59 @@ export default function DailyPlanView() {
       {remainingTasks.length > 0 && (
         <div className="space-y-3">
           <h3 className="font-semibold text-lg">Up Next</h3>
-          {remainingTasks.map((task, index) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              index={index + 1}
-              isExpanded={expandedTaskId === task.id}
-              onToggleExpand={() => setExpandedTaskId(
-                expandedTaskId === task.id ? null : task.id
-              )}
-              onComplete={() => updateTaskStatus(task.id, 'completed')}
-              onSkip={() => updateTaskStatus(task.id, 'skipped')}
-              onDefer={() => updateTaskStatus(task.id, 'deferred')}
-            />
-          ))}
+          <div className="space-y-3 stagger-children">
+            {remainingTasks.map((task, index) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                index={index + 1}
+                onClick={() => setSelectedTask(task)}
+              />
+            ))}
+          </div>
         </div>
       )}
+
+      {/* Task Detail Sheet */}
+      <Sheet open={!!selectedTask} onClose={() => setSelectedTask(null)} side="bottom">
+        {selectedTask && (
+          <>
+            <SheetHeader onClose={() => setSelectedTask(null)}>
+              <SheetTitle>Task Details</SheetTitle>
+              <SheetDescription>
+                {selectedTask.unitName}
+              </SheetDescription>
+            </SheetHeader>
+            <SheetContent>
+              <TaskDetailContent 
+                task={selectedTask}
+                onStart={() => {
+                  updateTaskStatus(selectedTask.id, 'completed');
+                  setSelectedTask(null);
+                }}
+                onSkip={() => {
+                  updateTaskStatus(selectedTask.id, 'skipped');
+                  setSelectedTask(null);
+                }}
+                onDefer={() => {
+                  updateTaskStatus(selectedTask.id, 'deferred');
+                  setSelectedTask(null);
+                }}
+              />
+            </SheetContent>
+          </>
+        )}
+      </Sheet>
 
       {/* Completed Tasks */}
       {completedTasks.length > 0 && (
         <div className="space-y-3">
           <h3 className="font-semibold text-lg text-muted-foreground">Completed</h3>
-          {completedTasks.map((task, index) => (
-            <CompletedTaskCard key={task.id} task={task} />
-          ))}
+          <div className="space-y-3 stagger-children">
+            {completedTasks.map((task, index) => (
+              <CompletedTaskCard key={task.id} task={task} />
+            ))}
+          </div>
         </div>
       )}
 
@@ -324,13 +354,15 @@ export default function DailyPlanView() {
       {skippedTasks.length > 0 && (
         <div className="space-y-3">
           <h3 className="font-semibold text-lg text-muted-foreground">Skipped / Deferred</h3>
-          {skippedTasks.map((task) => (
-            <SkippedTaskCard 
-              key={task.id} 
-              task={task}
-              onReschedule={() => updateTaskStatus(task.id, 'not_started')}
-            />
-          ))}
+          <div className="space-y-3 stagger-children">
+            {skippedTasks.map((task) => (
+              <SkippedTaskCard 
+                key={task.id} 
+                task={task}
+                onReschedule={() => updateTaskStatus(task.id, 'not_started')}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -338,30 +370,28 @@ export default function DailyPlanView() {
 }
 
 // ============================================
-// TASK CARD COMPONENT
+// TASK CARD COMPONENT (Clickable)
 // ============================================
 
 interface TaskCardProps {
   task: PlanTask;
   index: number;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
-  onComplete: () => void;
-  onSkip: () => void;
-  onDefer: () => void;
+  onClick: () => void;
 }
 
-function TaskCard({ task, index, isExpanded, onToggleExpand, onComplete, onSkip, onDefer }: TaskCardProps) {
+function TaskCard({ task, index, onClick }: TaskCardProps) {
   const typeConfig = TASK_TYPE_CONFIG[task.itemType] || TASK_TYPE_CONFIG.mcq;
   const modeConfig = MODE_BADGES[task.mode] || MODE_BADGES.practice;
 
   return (
-    <Card className="transition-all hover:shadow-md">
+    <Card 
+      className="group cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] hover:border-primary/30"
+      onClick={onClick}
+    >
       <CardContent className="p-4">
-        {/* Main Row */}
-        <div className="flex items-start gap-4">
+        <div className="flex items-center gap-4">
           {/* Index */}
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-sm">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-sm shadow-md transition-transform group-hover:scale-110">
             {index}
           </div>
 
@@ -383,66 +413,129 @@ function TaskCard({ task, index, isExpanded, onToggleExpand, onComplete, onSkip,
             </div>
 
             {/* Skill Name */}
-            <h4 className="font-medium text-sm mb-1">{task.skillName}</h4>
+            <h4 className="font-medium text-sm">{task.skillName}</h4>
 
             {/* Unit */}
             <p className="text-xs text-muted-foreground">{task.unitName}</p>
-
-            {/* Reason (why this task) */}
-            <p className="text-xs text-muted-foreground mt-1 italic">{task.reason}</p>
           </div>
 
-          {/* Actions */}
-          <div className="flex-shrink-0 flex items-center gap-2">
-            <Button size="sm" onClick={onComplete}>
-              Start
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={onToggleExpand}
-            >
-              {isExpanded ? '▲' : '▼'}
-            </Button>
+          {/* Arrow indicating clickable */}
+          <div className="flex-shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1">
+            →
           </div>
         </div>
-
-        {/* Expanded Details */}
-        {isExpanded && (
-          <div className="mt-4 pt-4 border-t">
-            <h5 className="text-sm font-medium mb-2">Why this task?</h5>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2 bg-muted rounded">
-                <div className="text-muted-foreground">Learning Gain</div>
-                <div className="font-medium">{(task.scoringFactors.learningGain * 100).toFixed(0)}%</div>
-              </div>
-              <div className="p-2 bg-muted rounded">
-                <div className="text-muted-foreground">Retention</div>
-                <div className="font-medium">{(task.scoringFactors.retentionGain * 100).toFixed(0)}%</div>
-              </div>
-              <div className="p-2 bg-muted rounded">
-                <div className="text-muted-foreground">Exam ROI</div>
-                <div className="font-medium">{(task.scoringFactors.examRoi * 100).toFixed(0)}%</div>
-              </div>
-              <div className="p-2 bg-muted rounded">
-                <div className="text-muted-foreground">Error Closure</div>
-                <div className="font-medium">{(task.scoringFactors.errorClosure * 100).toFixed(0)}%</div>
-              </div>
-            </div>
-            
-            {/* Task Actions */}
-            <div className="flex gap-2 mt-4">
-              <Button size="sm" variant="outline" onClick={onSkip}>
-                Skip
-              </Button>
-              <Button size="sm" variant="outline" onClick={onDefer}>
-                Do Later
-              </Button>
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
+  );
+}
+
+// ============================================
+// TASK DETAIL CONTENT (for Sheet)
+// ============================================
+
+interface TaskDetailContentProps {
+  task: PlanTask;
+  onStart: () => void;
+  onSkip: () => void;
+  onDefer: () => void;
+}
+
+function TaskDetailContent({ task, onStart, onSkip, onDefer }: TaskDetailContentProps) {
+  const typeConfig = TASK_TYPE_CONFIG[task.itemType] || TASK_TYPE_CONFIG.mcq;
+  const modeConfig = MODE_BADGES[task.mode] || MODE_BADGES.practice;
+
+  return (
+    <div className="space-y-6">
+      {/* Task Header */}
+      <div className="flex items-center gap-4">
+        <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl ${typeConfig.color}`}>
+          {typeConfig.icon}
+        </div>
+        <div>
+          <h3 className="font-semibold text-lg">{task.skillName}</h3>
+          <div className="flex items-center gap-2 mt-1">
+            <span className={`px-2 py-0.5 rounded text-xs font-medium ${typeConfig.color}`}>
+              {typeConfig.label}
+            </span>
+            <span className={`px-2 py-0.5 rounded text-xs font-medium ${modeConfig.color}`}>
+              {modeConfig.label}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              ~{task.estimatedMinutes} min
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Why This Task */}
+      <div className="p-4 bg-muted/50 rounded-lg">
+        <h4 className="font-medium text-sm mb-2">Why this task?</h4>
+        <p className="text-sm text-muted-foreground">{task.reason}</p>
+      </div>
+
+      {/* Scoring Breakdown */}
+      <div>
+        <h4 className="font-medium text-sm mb-3">Learning Impact</h4>
+        <div className="grid grid-cols-2 gap-3">
+          <ScoreMetric 
+            label="Learning Gain" 
+            value={task.scoringFactors.learningGain} 
+            icon="📈"
+          />
+          <ScoreMetric 
+            label="Retention" 
+            value={task.scoringFactors.retentionGain} 
+            icon="🧠"
+          />
+          <ScoreMetric 
+            label="Exam ROI" 
+            value={task.scoringFactors.examRoi} 
+            icon="🎯"
+          />
+          <ScoreMetric 
+            label="Error Closure" 
+            value={task.scoringFactors.errorClosure} 
+            icon="✅"
+          />
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex flex-col gap-3 pt-4">
+        <Button size="lg" className="w-full" onClick={onStart}>
+          Start Practice
+        </Button>
+        <div className="flex gap-3">
+          <Button variant="outline" size="sm" className="flex-1" onClick={onSkip}>
+            Skip
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1" onClick={onDefer}>
+            Do Later
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ScoreMetric({ label, value, icon }: { label: string; value: number; icon: string }) {
+  const percentage = Math.round(value * 100);
+  return (
+    <div className="p-3 bg-muted rounded-lg">
+      <div className="flex items-center gap-2 mb-1">
+        <span>{icon}</span>
+        <span className="text-xs text-muted-foreground">{label}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-2 bg-background rounded-full overflow-hidden">
+          <div 
+            className="h-2 bg-primary rounded-full transition-all duration-500"
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+        <span className="text-sm font-medium w-10 text-right">{percentage}%</span>
+      </div>
+    </div>
   );
 }
 
@@ -454,10 +547,10 @@ function CompletedTaskCard({ task }: { task: PlanTask }) {
   const typeConfig = TASK_TYPE_CONFIG[task.itemType] || TASK_TYPE_CONFIG.mcq;
 
   return (
-    <Card className="opacity-70">
+    <Card className="opacity-70 transition-all duration-200 hover:opacity-90 hover:shadow-sm">
       <CardContent className="p-4">
         <div className="flex items-center gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center shadow-sm">
             ✓
           </div>
           <div className="flex-1 min-w-0">
@@ -485,10 +578,10 @@ function SkippedTaskCard({ task, onReschedule }: { task: PlanTask; onReschedule:
   const typeConfig = TASK_TYPE_CONFIG[task.itemType] || TASK_TYPE_CONFIG.mcq;
 
   return (
-    <Card className="opacity-50">
+    <Card className="opacity-50 transition-all duration-200 hover:opacity-70 hover:shadow-sm">
       <CardContent className="p-4">
         <div className="flex items-center gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-muted text-muted-foreground flex items-center justify-center">
             —
           </div>
           <div className="flex-1 min-w-0">

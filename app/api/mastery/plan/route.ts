@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import {
   generateDailyPlan,
@@ -17,9 +17,6 @@ import {
   MASTERY_CONFIG,
   type PlannerInput,
 } from '@/lib/services/mastery-engine';
-
-// Import mastery schema tables (when migrated)
-// import { dailyPlans, dailyPlanItems, masteryState, microSkills, items, itemSkillMap } from '@/lib/db/mastery-schema';
 
 /**
  * GET /api/mastery/plan
@@ -45,19 +42,60 @@ export async function GET(req: NextRequest) {
 
     const today = new Date().toISOString().split('T')[0];
     
-    // TODO: When schema is migrated, fetch from database
-    // For now, generate a demo plan
-    
-    // Get user's exam dates (mock for now)
-    const daysUntilWritten = 45; // Would come from user profile / kslTimelines
+    // Get user's exam dates (would come from user profile / kslTimelines)
+    const daysUntilWritten = 45;
     const daysUntilOral = 60;
     
     const examPhase = determineExamPhase(daysUntilWritten);
     
-    // Build planner input (simplified for now - real version pulls from DB)
+    // Query REAL skills from database
+    const skillsResult = await db.execute(sql`
+      SELECT 
+        ms.id as skill_id,
+        ms.name,
+        ms.unit_id,
+        ms.exam_weight,
+        ms.difficulty,
+        ms.format_tags,
+        ms.is_core
+      FROM micro_skills ms
+      WHERE ms.is_active = true
+      ORDER BY ms.exam_weight DESC
+      LIMIT 50
+    `);
+    
+    // Query REAL mastery state for this user
+    const masteryResult = await db.execute(sql`
+      SELECT 
+        skill_id,
+        p_mastery,
+        stability,
+        last_practiced_at,
+        next_review_date,
+        is_verified
+      FROM mastery_state
+      WHERE user_id = ${user.id}::uuid
+    `);
+    
+    // Query REAL items from database
+    const itemsResult = await db.execute(sql`
+      SELECT 
+        i.id as item_id,
+        i.item_type,
+        i.format,
+        i.difficulty,
+        i.estimated_minutes,
+        i.prompt,
+        ism.skill_id
+      FROM items i
+      JOIN item_skill_map ism ON i.id = ism.item_id
+      WHERE i.is_active = true
+    `);
+    
+    // Build planner input from real database data
     const plannerInput: PlannerInput = {
       userId: user.id,
-      timeBudgetMinutes: 60, // From user profile
+      timeBudgetMinutes: 60, 
       examPhase,
       daysUntilWritten,
       daysUntilOral,
@@ -69,44 +107,85 @@ export async function GET(req: NextRequest) {
       recentActivities: [],
     };
     
-    // Generate demo micro-skills and items based on ATP units
-    const demoSkills = [
-      { skillId: 'skill-1', name: 'Issue Spotting in Civil Procedure', unitId: 'atp-100', examWeight: 0.15, difficulty: 3, formatTags: ['written'], isCore: true },
-      { skillId: 'skill-2', name: 'Application for Injunction', unitId: 'atp-100', examWeight: 0.10, difficulty: 4, formatTags: ['drafting'], isCore: false },
-      { skillId: 'skill-3', name: 'Criminal Bail Procedure', unitId: 'atp-101', examWeight: 0.12, difficulty: 3, formatTags: ['oral'], isCore: true },
-      { skillId: 'skill-4', name: 'Evidence Act s.34 Analysis', unitId: 'atp-101', examWeight: 0.08, difficulty: 4, formatTags: ['written'], isCore: false },
-      { skillId: 'skill-5', name: 'Grant of Probate Application', unitId: 'atp-102', examWeight: 0.10, difficulty: 3, formatTags: ['drafting'], isCore: true },
-    ];
+    // Populate skills from real DB data
+    const skills = skillsResult.rows as Array<{
+      skill_id: string;
+      name: string;
+      unit_id: string;
+      exam_weight: string;
+      difficulty: string;
+      format_tags: string[];
+      is_core: boolean;
+    }>;
     
-    const demoItems = [
-      { itemId: 'item-1', skillId: 'skill-1', itemType: 'issue_spot', difficulty: 3, estimatedMinutes: 20 },
-      { itemId: 'item-2', skillId: 'skill-2', itemType: 'drafting_task', difficulty: 4, estimatedMinutes: 30 },
-      { itemId: 'item-3', skillId: 'skill-3', itemType: 'oral_prompt', difficulty: 3, estimatedMinutes: 15 },
-      { itemId: 'item-4', skillId: 'skill-4', itemType: 'mcq', difficulty: 3, estimatedMinutes: 10 },
-      { itemId: 'item-5', skillId: 'skill-5', itemType: 'drafting_task', difficulty: 3, estimatedMinutes: 25 },
-    ];
-    
-    // Populate maps
-    for (const skill of demoSkills) {
-      plannerInput.skills.set(skill.skillId, skill);
-      plannerInput.masteryStates.set(skill.skillId, {
-        skillId: skill.skillId,
-        pMastery: Math.random() * 0.6, // Random low mastery for demo
-        stability: 1.0,
-        lastPracticedAt: null,
-        nextReviewDate: null,
-        isVerified: false,
+    for (const skill of skills) {
+      const difficultyNum = skill.difficulty === 'foundation' ? 2 : skill.difficulty === 'advanced' ? 4 : 3;
+      plannerInput.skills.set(skill.skill_id, {
+        skillId: skill.skill_id,
+        name: skill.name,
+        unitId: skill.unit_id,
+        examWeight: parseFloat(skill.exam_weight) || 0.05,
+        difficulty: difficultyNum,
+        formatTags: skill.format_tags || ['written'],
+        isCore: skill.is_core,
       });
     }
     
-    for (const item of demoItems) {
-      const existing = plannerInput.availableItems.get(item.skillId) ?? [];
-      existing.push(item);
-      plannerInput.availableItems.set(item.skillId, existing);
+    // Populate mastery states from real DB data
+    const masteryStates = masteryResult.rows as Array<{
+      skill_id: string;
+      p_mastery: string;
+      stability: string;
+      last_practiced_at: string | null;
+      next_review_date: string | null;
+      is_verified: boolean;
+    }>;
+    
+    const masteryMap = new Map(masteryStates.map(m => [m.skill_id, m]));
+    
+    for (const skill of skills) {
+      const mastery = masteryMap.get(skill.skill_id);
+      plannerInput.masteryStates.set(skill.skill_id, {
+        skillId: skill.skill_id,
+        pMastery: mastery ? parseFloat(mastery.p_mastery) : 0,
+        stability: mastery ? parseFloat(mastery.stability) : 1.0,
+        lastPracticedAt: mastery?.last_practiced_at ? new Date(mastery.last_practiced_at) : null,
+        nextReviewDate: mastery?.next_review_date ? new Date(mastery.next_review_date) : null,
+        isVerified: mastery?.is_verified || false,
+      });
     }
     
-    // Generate plan
+    // Populate items from real DB data
+    const items = itemsResult.rows as Array<{
+      item_id: string;
+      skill_id: string;
+      item_type: string;
+      format: string;
+      difficulty: number;
+      estimated_minutes: number;
+      prompt: string;
+    }>;
+    
+    for (const item of items) {
+      const existing = plannerInput.availableItems.get(item.skill_id) ?? [];
+      existing.push({
+        itemId: item.item_id,
+        skillId: item.skill_id,
+        itemType: item.item_type,
+        difficulty: item.difficulty,
+        estimatedMinutes: item.estimated_minutes,
+      });
+      plannerInput.availableItems.set(item.skill_id, existing);
+    }
+    
+    // Generate plan using real data
     const plan = generateDailyPlan(plannerInput);
+    
+    // Get unit IDs from skills
+    const taskUnitIds = plan.tasks.map(t => {
+      const skill = plannerInput.skills.get(t.skillId);
+      return skill?.unitId || 'atp-100';
+    });
     
     return NextResponse.json({
       plan: {
@@ -120,14 +199,30 @@ export async function GET(req: NextRequest) {
         isGenerated: true,
         generatedAt: new Date().toISOString(),
       },
-      tasks: plan.tasks.map((task, index) => ({
-        id: `task-${index}`,
-        ...task,
-        status: 'pending',
-      })),
+      tasks: plan.tasks.map((task, index) => {
+        const skill = plannerInput.skills.get(task.skillId);
+        return {
+          id: `task-${index}`,
+          taskType: task.taskType,
+          itemId: task.itemId,
+          skillId: task.skillId,
+          skillName: skill?.name || task.title,
+          unitId: skill?.unitId || 'atp-100',
+          format: task.format,
+          mode: task.mode,
+          title: task.title,
+          description: task.description,
+          estimatedMinutes: task.estimatedMinutes,
+          order: task.order,
+          priorityScore: task.priorityScore,
+          rationale: task.rationale,
+          whySelected: task.whySelected,
+          status: 'pending',
+        };
+      }),
       summary: {
         primaryObjective: `Focus on ${plan.examPhase === 'critical' ? 'timed practice' : 'skill development'}`,
-        focusUnits: ['Civil Litigation', 'Criminal Litigation'],
+        focusUnits: [...new Set(taskUnitIds.slice(0, 3))],
         totalTasks: plan.tasks.length,
       },
     });

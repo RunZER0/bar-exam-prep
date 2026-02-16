@@ -15,7 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import {
   updateMasteryWithCurrentState,
@@ -165,10 +165,25 @@ export async function POST(req: NextRequest) {
     for (const skillId of submission.skillIds) {
       const coverageWeight = submission.coverageWeights[skillId] ?? 1.0;
       
-      // TODO: Fetch current mastery state from DB
-      // For now, use defaults
-      const currentPMastery = 0.3;
-      const currentStability = 1.0;
+      // Fetch current mastery state from DB
+      const currentMasteryResult = await db.execute(sql`
+        SELECT p_mastery, stability, attempt_count, correct_count, is_verified
+        FROM mastery_state 
+        WHERE user_id = ${user.id}::uuid AND skill_id = ${skillId}::uuid
+      `);
+      
+      const currentRow = currentMasteryResult.rows[0] as {
+        p_mastery: string;
+        stability: string;
+        attempt_count: number;
+        correct_count: number;
+        is_verified: boolean;
+      } | undefined;
+      
+      const currentPMastery = currentRow ? parseFloat(currentRow.p_mastery) : 0;
+      const currentStability = currentRow ? parseFloat(currentRow.stability) : 1.0;
+      const currentAttemptCount = currentRow?.attempt_count ?? 0;
+      const currentCorrectCount = currentRow?.correct_count ?? 0;
       
       const update = updateMasteryWithCurrentState(
         skillId,
@@ -185,19 +200,33 @@ export async function POST(req: NextRequest) {
       
       masteryUpdates.push(update);
       
-      // TODO: Persist to database
-      // await db.update(masteryState)
-      //   .set({
-      //     pMastery: update.newPMastery,
-      //     stability: update.newStability,
-      //     lastPracticedAt: new Date(),
-      //     lastExamLikeAt: submission.mode !== 'practice' ? new Date() : undefined,
-      //     repsCount: sql`reps_count + 1`,
-      //   })
-      //   .where(and(
-      //     eq(masteryState.userId, user.id),
-      //     eq(masteryState.skillId, skillId)
-      //   ));
+      // PERSIST TO DATABASE - upsert mastery_state
+      const newCorrectCount = grading.scoreNorm >= 0.6 ? currentCorrectCount + 1 : currentCorrectCount;
+      
+      await db.execute(sql`
+        INSERT INTO mastery_state (user_id, skill_id, p_mastery, stability, attempt_count, correct_count, last_practiced_at, next_review_date)
+        VALUES (
+          ${user.id}::uuid, 
+          ${skillId}::uuid, 
+          ${update.newPMastery}, 
+          ${update.newStability},
+          ${currentAttemptCount + 1},
+          ${newCorrectCount},
+          NOW(),
+          NOW() + INTERVAL '1 day' * ${Math.ceil(update.newStability)}
+        )
+        ON CONFLICT (user_id, skill_id) 
+        DO UPDATE SET 
+          p_mastery = ${update.newPMastery},
+          stability = ${update.newStability},
+          attempt_count = mastery_state.attempt_count + 1,
+          correct_count = ${newCorrectCount},
+          last_practiced_at = NOW(),
+          next_review_date = NOW() + INTERVAL '1 day' * ${Math.ceil(update.newStability)},
+          updated_at = NOW()
+      `);
+      
+      console.log(`[MASTERY UPDATE] User ${user.id} Skill ${skillId}: ${(currentPMastery * 100).toFixed(1)}% → ${(update.newPMastery * 100).toFixed(1)}%`);
     }
 
     // ========================================
@@ -269,29 +298,32 @@ export async function POST(req: NextRequest) {
     // STEP 5: STORE ATTEMPT RECORD
     // ========================================
     
-    const attemptId = `attempt-${Date.now()}`; // TODO: Use UUID from DB insert
+    // Insert into attempts table
+    const attemptResult = await db.execute(sql`
+      INSERT INTO attempts (
+        user_id, item_id, format, mode, 
+        raw_answer_text, time_taken_sec, 
+        score_norm, rubric_breakdown_json, feedback_json,
+        selected_option, is_correct
+      )
+      VALUES (
+        ${user.id}::uuid,
+        ${submission.itemId}::uuid,
+        ${submission.format},
+        ${submission.mode},
+        ${submission.format !== 'mcq' ? submission.response : null},
+        ${submission.timeTakenSec},
+        ${grading.scoreNorm},
+        ${JSON.stringify(grading.rubricBreakdown)}::jsonb,
+        ${JSON.stringify(grading)}::jsonb,
+        ${submission.selectedOption ?? null},
+        ${grading.scoreNorm >= 0.6}
+      )
+      RETURNING id
+    `);
     
-    // TODO: Insert into attempts table
-    // const [newAttempt] = await db.insert(attempts).values({
-    //   userId: user.id,
-    //   itemId: submission.itemId,
-    //   mode: submission.mode,
-    //   format: submission.format,
-    //   startedAt: new Date(submission.startedAt),
-    //   submittedAt: new Date(),
-    //   timeTakenSec: submission.timeTakenSec,
-    //   rawAnswerText: submission.format !== 'mcq' ? submission.response : null,
-    //   scoreNorm: grading.scoreNorm,
-    //   scoreRaw: grading.scoreRaw,
-    //   maxScore: grading.maxScore,
-    //   rubricBreakdownJson: grading.rubricBreakdown,
-    //   feedbackJson: grading,
-    //   errorTagIds: grading.errorTags,
-    //   nextDrillSkillIds: grading.nextDrills,
-    //   isComplete: true,
-    //   isGraded: true,
-    //   gradedAt: new Date(),
-    // }).returning();
+    const attemptId = (attemptResult.rows[0] as { id: string })?.id ?? `attempt-${Date.now()}`;
+    console.log(`[ATTEMPT SAVED] User ${user.id} Item ${submission.itemId} Score ${(grading.scoreNorm * 100).toFixed(1)}%`);
 
     // ========================================
     // STEP 6: BUILD RESPONSE
@@ -363,21 +395,46 @@ export async function GET(req: NextRequest) {
     const format = url.searchParams.get('format');
     const limit = parseInt(url.searchParams.get('limit') ?? '20');
     
-    // TODO: Query from attempts table with filters
-    // const attempts = await db.select()
-    //   .from(attempts)
-    //   .where(and(
-    //     eq(attempts.userId, user.id),
-    //     skillId ? sql`${attempts.itemId} IN (SELECT item_id FROM item_skill_map WHERE skill_id = ${skillId})` : undefined,
-    //   ))
-    //   .orderBy(desc(attempts.createdAt))
-    //   .limit(limit);
+    // Query from attempts table with filters
+    const attemptsResult = await db.execute(sql`
+      SELECT 
+        a.id,
+        a.item_id,
+        a.format,
+        a.mode,
+        a.score_norm,
+        a.is_correct,
+        a.time_taken_sec,
+        a.created_at,
+        i.prompt,
+        i.unit_id
+      FROM attempts a
+      JOIN items i ON a.item_id = i.id
+      WHERE a.user_id = ${user.id}::uuid
+      ${skillId ? sql`AND a.item_id IN (SELECT item_id FROM item_skill_map WHERE skill_id = ${skillId}::uuid)` : sql``}
+      ${unitId ? sql`AND i.unit_id = ${unitId}` : sql``}
+      ${format ? sql`AND a.format = ${format}` : sql``}
+      ORDER BY a.created_at DESC
+      LIMIT ${limit}
+    `);
 
-    // Mock response for now
+    const attempts = attemptsResult.rows.map((r: any) => ({
+      id: r.id,
+      itemId: r.item_id,
+      format: r.format,
+      mode: r.mode,
+      scorePercent: Math.round((parseFloat(r.score_norm) || 0) * 100),
+      passed: r.is_correct,
+      timeTakenSec: r.time_taken_sec,
+      createdAt: r.created_at,
+      prompt: r.prompt?.slice(0, 100) + '...',
+      unitId: r.unit_id,
+    }));
+    
     return NextResponse.json({
-      attempts: [],
-      total: 0,
-      hasMore: false,
+      attempts,
+      total: attempts.length,
+      hasMore: attempts.length >= limit,
     });
 
   } catch (error) {

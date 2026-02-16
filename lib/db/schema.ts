@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, boolean, integer, jsonb, pgEnum, date } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, boolean, integer, jsonb, pgEnum, date, numeric, real } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Enums
@@ -8,6 +8,35 @@ export const difficultyLevelEnum = pgEnum('difficulty_level', ['beginner', 'inte
 export const questionTypeEnum = pgEnum('question_type', ['multiple_choice', 'essay', 'case_analysis', 'practical']);
 export const themeEnum = pgEnum('theme', ['light', 'dark', 'system']);
 export const studyPaceEnum = pgEnum('study_pace', ['relaxed', 'moderate', 'intensive']);
+
+// Tutor OS Enums
+export const candidateTypeEnum = pgEnum('candidate_type', ['FIRST_TIME', 'RESIT']);
+export const examEventTypeEnum = pgEnum('exam_event_type', ['WRITTEN', 'ORAL', 'REGISTRATION', 'RESULTS']);
+export const sessionStatusEnum = pgEnum('session_status', ['QUEUED', 'PREPARING', 'READY', 'IN_PROGRESS', 'COMPLETED', 'ABANDONED']);
+export const sessionModalityEnum = pgEnum('session_modality', ['WRITTEN', 'ORAL', 'DRAFTING', 'REVIEW', 'MIXED']);
+export const assetTypeEnum = pgEnum('asset_type', ['NOTES', 'CHECKPOINT', 'PRACTICE_SET', 'TIMED_PROMPT', 'RUBRIC', 'MODEL_ANSWER', 'REMEDIATION', 'ORAL_PROMPT', 'FOLLOW_UP']);
+export const assetStatusEnum = pgEnum('asset_status', ['GENERATING', 'READY', 'FAILED']);
+export const jobStatusEnum = pgEnum('job_status', ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED']);
+
+// M4: Authority & Notification Enums
+export const sourceTierEnum = pgEnum('source_tier', ['A', 'B', 'C']);
+export const sourceTypeEnum = pgEnum('source_type', ['CASE', 'STATUTE', 'REGULATION', 'ARTICLE', 'TEXTBOOK', 'OTHER']);
+export const licenseTagEnum = pgEnum('license_tag', ['PUBLIC_LEGAL_TEXT', 'CC_BY_SA', 'RESTRICTED', 'UNKNOWN']);
+export const notificationChannelEnum = pgEnum('notification_channel', ['EMAIL', 'PUSH', 'IN_APP']);
+export const notificationStatusEnum = pgEnum('notification_status', ['PENDING', 'SENT', 'FAILED', 'BOUNCED']);
+export const studyActivityTypeEnum = pgEnum('study_activity_type', [
+  'READING_NOTES',
+  'MEMORY_CHECK',
+  'FLASHCARDS',
+  'WRITTEN_QUIZ',
+  'ISSUE_SPOTTER',
+  'RULE_ELEMENTS_DRILL',
+  'ESSAY_OUTLINE',
+  'FULL_ESSAY',
+  'PAST_PAPER_STYLE',
+  'ERROR_CORRECTION',
+  'MIXED_REVIEW'
+]);
 
 // Users table
 export const users = pgTable('users', {
@@ -905,6 +934,592 @@ export const userEngagementSignalsRelations = relations(userEngagementSignals, (
 export const userEngagementPatternsRelations = relations(userEngagementPatterns, ({ one }) => ({
   user: one(users, {
     fields: [userEngagementPatterns.userId],
+    references: [users.id],
+  }),
+}));
+
+// ============================================
+// TUTOR OS - EXAM TIMELINE SYSTEM
+// ============================================
+
+// Exam cycles (e.g., "ATP 2026 April Resit", "ATP 2026 First-time Track")
+export const examCycles = pgTable('exam_cycles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  label: text('label').notNull(),
+  candidateType: candidateTypeEnum('candidate_type').notNull(),
+  year: integer('year').notNull(),
+  timezone: text('timezone').notNull().default('Africa/Nairobi'),
+  notes: text('notes'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Exam events (written windows, oral windows, registration, results)
+export const examEvents = pgTable('exam_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  cycleId: uuid('cycle_id').references(() => examCycles.id).notNull(),
+  eventType: examEventTypeEnum('event_type').notNull(),
+  startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+  endsAt: timestamp('ends_at', { withTimezone: true }),
+  unitId: text('unit_id'),
+  sourceAssetId: uuid('source_asset_id'),
+  metaJson: jsonb('meta_json'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// User exam profile (which cycle they're targeting)
+export const userExamProfiles = pgTable('user_exam_profiles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull().unique(),
+  cycleId: uuid('cycle_id').references(() => examCycles.id).notNull(),
+  timezone: text('timezone').notNull().default('Africa/Nairobi'),
+  autopilotEnabled: boolean('autopilot_enabled').notNull().default(false),
+  // For FIRST_TIME: if oral slot is known, use exact date; else use window start (July 1)
+  oralSlotDate: date('oral_slot_date'),
+  notificationPreferences: jsonb('notification_preferences').$type<{
+    dailyPlan: boolean;
+    sessionStart: boolean;
+    breaks: boolean;
+    weeklyReport: boolean;
+  }>().default({ dailyPlan: true, sessionStart: true, breaks: true, weeklyReport: true }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================
+// TUTOR OS - CURRICULUM KNOWLEDGE GRAPH
+// ============================================
+
+// Content assets (outline PDFs, lecture recordings, etc.)
+export const contentAssets = pgTable('content_assets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  assetType: text('asset_type').notNull(),
+  unitId: text('unit_id').notNull(),
+  title: text('title').notNull(),
+  fileUrl: text('file_url'),
+  contentText: text('content_text'),
+  fileSizeBytes: integer('file_size_bytes'),
+  mimeType: text('mime_type'),
+  parsedAt: timestamp('parsed_at'),
+  parserVersion: text('parser_version'),
+  metaJson: jsonb('meta_json'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Outline topics (hierarchical topic tree from KSL outlines)
+export const outlineTopics = pgTable('outline_topics', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  assetId: uuid('asset_id').references(() => contentAssets.id),
+  unitId: text('unit_id').notNull(),
+  parentId: uuid('parent_id'),
+  topicNumber: text('topic_number'),
+  title: text('title').notNull(),
+  description: text('description'),
+  learningOutcomes: jsonb('learning_outcomes').$type<string[]>(),
+  depthLevel: integer('depth_level').notNull().default(0),
+  sortOrder: integer('sort_order').notNull().default(0),
+  examWeight: numeric('exam_weight', { precision: 5, scale: 4 }).default('0.05'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Micro-skills (atomic skills derived from learning outcomes)
+export const microSkills = pgTable('micro_skills', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  skillCode: text('skill_code').notNull().unique(),
+  unitId: text('unit_id').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  formatTags: text('format_tags').array().notNull().default([]),
+  examWeight: numeric('exam_weight', { precision: 5, scale: 4 }).default('0.01'),
+  minPracticeReps: integer('min_practice_reps').notNull().default(3),
+  minTimedProofs: integer('min_timed_proofs').notNull().default(1),
+  minVerificationPasses: integer('min_verification_passes').notNull().default(2),
+  prerequisiteSkills: text('prerequisite_skills').array(),
+  metaJson: jsonb('meta_json'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Skill outline mapping
+export const skillOutlineMap = pgTable('skill_outline_map', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  skillId: uuid('skill_id').references(() => microSkills.id).notNull(),
+  topicId: uuid('topic_id').references(() => outlineTopics.id).notNull(),
+  coverageStrength: numeric('coverage_strength', { precision: 3, scale: 2 }).default('1.0'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Vetted authorities (statutes, cases, practice notes - for grounding)
+export const vettedAuthorities = pgTable('vetted_authorities', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  authorityType: text('authority_type').notNull(),
+  title: text('title').notNull(),
+  citation: text('citation'),
+  fullText: text('full_text'),
+  summary: text('summary'),
+  unitIds: text('unit_ids').array().notNull().default([]),
+  skillIds: uuid('skill_ids').array(),
+  importance: text('importance').default('medium'),
+  isVerified: boolean('is_verified').notNull().default(false),
+  verifiedById: uuid('verified_by_id').references(() => users.id),
+  verifiedAt: timestamp('verified_at'),
+  sourceUrl: text('source_url'),
+  metaJson: jsonb('meta_json'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================
+// TUTOR OS - STUDY SESSION ORCHESTRATOR
+// ============================================
+
+// Study sessions
+export const studySessions = pgTable('study_sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  planItemId: uuid('plan_item_id'),
+  status: sessionStatusEnum('status').notNull().default('QUEUED'),
+  targetSkillIds: jsonb('target_skill_ids').$type<string[]>().notNull().default([]),
+  modality: sessionModalityEnum('modality').notNull().default('WRITTEN'),
+  phaseWritten: text('phase_written'),
+  phaseOral: text('phase_oral'),
+  currentStep: integer('current_step').notNull().default(0),
+  stepsJson: jsonb('steps_json').$type<string[]>().notNull().default(['notes', 'checkpoint', 'practice', 'grading', 'fix', 'summary']),
+  estimatedMinutes: integer('estimated_minutes'),
+  startedAt: timestamp('started_at'),
+  endedAt: timestamp('ended_at'),
+  continuousMinutes: integer('continuous_minutes').default(0),
+  lastBreakAt: timestamp('last_break_at'),
+  performanceDrops: integer('performance_drops').default(0),
+  finalScore: numeric('final_score', { precision: 5, scale: 4 }),
+  errorTagsJson: jsonb('error_tags_json').$type<string[]>(),
+  masteryUpdatesJson: jsonb('mastery_updates_json'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Study assets
+export const studyAssets = pgTable('study_assets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sessionId: uuid('session_id').references(() => studySessions.id).notNull(),
+  assetType: assetTypeEnum('asset_type').notNull(),
+  contentJson: jsonb('content_json').notNull(),
+  groundingRefsJson: jsonb('grounding_refs_json'),
+  activityTypes: text('activity_types').array(), // M4: Activity types used in this asset
+  status: assetStatusEnum('status').notNull().default('GENERATING'),
+  generationStartedAt: timestamp('generation_started_at'),
+  generationCompletedAt: timestamp('generation_completed_at'),
+  generationError: text('generation_error'),
+  stepOrder: integer('step_order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Session events (for pacing engine + weekly reports)
+export const sessionEvents = pgTable('session_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sessionId: uuid('session_id').references(() => studySessions.id).notNull(),
+  eventType: text('event_type').notNull(),
+  eventData: jsonb('event_data'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================
+// TUTOR OS - BACKGROUND JOBS
+// ============================================
+
+export const backgroundJobs = pgTable('background_jobs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  jobType: text('job_type').notNull(),
+  userId: uuid('user_id').references(() => users.id),
+  status: jobStatusEnum('status').notNull().default('PENDING'),
+  priority: integer('priority').notNull().default(5),
+  payloadJson: jsonb('payload_json').notNull(),
+  resultJson: jsonb('result_json'),
+  errorMessage: text('error_message'),
+  attempts: integer('attempts').default(0),
+  maxAttempts: integer('max_attempts').default(3),
+  scheduledFor: timestamp('scheduled_for').defaultNow().notNull(),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================
+// TUTOR OS - WEEKLY REPORTS
+// ============================================
+
+export const weeklyReports = pgTable('weekly_reports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  weekStart: date('week_start').notNull(),
+  weekEnd: date('week_end').notNull(),
+  readinessScore: numeric('readiness_score', { precision: 5, scale: 4 }),
+  writtenReadiness: numeric('written_readiness', { precision: 5, scale: 4 }),
+  oralReadiness: numeric('oral_readiness', { precision: 5, scale: 4 }),
+  readinessTrend: text('readiness_trend'),
+  coverageCompleted: jsonb('coverage_completed'),
+  coverageDebtRemaining: jsonb('coverage_debt_remaining'),
+  strongestSkills: jsonb('strongest_skills'),
+  weakestSkills: jsonb('weakest_skills'),
+  skillsVerified: integer('skills_verified').default(0),
+  recurringErrorTags: jsonb('recurring_error_tags'),
+  remediationPlan: jsonb('remediation_plan'),
+  totalSessions: integer('total_sessions').default(0),
+  totalMinutes: integer('total_minutes').default(0),
+  totalAttempts: integer('total_attempts').default(0),
+  gatesPassed: integer('gates_passed').default(0),
+  nextWeekRecommendations: jsonb('next_week_recommendations'),
+  daysToWritten: integer('days_to_written'),
+  daysToOral: integer('days_to_oral'),
+  evidenceRefsJson: jsonb('evidence_refs_json'),
+  reportGeneratedAt: timestamp('report_generated_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================
+// M3: TRANSCRIPT-ALIGNED TUTOR (TRANSCRIPT INGESTION)
+// ============================================
+
+// Lecture source type enum
+export const lectureSourceEnum = pgEnum('lecture_source', ['KSL', 'ATP_OFFICIAL', 'EXTERNAL', 'ADMIN_UPLOAD']);
+
+// Skill mapping status enum
+export const skillMappingStatusEnum = pgEnum('skill_mapping_status', ['SUGGESTED', 'APPROVED', 'REJECTED']);
+
+// Evidence source type for grounding
+export const evidenceSourceEnum = pgEnum('evidence_source', ['OUTLINE_TOPIC', 'LECTURE_CHUNK', 'AUTHORITY']);
+
+/**
+ * lectures - KSL lecture recordings/transcripts
+ * Links to ATP units for curriculum alignment
+ */
+export const lectures = pgTable('lectures', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  unitId: text('unit_id'), // ATP unit ID (matches microSkills.unitId pattern)
+  title: text('title').notNull(),
+  lecturerName: text('lecturer_name'), // e.g., "Prof. Wanyama"
+  lectureDate: date('lecture_date'),
+  source: lectureSourceEnum('source').notNull().default('KSL'),
+  transcriptAssetUrl: text('transcript_asset_url'), // S3/storage URL for raw file
+  durationMinutes: integer('duration_minutes'),
+  isActive: boolean('is_active').default(true).notNull(),
+  metadata: jsonb('metadata').$type<{
+    language?: string;
+    quality?: 'good' | 'fair' | 'poor';
+    hasTimestamps?: boolean;
+    originalFormat?: 'vtt' | 'txt' | 'srt' | 'json';
+  }>(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+/**
+ * lecture_chunks - Chunked transcript segments
+ * Used for RAG retrieval and skill mapping
+ */
+export const lectureChunks = pgTable('lecture_chunks', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  lectureId: uuid('lecture_id').references(() => lectures.id).notNull(),
+  chunkIndex: integer('chunk_index').notNull(), // 0-indexed order within lecture
+  text: text('text').notNull(), // The actual transcript content
+  startTime: integer('start_time'), // seconds from start (optional)
+  endTime: integer('end_time'), // seconds from start (optional)
+  // Embedding: stored externally or as vector extension
+  embeddingId: text('embedding_id'), // External embedding service ID (OpenAI, etc.)
+  embeddingVector: jsonb('embedding_vector').$type<number[]>(), // Or local storage
+  // Chunking metadata
+  tokenCount: integer('token_count'),
+  chunkHash: text('chunk_hash'), // SHA256 for deduplication
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+/**
+ * lecture_skill_map - Mapping chunks to curriculum skills
+ * Admin-approved mappings for retrieval-first generation
+ */
+export const lectureSkillMap = pgTable('lecture_skill_map', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  chunkId: uuid('chunk_id').references(() => lectureChunks.id).notNull(),
+  skillId: uuid('skill_id').references(() => microSkills.id).notNull(),
+  confidence: numeric('confidence', { precision: 5, scale: 4 }).notNull(), // 0.0 - 1.0, AI-suggested
+  evidenceSpan: text('evidence_span'), // Quoted text supporting the mapping
+  status: skillMappingStatusEnum('status').notNull().default('SUGGESTED'),
+  approvedBy: uuid('approved_by').references(() => users.id),
+  approvedAt: timestamp('approved_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+/**
+ * evidence_spans - Auditable receipts linking outputs to sources
+ * Tracks "why this is true" for notes, grading, feedback
+ */
+export const evidenceSpans = pgTable('evidence_spans', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  // What this evidence supports
+  targetType: text('target_type').notNull(), // 'STUDY_ASSET', 'GRADING_OUTPUT', 'ATTEMPT_FEEDBACK'
+  targetId: uuid('target_id').notNull(), // ID of the asset/attempt/etc.
+  // The source
+  sourceType: evidenceSourceEnum('source_type').notNull(),
+  sourceId: uuid('source_id').notNull(), // outline_topic_id, lecture_chunk_id, or authority_id
+  // Evidence details
+  quotedText: text('quoted_text'), // The exact text cited
+  claimText: text('claim_text'), // What claim this supports
+  confidenceScore: numeric('confidence_score', { precision: 5, scale: 4 }),
+  pageOrTimestamp: text('page_or_timestamp'), // For source location
+  // Audit
+  generatedBy: text('generated_by'), // 'AI', 'ADMIN', 'RETRIEVAL'
+  isVerified: boolean('is_verified').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+/**
+ * missing_authority_log - Tracking when system can't find verified sources
+ * For admin review and gap analysis
+ */
+export const missingAuthorityLog = pgTable('missing_authority_log', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  claimText: text('claim_text').notNull(), // What the AI wanted to cite
+  requestedSkillIds: jsonb('requested_skill_ids').$type<string[]>(),
+  searchQuery: text('search_query'), // What was searched
+  searchResults: jsonb('search_results'), // What came back (empty or low confidence)
+  errorTag: text('error_tag').notNull(), // 'MISSING_AUTHORITY', 'MISSING_TRANSCRIPT_SUPPORT', etc.
+  sessionId: uuid('session_id').references(() => studySessions.id),
+  assetId: uuid('asset_id').references(() => studyAssets.id),
+  resolvedAt: timestamp('resolved_at'), // When admin added the missing source
+  resolvedBy: uuid('resolved_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================
+// M4: AUTHORITY RECORDS + NOTIFICATIONS
+// ============================================
+
+/**
+ * authority_records - Canonical source records for citations
+ * Stores cases, statutes, regulations with source governance
+ */
+export const authorityRecords = pgTable('authority_records', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sourceTier: sourceTierEnum('source_tier').notNull(), // A = primary, B = secondary, C = restricted
+  sourceType: sourceTypeEnum('source_type').notNull(),
+  domain: text('domain').notNull(), // e.g., 'kenyalaw.org'
+  canonicalUrl: text('canonical_url').notNull(),
+  title: text('title').notNull(),
+  jurisdiction: text('jurisdiction'), // e.g., 'Kenya', 'UK'
+  court: text('court'), // e.g., 'Supreme Court', 'Court of Appeal'
+  citation: text('citation'), // e.g., '[2020] KECA 123'
+  decisionDate: date('decision_date'),
+  actName: text('act_name'), // For statutes
+  sectionPath: text('section_path'), // e.g., 'Section 3(1)(a)'
+  licenseTag: licenseTagEnum('license_tag').notNull().default('UNKNOWN'),
+  retrievedAt: timestamp('retrieved_at').defaultNow().notNull(),
+  contentHash: text('content_hash'), // For change detection
+  rawText: text('raw_text'), // Full text for search
+  isVerified: boolean('is_verified').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+/**
+ * authority_passages - Verbatim excerpts from authority records
+ * With pinpoint locators for precise citations
+ */
+export const authorityPassages = pgTable('authority_passages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  authorityId: uuid('authority_id').references(() => authorityRecords.id, { onDelete: 'cascade' }).notNull(),
+  passageText: text('passage_text').notNull(),
+  locatorJson: jsonb('locator_json').$type<{
+    paragraphStart?: number;
+    paragraphEnd?: number;
+    section?: string;
+    subsection?: string;
+    schedule?: string;
+    page?: number;
+  }>().notNull(),
+  snippetHash: text('snippet_hash'), // For deduplication
+  startIndex: integer('start_index'),
+  endIndex: integer('end_index'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+/**
+ * notification_log - All outbound notifications
+ */
+export const notificationLog = pgTable('notification_log', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  channel: notificationChannelEnum('channel').notNull(),
+  template: text('template').notNull(),
+  payloadJson: jsonb('payload_json'),
+  status: notificationStatusEnum('status').notNull().default('PENDING'),
+  providerMessageId: text('provider_message_id'),
+  errorMessage: text('error_message'),
+  sentAt: timestamp('sent_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+/**
+ * push_subscriptions - Web push subscription endpoints
+ */
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  endpoint: text('endpoint').notNull().unique(),
+  keysJson: jsonb('keys_json').$type<{
+    p256dh: string;
+    auth: string;
+  }>().notNull(),
+  userAgent: text('user_agent'),
+  isActive: boolean('is_active').default(true).notNull(),
+  lastUsedAt: timestamp('last_used_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================
+// TUTOR OS - RELATIONS
+// ============================================
+
+export const examCyclesRelations = relations(examCycles, ({ many }) => ({
+  events: many(examEvents),
+  userProfiles: many(userExamProfiles),
+}));
+
+export const examEventsRelations = relations(examEvents, ({ one }) => ({
+  cycle: one(examCycles, {
+    fields: [examEvents.cycleId],
+    references: [examCycles.id],
+  }),
+}));
+
+export const userExamProfilesRelations = relations(userExamProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [userExamProfiles.userId],
+    references: [users.id],
+  }),
+  cycle: one(examCycles, {
+    fields: [userExamProfiles.cycleId],
+    references: [examCycles.id],
+  }),
+}));
+
+export const studySessionsRelations = relations(studySessions, ({ one, many }) => ({
+  user: one(users, {
+    fields: [studySessions.userId],
+    references: [users.id],
+  }),
+  assets: many(studyAssets),
+  events: many(sessionEvents),
+}));
+
+export const studyAssetsRelations = relations(studyAssets, ({ one }) => ({
+  session: one(studySessions, {
+    fields: [studyAssets.sessionId],
+    references: [studySessions.id],
+  }),
+}));
+
+export const sessionEventsRelations = relations(sessionEvents, ({ one }) => ({
+  session: one(studySessions, {
+    fields: [sessionEvents.sessionId],
+    references: [studySessions.id],
+  }),
+}));
+
+export const weeklyReportsRelations = relations(weeklyReports, ({ one }) => ({
+  user: one(users, {
+    fields: [weeklyReports.userId],
+    references: [users.id],
+  }),
+}));
+
+export const backgroundJobsRelations = relations(backgroundJobs, ({ one }) => ({
+  user: one(users, {
+    fields: [backgroundJobs.userId],
+    references: [users.id],
+  }),
+}));
+// ============================================
+// M3: TRANSCRIPT TABLES RELATIONS
+// ============================================
+
+export const lecturesRelations = relations(lectures, ({ many }) => ({
+  chunks: many(lectureChunks),
+}));
+
+export const lectureChunksRelations = relations(lectureChunks, ({ one, many }) => ({
+  lecture: one(lectures, {
+    fields: [lectureChunks.lectureId],
+    references: [lectures.id],
+  }),
+  skillMappings: many(lectureSkillMap),
+}));
+
+export const lectureSkillMapRelations = relations(lectureSkillMap, ({ one }) => ({
+  chunk: one(lectureChunks, {
+    fields: [lectureSkillMap.chunkId],
+    references: [lectureChunks.id],
+  }),
+  skill: one(microSkills, {
+    fields: [lectureSkillMap.skillId],
+    references: [microSkills.id],
+  }),
+  approver: one(users, {
+    fields: [lectureSkillMap.approvedBy],
+    references: [users.id],
+  }),
+}));
+
+export const evidenceSpansRelations = relations(evidenceSpans, ({ }) => ({
+  // Dynamic references based on targetType and sourceType
+  // No direct relations as these are polymorphic
+}));
+
+export const missingAuthorityLogRelations = relations(missingAuthorityLog, ({ one }) => ({
+  session: one(studySessions, {
+    fields: [missingAuthorityLog.sessionId],
+    references: [studySessions.id],
+  }),
+  asset: one(studyAssets, {
+    fields: [missingAuthorityLog.assetId],
+    references: [studyAssets.id],
+  }),
+  resolver: one(users, {
+    fields: [missingAuthorityLog.resolvedBy],
+    references: [users.id],
+  }),
+}));
+
+// ============================================
+// M4: AUTHORITY & NOTIFICATION RELATIONS
+// ============================================
+
+export const authorityRecordsRelations = relations(authorityRecords, ({ many }) => ({
+  passages: many(authorityPassages),
+}));
+
+export const authorityPassagesRelations = relations(authorityPassages, ({ one }) => ({
+  authority: one(authorityRecords, {
+    fields: [authorityPassages.authorityId],
+    references: [authorityRecords.id],
+  }),
+}));
+
+export const notificationLogRelations = relations(notificationLog, ({ one }) => ({
+  user: one(users, {
+    fields: [notificationLog.userId],
+    references: [users.id],
+  }),
+}));
+
+export const pushSubscriptionsRelations = relations(pushSubscriptions, ({ one }) => ({
+  user: one(users, {
+    fields: [pushSubscriptions.userId],
     references: [users.id],
   }),
 }));

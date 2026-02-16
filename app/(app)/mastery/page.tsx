@@ -60,9 +60,11 @@ export default function MasteryPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Primary Content Area */}
           <div className="lg:col-span-2">
-            {activeTab === 'overview' && <ReadinessDashboard />}
-            {activeTab === 'plan' && <DailyPlanView />}
-            {activeTab === 'skills' && <SkillsMapPlaceholder />}
+            <div key={activeTab} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {activeTab === 'overview' && <ReadinessDashboard />}
+              {activeTab === 'plan' && <DailyPlanView />}
+              {activeTab === 'skills' && <SkillsMapPlaceholder />}
+            </div>
           </div>
 
           {/* Sidebar */}
@@ -178,13 +180,19 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
+      className={`relative px-4 py-2 text-sm font-medium transition-all duration-200 ${
         active 
-          ? 'bg-primary text-primary-foreground' 
-          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+          ? 'text-primary' 
+          : 'text-muted-foreground hover:text-foreground'
       }`}
     >
       {children}
+      {/* Active indicator bar with smooth animation */}
+      <span 
+        className={`absolute bottom-0 left-0 right-0 h-0.5 bg-primary transition-all duration-300 ease-out ${
+          active ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
+        }`}
+      />
     </button>
   );
 }

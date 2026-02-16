@@ -31,7 +31,7 @@ export const attemptFormatEnum = pgEnum('attempt_format', ['written', 'oral', 'd
 export const errorSeverityEnum = pgEnum('error_severity', ['minor', 'moderate', 'critical']);
 export const evidenceSourceTypeEnum = pgEnum('evidence_source_type', ['lecture', 'authority', 'rubric']);
 export const planItemStatusEnum = pgEnum('plan_item_status', ['pending', 'in_progress', 'completed', 'skipped', 'deferred']);
-export const examPhaseEnum = pgEnum('exam_phase', ['distant', 'approaching', 'urgent', 'critical']);
+export const examPhaseEnum = pgEnum('exam_phase', ['distant', 'approaching', 'critical']);
 
 // ============================================
 // 1. CURRICULUM KNOWLEDGE GRAPH (CKG)
@@ -202,6 +202,7 @@ export const rubrics = pgTable('rubrics', {
 export const items = pgTable('items', {
   id: uuid('id').defaultRandom().primaryKey(),
   itemType: itemTypeEnum('item_type').notNull(),
+  format: attemptFormatEnum('format'), // Item format (written, oral, drafting, mcq)
   unitId: text('unit_id').notNull(),
   domainId: uuid('domain_id').references(() => domains.id),
   prompt: text('prompt').notNull(),
@@ -223,6 +224,8 @@ export const items = pgTable('items', {
   isActive: boolean('is_active').default(true).notNull(),
   isVerified: boolean('is_verified').default(false).notNull(),
   verifiedById: uuid('verified_by_id').references(() => users.id),
+  // Stable identity hash for idempotent seeding
+  itemHash: text('item_hash').unique(), // sha256(prompt|item_type|unit_id|difficulty)
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

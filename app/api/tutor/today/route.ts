@@ -2,12 +2,52 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { 
   users, studyPlans, studyPlanItems, spacedRepetitionCards,
-  studyStreaks, topics
+  studyStreaks, topics, userExamProfiles, examCycles, examEvents,
+  studySessions, studyAssets, microSkills
 } from '@/lib/db/schema';
 import { eq, and, lte, gte, desc, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import { getDueCards, calculateStudyStats } from '@/lib/services/spaced-repetition';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
+import { ensureSessionsPrecomputed, type PrecomputeStatus } from '@/lib/services/autopilot-precompute';
+
+// Helper to calculate days until a date
+function daysUntil(date: Date | string | null): number | null {
+  if (!date) return null;
+  const target = new Date(date);
+  const now = new Date();
+  const diffTime = target.getTime() - now.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
+// Helper to determine exam phase based on days remaining
+// Product spec: >= 60 = distant, 8-59 = approaching, 0-7 = critical
+function getExamPhase(days: number | null): 'distant' | 'approaching' | 'critical' | null {
+  if (days === null) return null;
+  if (days <= 7) return 'critical';
+  if (days < 60) return 'approaching';
+  return 'distant';
+}
+
+// Determine dominant mode based on which exam is closer and needs more attention
+function getDominantMode(daysToWritten: number | null, daysToOral: number | null): 'WRITTEN' | 'ORAL' | 'MIXED' {
+  // If no oral, focus on written
+  if (daysToOral === null) return 'WRITTEN';
+  // If no written, focus on oral
+  if (daysToWritten === null) return 'ORAL';
+  
+  // If oral is within 30 days and written is done/distant, focus on oral
+  if (daysToOral <= 30 && (daysToWritten <= 0 || daysToWritten > 60)) return 'ORAL';
+  
+  // If written is within 30 days, focus on written
+  if (daysToWritten <= 30) return 'WRITTEN';
+  
+  // If both are distant, use mixed approach
+  if (daysToWritten > 90 && daysToOral > 90) return 'MIXED';
+  
+  // Default: focus on whichever is closer
+  return daysToWritten <= daysToOral ? 'WRITTEN' : 'ORAL';
+}
 
 /**
  * GET /api/tutor/today
@@ -34,7 +74,108 @@ export async function GET(req: NextRequest) {
 
     const today = new Date().toISOString().split('T')[0];
 
-    // Get active study plan
+    // Get user's exam profile with cycle info (Tutor OS)
+    const [examProfile] = await db.select({
+      profile: userExamProfiles,
+      cycle: examCycles,
+    })
+      .from(userExamProfiles)
+      .leftJoin(examCycles, eq(userExamProfiles.cycleId, examCycles.id))
+      .where(eq(userExamProfiles.userId, user.id))
+      .limit(1);
+
+    // Calculate exam countdown if profile exists
+    let examCountdown = null;
+    if (examProfile?.cycle) {
+      const events = await db.select().from(examEvents)
+        .where(eq(examEvents.cycleId, examProfile.cycle.id));
+      
+      const writtenEvent = events.find(e => e.eventType === 'WRITTEN');
+      const oralEvent = events.find(e => e.eventType === 'ORAL');
+      
+      const daysToWritten = daysUntil(writtenEvent?.startsAt || null);
+      const daysToOral = daysUntil(oralEvent?.startsAt || null);
+      
+      // Phase calculations for M1 requirements
+      const phaseWritten = getExamPhase(daysToWritten);
+      const phaseOral = getExamPhase(daysToOral);
+      const dominantMode = getDominantMode(daysToWritten, daysToOral);
+      
+      examCountdown = {
+        cycleId: examProfile.cycle.id,
+        cycleName: examProfile.cycle.label,
+        candidateType: examProfile.cycle.candidateType,
+        daysToWritten,
+        daysToOral,
+        // M1 Required: phase_written, phase_oral, dominant_mode
+        phase_written: phaseWritten,
+        phase_oral: phaseOral,
+        dominant_mode: dominantMode,
+        // Legacy
+        phase: phaseWritten || 'distant',
+        writtenDate: writtenEvent?.startsAt || null,
+        oralDate: oralEvent?.startsAt || null,
+      };
+    }
+
+    // Get today's active/pending study sessions (Tutor OS)
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    // M2: Get skills for precompute (prioritized by exam weight)
+    const prioritizedSkills = await db.select()
+      .from(microSkills)
+      .orderBy(desc(microSkills.examWeight))
+      .limit(5);
+    
+    const skillIds = prioritizedSkills.map(s => s.id);
+    
+    // M2: Trigger autopilot precompute to ensure top 2 sessions are READY
+    let precomputeResult: { sessions: PrecomputeStatus[]; jobsEnqueued: number } | null = null;
+    if (skillIds.length > 0 && examCountdown?.dominant_mode) {
+      try {
+        precomputeResult = await ensureSessionsPrecomputed(
+          user.id,
+          skillIds,
+          examCountdown.dominant_mode as 'WRITTEN' | 'ORAL' | 'MIXED'
+        );
+      } catch (precomputeError) {
+        console.error('Precompute error:', precomputeError);
+        // Don't fail the request, just log
+      }
+    }
+    
+    const todaySessions = await db.select().from(studySessions)
+      .where(and(
+        eq(studySessions.userId, user.id),
+        sql`${studySessions.createdAt} >= ${startOfDay}`,
+        sql`${studySessions.createdAt} <= ${endOfDay}`,
+        sql`${studySessions.status} IN ('QUEUED', 'PREPARING', 'READY', 'IN_PROGRESS')`
+      ));
+
+    // Check session readiness (assets must be READY)
+    const sessionsWithReadiness = await Promise.all(
+      todaySessions.map(async (session) => {
+        const assets = await db.select().from(studyAssets)
+          .where(eq(studyAssets.sessionId, session.id));
+        
+        const notesReady = assets.find(a => a.assetType === 'NOTES')?.status === 'READY';
+        const practiceReady = assets.find(a => a.assetType === 'PRACTICE_SET')?.status === 'READY';
+        
+        return {
+          ...session,
+          canStart: notesReady || practiceReady,
+          assets: assets.map(a => ({
+            type: a.assetType,
+            status: a.status,
+          })),
+        };
+      })
+    );
+
+    // Get active study plan (legacy support)
     const [plan] = await db.select().from(studyPlans)
       .where(and(
         eq(studyPlans.userId, user.id),
@@ -147,6 +288,36 @@ export async function GET(req: NextRequest) {
     }));
 
     return NextResponse.json({
+      // Tutor OS: Exam countdown and phase
+      examCountdown,
+      
+      // Tutor OS: Today's study sessions with readiness
+      sessions: sessionsWithReadiness.map(s => {
+        // M2: Get precompute status for this session
+        const precomputeSession = precomputeResult?.sessions.find(ps => ps.sessionId === s.id);
+        return {
+          id: s.id,
+          skillIds: s.targetSkillIds,
+          modality: s.modality,
+          status: s.status,
+          estimatedMinutes: s.estimatedMinutes,
+          canStart: s.canStart,
+          assets: s.assets,
+          // M2: Precompute status
+          precomputeStatus: precomputeSession?.status || null,
+          assetsReady: precomputeSession?.assetsReady || s.assets.filter(a => a.status === 'READY').length,
+          assetsTotal: precomputeSession?.assetsTotal || 4,
+        };
+      }),
+      
+      // M2: Precompute summary
+      precompute: precomputeResult ? {
+        jobsEnqueued: precomputeResult.jobsEnqueued,
+        sessionsPrecomputing: precomputeResult.sessions.filter(s => s.status === 'PREPARING').length,
+        sessionsReady: precomputeResult.sessions.filter(s => s.status === 'READY').length,
+      } : null,
+      
+      // Legacy: Today's plan items
       items: formattedItems,
       stats: {
         itemsCompleted,
@@ -165,6 +336,9 @@ export async function GET(req: NextRequest) {
         totalWeeks: plan.totalWeeks,
         targetExamDate: plan.targetExamDate,
       } : null,
+      
+      // Tutor OS: Onboarding flag
+      needsOnboarding: !examProfile,
     });
   } catch (error) {
     console.error('Error fetching today\'s items:', error);

@@ -66,19 +66,19 @@ export const MASTERY_CONFIG = {
   },
   
   // Coverage requirements by exam phase (Section 8.2)
+  // Note: 'approaching' covers 8-59 days
   coverageByPhase: {
     distant: { practiceReps: 2, timedReps: 0, mixedMocks: 0, daysStart: 60 },
-    approaching: { practiceReps: 2, timedReps: 1, mixedMocks: 0, daysStart: 30 },
-    urgent: { practiceReps: 0, timedReps: 3, mixedMocks: 0, daysStart: 14 },
-    critical: { practiceReps: 0, timedReps: 4, mixedMocks: 1, daysStart: 7 },
+    approaching: { practiceReps: 2, timedReps: 1, mixedMocks: 0, daysStart: 8 },
+    critical: { practiceReps: 0, timedReps: 4, mixedMocks: 1, daysStart: 0 },
   },
   
   // Exam phase thresholds (days until exam)
+  // Product spec: >= 60 = distant, 8-59 = approaching, 0-7 = critical
   phaseThresholds: {
     critical: 7,
-    urgent: 14,
-    approaching: 30,
-    distant: 60,
+    approaching: 59,  // 8-59 days
+    distant: 60,      // >= 60 days
   },
 };
 
@@ -136,7 +136,7 @@ export interface DailyPlanOutput {
   userId: string;
   date: string;
   totalMinutes: number;
-  examPhase: 'distant' | 'approaching' | 'urgent' | 'critical';
+  examPhase: 'distant' | 'approaching' | 'critical';
   tasks: {
     taskType: string;
     itemId: string | null;
@@ -406,7 +406,7 @@ export function checkGateVerification(input: GateInput): GateCheckResult {
 export interface PlannerInput {
   userId: string;
   timeBudgetMinutes: number;
-  examPhase: 'distant' | 'approaching' | 'urgent' | 'critical';
+  examPhase: 'distant' | 'approaching' | 'critical';
   daysUntilWritten: number;
   daysUntilOral: number;
   
@@ -469,11 +469,11 @@ export interface PlannerInput {
 /**
  * Determine exam phase based on days until exam
  */
-export function determineExamPhase(daysUntilWritten: number): 'distant' | 'approaching' | 'urgent' | 'critical' {
+export function determineExamPhase(daysUntilWritten: number): 'distant' | 'approaching' | 'critical' {
   const thresholds = MASTERY_CONFIG.phaseThresholds;
+  // Product spec: >= 60 = distant, 8-59 = approaching, 0-7 = critical
   if (daysUntilWritten <= thresholds.critical) return 'critical';
-  if (daysUntilWritten <= thresholds.urgent) return 'urgent';
-  if (daysUntilWritten <= thresholds.approaching) return 'approaching';
+  if (daysUntilWritten < thresholds.distant) return 'approaching';
   return 'distant';
 }
 
@@ -744,7 +744,7 @@ export function generateDailyPlan(input: PlannerInput): DailyPlanOutput {
     
     // Determine mode based on exam phase and mastery
     let mode: 'practice' | 'timed' | 'exam_sim' = 'practice';
-    if (input.examPhase === 'critical' || input.examPhase === 'urgent') {
+    if (input.examPhase === 'critical') {
       mode = 'timed';
     } else if (mastery && mastery.pMastery >= 0.7) {
       mode = 'timed'; // Push to verification

@@ -112,7 +112,7 @@ export async function POST(request: Request) {
           .set({
             status: 'PENDING',
             attempts: 0,
-            lastError: null,
+            errorMessage: null,
             startedAt: null,
             completedAt: null,
           })

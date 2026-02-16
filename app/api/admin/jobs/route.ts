@@ -44,7 +44,7 @@ export async function GET(request: Request) {
         priority: backgroundJobs.priority,
         attempts: backgroundJobs.attempts,
         maxAttempts: backgroundJobs.maxAttempts,
-        lastError: backgroundJobs.lastError,
+        errorMessage: backgroundJobs.errorMessage,
         createdAt: backgroundJobs.createdAt,
         startedAt: backgroundJobs.startedAt,
         completedAt: backgroundJobs.completedAt,

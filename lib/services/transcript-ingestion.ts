@@ -46,7 +46,7 @@ export interface LectureWithChunks {
   title: string;
   unitId: string | null;
   lecturerName: string | null;
-  lectureDate: Date | null;
+  lectureDate: string | null;
   source: string;
   durationMinutes: number | null;
   chunksCount: number;
@@ -280,8 +280,8 @@ export async function suggestSkillMappings(
     
     for (const skill of skills) {
       // Simple keyword matching (can be enhanced with embeddings)
-      const skillTitle = (skill.title || skill.name || '').toLowerCase();
-      const skillCode = (skill.skillCode || skill.code || '').toLowerCase();
+      const skillTitle = (skill.title || '').toLowerCase();
+      const skillCodeStr = (skill.skillCode || '').toLowerCase();
       const skillDesc = (skill.description || '').toLowerCase();
       
       // Extract keywords from skill title/description
@@ -314,8 +314,8 @@ export async function suggestSkillMappings(
         suggestions.push({
           chunkId: chunk.id,
           skillId: skill.id,
-          skillCode: skill.skillCode || skill.code || '',
-          skillTitle: skill.title || skill.name || '',
+          skillCode: skill.skillCode || '',
+          skillTitle: skill.title || '',
           confidence,
           evidenceSpan: evidenceSentence?.trim() || chunk.text.substring(0, 200),
         });

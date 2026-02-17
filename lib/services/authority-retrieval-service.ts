@@ -383,7 +383,7 @@ interface FetchedContent {
   title?: string;
   court?: string;
   citation?: string;
-  decisionDate?: Date;
+  decisionDate?: string; // ISO date string YYYY-MM-DD
   actName?: string;
   sectionPath?: string;
 }

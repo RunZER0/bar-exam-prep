@@ -16,7 +16,6 @@ import {
   skillVerifications,
   skillErrorSignature,
   attemptErrorTags,
-  attemptEvidenceLinks,
   errorTags,
   microSkills,
 } from '@/lib/db/mastery-schema';
@@ -90,11 +89,13 @@ export async function recordAttemptAndUpdateMastery(
       mode: event.mode,
       scoreNorm: event.scoreNorm,
       timeTakenSec: event.timeTakenSec,
-      responseText: event.responseText,
-      feedback: event.feedback,
-      rubricBreakdownJson: event.rubricBreakdownJson,
+      rawAnswerText: event.responseText,
+      feedbackJson: event.feedback ? { summary: event.feedback, strengths: [], weaknesses: [], nextSteps: [] } : undefined,
+      rubricBreakdownJson: event.rubricBreakdownJson as { category: string; score: number; maxScore: number; feedback: string; evidenceSpans?: { start: number; end: number }[] }[] | undefined,
       sessionId: event.sessionId,
+      startedAt: new Date(),
       submittedAt: new Date(),
+      isComplete: true,
     })
     .returning();
 
@@ -106,21 +107,13 @@ export async function recordAttemptAndUpdateMastery(
       event.errorTagIds.map(errorTagId => ({
         attemptId,
         errorTagId,
-        severity: 'moderate' as const, // Default severity
+        weight: 1.0, // Default weight
       }))
     );
   }
 
-  // 3. Link evidence spans if provided
-  if (event.evidenceSpanIds && event.evidenceSpanIds.length > 0) {
-    await db.insert(attemptEvidenceLinks).values(
-      event.evidenceSpanIds.map(evidenceSpanId => ({
-        attemptId,
-        evidenceSpanId,
-        sourceType: 'rubric' as const,
-      }))
-    );
-  }
+  // 3. Evidence spans are linked directly via attemptId on evidenceSpans table
+  // (no junction table needed - evidenceSpans.attemptId references attempts.id)
 
   // 4. Update mastery for each skill
   const masteryUpdates: MasteryRecomputeResult[] = [];
@@ -257,8 +250,8 @@ export async function recomputeSkillMastery(
         attemptId: attemptData.attemptId,
         pMasteryAtVerification: update.newPMastery,
         timedPassCount: gateResult.timedPassCount,
-        hoursBetween: gateResult.hoursSinceFirstPass,
-        errorTagsCleared: gateResult.errorTagsCleared,
+        hoursBetweenPasses: gateResult.hoursSinceFirstPass,
+        errorTagsCleared: gateResult.errorTagsCleared ? [] : undefined, // Boolean flag, no specific tags tracked
         verifiedAt: new Date(),
       });
 
@@ -515,11 +508,17 @@ export async function getUserMasteryStates(
   pMastery: number;
   stability: number;
   isVerified: boolean;
-  nextReviewDate: Date | null;
+  nextReviewDate: string | null;
   lastPracticedAt: Date | null;
   repsCount: number;
 }[]> {
-  const query = db
+  const conditions = [eq(masteryState.userId, userId)];
+  
+  if (unitId) {
+    conditions.push(eq(microSkills.unitId, unitId));
+  }
+
+  return db
     .select({
       skillId: masteryState.skillId,
       skillName: microSkills.name,
@@ -533,16 +532,7 @@ export async function getUserMasteryStates(
     })
     .from(masteryState)
     .innerJoin(microSkills, eq(masteryState.skillId, microSkills.id))
-    .where(eq(masteryState.userId, userId));
-
-  if (unitId) {
-    return query.where(and(
-      eq(masteryState.userId, userId),
-      eq(microSkills.unitId, unitId)
-    ));
-  }
-
-  return query;
+    .where(and(...conditions));
 }
 
 /**

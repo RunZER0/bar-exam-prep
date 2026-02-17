@@ -68,6 +68,10 @@ export const userProfiles = pgTable('user_profiles', {
   weeklyQuizGoal: integer('weekly_quiz_goal').default(3),
   learningStyle: text('learning_style'), // visual, reading, practice
   goals: jsonb('goals').$type<string[]>(), // pass bar, improve drafting, etc.
+  // Notification preferences
+  reminderEnabled: boolean('reminder_enabled').default(true),
+  reminderTime: text('reminder_time').default('09:00'), // HH:MM format
+  reminderTimezone: text('reminder_timezone').default('Africa/Nairobi'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

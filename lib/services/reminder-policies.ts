@@ -6,9 +6,8 @@
  */
 
 import { db } from '@/lib/db';
-import { users, userProfiles, studyStreaks } from '@/lib/db/schema';
-import { studySessions, masteryState } from '@/lib/db/mastery-schema';
-import { notificationLog } from '@/lib/db/schema';
+import { users, userProfiles, studyStreaks, studySessions, notificationLog } from '@/lib/db/schema';
+import { masteryState } from '@/lib/db/mastery-schema';
 import { eq, and, gte, lte, desc, sql, isNull, or } from 'drizzle-orm';
 import {
   sendNotificationEmail,
@@ -310,16 +309,39 @@ export async function buildUserContext(userId: string): Promise<UserContext | nu
       gte(studySessions.startedAt, weekAgo)
     ));
 
-  // Get streak info
-  const [streak] = await db
+  // Get streak info - compute from daily records
+  // Get last 30 days of study activity
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+  
+  const streakRecords = await db
     .select({
-      currentStreak: studyStreaks.currentStreak,
-      longestStreak: studyStreaks.longestStreak,
-      lastStudyDate: studyStreaks.lastStudyDate,
+      date: studyStreaks.date,
+      minutesStudied: studyStreaks.minutesStudied,
     })
     .from(studyStreaks)
-    .where(eq(studyStreaks.userId, userId))
-    .limit(1);
+    .where(and(
+      eq(studyStreaks.userId, userId),
+      gte(studyStreaks.date, thirtyDaysAgoStr)
+    ))
+    .orderBy(desc(studyStreaks.date));
+
+  // Calculate current streak from records
+  let currentStreak = 0;
+  const today = new Date().toISOString().split('T')[0];
+  const sortedDates = streakRecords.map(r => r.date).sort().reverse();
+  
+  for (let i = 0; i < sortedDates.length; i++) {
+    const expectedDate = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
+      .toISOString().split('T')[0];
+    if (sortedDates[i] === expectedDate) {
+      currentStreak++;
+    } else {
+      break;
+    }
+  }
+
+  const lastStudyDate = sortedDates[0] || null;
 
   // Get mastery info
   const masteryStats = await db
@@ -345,9 +367,8 @@ export async function buildUserContext(userId: string): Promise<UserContext | nu
     ? (Date.now() - new Date(lastSessionAt).getTime()) / (1000 * 60 * 60)
     : 999;
 
-  const today = new Date().toISOString().split('T')[0];
-  const lastStudyDate = streak?.lastStudyDate;
-  const streakAtRisk = lastStudyDate !== today && (streak?.currentStreak || 0) > 0;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const streakAtRisk = lastStudyDate !== todayStr && currentStreak > 0;
 
   const daysUntilExam = profile?.targetExamDate
     ? Math.ceil((new Date(profile.targetExamDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
@@ -364,8 +385,8 @@ export async function buildUserContext(userId: string): Promise<UserContext | nu
     lastSessionAt,
     hoursSinceLastSession,
     sessionsThisWeek: Number(sessionsThisWeek[0]?.count || 0),
-    currentStreak: streak?.currentStreak || 0,
-    longestStreak: streak?.longestStreak || 0,
+    currentStreak,
+    longestStreak: currentStreak, // Use current as longest for now
     streakAtRisk,
     overallMastery: Number(masteryStats[0]?.avgMastery || 0),
     weakSkillCount: Number(masteryStats[0]?.weakCount || 0),

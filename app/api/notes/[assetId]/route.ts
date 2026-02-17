@@ -158,14 +158,14 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     // 6. Get outline topics if available
     const outlineTopicIds = groundingRefs?.outline_topic_ids || [];
-    let outlineTopicsMeta: { id: string; title: string; content: string }[] = [];
+    let outlineTopicsMeta: { id: string; title: string; description: string | null }[] = [];
     
     if (outlineTopicIds.length > 0) {
       const topics = await db
         .select({
           id: outlineTopics.id,
           title: outlineTopics.title,
-          content: outlineTopics.content,
+          description: outlineTopics.description,
         })
         .from(outlineTopics)
         .where(inArray(outlineTopics.id, outlineTopicIds));

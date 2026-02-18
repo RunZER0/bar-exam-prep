@@ -254,6 +254,12 @@ export async function GET(req: NextRequest) {
           estimatedMinutes: task.estimatedMinutes,
           order: task.order,
           priorityScore: task.priorityScore,
+          scoringFactors: task.scoringFactors || {
+            learningGain: 0.25,
+            retentionGain: 0.25,
+            examRoi: 0.25,
+            errorClosure: 0.25,
+          },
           rationale: task.rationale,
           whySelected: task.whySelected,
           status: 'pending',

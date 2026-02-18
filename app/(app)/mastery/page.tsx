@@ -10,20 +10,135 @@
  * 
  * UX PRINCIPLE: Action first, metrics second.
  * The first thing users see is "Start Now" with their next task.
+ * 
+ * GATE: User must complete onboarding before accessing Mastery Hub.
+ * This sets their initial weights/snapshot for personalized learning.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import ReadinessDashboard from '@/components/ReadinessDashboard';
 import DailyPlanView from '@/components/DailyPlanView';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
+import { Loader2, Sparkles, ClipboardCheck } from 'lucide-react';
 
 type TabView = 'action' | 'overview' | 'skills';
 
 export default function MasteryPage() {
+  const router = useRouter();
+  const { getIdToken } = useAuth();
   const [activeTab, setActiveTab] = useState<TabView>('action');
+  
+  // Onboarding gate state
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
+
+  // Check onboarding status on mount
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      try {
+        const token = await getIdToken();
+        const res = await fetch('/api/onboarding', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          setOnboardingComplete(data.onboardingCompleted === true);
+        }
+      } catch (error) {
+        console.error('Error checking onboarding:', error);
+      } finally {
+        setCheckingOnboarding(false);
+      }
+    };
+    
+    checkOnboarding();
+  }, [getIdToken]);
+
+  // Loading state while checking onboarding
+  if (checkingOnboarding) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading your study hub...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Onboarding gate - must complete form first
+  if (!onboardingComplete) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container max-w-6xl mx-auto px-4 py-6">
+          {/* Header - grayed out */}
+          <div className="flex items-center justify-between mb-6 opacity-40 pointer-events-none">
+            <div>
+              <h1 className="text-2xl font-bold">Mastery Hub</h1>
+              <p className="text-sm text-muted-foreground">
+                Your path to bar exam success
+              </p>
+            </div>
+          </div>
+
+          {/* Onboarding CTA Card */}
+          <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-primary/10 to-background mb-8">
+            <CardContent className="p-8 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+                <ClipboardCheck className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">Complete Your Profile First</h2>
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                To create your personalized study plan, we need to understand your background, 
+                goals, and learning preferences. This takes about 2-3 minutes.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button 
+                  size="lg" 
+                  onClick={() => router.push('/onboarding')}
+                  className="gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Complete Profile Now
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-4">
+                ✨ Your initial snapshot will be refined as you study
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Grayed out content preview */}
+          <div className="opacity-30 pointer-events-none select-none blur-[2px]">
+            {/* Tabs placeholder */}
+            <div className="flex gap-1 mb-6 bg-muted/50 p-1 rounded-lg w-fit">
+              <div className="px-4 py-2 rounded-md bg-background">📍 Today</div>
+              <div className="px-4 py-2 rounded-md">📊 Readiness</div>
+              <div className="px-4 py-2 rounded-md">🗺️ Skills</div>
+            </div>
+            
+            {/* Content placeholder */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <Card><CardContent className="h-32" /></Card>
+                <Card><CardContent className="h-24" /></Card>
+                <Card><CardContent className="h-24" /></Card>
+              </div>
+              <div className="space-y-4">
+                <Card><CardContent className="h-40" /></Card>
+                <Card><CardContent className="h-32" /></Card>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

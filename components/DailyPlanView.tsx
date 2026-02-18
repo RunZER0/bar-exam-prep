@@ -230,6 +230,7 @@ export default function DailyPlanView() {
       itemType: task.itemType,
       mode: task.mode,
       reason: task.reason,
+      itemId: task.itemId,
     });
     // Mark as in progress
     updateTaskStatus(task.id, 'in_progress' as any);

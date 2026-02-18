@@ -3,26 +3,27 @@
 /**
  * YNAI Mastery Hub - Embedded Practice Panel
  * 
- * This component provides inline AI-guided practice within the Mastery Hub.
- * User stays on the same page - no navigation away.
+ * Complete inline training experience within Mastery Hub.
+ * Uses the real grading service for evidence-based feedback.
  * 
  * Flow:
- * 1. Task is selected → panel expands
- * 2. AI generates a question based on skill/format
- * 3. User answers (text input, MCQ selection, or voice)
- * 4. AI grades and provides feedback
- * 5. User can continue or complete the task
+ * 1. Fetch item from DB (or AI-generate if none)
+ * 2. Display question with study notes option
+ * 3. Accept answer (MCQ, written, oral, drafting)
+ * 4. Submit to /api/mastery/attempt for structured grading
+ * 5. Display rubric breakdown, missing points, model answer
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { 
   Loader2, CheckCircle, XCircle, ArrowRight, 
   MessageSquare, Lightbulb, BookOpen, RotateCcw,
-  Sparkles, X
+  Sparkles, X, FileText, AlertTriangle, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 // ============================================
@@ -38,18 +39,59 @@ export interface PracticeTask {
   itemType: 'mcq' | 'written' | 'oral' | 'drafting' | 'flashcard';
   mode: 'practice' | 'timed' | 'exam_sim';
   reason: string;
+  itemId?: string; // If we already have a specific item
 }
 
-interface PracticeState {
-  phase: 'loading' | 'question' | 'answering' | 'grading' | 'feedback' | 'complete';
-  question: string | null;
-  options?: string[];  // For MCQ
-  userAnswer: string;
-  feedback: string | null;
-  score: number | null;
-  isCorrect: boolean | null;
-  attemptCount: number;
+interface ItemData {
+  id: string;
+  itemType: string;
+  format: string;
+  prompt: string;
+  context: string | null;
+  modelAnswer: string | null;
+  keyPoints: string[];
+  options?: { label: string; text: string; isCorrect: boolean }[];
+  difficulty: number;
+  estimatedMinutes: number;
+  skillId: string;
+  skillName: string;
+  unitId: string;
+  coverageWeight: number;
 }
+
+interface RubricItem {
+  category: string;
+  score: number;
+  maxScore: number;
+  feedback: string;
+  missingPoints?: string[];
+}
+
+interface GradingOutput {
+  scoreNorm: number;
+  scoreRaw: number;
+  maxScore: number;
+  rubricBreakdown: RubricItem[];
+  missingPoints: string[];
+  errorTags: string[];
+  nextDrills: string[];
+  modelOutline: string;
+  evidenceRequests: string[];
+}
+
+interface AttemptResult {
+  attemptId: string;
+  grading: GradingOutput;
+  masteryUpdates: { skillId: string; oldPMastery: number; newPMastery: number }[];
+  summary: {
+    passed: boolean;
+    scorePercent: number;
+    improvementAreas: string[];
+    nextRecommendedSkills: string[];
+  };
+}
+
+type Phase = 'loading' | 'question' | 'answering' | 'grading' | 'feedback';
 
 interface EmbeddedPracticePanelProps {
   task: PracticeTask;
@@ -68,202 +110,144 @@ export default function EmbeddedPracticePanel({
 }: EmbeddedPracticePanelProps) {
   const { getIdToken } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const startTimeRef = useRef<Date | null>(null);
   
-  const [state, setState] = useState<PracticeState>({
-    phase: 'loading',
-    question: null,
-    userAnswer: '',
-    feedback: null,
-    score: null,
-    isCorrect: null,
-    attemptCount: 0,
-  });
+  // Core state
+  const [phase, setPhase] = useState<Phase>('loading');
+  const [item, setItem] = useState<ItemData | null>(null);
+  const [userAnswer, setUserAnswer] = useState('');
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [attemptCount, setAttemptCount] = useState(0);
   
-  const [selectedMcqOption, setSelectedMcqOption] = useState<number | null>(null);
+  // Grading result
+  const [result, setResult] = useState<AttemptResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  
+  // UI state
+  const [showRubricDetails, setShowRubricDetails] = useState(false);
+  const [showModelAnswer, setShowModelAnswer] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
 
-  // Load first question when task is selected
-  useEffect(() => {
-    loadQuestion();
-  }, [task.id]);
+  // Load item when task changes
+  const loadItem = useCallback(async () => {
+    setPhase('loading');
+    setError(null);
+    setUserAnswer('');
+    setSelectedOption(null);
+    
+    try {
+      const token = await getIdToken();
+      
+      const params = new URLSearchParams({
+        skillId: task.skillId,
+        format: task.itemType,
+      });
+      if (task.itemId) {
+        params.set('itemId', task.itemId);
+      }
+      
+      const response = await fetch(`/api/mastery/item?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-  // Auto-focus textarea when ready for answer
+      if (!response.ok) {
+        throw new Error('Failed to load practice item');
+      }
+
+      const data = await response.json();
+      setItem(data.item);
+      setPhase('question');
+      startTimeRef.current = new Date();
+      
+      // Auto-advance to answering for non-MCQ
+      if (data.item.itemType !== 'mcq') {
+        setTimeout(() => setPhase('answering'), 500);
+      } else {
+        setPhase('answering');
+      }
+    } catch (err) {
+      console.error('Error loading item:', err);
+      setError('Failed to load practice item. Please try again.');
+      setPhase('question');
+    }
+  }, [task, getIdToken]);
+
   useEffect(() => {
-    if (state.phase === 'answering' && textareaRef.current && task.itemType !== 'mcq') {
+    loadItem();
+  }, [loadItem]);
+
+  // Auto-focus textarea
+  useEffect(() => {
+    if (phase === 'answering' && textareaRef.current && item?.itemType !== 'mcq') {
       textareaRef.current.focus();
     }
-  }, [state.phase, task.itemType]);
+  }, [phase, item?.itemType]);
 
-  const loadQuestion = async () => {
-    setState(prev => ({ ...prev, phase: 'loading' }));
-    
-    try {
-      const token = await getIdToken();
-      
-      // Call AI to generate a question for this skill
-      const response = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          message: getQuestionPrompt(task),
-          competencyType: task.itemType === 'oral' ? 'oral' : 'study',
-          context: {
-            unitId: task.unitId,
-            skillId: task.skillId,
-            skillName: task.skillName,
-            format: task.itemType,
-            mode: task.mode,
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate question');
-      }
-
-      const data = await response.json();
-      const content = data.response || data.content || '';
-      
-      // Parse MCQ options if present
-      let options: string[] | undefined;
-      let questionText = content;
-      
-      if (task.itemType === 'mcq') {
-        // Try to extract MCQ options from the response
-        const parsed = parseMcqResponse(content);
-        questionText = parsed.question;
-        options = parsed.options;
-      }
-
-      setState(prev => ({
-        ...prev,
-        phase: task.itemType === 'mcq' ? 'answering' : 'question',
-        question: questionText,
-        options,
-        userAnswer: '',
-        feedback: null,
-        score: null,
-        isCorrect: null,
-      }));
-      
-      // For non-MCQ, move to answering after showing question briefly
-      if (task.itemType !== 'mcq') {
-        setTimeout(() => {
-          setState(prev => ({ ...prev, phase: 'answering' }));
-        }, 500);
-      }
-    } catch (error) {
-      console.error('Error loading question:', error);
-      setState(prev => ({
-        ...prev,
-        phase: 'question',
-        question: getFallbackQuestion(task),
-      }));
-      setTimeout(() => {
-        setState(prev => ({ ...prev, phase: 'answering' }));
-      }, 500);
-    }
-  };
-
+  // Submit answer for grading
   const submitAnswer = async () => {
-    if (task.itemType === 'mcq' && selectedMcqOption === null) return;
-    if (task.itemType !== 'mcq' && !state.userAnswer.trim()) return;
+    if (!item) return;
+    if (item.itemType === 'mcq' && !selectedOption) return;
+    if (item.itemType !== 'mcq' && !userAnswer.trim()) return;
     
-    setState(prev => ({ ...prev, phase: 'grading' }));
+    setPhase('grading');
+    setError(null);
     
-    const answer = task.itemType === 'mcq' 
-      ? state.options?.[selectedMcqOption!] || ''
-      : state.userAnswer;
+    const timeTakenSec = startTimeRef.current 
+      ? Math.round((Date.now() - startTimeRef.current.getTime()) / 1000)
+      : 60;
     
     try {
       const token = await getIdToken();
       
-      // Call AI to grade the answer
-      const response = await fetch('/api/ai/chat', {
+      // Build proper AttemptSubmission
+      const submission = {
+        itemId: item.id,
+        format: item.itemType as 'written' | 'oral' | 'drafting' | 'mcq',
+        mode: task.mode,
+        response: item.itemType === 'mcq' ? selectedOption! : userAnswer,
+        selectedOption: item.itemType === 'mcq' ? selectedOption : undefined,
+        startedAt: startTimeRef.current?.toISOString() || new Date().toISOString(),
+        timeTakenSec,
+        prompt: item.prompt,
+        context: item.context,
+        keyPoints: item.keyPoints,
+        modelAnswer: item.modelAnswer,
+        options: item.options,
+        skillIds: [item.skillId],
+        coverageWeights: { [item.skillId]: item.coverageWeight },
+        unitId: item.unitId,
+        difficulty: item.difficulty,
+      };
+      
+      const response = await fetch('/api/mastery/attempt', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          message: getGradingPrompt(task, state.question || '', answer),
-          competencyType: task.itemType === 'oral' ? 'oral' : 'study',
-          context: {
-            unitId: task.unitId,
-            skillId: task.skillId,
-            skillName: task.skillName,
-            format: task.itemType,
-            isGrading: true,
-          },
-        }),
+        body: JSON.stringify(submission),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to grade answer');
+        const errData = await response.json();
+        throw new Error(errData.error || 'Failed to grade answer');
       }
 
-      const data = await response.json();
-      const feedback = data.response || data.content || 'Good effort! Keep practicing.';
+      const attemptResult: AttemptResult = await response.json();
+      setResult(attemptResult);
+      setAttemptCount(prev => prev + 1);
+      setPhase('feedback');
       
-      // Parse score from feedback (AI should include score assessment)
-      const scoreMatch = feedback.match(/(\d+)(?:\s*\/\s*100|\s*%|(?:\s+out of\s+100))/i);
-      const score = scoreMatch ? parseInt(scoreMatch[1]) : estimateScore(feedback);
-      const isCorrect = score >= 70;
-
-      setState(prev => ({
-        ...prev,
-        phase: 'feedback',
-        feedback,
-        score,
-        isCorrect,
-        attemptCount: prev.attemptCount + 1,
-      }));
-      
-      // Record the attempt to mastery API
-      await recordAttempt(token, task, score);
-      
-    } catch (error) {
-      console.error('Error grading answer:', error);
-      setState(prev => ({
-        ...prev,
-        phase: 'feedback',
-        feedback: 'Your answer has been recorded. Based on your response, you demonstrated understanding of the core concepts. Consider reviewing the key authorities for deeper mastery.',
-        score: 65,
-        isCorrect: false,
-        attemptCount: prev.attemptCount + 1,
-      }));
+    } catch (err) {
+      console.error('Error submitting answer:', err);
+      setError('Failed to grade your answer. Please try again.');
+      setPhase('answering');
     }
   };
 
-  const recordAttempt = async (token: string | null, task: PracticeTask, score: number) => {
-    if (!token) return;
-    
-    try {
-      await fetch('/api/mastery/attempt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          skillId: task.skillId,
-          itemId: task.id,
-          format: task.itemType,
-          scoreNorm: score / 100,
-          isTimed: task.mode === 'timed' || task.mode === 'exam_sim',
-        }),
-      });
-    } catch (error) {
-      console.error('Error recording attempt:', error);
-    }
-  };
-
-  const handleContinue = () => {
-    // Reset for another question on the same skill
-    setSelectedMcqOption(null);
-    loadQuestion();
+  const handleTryAnother = () => {
+    setResult(null);
+    loadItem();
   };
 
   const handleComplete = () => {
@@ -276,6 +260,7 @@ export default function EmbeddedPracticePanel({
 
   return (
     <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-background to-background animate-in slide-in-from-bottom-4 duration-300">
+      {/* Header */}
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div>
@@ -284,30 +269,78 @@ export default function EmbeddedPracticePanel({
               {task.skillName}
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
-              {task.unitName} • {formatItemType(task.itemType)} Practice
+              {task.unitName} • {formatItemType(task.itemType)} • {task.mode}
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Notes toggle */}
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setShowNotes(!showNotes)}
+              className={showNotes ? 'bg-primary/10' : ''}
+            >
+              <BookOpen className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
+        
+        {/* Why this skill - algorithm transparency */}
+        {task.reason && (
+          <p className="text-xs text-muted-foreground mt-2 p-2 bg-muted/50 rounded">
+            📊 {task.reason}
+          </p>
+        )}
       </CardHeader>
       
       <CardContent className="space-y-4">
+        {/* Error display */}
+        {error && (
+          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+            <span className="text-sm text-destructive">{error}</span>
+          </div>
+        )}
+
+        {/* Study Notes Panel (collapsible) */}
+        {showNotes && item && (
+          <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <BookOpen className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="font-medium text-blue-800 dark:text-blue-200">Study Notes</span>
+            </div>
+            <div className="text-sm text-blue-700 dark:text-blue-300 space-y-2">
+              <p>Key points for <strong>{item.skillName}</strong>:</p>
+              {item.keyPoints.length > 0 ? (
+                <ul className="list-disc list-inside space-y-1">
+                  {item.keyPoints.map((point, i) => (
+                    <li key={i}>{point}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="italic">Focus on relevant statutory provisions and case law.</p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* LOADING STATE */}
-        {state.phase === 'loading' && (
+        {phase === 'loading' && (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-primary" />
               <p className="text-sm text-muted-foreground">
-                AI is preparing your question...
+                Preparing your practice question...
               </p>
             </div>
           </div>
         )}
 
-        {/* QUESTION DISPLAY */}
-        {(state.phase === 'question' || state.phase === 'answering' || state.phase === 'grading') && state.question && (
+        {/* QUESTION & ANSWERING */}
+        {(phase === 'question' || phase === 'answering') && item && (
           <div className="space-y-4">
             {/* Question Card */}
             <div className="p-4 bg-muted/50 rounded-lg border">
@@ -316,131 +349,233 @@ export default function EmbeddedPracticePanel({
                   <MessageSquare className="h-4 w-4 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Question</p>
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    {state.question}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {formatItemType(item.itemType)} Question
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      ~{item.estimatedMinutes} min
+                    </span>
                   </div>
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <MarkdownRenderer content={item.prompt} />
+                  </div>
+                  {item.context && (
+                    <div className="mt-3 p-3 bg-background/50 rounded border-l-2 border-primary/30">
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Context</p>
+                      <p className="text-sm">{item.context}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* MCQ Options */}
-            {task.itemType === 'mcq' && state.options && state.phase !== 'grading' && (
+            {item.itemType === 'mcq' && item.options && (
               <div className="space-y-2">
-                {state.options.map((option, index) => (
+                {item.options.map((option) => (
                   <button
-                    key={index}
-                    onClick={() => setSelectedMcqOption(index)}
-                    className={`w-full text-left p-3 rounded-lg border transition-all ${
-                      selectedMcqOption === index
-                        ? 'border-primary bg-primary/10'
+                    key={option.label}
+                    onClick={() => setSelectedOption(option.label)}
+                    className={`w-full text-left p-4 rounded-lg border transition-all ${
+                      selectedOption === option.label
+                        ? 'border-primary bg-primary/10 shadow-sm'
                         : 'border-border hover:border-primary/50 hover:bg-muted/50'
                     }`}
                   >
-                    <span className="font-medium text-sm">
-                      {String.fromCharCode(65 + index)}.
-                    </span>{' '}
-                    <span className="text-sm">{option}</span>
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-muted text-sm font-medium mr-3">
+                      {option.label}
+                    </span>
+                    <span className="text-sm">{option.text}</span>
                   </button>
                 ))}
               </div>
             )}
 
             {/* Text Answer Input */}
-            {task.itemType !== 'mcq' && state.phase === 'answering' && (
+            {item.itemType !== 'mcq' && phase === 'answering' && (
               <div className="space-y-2">
                 <Textarea
                   ref={textareaRef}
-                  placeholder="Type your answer here..."
-                  value={state.userAnswer}
-                  onChange={(e) => setState(prev => ({ ...prev, userAnswer: e.target.value }))}
-                  className="min-h-[120px] resize-none"
+                  placeholder={getPlaceholder(item.itemType)}
+                  value={userAnswer}
+                  onChange={(e) => setUserAnswer(e.target.value)}
+                  className="min-h-[180px] resize-y"
                 />
-                <p className="text-xs text-muted-foreground">
-                  {task.itemType === 'written' && 'Write a comprehensive answer addressing all key points.'}
-                  {task.itemType === 'oral' && 'Provide your oral response as you would present it.'}
-                  {task.itemType === 'drafting' && 'Draft the requested legal document or section.'}
-                </p>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{getFormatGuidance(item.itemType)}</span>
+                  <span>{userAnswer.length} characters</span>
+                </div>
               </div>
             )}
 
             {/* Submit Button */}
-            {state.phase === 'answering' && (
-              <Button 
-                onClick={submitAnswer}
-                disabled={
-                  (task.itemType === 'mcq' && selectedMcqOption === null) ||
-                  (task.itemType !== 'mcq' && !state.userAnswer.trim())
-                }
-                className="w-full"
-              >
-                Submit Answer
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            )}
+            <Button 
+              onClick={submitAnswer}
+              disabled={
+                (item.itemType === 'mcq' && !selectedOption) ||
+                (item.itemType !== 'mcq' && !userAnswer.trim())
+              }
+              className="w-full"
+              size="lg"
+            >
+              Submit Answer
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        )}
 
-            {/* Grading State */}
-            {state.phase === 'grading' && (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-5 w-5 animate-spin mr-2 text-primary" />
-                <span className="text-sm text-muted-foreground">AI is reviewing your answer...</span>
-              </div>
-            )}
+        {/* GRADING STATE */}
+        {phase === 'grading' && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-primary" />
+              <p className="text-sm text-muted-foreground">
+                AI is grading your response...
+              </p>
+            </div>
           </div>
         )}
 
         {/* FEEDBACK STATE */}
-        {state.phase === 'feedback' && (
+        {phase === 'feedback' && result && (
           <div className="space-y-4">
             {/* Score Banner */}
             <div className={`p-4 rounded-lg flex items-center gap-4 ${
-              state.isCorrect
+              result.summary.passed
                 ? 'bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800'
                 : 'bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800'
             }`}>
-              {state.isCorrect ? (
-                <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400 flex-shrink-0" />
+              {result.summary.passed ? (
+                <CheckCircle className="h-10 w-10 text-green-600 dark:text-green-400 flex-shrink-0" />
               ) : (
-                <Lightbulb className="h-8 w-8 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                <Lightbulb className="h-10 w-10 text-amber-600 dark:text-amber-400 flex-shrink-0" />
               )}
-              <div>
-                <p className={`font-semibold ${
-                  state.isCorrect 
+              <div className="flex-1">
+                <p className={`font-bold text-lg ${
+                  result.summary.passed 
                     ? 'text-green-800 dark:text-green-200'
                     : 'text-amber-800 dark:text-amber-200'
                 }`}>
-                  {state.isCorrect ? 'Great work!' : 'Keep learning!'}
+                  {result.summary.passed ? 'Great work!' : 'Keep learning!'}
                 </p>
                 <p className={`text-sm ${
-                  state.isCorrect
+                  result.summary.passed
                     ? 'text-green-700 dark:text-green-300'
                     : 'text-amber-700 dark:text-amber-300'
                 }`}>
-                  Score: {state.score}% • Attempt #{state.attemptCount}
+                  Score: {result.summary.scorePercent}% • Attempt #{attemptCount}
                 </p>
               </div>
+              
+              {/* Mastery change indicator */}
+              {result.masteryUpdates.length > 0 && (
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Mastery</p>
+                  <p className="text-sm font-medium">
+                    {Math.round(result.masteryUpdates[0].oldPMastery * 100)}% → {Math.round(result.masteryUpdates[0].newPMastery * 100)}%
+                  </p>
+                </div>
+              )}
             </div>
 
-            {/* Feedback Content */}
-            <div className="p-4 bg-muted/50 rounded-lg border">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <BookOpen className="h-4 w-4 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-muted-foreground mb-1">AI Feedback</p>
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    {state.feedback}
+            {/* Rubric Breakdown (collapsible) */}
+            {result.grading.rubricBreakdown.length > 0 && (
+              <div className="border rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setShowRubricDetails(!showRubricDetails)}
+                  className="w-full p-3 flex items-center justify-between bg-muted/30 hover:bg-muted/50 transition-colors"
+                >
+                  <span className="font-medium text-sm">Rubric Breakdown</span>
+                  {showRubricDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+                
+                {showRubricDetails && (
+                  <div className="p-3 space-y-3">
+                    {result.grading.rubricBreakdown.map((rubricItem, i) => (
+                      <div key={i} className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{rubricItem.category}</span>
+                          <span className="text-sm">{rubricItem.score}/{rubricItem.maxScore}</span>
+                        </div>
+                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className={`h-2 rounded-full ${
+                              rubricItem.score / rubricItem.maxScore >= 0.7 ? 'bg-green-500' :
+                              rubricItem.score / rubricItem.maxScore >= 0.5 ? 'bg-amber-500' : 'bg-red-500'
+                            }`}
+                            style={{ width: `${(rubricItem.score / rubricItem.maxScore) * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">{rubricItem.feedback}</p>
+                        {rubricItem.missingPoints && rubricItem.missingPoints.length > 0 && (
+                          <ul className="text-xs text-amber-600 dark:text-amber-400 list-disc list-inside">
+                            {rubricItem.missingPoints.map((p, j) => <li key={j}>{p}</li>)}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                </div>
+                )}
               </div>
-            </div>
+            )}
+
+            {/* Missing Points */}
+            {result.grading.missingPoints.length > 0 && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Points to Address
+                </p>
+                <ul className="text-sm text-amber-700 dark:text-amber-300 list-disc list-inside space-y-1">
+                  {result.grading.missingPoints.map((point, i) => (
+                    <li key={i}>{point}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Model Answer (collapsible) */}
+            {result.grading.modelOutline && (
+              <div className="border rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setShowModelAnswer(!showModelAnswer)}
+                  className="w-full p-3 flex items-center justify-between bg-muted/30 hover:bg-muted/50 transition-colors"
+                >
+                  <span className="font-medium text-sm flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Model Answer Outline
+                  </span>
+                  {showModelAnswer ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+                
+                {showModelAnswer && (
+                  <div className="p-3 text-sm prose prose-sm dark:prose-invert max-w-none">
+                    <MarkdownRenderer content={result.grading.modelOutline} />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Next Skills to Practice */}
+            {result.grading.nextDrills.length > 0 && (
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                  🎯 Recommended Practice
+                </p>
+                <ul className="text-sm text-blue-700 dark:text-blue-300 list-disc list-inside">
+                  {result.grading.nextDrills.map((drill, i) => (
+                    <li key={i}>{drill}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-2">
               <Button 
                 variant="outline" 
-                onClick={handleContinue}
+                onClick={handleTryAnother}
                 className="flex-1"
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
@@ -468,159 +603,36 @@ export default function EmbeddedPracticePanel({
 function formatItemType(type: string): string {
   const labels: Record<string, string> = {
     mcq: 'Multiple Choice',
-    written: 'Written Answer',
-    oral: 'Oral Practice',
-    drafting: 'Legal Drafting',
+    written: 'Written',
+    oral: 'Oral',
+    drafting: 'Drafting',
     flashcard: 'Quick Review',
   };
   return labels[type] || type;
 }
 
-function getQuestionPrompt(task: PracticeTask): string {
-  const format = task.itemType;
-  const skill = task.skillName;
-  
-  if (format === 'mcq') {
-    return `Generate a challenging multiple choice question to test the skill "${skill}" for the Kenya bar exam.
-
-Format your response EXACTLY like this:
-QUESTION: [Your question here]
-A) [Option A]
-B) [Option B]
-C) [Option C]
-D) [Option D]
-CORRECT: [A, B, C, or D]
-
-Make the question test practical application, not just memorization. Include relevant Kenyan legal authorities where applicable.`;
+function getPlaceholder(type: string): string {
+  switch (type) {
+    case 'written':
+      return 'Write your answer here. Use IRAC structure: Issue, Rule, Application, Conclusion. Cite relevant statutory provisions and case law...';
+    case 'oral':
+      return 'Prepare your oral response here. Write as you would speak in an examination setting...';
+    case 'drafting':
+      return 'Draft the required legal document here. Include all necessary clauses, parties, and formalities...';
+    default:
+      return 'Type your answer here...';
   }
-  
-  if (format === 'written') {
-    return `Generate a written practice question to test the skill "${skill}" for the Kenya bar exam.
-
-Create a scenario-based question that requires the student to:
-1. Identify the relevant legal issues
-2. Apply Kenyan law and authorities
-3. Provide a reasoned analysis
-
-The question should be exam-style and challenging. Make it practical and relevant to actual legal practice in Kenya.`;
-  }
-  
-  if (format === 'oral') {
-    return `Generate an oral examination question to test the skill "${skill}" for the Kenya bar exam oral advocacy component.
-
-Create a question that tests:
-1. Legal knowledge and analysis
-2. Ability to present arguments clearly
-3. Understanding of courtroom procedure and advocacy
-
-The question should simulate what a bar examiner might ask in an oral examination.`;
-  }
-  
-  if (format === 'drafting') {
-    return `Generate a legal drafting exercise to test the skill "${skill}" for the Kenya bar exam.
-
-Create a scenario requiring the student to draft:
-1. A specific legal document or provision
-2. Using proper legal language and format
-3. Following Kenyan legal requirements
-
-Provide clear instructions on what needs to be drafted and the factual background.`;
-  }
-  
-  return `Generate a practice question to test the skill "${skill}" for the Kenya bar exam. Make it challenging but fair, and include relevant Kenyan legal authorities.`;
 }
 
-function getGradingPrompt(task: PracticeTask, question: string, answer: string): string {
-  return `You are grading a Kenya bar exam practice response.
-
-SKILL BEING TESTED: ${task.skillName}
-FORMAT: ${task.itemType}
-
-QUESTION:
-${question}
-
-STUDENT'S ANSWER:
-${answer}
-
-Please evaluate this response and provide:
-1. A score out of 100 (be specific, e.g., "Score: 75/100")
-2. What the student did well
-3. What could be improved
-4. The key legal points or authorities that should have been addressed
-5. A brief model answer outline
-
-Be encouraging but honest. Focus on helping the student improve for the actual bar exam.`;
-}
-
-function getFallbackQuestion(task: PracticeTask): string {
-  return `Practice question for ${task.skillName}:
-
-Based on your understanding of this legal concept, explain the key principles and how they would apply in a practical scenario. 
-
-Consider:
-- The relevant statutory framework
-- Key case law authorities
-- Practical application
-
-Provide a thorough analysis as you would in the bar examination.`;
-}
-
-function parseMcqResponse(content: string): { question: string; options: string[] } {
-  // Try to extract MCQ format from AI response
-  const lines = content.split('\n').filter(l => l.trim());
-  
-  let question = '';
-  const options: string[] = [];
-  
-  for (const line of lines) {
-    const trimmed = line.trim();
-    
-    // Check for question line
-    if (trimmed.toLowerCase().startsWith('question:')) {
-      question = trimmed.replace(/^question:\s*/i, '');
-    }
-    // Check for options (A), B), etc. or A., B., etc.)
-    else if (/^[A-D][).]\s/.test(trimmed)) {
-      options.push(trimmed.replace(/^[A-D][).]\s*/, ''));
-    }
+function getFormatGuidance(type: string): string {
+  switch (type) {
+    case 'written':
+      return 'Use IRAC structure. Cite authorities.';
+    case 'oral':
+      return 'Clear, structured, confident response.';
+    case 'drafting':
+      return 'Include all required clauses and parties.';
+    default:
+      return '';
   }
-  
-  // If we couldn't parse properly, use the whole content as question
-  if (!question && options.length === 0) {
-    return { question: content, options: [] };
-  }
-  
-  // If we only got options but no explicit question, extract it from the start
-  if (!question && options.length > 0) {
-    const questionEnd = content.indexOf('\nA)') || content.indexOf('\nA.');
-    if (questionEnd > 0) {
-      question = content.substring(0, questionEnd).trim();
-    }
-  }
-  
-  return { question: question || content, options };
-}
-
-function estimateScore(feedback: string): number {
-  // Simple heuristic to estimate score from feedback text
-  const lower = feedback.toLowerCase();
-  
-  if (lower.includes('excellent') || lower.includes('outstanding') || lower.includes('perfect')) {
-    return 90 + Math.floor(Math.random() * 10);
-  }
-  if (lower.includes('very good') || lower.includes('well done') || lower.includes('strong')) {
-    return 80 + Math.floor(Math.random() * 10);
-  }
-  if (lower.includes('good') || lower.includes('solid') || lower.includes('competent')) {
-    return 70 + Math.floor(Math.random() * 10);
-  }
-  if (lower.includes('needs improvement') || lower.includes('could be better') || lower.includes('missing')) {
-    return 55 + Math.floor(Math.random() * 15);
-  }
-  if (lower.includes('incorrect') || lower.includes('wrong') || lower.includes('fundamental error')) {
-    return 30 + Math.floor(Math.random() * 20);
-  }
-  
-  // Default to passing score
-  return 65 + Math.floor(Math.random() * 15);
 }

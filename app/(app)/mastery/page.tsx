@@ -27,6 +27,13 @@ import { Loader2, Sparkles, ClipboardCheck } from 'lucide-react';
 
 type TabView = 'action' | 'overview' | 'skills';
 
+interface WeeklyStats {
+  attemptsCount: number;
+  minutesStudied: number;
+  gatesPassed: number;
+  studyStreak: number;
+}
+
 export default function MasteryPage() {
   const router = useRouter();
   const { getIdToken } = useAuth();
@@ -35,28 +42,64 @@ export default function MasteryPage() {
   // Onboarding gate state
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
+  
+  // Weekly stats (real data from API)
+  const [weeklyStats, setWeeklyStats] = useState<WeeklyStats>({
+    attemptsCount: 0,
+    minutesStudied: 0,
+    gatesPassed: 0,
+    studyStreak: 0,
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
 
-  // Check onboarding status on mount
+  // Check onboarding status and fetch stats on mount
   useEffect(() => {
-    const checkOnboarding = async () => {
+    const initializeHub = async () => {
       try {
         const token = await getIdToken();
-        const res = await fetch('/api/onboarding', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
         
-        if (res.ok) {
-          const data = await res.json();
+        // Check onboarding in parallel with stats fetch
+        const [onboardingRes, reportRes, progressRes] = await Promise.all([
+          fetch('/api/onboarding', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('/api/mastery/report', { headers: { Authorization: `Bearer ${token}` } }).catch(() => null),
+          fetch('/api/progress', { headers: { Authorization: `Bearer ${token}` } }).catch(() => null),
+        ]);
+        
+        // Process onboarding
+        if (onboardingRes.ok) {
+          const data = await onboardingRes.json();
           setOnboardingComplete(data.onboardingCompleted === true);
         }
+        
+        // Process stats from report or progress API
+        let stats: WeeklyStats = { attemptsCount: 0, minutesStudied: 0, gatesPassed: 0, studyStreak: 0 };
+        
+        if (reportRes?.ok) {
+          const reportData = await reportRes.json();
+          stats.attemptsCount = reportData.activitySummary?.attemptsCount || 0;
+          stats.minutesStudied = reportData.activitySummary?.minutesStudied || 0;
+          stats.gatesPassed = reportData.activitySummary?.gatesPassed || 0;
+        }
+        
+        if (progressRes?.ok) {
+          const progressData = await progressRes.json();
+          stats.studyStreak = progressData.studyStreak || 0;
+          // Fallback to progress API if report doesn't have data
+          if (stats.attemptsCount === 0) {
+            stats.attemptsCount = progressData.totalAttempts || 0;
+          }
+        }
+        
+        setWeeklyStats(stats);
       } catch (error) {
-        console.error('Error checking onboarding:', error);
+        console.error('Error initializing hub:', error);
       } finally {
         setCheckingOnboarding(false);
+        setLoadingStats(false);
       }
     };
     
-    checkOnboarding();
+    initializeHub();
   }, [getIdToken]);
 
   // Loading state while checking onboarding
@@ -229,12 +272,30 @@ export default function MasteryPage() {
                 <CardTitle className="text-base">Weekly Progress</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <Stat label="This week" value="23 attempts" />
-                  <Stat label="Study time" value="4h 35m" />
-                  <Stat label="Gates passed" value="2" />
-                  <Stat label="Streak" value="5 days 🔥" />
-                </div>
+                {loadingStats ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <Stat 
+                      label="This week" 
+                      value={weeklyStats.attemptsCount === 0 ? "No attempts yet" : `${weeklyStats.attemptsCount} attempts`} 
+                    />
+                    <Stat 
+                      label="Study time" 
+                      value={weeklyStats.minutesStudied === 0 ? "—" : formatMinutes(weeklyStats.minutesStudied)} 
+                    />
+                    <Stat 
+                      label="Gates passed" 
+                      value={String(weeklyStats.gatesPassed)} 
+                    />
+                    <Stat 
+                      label="Streak" 
+                      value={weeklyStats.studyStreak === 0 ? "Start today!" : `${weeklyStats.studyStreak} day${weeklyStats.studyStreak !== 1 ? 's' : ''} 🔥`} 
+                    />
+                  </div>
+                )}
                 <Link href="/history">
                   <Button variant="link" className="mt-4 w-full">
                     View Full Report →
@@ -286,6 +347,17 @@ export default function MasteryPage() {
       </div>
     </div>
   );
+}
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+function formatMinutes(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 }
 
 // ============================================

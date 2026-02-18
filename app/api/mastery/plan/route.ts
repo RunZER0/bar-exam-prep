@@ -42,9 +42,36 @@ export async function GET(req: NextRequest) {
 
     const today = new Date().toISOString().split('T')[0];
     
-    // Get user's exam dates (would come from user profile / kslTimelines)
-    const daysUntilWritten = 45;
-    const daysUntilOral = 60;
+    // Get user profile for exam dates and weak/strong areas
+    const userProfileResult = await db.execute(sql`
+      SELECT 
+        target_exam_date,
+        weak_areas,
+        strong_areas
+      FROM user_profiles
+      WHERE user_id = ${user.id}
+      LIMIT 1
+    `);
+    
+    const userProfile = userProfileResult.rows[0] as { 
+      target_exam_date: string | null;
+      weak_areas: string[] | null;
+      strong_areas: string[] | null;
+    } | undefined;
+    
+    // Calculate days until exam (use profile if available, else default)
+    let daysUntilWritten = 45;
+    let daysUntilOral = 60;
+    
+    if (userProfile?.target_exam_date) {
+      const examDate = new Date(userProfile.target_exam_date);
+      const now = new Date();
+      daysUntilWritten = Math.max(0, Math.floor((examDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+      daysUntilOral = daysUntilWritten + 15; // Oral typically 2 weeks after written
+    }
+    
+    const weakAreas = userProfile?.weak_areas || [];
+    const strongAreas = userProfile?.strong_areas || [];
     
     const examPhase = determineExamPhase(daysUntilWritten);
     
@@ -145,9 +172,20 @@ export async function GET(req: NextRequest) {
     
     for (const skill of skills) {
       const mastery = masteryMap.get(skill.skill_id);
+      
+      // If no existing mastery state, derive initial value from user profile
+      let initialPMastery = 0.25; // Default baseline
+      if (!mastery) {
+        if (strongAreas.includes(skill.unit_id)) {
+          initialPMastery = 0.50; // Strong area
+        } else if (weakAreas.includes(skill.unit_id)) {
+          initialPMastery = 0.10; // Weak area - needs focus
+        }
+      }
+      
       plannerInput.masteryStates.set(skill.skill_id, {
         skillId: skill.skill_id,
-        pMastery: mastery ? parseFloat(mastery.p_mastery) : 0,
+        pMastery: mastery ? parseFloat(mastery.p_mastery) : initialPMastery,
         stability: mastery ? parseFloat(mastery.stability) : 1.0,
         lastPracticedAt: mastery?.last_practiced_at ? new Date(mastery.last_practiced_at) : null,
         nextReviewDate: mastery?.next_review_date ? new Date(mastery.next_review_date) : null,

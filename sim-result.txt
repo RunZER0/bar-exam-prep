@@ -1,0 +1,80 @@
+================================================
+  30-STUDENT END-TO-END SIMULATION
+  Proving Onboarding ΓåÆ Mastery Model Flow
+================================================
+
+Cleaning up previous simulation data...
+Cleanup complete.
+
+Found 273 micro_skills in database
+
+PHASE 1: Creating 30 students with varied onboarding profiles...
+
+  [1/30] Alice Wanjiku        | Avg: 13.8% | Strong: 25% (81) | Neutral: 10% (159) | Weak: 5% (33)
+  [2/30] Bob Kamau            | Avg: 15.8% | Strong: 25% (117) | Neutral: 10% (124) | Weak: 5% (32)
+  [3/30] Carol Adhiambo       | Avg: 10.7% | Strong: 25% (44) | Neutral: 10% (133) | Weak: 5% (96)
+  [4/30] David Omondi         | Avg: 10.4% | Strong: 25% (25) | Neutral: 10% (194) | Weak: 5% (54)
+  [5/30] Eva Njeri            | Avg: 14.6% | Strong: 25% (91) | Neutral: 10% (159) | Weak: 5% (23)
+  [6/30] Frank Mwangi         | Avg: 7.9% | Strong: 0% (0) | Neutral: 10% (156) | Weak: 5% (117)
+  [7/30] Grace Atieno         | Avg: 9.0% | Strong: 25% (22) | Neutral: 10% (130) | Weak: 5% (121)
+  [8/30] Henry Kipchoge       | Avg: 10.2% | Strong: 25% (21) | Neutral: 10% (199) | Weak: 5% (53)
+  [9/30] Irene Wambui         | Avg: 12.7% | Strong: 25% (56) | Neutral: 10% (195) | Weak: 5% (22)
+  [10/30] James Otieno         | Avg: 15.3% | Strong: 25% (96) | Neutral: 10% (177) | Weak: 0% (0)
+  [11/30] Karen Mutua          | Avg: 17.6% | Strong: 25% (139) | Neutral: 10% (134) | Weak: 0% (0)
+  [12/30] Leonard Kibet        | Avg: 7.9% | Strong: 0% (0) | Neutral: 10% (161) | Weak: 5% (112)
+  [13/30] Mary Nyambura        | Avg: 12.5% | Strong: 25% (58) | Neutral: 10% (178) | Weak: 5% (37)
+  [14/30] Nathan Ochieng       | Avg: 9.7% | Strong: 25% (22) | Neutral: 10% (171) | Weak: 5% (80)
+  [15/30] Olivia Chelangat     | Avg: 13.9% | Strong: 25% (82) | Neutral: 10% (158) | Weak: 5% (33)
+  [16/30] Peter Rotich         | Avg: 17.8% | Strong: 25% (142) | Neutral: 10% (131) | Weak: 0% (0)
+  [17/30] Queen Akinyi         | Avg: 7.6% | Strong: 0% (0) | Neutral: 10% (144) | Weak: 5% (129)
+  [18/30] Robert Maina         | Avg: 11.0% | Strong: 25% (32) | Neutral: 10% (198) | Weak: 5% (43)
+  [19/30] Susan Wangeci        | Avg: 12.0% | Strong: 25% (44) | Neutral: 10% (204) | Weak: 5% (25)
+  [20/30] Thomas Karanja       | Avg: 15.6% | Strong: 25% (102) | Neutral: 10% (171) | Weak: 0% (0)
+  [21/30] Uma Wairimu          | Avg: 18.8% | Strong: 25% (161) | Neutral: 10% (112) | Weak: 0% (0)
+  [22/30] Victor Njuguna       | Avg: 8.0% | Strong: 0% (0) | Neutral: 10% (166) | Weak: 5% (107)
+  [23/30] Winnie Auma          | Avg: 10.1% | Strong: 25% (21) | Neutral: 10% (194) | Weak: 5% (58)
+  [24/30] Xavier Kosgei        | Avg: 11.5% | Strong: 25% (47) | Neutral: 10% (167) | Weak: 5% (59)
+  [25/30] Yolanda Chepkorir    | Avg: 13.8% | Strong: 25% (80) | Neutral: 10% (161) | Weak: 5% (32)
+  [26/30] Zach Ndirangu        | Avg: 18.8% | Strong: 25% (160) | Neutral: 10% (113) | Weak: 0% (0)
+  [27/30] Angela Chebet        | Avg: 8.2% | Strong: 0% (0) | Neutral: 10% (172) | Weak: 5% (101)
+  [28/30] Brian Muturi         | Avg: 12.7% | Strong: 25% (56) | Neutral: 10% (195) | Weak: 5% (22)
+  [29/30] Christine Nduta      | Avg: 13.9% | Strong: 25% (84) | Neutral: 10% (152) | Weak: 5% (37)
+  [30/30] Dennis Ogolla        | Avg: 13.4% | Strong: 25% (69) | Neutral: 10% (183) | Weak: 5% (21)
+
+PHASE 2: Verifying mastery values in database...
+
+  Γ£ô All 30 students have correct mastery values!
+    - Strong areas: 25%
+    - Neutral areas: 10%
+    - Weak areas: 5%
+
+PHASE 3: Data integrity checks...
+
+  Γ£ô Users created: 30
+  Γ£ô Profiles created: 30
+  Γ£ô Mastery states created: 8190 (273 skills ├ù 30 users = 8190)
+
+================================================
+  SIMULATION RESULTS
+================================================
+
+Summary Statistics:
+  - Students simulated: 30
+  - Skills per student: 273
+  - Total mastery records: 8190
+  - Average overall mastery: 12.5%
+
+Mastery Distribution (per spec):
+  - Strong areas: 25% initial mastery
+  - Neutral areas: 10% initial mastery
+  - Weak areas: 5% initial mastery
+
+================================================
+  SIMULATION COMPLETE - ALL DATA IS REAL
+  NO PLACEHOLDERS - ALL VALUES FROM DATABASE
+================================================
+
+Cleaning up simulation data...
+Cleanup complete.
+
+Simulation finished successfully.

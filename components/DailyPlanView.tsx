@@ -14,11 +14,11 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetHeader, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import EmbeddedPracticePanel, { PracticeTask } from './EmbeddedPracticePanel';
 
 // ============================================
 // TYPES
@@ -128,12 +128,12 @@ const MODE_BADGES: Record<string, { label: string; color: string }> = {
 // ============================================
 
 export default function DailyPlanView() {
-  const router = useRouter();
   const { getIdToken } = useAuth();
   const [plan, setPlan] = useState<DailyPlanData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<PlanTask | null>(null);
+  const [activePracticeTask, setActivePracticeTask] = useState<PracticeTask | null>(null);
 
   const fetchPlan = useCallback(async () => {
     try {
@@ -219,28 +219,39 @@ export default function DailyPlanView() {
     });
   };
 
-  // Navigate to the appropriate study page for a task
-  const navigateToTask = (task: PlanTask) => {
-    // Build the study URL based on task type and unit
-    const baseUrl = `/study/${task.unitId}`;
-    const params = new URLSearchParams({
+  // Start inline practice for a task (no navigation)
+  const startPractice = (task: PlanTask) => {
+    setActivePracticeTask({
+      id: task.id,
       skillId: task.skillId,
+      skillName: task.skillName,
+      unitId: task.unitId,
+      unitName: task.unitName,
+      itemType: task.itemType,
       mode: task.mode,
-      format: task.itemType,
-      taskId: task.id,
+      reason: task.reason,
     });
-    
-    router.push(`${baseUrl}?${params.toString()}`);
+    // Mark as in progress
+    updateTaskStatus(task.id, 'in_progress' as any);
   };
 
-  // Quick start: Navigate directly to the first task
+  // Quick start: Start inline practice for first task
   const startNextTask = async () => {
     const nextTask = plan?.tasks.find(t => t.status === 'not_started');
     if (nextTask) {
-      // Mark as in progress (fire and forget)
-      updateTaskStatus(nextTask.id, 'in_progress' as any);
-      navigateToTask(nextTask);
+      startPractice(nextTask);
     }
+  };
+
+  // Handle task completion from practice panel
+  const handlePracticeComplete = async (taskId: string) => {
+    await updateTaskStatus(taskId, 'completed');
+    setActivePracticeTask(null);
+  };
+
+  // Close practice panel without completing
+  const handlePracticeClose = () => {
+    setActivePracticeTask(null);
   };
 
   const regeneratePlan = async () => {
@@ -295,8 +306,17 @@ export default function DailyPlanView() {
 
   return (
     <div className="space-y-6">
+      {/* Inline Practice Panel - Shows when a task is being practiced */}
+      {activePracticeTask && (
+        <EmbeddedPracticePanel
+          task={activePracticeTask}
+          onComplete={() => handlePracticeComplete(activePracticeTask.id)}
+          onClose={handlePracticeClose}
+        />
+      )}
+
       {/* HERO: Start Next Task - Immediate Action (No Scrolling Required!) */}
-      {nextTask && (
+      {!activePracticeTask && nextTask && (
         <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-primary/20 overflow-hidden">
           <CardContent className="p-6">
             <div className="flex items-center justify-between gap-6">
@@ -327,22 +347,25 @@ export default function DailyPlanView() {
         </Card>
       )}
 
-      {/* Completion celebration */}
-      {remainingTasks.length === 0 && completedTasks.length > 0 && (
-        <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20">
-          <CardContent className="p-6 text-center">
-            <div className="text-4xl mb-3">🎉</div>
-            <h2 className="text-xl font-semibold text-green-600 dark:text-green-400 mb-2">
-              All Done for Today!
-            </h2>
-            <p className="text-muted-foreground">
-              You completed {completedTasks.length} tasks. Great work!
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Hide all below when practice is active */}
+      {!activePracticeTask && (
+        <>
+          {/* Completion celebration */}
+          {remainingTasks.length === 0 && completedTasks.length > 0 && (
+            <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20">
+              <CardContent className="p-6 text-center">
+                <div className="text-4xl mb-3">🎉</div>
+                <h2 className="text-xl font-semibold text-green-600 dark:text-green-400 mb-2">
+                  All Done for Today!
+                </h2>
+                <p className="text-muted-foreground">
+                  You completed {completedTasks.length} tasks. Great work!
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
-      {/* Progress & Stats */}
+          {/* Progress & Stats */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -407,9 +430,9 @@ export default function DailyPlanView() {
               <TaskDetailContent 
                 task={selectedTask}
                 onStart={() => {
-                  // Navigate to the task instead of just marking complete
+                  // Start inline practice instead of navigating
                   setSelectedTask(null);
-                  navigateToTask(selectedTask);
+                  startPractice(selectedTask);
                 }}
                 onSkip={() => {
                   updateTaskStatus(selectedTask.id, 'skipped');
@@ -451,6 +474,8 @@ export default function DailyPlanView() {
             ))}
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

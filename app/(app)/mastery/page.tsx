@@ -428,7 +428,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function SkillsMapPlaceholder() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, getIdToken } = useAuth();
   const [prioritySkills, setPrioritySkills] = useState<{
     skillId: string;
     name: string;
@@ -453,9 +453,16 @@ function SkillsMapPlaceholder() {
 
   useEffect(() => {
     async function fetchPrioritySkills() {
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
       try {
-        const token = await user.getIdToken();
+        const token = await getIdToken();
+        if (!token) {
+          setLoading(false);
+          return;
+        }
         const res = await fetch('/api/mastery/readiness?priority=true', {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -470,7 +477,7 @@ function SkillsMapPlaceholder() {
       }
     }
     fetchPrioritySkills();
-  }, [user]);
+  }, [user, getIdToken]);
 
   return (
     <Card>

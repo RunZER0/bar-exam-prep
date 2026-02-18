@@ -6,9 +6,15 @@
  * Core UI for the daily study plan.
  * Shows today's tasks with scoring breakdown,
  * tracks completion, and shows progress toward daily goals.
+ * 
+ * UX IMPROVEMENTS:
+ * - One-click start for first task (no sheet required)
+ * - Direct navigation to study pages
+ * - Smooth transitions between states
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -120,6 +126,7 @@ const MODE_BADGES: Record<string, { label: string; color: string }> = {
 // ============================================
 
 export default function DailyPlanView() {
+  const router = useRouter();
   const { getIdToken } = useAuth();
   const [plan, setPlan] = useState<DailyPlanData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -205,6 +212,30 @@ export default function DailyPlanView() {
     });
   };
 
+  // Navigate to the appropriate study page for a task
+  const navigateToTask = (task: PlanTask) => {
+    // Build the study URL based on task type and unit
+    const baseUrl = `/study/${task.unitId}`;
+    const params = new URLSearchParams({
+      skillId: task.skillId,
+      mode: task.mode,
+      format: task.itemType,
+      taskId: task.id,
+    });
+    
+    router.push(`${baseUrl}?${params.toString()}`);
+  };
+
+  // Quick start: Navigate directly to the first task
+  const startNextTask = async () => {
+    const nextTask = plan?.tasks.find(t => t.status === 'not_started');
+    if (nextTask) {
+      // Mark as in progress (fire and forget)
+      updateTaskStatus(nextTask.id, 'in_progress' as any);
+      navigateToTask(nextTask);
+    }
+  };
+
   const regeneratePlan = async () => {
     setLoading(true);
     const token = await getIdToken();
@@ -253,16 +284,64 @@ export default function DailyPlanView() {
   const remainingTasks = plan.tasks.filter(t => t.status === 'not_started');
   const completedTasks = plan.tasks.filter(t => t.status === 'completed');
   const skippedTasks = plan.tasks.filter(t => t.status === 'skipped' || t.status === 'deferred');
+  const nextTask = remainingTasks[0];
 
   return (
     <div className="space-y-6">
-      {/* Header with Progress */}
+      {/* HERO: Start Next Task - Immediate Action (No Scrolling Required!) */}
+      {nextTask && (
+        <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-primary/20 overflow-hidden">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between gap-6">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-primary mb-1 uppercase tracking-wider">
+                  Up Next
+                </p>
+                <h2 className="text-xl font-semibold mb-2 line-clamp-1">
+                  {nextTask.skillName}
+                </h2>
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${TASK_TYPE_CONFIG[nextTask.itemType]?.color || ''}`}>
+                    {TASK_TYPE_CONFIG[nextTask.itemType]?.icon} {TASK_TYPE_CONFIG[nextTask.itemType]?.label}
+                  </span>
+                  <span>~{nextTask.estimatedMinutes} min</span>
+                  <span className="hidden sm:inline">• {nextTask.unitName}</span>
+                </div>
+              </div>
+              <Button 
+                size="lg" 
+                onClick={startNextTask}
+                className="flex-shrink-0 shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95 px-8"
+              >
+                Start Now →
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Completion celebration */}
+      {remainingTasks.length === 0 && completedTasks.length > 0 && (
+        <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20">
+          <CardContent className="p-6 text-center">
+            <div className="text-4xl mb-3">🎉</div>
+            <h2 className="text-xl font-semibold text-green-600 dark:text-green-400 mb-2">
+              All Done for Today!
+            </h2>
+            <p className="text-muted-foreground">
+              You completed {completedTasks.length} tasks. Great work!
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Progress & Stats */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xl">Today&apos;s Study Plan</CardTitle>
-            <Button variant="outline" size="sm" onClick={regeneratePlan}>
-              Regenerate
+            <CardTitle className="text-lg">Today&apos;s Progress</CardTitle>
+            <Button variant="ghost" size="sm" onClick={regeneratePlan}>
+              ↻ Refresh
             </Button>
           </div>
         </CardHeader>
@@ -275,7 +354,7 @@ export default function DailyPlanView() {
             </div>
             <div className="w-full bg-muted rounded-full h-3">
               <div 
-                className="bg-primary h-3 rounded-full transition-all duration-300"
+                className="bg-primary h-3 rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${completionPercentage}%` }}
               />
             </div>
@@ -290,16 +369,16 @@ export default function DailyPlanView() {
         </CardContent>
       </Card>
 
-      {/* Remaining Tasks */}
-      {remainingTasks.length > 0 && (
+      {/* Remaining Tasks (skip first one since it's shown in hero) */}
+      {remainingTasks.length > 1 && (
         <div className="space-y-3">
-          <h3 className="font-semibold text-lg">Up Next</h3>
+          <h3 className="font-semibold text-lg">Coming Up</h3>
           <div className="space-y-3 stagger-children">
-            {remainingTasks.map((task, index) => (
+            {remainingTasks.slice(1).map((task, index) => (
               <TaskCard
                 key={task.id}
                 task={task}
-                index={index + 1}
+                index={index + 2}
                 onClick={() => setSelectedTask(task)}
               />
             ))}
@@ -321,8 +400,9 @@ export default function DailyPlanView() {
               <TaskDetailContent 
                 task={selectedTask}
                 onStart={() => {
-                  updateTaskStatus(selectedTask.id, 'completed');
+                  // Navigate to the task instead of just marking complete
                   setSelectedTask(null);
+                  navigateToTask(selectedTask);
                 }}
                 onSkip={() => {
                   updateTaskStatus(selectedTask.id, 'skipped');

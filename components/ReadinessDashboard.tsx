@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,7 @@ interface SkillDetail {
 // ============================================
 
 export default function ReadinessDashboard() {
+  const router = useRouter();
   const { getIdToken } = useAuth();
   const [readiness, setReadiness] = useState<ReadinessData | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<string | null>(null);
@@ -276,7 +278,15 @@ export default function ReadinessDashboard() {
             <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
               <h4 className="font-semibold text-amber-700 dark:text-amber-300 mb-1">🎯 Focus Area</h4>
               <p className="text-sm text-amber-600 dark:text-amber-400">{selectedUnitData.topIssue}</p>
-              <Button variant="outline" size="sm" className="mt-3 border-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-3 border-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900"
+                onClick={() => {
+                  handleCloseSheet();
+                  router.push(`/study/${selectedUnitData.unitId}?focus=${encodeURIComponent(selectedUnitData.topIssue || '')}`);
+                }}
+              >
                 Practice This Now →
               </Button>
             </div>
@@ -293,7 +303,15 @@ export default function ReadinessDashboard() {
                 {unitSkills
                   .sort((a, b) => a.pMastery - b.pMastery) // Weakest first
                   .map(skill => (
-                    <SkillRow key={skill.skillId} skill={skill} />
+                    <SkillRow 
+                      key={skill.skillId} 
+                      skill={skill} 
+                      unitId={selectedUnit || ''}
+                      onPractice={() => {
+                        handleCloseSheet();
+                        router.push(`/study/${selectedUnit}?skillId=${skill.skillId}`);
+                      }}
+                    />
                   ))}
               </div>
             ) : (
@@ -340,7 +358,12 @@ export default function ReadinessDashboard() {
                   <div key={unit.unitId} className="flex items-center gap-3 text-sm">
                     <span className="font-medium">{unit.unitName}:</span>
                     <span className="text-muted-foreground">{unit.topIssue}</span>
-                    <Button variant="link" size="sm" className="ml-auto text-primary">
+                    <Button 
+                      variant="link" 
+                      size="sm" 
+                      className="ml-auto text-primary"
+                      onClick={() => router.push(`/study/${unit.unitId}?focus=${encodeURIComponent(unit.topIssue || '')}`)}
+                    >
                       Practice Now →
                     </Button>
                   </div>
@@ -454,7 +477,7 @@ function UnitRow({
   );
 }
 
-function SkillRow({ skill }: { skill: SkillDetail }) {
+function SkillRow({ skill, unitId, onPractice }: { skill: SkillDetail; unitId: string; onPractice: () => void }) {
   const masteryPercent = Math.round(skill.pMastery * 100);
   
   return (
@@ -503,7 +526,7 @@ function SkillRow({ skill }: { skill: SkillDetail }) {
       )}
 
       {/* Quick Action */}
-      <Button variant="ghost" size="sm">
+      <Button variant="ghost" size="sm" onClick={onPractice}>
         Practice
       </Button>
     </div>

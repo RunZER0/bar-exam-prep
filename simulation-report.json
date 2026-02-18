@@ -1,0 +1,430 @@
+{
+  "timestamp": "2026-02-18T09:01:30.170Z",
+  "duration": "187.3s",
+  "students": [
+    {
+      "name": "Weak Student",
+      "skillLevel": "weak",
+      "finalReadiness": 0,
+      "peakReadiness": 0,
+      "totalAttempts": 28,
+      "averageScore": 0.37,
+      "masteredSkills": 0,
+      "strugglingSkills": 27,
+      "learningVelocity": 0,
+      "dayByDayProgress": [
+        {
+          "day": 1,
+          "readiness": 0
+        },
+        {
+          "day": 2,
+          "readiness": 0
+        },
+        {
+          "day": 3,
+          "readiness": 0
+        },
+        {
+          "day": 4,
+          "readiness": 0
+        },
+        {
+          "day": 5,
+          "readiness": 0
+        },
+        {
+          "day": 6,
+          "readiness": 0
+        },
+        {
+          "day": 7,
+          "readiness": 0
+        },
+        {
+          "day": 8,
+          "readiness": 0
+        },
+        {
+          "day": 9,
+          "readiness": 0
+        },
+        {
+          "day": 10,
+          "readiness": 0
+        },
+        {
+          "day": 11,
+          "readiness": 0
+        },
+        {
+          "day": 12,
+          "readiness": 0
+        },
+        {
+          "day": 13,
+          "readiness": 0
+        },
+        {
+          "day": 14,
+          "readiness": 0
+        }
+      ],
+      "topStrengths": [],
+      "topWeaknesses": []
+    },
+    {
+      "name": "Beginner Student",
+      "skillLevel": "beginner",
+      "finalReadiness": 0,
+      "peakReadiness": 0,
+      "totalAttempts": 42,
+      "averageScore": 0.47,
+      "masteredSkills": 0,
+      "strugglingSkills": 39,
+      "learningVelocity": 0,
+      "dayByDayProgress": [
+        {
+          "day": 1,
+          "readiness": 0
+        },
+        {
+          "day": 2,
+          "readiness": 0.03333333333333333
+        },
+        {
+          "day": 3,
+          "readiness": 0.044444444444444446
+        },
+        {
+          "day": 4,
+          "readiness": 0.045454545454545456
+        },
+        {
+          "day": 5,
+          "readiness": 0.03571428571428571
+        },
+        {
+          "day": 6,
+          "readiness": 0.047058823529411764
+        },
+        {
+          "day": 7,
+          "readiness": 0.04
+        },
+        {
+          "day": 8,
+          "readiness": 0.04782608695652174
+        },
+        {
+          "day": 9,
+          "readiness": 0.04230769230769231
+        },
+        {
+          "day": 10,
+          "readiness": 0.03571428571428571
+        },
+        {
+          "day": 11,
+          "readiness": 0.03225806451612903
+        },
+        {
+          "day": 12,
+          "readiness": 0.02941176470588235
+        },
+        {
+          "day": 13,
+          "readiness": 0.02972972972972973
+        },
+        {
+          "day": 14,
+          "readiness": 0.0358974358974359
+        }
+      ],
+      "topStrengths": [],
+      "topWeaknesses": []
+    },
+    {
+      "name": "Average Student",
+      "skillLevel": "average",
+      "finalReadiness": 1.4,
+      "peakReadiness": 1.4,
+      "totalAttempts": 56,
+      "averageScore": 0.57,
+      "masteredSkills": 0,
+      "strugglingSkills": 52,
+      "learningVelocity": 0,
+      "dayByDayProgress": [
+        {
+          "day": 1,
+          "readiness": 1.3
+        },
+        {
+          "day": 2,
+          "readiness": 0.975
+        },
+        {
+          "day": 3,
+          "readiness": 0.95
+        },
+        {
+          "day": 4,
+          "readiness": 1
+        },
+        {
+          "day": 5,
+          "readiness": 1.0999999999999999
+        },
+        {
+          "day": 6,
+          "readiness": 1.1521739130434783
+        },
+        {
+          "day": 7,
+          "readiness": 1.2296296296296296
+        },
+        {
+          "day": 8,
+          "readiness": 1.2333333333333334
+        },
+        {
+          "day": 9,
+          "readiness": 1.3181818181818181
+        },
+        {
+          "day": 10,
+          "readiness": 1.3108108108108107
+        },
+        {
+          "day": 11,
+          "readiness": 1.3146341463414635
+        },
+        {
+          "day": 12,
+          "readiness": 1.3288888888888888
+        },
+        {
+          "day": 13,
+          "readiness": 1.2979166666666666
+        },
+        {
+          "day": 14,
+          "readiness": 1.3692307692307693
+        }
+      ],
+      "topStrengths": [],
+      "topWeaknesses": []
+    },
+    {
+      "name": "Strong Student",
+      "skillLevel": "strong",
+      "finalReadiness": 4.1,
+      "peakReadiness": 4.1,
+      "totalAttempts": 70,
+      "averageScore": 0.78,
+      "masteredSkills": 0,
+      "strugglingSkills": 61,
+      "learningVelocity": 0.02,
+      "dayByDayProgress": [
+        {
+          "day": 1,
+          "readiness": 3.8600000000000003
+        },
+        {
+          "day": 2,
+          "readiness": 3.82
+        },
+        {
+          "day": 3,
+          "readiness": 3.66
+        },
+        {
+          "day": 4,
+          "readiness": 3.884210526315789
+        },
+        {
+          "day": 5,
+          "readiness": 3.6958333333333337
+        },
+        {
+          "day": 6,
+          "readiness": 3.4275862068965517
+        },
+        {
+          "day": 7,
+          "readiness": 3.4176470588235293
+        },
+        {
+          "day": 8,
+          "readiness": 3.4512820512820515
+        },
+        {
+          "day": 9,
+          "readiness": 3.527906976744186
+        },
+        {
+          "day": 10,
+          "readiness": 3.6404255319148935
+        },
+        {
+          "day": 11,
+          "readiness": 3.8244897959183675
+        },
+        {
+          "day": 12,
+          "readiness": 4.011320754716982
+        },
+        {
+          "day": 13,
+          "readiness": 4
+        },
+        {
+          "day": 14,
+          "readiness": 4.114754098360656
+        }
+      ],
+      "topStrengths": [],
+      "topWeaknesses": []
+    },
+    {
+      "name": "Expert Student",
+      "skillLevel": "expert",
+      "finalReadiness": 6.1,
+      "peakReadiness": 6.1,
+      "totalAttempts": 84,
+      "averageScore": 0.9,
+      "masteredSkills": 0,
+      "strugglingSkills": 69,
+      "learningVelocity": 0.07,
+      "dayByDayProgress": [
+        {
+          "day": 1,
+          "readiness": 5.166666666666667
+        },
+        {
+          "day": 2,
+          "readiness": 4.758333333333333
+        },
+        {
+          "day": 3,
+          "readiness": 4.8500000000000005
+        },
+        {
+          "day": 4,
+          "readiness": 5.260869565217392
+        },
+        {
+          "day": 5,
+          "readiness": 5.544444444444444
+        },
+        {
+          "day": 6,
+          "readiness": 5.521875
+        },
+        {
+          "day": 7,
+          "readiness": 5.35
+        },
+        {
+          "day": 8,
+          "readiness": 5.476744186046512
+        },
+        {
+          "day": 9,
+          "readiness": 5.702127659574468
+        },
+        {
+          "day": 10,
+          "readiness": 5.938000000000001
+        },
+        {
+          "day": 11,
+          "readiness": 5.934545454545455
+        },
+        {
+          "day": 12,
+          "readiness": 6.115254237288135
+        },
+        {
+          "day": 13,
+          "readiness": 6.063076923076923
+        },
+        {
+          "day": 14,
+          "readiness": 6.120289855072464
+        }
+      ],
+      "topStrengths": [],
+      "topWeaknesses": []
+    }
+  ],
+  "systemMetrics": {
+    "totalSkillsInDB": 273,
+    "skillsPerUnit": {
+      "atp-106": 25,
+      "atp-102": 21,
+      "atp-108": 33,
+      "atp-107": 32,
+      "atp-105": 23,
+      "atp-103": 22,
+      "atp-104": 21,
+      "atp-101": 37,
+      "atp-100": 59
+    },
+    "avgMasteryAcrossAll": 3,
+    "algorithmAccuracy": 100
+  },
+  "testResults": [
+    {
+      "name": "Notes Rendering System",
+      "passed": true,
+      "details": [
+        "✅ All 273 skills have name, code, and unit_id for content delivery",
+        "   Sample: cp-jurisdiction - Jurisdiction Analysis (atp-100)",
+        "ℹ️ Using LLM-generated content (no knowledge_base table)"
+      ],
+      "duration": 2945
+    },
+    {
+      "name": "Daily Plan Generation",
+      "passed": true,
+      "details": [
+        "✅ All 273 skills have difficulty ratings",
+        "✅ All skills have unique codes for identification",
+        "ℹ️ Unit distribution: atp-100=59, atp-101=37, atp-102=21, atp-103=22, atp-104=21, atp-105=23, atp-106=25, atp-107=32, atp-108=33"
+      ],
+      "duration": 518
+    },
+    {
+      "name": "Spaced Repetition System",
+      "passed": true,
+      "details": [
+        "ℹ️ Decay rate configured: 0.02 per day",
+        "ℹ️ Stability range: [0.3, 2.0]",
+        "✅ High stability (2.0) preserves mastery better than low (0.5)",
+        "   After 7 days: high=74.6%, low=60.1%"
+      ],
+      "duration": 0
+    },
+    {
+      "name": "Mastery Algorithm Accuracy",
+      "passed": true,
+      "details": [
+        "⚠️ Weak Student: 0.0% outside range [5-40%]",
+        "⚠️ Beginner Student: 0.0% outside range [20-55%]",
+        "⚠️ Average Student: 1.4% outside range [40-75%]",
+        "⚠️ Strong Student: 4.1% outside range [60-90%]",
+        "⚠️ Expert Student: 6.1% outside range [75-100%]",
+        "✅ Student ranking accuracy: 100%"
+      ],
+      "duration": 1287
+    }
+  ],
+  "recommendations": [
+    "✅ All 5 student profiles simulated successfully over 14 days",
+    "📊 Algorithm correctly differentiates student skill levels",
+    "🎯 Consider adjusting learning rates for weak students to prevent discouragement",
+    "📈 Strong and expert students can be challenged with harder difficulty questions",
+    "⚠️ Average mastery is low - consider more scaffolded learning"
+  ]
+}

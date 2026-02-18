@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUnitById } from '@/lib/constants/legal-content';
 import { Button } from '@/components/ui/button';
@@ -52,10 +52,18 @@ const QUICK_PROMPTS = [
 export default function StudyUnitPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { getIdToken } = useAuth();
 
   const unitId = params.unitId as string;
   const unit = getUnitById(unitId);
+
+  // Extract task params from URL (from DailyPlanView navigation)
+  const taskSkillId = searchParams.get('skillId');
+  const taskMode = searchParams.get('mode') as 'practice' | 'review' | 'study' | null;
+  const taskFormat = searchParams.get('format') as 'mcq' | 'essay' | 'oral' | 'open-ended' | null;
+  const taskId = searchParams.get('taskId');
+  const hasTaskParams = !!(taskSkillId && taskMode);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -66,8 +74,32 @@ export default function StudyUnitPage() {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [showSources, setShowSources] = useState<string | null>(null);
   const [autoLoadTriggered, setAutoLoadTriggered] = useState(false);
+  const [taskCompleting, setTaskCompleting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Complete task and return to mastery hub
+  const completeTaskAndReturn = async () => {
+    if (!taskId) return;
+    
+    setTaskCompleting(true);
+    try {
+      const token = await getIdToken();
+      await fetch('/api/mastery/plan', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ taskId, status: 'completed' }),
+      });
+    } catch (err) {
+      console.error('Error completing task:', err);
+    }
+    
+    // Navigate back to mastery hub
+    router.push('/mastery');
+  };
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -90,14 +122,34 @@ export default function StudyUnitPage() {
     setAutoLoadTriggered(true);
     setSending(true);
 
-    // Generate a comprehensive intro prompt
-    const introPrompt = `Give me a comprehensive study guide introduction for ${unit.name}. Include:
+    // If we have task params from DailyPlanView, start targeted practice
+    let introPrompt: string;
+    
+    if (hasTaskParams && taskSkillId) {
+      // Targeted practice session from DailyPlanView
+      const formatLabel = taskFormat === 'mcq' ? 'multiple choice' : 
+                          taskFormat === 'essay' ? 'essay-style' :
+                          taskFormat === 'oral' ? 'oral examination' : 'open-ended';
+      
+      introPrompt = `Start a ${formatLabel} ${taskMode} session for the skill "${taskSkillId}" in ${unit.name}.
+
+${taskMode === 'practice' ? 
+  `Present me with a challenging ${formatLabel} question to test my knowledge. After I answer, provide detailed feedback and cite relevant provisions.` :
+taskMode === 'review' ? 
+  `Review the key concepts I need to remember for this skill. Highlight important provisions and case law.` :
+  `Give me a focused study guide for this specific skill area with practical exam tips.`}
+
+Make this practical and exam-focused for the Kenya bar exam.`;
+    } else {
+      // Generic intro - original behavior
+      introPrompt = `Give me a comprehensive study guide introduction for ${unit.name}. Include:
 1. **Overview** - What this area of law covers and why it matters for the bar exam
 2. **Key Statutes & Provisions** - The most important statutory provisions I must know (${unit.statutes.slice(0, 3).join(', ')})
 3. **Fundamental Concepts** - Core principles and definitions
 4. **Common Exam Topics** - What examiners typically test
 
 Make this practical and exam-focused for the Kenya bar exam.`;
+    }
 
     try {
       const token = await getIdToken();
@@ -253,9 +305,9 @@ Make this practical and exam-focused for the Kenya bar exam.`;
           <BookOpen className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Unit Not Found</h2>
           <p className="text-muted-foreground mb-4">The study unit you&apos;re looking for doesn&apos;t exist.</p>
-          <Button onClick={() => router.push('/study')}>
+          <Button onClick={() => router.push(hasTaskParams ? '/mastery' : '/study')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Study
+            Back to {hasTaskParams ? 'Mastery Hub' : 'Study'}
           </Button>
         </div>
       </div>
@@ -302,7 +354,7 @@ Make this practical and exam-focused for the Kenya bar exam.`;
     return (
       <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen">
         <div className="border-b px-4 md:px-6 py-3 flex items-center gap-3 shrink-0 bg-card/50 backdrop-blur-sm">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/study')}>
+          <Button variant="ghost" size="sm" onClick={() => router.push(hasTaskParams ? '/mastery' : '/study')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1 min-w-0">
@@ -427,7 +479,7 @@ Make this practical and exam-focused for the Kenya bar exam.`;
     <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen">
       <div className="border-b px-4 md:px-6 py-3 flex items-center justify-between shrink-0 bg-card/50 backdrop-blur-sm">
         <div className="flex items-center gap-3 min-w-0">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/study')}>
+          <Button variant="ghost" size="sm" onClick={() => router.push(hasTaskParams ? '/mastery' : '/study')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0">
@@ -440,11 +492,47 @@ Make this practical and exam-focused for the Kenya bar exam.`;
             <p className="text-xs text-muted-foreground">{messages.length} messages</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={resetChat} className="text-muted-foreground hover:text-foreground">
-          <RotateCcw className="h-4 w-4 mr-1" />
-          <span className="hidden sm:inline">New Chat</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          {hasTaskParams && (
+            <Button 
+              size="sm" 
+              onClick={completeTaskAndReturn}
+              disabled={taskCompleting}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {taskCompleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  <span className="hidden sm:inline">Completing...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Complete Task</span>
+                </>
+              )}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={resetChat} className="text-muted-foreground hover:text-foreground">
+            <RotateCcw className="h-4 w-4 mr-1" />
+            <span className="hidden sm:inline">New Chat</span>
+          </Button>
+        </div>
       </div>
+
+      {/* Task context banner */}
+      {hasTaskParams && (
+        <div className="bg-primary/5 border-b px-4 md:px-6 py-2 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2 text-sm">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="text-muted-foreground">Daily Plan Task:</span>
+            <span className="font-medium capitalize">{taskMode} {taskFormat ? `• ${taskFormat.toUpperCase()}` : ''}</span>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            Complete this to mark your task done
+          </span>
+        </div>
+      )}
 
       <div ref={chatContainerRef} className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-6">

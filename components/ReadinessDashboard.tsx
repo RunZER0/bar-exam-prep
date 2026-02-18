@@ -137,7 +137,7 @@ export default function ReadinessDashboard() {
             skillName: 'Start practicing to see skill breakdown',
             pMastery: unitData.score / 100,
             verified: false,
-            lastAttempt: null,
+            lastAttempt: undefined,
             trend: unitData.trend,
             errorTags: [],
             formatTags: ['written'],

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
-import { ATP_UNITS } from '@/lib/constants/legal-content';
 import Link from 'next/link';
 import {
   Users,
@@ -59,7 +58,7 @@ interface RankingUser {
 
 interface FriendSuggestion {
   id: string;
-  userId: string;
+  suggestedUserId: string;
   displayName: string;
   photoURL?: string;
   matchScore: number;
@@ -67,96 +66,64 @@ interface FriendSuggestion {
   mutualFriends: number;
 }
 
-const OFFICIAL_ROOMS: StudyRoom[] = ATP_UNITS.slice(0, 9).map((unit) => ({
-  id: `official-${unit.id}`,
-  name: unit.name,
-  description: `Discuss all things ${unit.name}. Ask questions, share insights, and help each other succeed.`,
-  unitId: unit.id,
-  roomType: 'official',
-  memberCount: Math.floor(Math.random() * 200) + 50,
-  messageCount: Math.floor(Math.random() * 1000) + 100,
-  isJoined: Math.random() > 0.5,
-  lastActivity: '2 hours ago',
-}));
-
-const MOCK_EVENTS: CommunityEvent[] = [
-  {
-    id: '1',
-    title: 'Weekly Constitutional Law Challenge',
-    description: 'Test your knowledge of the Constitution of Kenya 2010. Top 3 win discounts!',
-    type: 'trivia',
-    status: 'active',
-    participantCount: 156,
-    startsAt: new Date().toISOString(),
-    endsAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-    rewards: [
-      { position: 1, reward: 'KES 500 off subscription', value: 500 },
-      { position: 2, reward: 'KES 400 off subscription', value: 400 },
-      { position: 3, reward: 'KES 300 off subscription', value: 300 },
-    ],
-    isJoined: false,
-  },
-  {
-    id: '2',
-    title: 'Land Law Reading Marathon',
-    description: 'Complete 5 study sessions on Land Law this week and earn bonus points!',
-    type: 'reading',
-    status: 'active',
-    participantCount: 89,
-    startsAt: new Date().toISOString(),
-    endsAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    rewards: [
-      { position: 1, reward: 'KES 500 off subscription', value: 500 },
-      { position: 2, reward: 'KES 400 off subscription', value: 400 },
-      { position: 3, reward: 'KES 300 off subscription', value: 300 },
-    ],
-    isJoined: true,
-  },
-  {
-    id: '3',
-    title: 'Criminal Procedure Quiz Blitz',
-    description: 'Answer 50 questions in under 30 minutes. Only for the brave!',
-    type: 'quiz_marathon',
-    status: 'upcoming',
-    participantCount: 45,
-    startsAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-    endsAt: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
-    rewards: [
-      { position: 1, reward: 'KES 500 off subscription', value: 500 },
-      { position: 2, reward: 'KES 400 off subscription', value: 400 },
-      { position: 3, reward: 'KES 300 off subscription', value: 300 },
-    ],
-    isJoined: false,
-  },
-];
-
-const MOCK_RANKINGS: RankingUser[] = [
-  { rank: 1, userId: '1', displayName: 'Sarah Wanjiku', totalPoints: 4250, quizzesCompleted: 45, bonusEarned: 500 },
-  { rank: 2, userId: '2', displayName: 'John Kamau', totalPoints: 3980, quizzesCompleted: 42, bonusEarned: 400 },
-  { rank: 3, userId: '3', displayName: 'Grace Adhiambo', totalPoints: 3720, quizzesCompleted: 39, bonusEarned: 300 },
-  { rank: 4, userId: '4', displayName: 'Peter Omondi', totalPoints: 3450, quizzesCompleted: 36, bonusEarned: 0 },
-  { rank: 5, userId: '5', displayName: 'Mary Njeri', totalPoints: 3200, quizzesCompleted: 34, bonusEarned: 0 },
-  { rank: 6, userId: '6', displayName: 'David Mwangi', totalPoints: 2980, quizzesCompleted: 31, bonusEarned: 0 },
-  { rank: 7, userId: '7', displayName: 'Faith Atieno', totalPoints: 2750, quizzesCompleted: 29, bonusEarned: 0 },
-  { rank: 8, userId: '8', displayName: 'James Kipchoge', totalPoints: 2520, quizzesCompleted: 27, bonusEarned: 0 },
-  { rank: 9, userId: '9', displayName: 'Ann Wambui', totalPoints: 2300, quizzesCompleted: 25, bonusEarned: 0 },
-  { rank: 10, userId: '10', displayName: 'Michael Otieno', totalPoints: 2100, quizzesCompleted: 23, bonusEarned: 0 },
-];
-
-const MOCK_FRIEND_SUGGESTIONS: FriendSuggestion[] = [
-  { id: '1', userId: '1', displayName: 'Sarah Wanjiku', matchScore: 95, reasons: ['Same weak areas', 'Similar study schedule'], mutualFriends: 3 },
-  { id: '2', userId: '2', displayName: 'John Kamau', matchScore: 88, reasons: ['Both studying Land Law', 'Same target exam date'], mutualFriends: 2 },
-  { id: '3', userId: '3', displayName: 'Grace Adhiambo', matchScore: 82, reasons: ['Complementary strengths', 'Active in same rooms'], mutualFriends: 1 },
-];
-
 export default function CommunityPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('rooms');
   const [searchQuery, setSearchQuery] = useState('');
-  const [rooms, setRooms] = useState<StudyRoom[]>(OFFICIAL_ROOMS);
-  const [events, setEvents] = useState<CommunityEvent[]>(MOCK_EVENTS);
-  const [rankings, setRankings] = useState<RankingUser[]>(MOCK_RANKINGS);
-  const [friendSuggestions, setFriendSuggestions] = useState<FriendSuggestion[]>(MOCK_FRIEND_SUGGESTIONS);
+  const [rooms, setRooms] = useState<StudyRoom[]>([]);
+  const [events, setEvents] = useState<CommunityEvent[]>([]);
+  const [rankings, setRankings] = useState<RankingUser[]>([]);
+  const [friendSuggestions, setFriendSuggestions] = useState<FriendSuggestion[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchCommunityData() {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const token = await user.getIdToken();
+        // Fetch all community data in parallel
+        const [roomsRes, eventsRes, rankingsRes, friendsRes] = await Promise.all([
+          fetch('/api/community/rooms', {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          fetch('/api/community/events', {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          fetch('/api/community/rankings', {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          fetch('/api/community/friends?type=suggestions', {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+        ]);
+        
+        if (roomsRes.ok) {
+          const roomsData = await roomsRes.json();
+          setRooms(roomsData.rooms || []);
+        }
+        if (eventsRes.ok) {
+          const eventsData = await eventsRes.json();
+          setEvents(eventsData.events || []);
+        }
+        if (rankingsRes.ok) {
+          const rankingsData = await rankingsRes.json();
+          setRankings(rankingsData.rankings || []);
+        }
+        if (friendsRes.ok) {
+          const friendsData = await friendsRes.json();
+          setFriendSuggestions(friendsData.suggestions || []);
+        }
+      } catch (e) {
+        console.error('Failed to fetch community data:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchCommunityData();
+  }, [user]);
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Crown className="h-4 w-4 text-green-500" />;

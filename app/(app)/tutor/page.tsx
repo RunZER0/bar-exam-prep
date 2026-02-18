@@ -15,15 +15,15 @@ import Link from 'next/link';
 // Types
 interface StudyItem {
   id: string;
-  type: 'reading' | 'case_study' | 'practice_questions' | 'quiz' | 'review' | 'drafting' | 'research';
+  itemType: 'reading' | 'case_study' | 'practice_questions' | 'quiz' | 'review' | 'drafting' | 'research';
   title: string;
   description: string;
   unitName: string;
   estimatedMinutes: number;
-  priority: 1 | 2 | 3;
-  status: 'pending' | 'in_progress' | 'completed';
+  priority: number;
+  status: 'pending' | 'in_progress' | 'completed' | 'skipped';
   caseReference?: string;
-  rationale: string;
+  aiRationale?: string;
 }
 
 interface TodayStats {
@@ -43,82 +43,7 @@ interface CaseRecommendation {
   rationale: string;
 }
 
-// Mock data - will be replaced with API calls
-const MOCK_TODAY_ITEMS: StudyItem[] = [
-  {
-    id: '1',
-    type: 'review',
-    title: 'Daily Review Session',
-    description: 'Review your due cards from all subjects. 12 cards due today.',
-    unitName: 'All Areas',
-    estimatedMinutes: 15,
-    priority: 1,
-    status: 'pending',
-    rationale: 'Regular review ensures you retain what you\'ve learned.',
-  },
-  {
-    id: '2',
-    type: 'case_study',
-    title: 'Anarita Karimi Njeru v Republic',
-    description: 'Analyze this landmark constitutional petition case. Focus on the ratio decidendi.',
-    unitName: 'Civil Litigation',
-    estimatedMinutes: 30,
-    priority: 1,
-    status: 'pending',
-    caseReference: '[1979] KLR 154',
-    rationale: 'Foundation case for constitutional petitions - critical for ATP 100.',
-  },
-  {
-    id: '3',
-    type: 'reading',
-    title: 'Civil Procedure Rules, 2010 - Part III',
-    description: 'Study the provisions on interlocutory applications and chambers proceedings.',
-    unitName: 'Civil Litigation',
-    estimatedMinutes: 25,
-    priority: 2,
-    status: 'pending',
-    rationale: 'Understanding procedure is essential for practice.',
-  },
-  {
-    id: '4',
-    type: 'practice_questions',
-    title: 'Civil Procedure Practice Questions',
-    description: 'Answer 10 practice questions on pleadings and interlocutory applications.',
-    unitName: 'Civil Litigation',
-    estimatedMinutes: 20,
-    priority: 2,
-    status: 'pending',
-    rationale: 'Active recall strengthens your understanding.',
-  },
-];
-
-const MOCK_STATS: TodayStats = {
-  itemsCompleted: 1,
-  itemsTotal: 4,
-  minutesStudied: 15,
-  minutesGoal: 90,
-  reviewsDue: 12,
-  streakDays: 7,
-};
-
-const MOCK_CASES: CaseRecommendation[] = [
-  {
-    name: 'Anarita Karimi Njeru v Republic',
-    citation: '[1979] KLR 154',
-    topic: 'Constitutional Petitions',
-    unitName: 'Civil Litigation',
-    rationale: 'Establishes the standard for constitutional petition pleadings.',
-  },
-  {
-    name: 'Shah v Mbogo',
-    citation: '[1967] EA 116',
-    topic: 'Setting Aside Default Judgment',
-    unitName: 'Civil Litigation',
-    rationale: 'Key case on principles for setting aside ex-parte orders.',
-  },
-];
-
-const ITEM_ICONS: Record<StudyItem['type'], React.ElementType> = {
+const ITEM_ICONS: Record<string, React.ElementType> = {
   reading: BookOpen,
   case_study: Scale,
   practice_questions: FileText,
@@ -128,7 +53,7 @@ const ITEM_ICONS: Record<StudyItem['type'], React.ElementType> = {
   research: Lightbulb,
 };
 
-const ITEM_COLORS: Record<StudyItem['type'], string> = {
+const ITEM_COLORS: Record<string, string> = {
   reading: 'bg-gray-500/10 text-gray-500 border-gray-500/20',
   case_study: 'bg-gray-500/10 text-gray-500 border-gray-500/20',
   practice_questions: 'bg-green-500/10 text-green-500 border-green-500/20',
@@ -140,9 +65,16 @@ const ITEM_COLORS: Record<StudyItem['type'], string> = {
 
 export default function TutorDashboard() {
   const { user } = useAuth();
-  const [todayItems, setTodayItems] = useState<StudyItem[]>(MOCK_TODAY_ITEMS);
-  const [stats, setStats] = useState<TodayStats>(MOCK_STATS);
-  const [cases, setCases] = useState<CaseRecommendation[]>(MOCK_CASES);
+  const [todayItems, setTodayItems] = useState<StudyItem[]>([]);
+  const [stats, setStats] = useState<TodayStats>({
+    itemsCompleted: 0,
+    itemsTotal: 0,
+    minutesStudied: 0,
+    minutesGoal: 60,
+    reviewsDue: 0,
+    streakDays: 0,
+  });
+  const [cases, setCases] = useState<CaseRecommendation[]>([]);
   const [activeItem, setActiveItem] = useState<StudyItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [greeting, setGreeting] = useState('');
@@ -154,9 +86,59 @@ export default function TutorDashboard() {
     else if (hour < 17) setGreeting('Good afternoon');
     else setGreeting('Good evening');
 
-    // TODO: Fetch actual data from API
-    setIsLoading(false);
-  }, []);
+    // Fetch real data from API
+    async function fetchTodayData() {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch('/api/tutor/today', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          // Map API items to component format
+          const mappedItems = (data.items || []).map((item: {
+            id: string;
+            itemType: string;
+            title: string;
+            description: string;
+            unitName: string;
+            estimatedMinutes: number;
+            priority: number;
+            status: string;
+            caseReference?: string;
+            aiRationale?: string;
+          }) => ({
+            id: item.id,
+            itemType: item.itemType || 'practice_questions',
+            title: item.title,
+            description: item.description || '',
+            unitName: item.unitName || 'General',
+            estimatedMinutes: item.estimatedMinutes || 15,
+            priority: item.priority || 2,
+            status: item.status || 'pending',
+            caseReference: item.caseReference,
+            aiRationale: item.aiRationale,
+          }));
+          setTodayItems(mappedItems);
+          setStats({
+            itemsCompleted: data.stats?.itemsCompleted || 0,
+            itemsTotal: data.stats?.itemsTotal || 0,
+            minutesStudied: data.stats?.minutesStudied || 0,
+            minutesGoal: data.stats?.minutesGoal || 60,
+            reviewsDue: data.stats?.reviewsDue || 0,
+            streakDays: data.stats?.streakDays || 0,
+          });
+          setCases(data.caseRecommendations || []);
+        }
+      } catch (e) {
+        console.error('Failed to fetch tutor data:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchTodayData();
+  }, [user]);
 
   const handleStartItem = (item: StudyItem) => {
     setActiveItem(item);
@@ -334,8 +316,8 @@ export default function TutorDashboard() {
           {/* Pending Items */}
           <div className="space-y-3">
             {pendingItems.map((item, index) => {
-              const Icon = ITEM_ICONS[item.type];
-              const colorClass = ITEM_COLORS[item.type];
+              const Icon = ITEM_ICONS[item.itemType] || FileText;
+              const colorClass = ITEM_COLORS[item.itemType] || 'bg-gray-500/10 text-gray-500 border-gray-500/20';
               
               return (
                 <Card 
@@ -386,10 +368,12 @@ export default function TutorDashboard() {
                     </div>
                     
                     {/* AI Rationale */}
-                    <div className="mt-3 pt-3 border-t flex items-start gap-2">
-                      <Lightbulb className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-xs text-muted-foreground">{item.rationale}</p>
-                    </div>
+                    {item.aiRationale && (
+                      <div className="mt-3 pt-3 border-t flex items-start gap-2">
+                        <Lightbulb className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-muted-foreground">{item.aiRationale}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
@@ -404,7 +388,7 @@ export default function TutorDashboard() {
                 Completed Today
               </h3>
               {completedItems.map((item) => {
-                const Icon = ITEM_ICONS[item.type];
+                const Icon = ITEM_ICONS[item.itemType] || FileText;
                 return (
                   <Card key={item.id} className="bg-muted/30 opacity-70">
                     <CardContent className="pt-3 pb-3">

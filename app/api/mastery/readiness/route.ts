@@ -85,11 +85,107 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Optional: specific unit filter
+    // Optional: specific unit filter and skills detail
     const url = new URL(req.url);
     const unitId = url.searchParams.get('unitId');
+    const includeSkills = url.searchParams.get('skills') === 'true';
+    const includePriority = url.searchParams.get('priority') === 'true';
     
     const readiness = await calculateReadiness(user.id, unitId);
+    
+    // If priority skills requested, fetch top priority skills across all units
+    if (includePriority) {
+      const priorityResult = await db.execute(sql`
+        SELECT 
+          ms.id as skill_id,
+          ms.name as skill_name,
+          ms.unit_id,
+          ms.exam_weight,
+          COALESCE(mst.p_mastery, 0) as p_mastery,
+          COALESCE(mst.is_verified, false) as verified
+        FROM micro_skills ms
+        LEFT JOIN mastery_state mst ON ms.id = mst.skill_id AND mst.user_id = ${user.id}::uuid
+        WHERE ms.is_active = true
+        ORDER BY 
+          COALESCE(ms.exam_weight, 5) DESC,
+          COALESCE(mst.p_mastery, 0) ASC
+        LIMIT 5
+      `);
+      
+      const prioritySkills = (priorityResult.rows as Array<{
+        skill_id: string;
+        skill_name: string;
+        unit_id: string;
+        exam_weight: string | null;
+        p_mastery: string;
+        verified: boolean;
+      }>).map(row => ({
+        skillId: row.skill_id,
+        name: row.skill_name,
+        unitId: row.unit_id,
+        weight: parseInt(row.exam_weight || '5'),
+        mastery: Math.round(parseFloat(row.p_mastery) * 100),
+      }));
+      
+      return NextResponse.json({ ...readiness, prioritySkills });
+    }
+    
+    // If skills requested and unitId provided, fetch individual skill details
+    if (includeSkills && unitId) {
+      const skillsResult = await db.execute(sql`
+        SELECT 
+          ms.id as skill_id,
+          ms.name as skill_name,
+          COALESCE(mst.p_mastery, 0) as p_mastery,
+          COALESCE(mst.is_verified, false) as verified,
+          mst.last_practiced_at,
+          mst.error_tags,
+          ms.format_tags
+        FROM micro_skills ms
+        LEFT JOIN mastery_state mst ON ms.id = mst.skill_id AND mst.user_id = ${user.id}::uuid
+        WHERE ms.unit_id = ${unitId} AND ms.is_active = true
+        ORDER BY COALESCE(mst.p_mastery, 0) ASC
+        LIMIT 20
+      `);
+      
+      const skills = (skillsResult.rows as Array<{
+        skill_id: string;
+        skill_name: string;
+        p_mastery: string;
+        verified: boolean;
+        last_practiced_at: string | null;
+        error_tags: string[] | null;
+        format_tags: string[] | null;
+      }>).map(row => {
+        const pMastery = parseFloat(row.p_mastery) || 0;
+        let trend: 'improving' | 'stable' | 'declining' = 'stable';
+        if (pMastery > 0.6) trend = 'improving';
+        else if (pMastery < 0.3) trend = 'declining';
+        
+        // Format last practiced as relative time
+        let lastAttempt: string | null = null;
+        if (row.last_practiced_at) {
+          const diff = Date.now() - new Date(row.last_practiced_at).getTime();
+          const hours = Math.floor(diff / (1000 * 60 * 60));
+          if (hours < 1) lastAttempt = 'Just now';
+          else if (hours < 24) lastAttempt = `${hours}h ago`;
+          else lastAttempt = `${Math.floor(hours / 24)}d ago`;
+        }
+        
+        return {
+          skillId: row.skill_id,
+          skillName: row.skill_name,
+          pMastery,
+          verified: row.verified,
+          lastAttempt,
+          trend,
+          errorTags: row.error_tags || [],
+          formatTags: row.format_tags || ['written'],
+        };
+      });
+      
+      return NextResponse.json({ ...readiness, skills });
+    }
     
     return NextResponse.json(readiness);
 

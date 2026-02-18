@@ -174,12 +174,13 @@ export async function GET(req: NextRequest) {
       const mastery = masteryMap.get(skill.skill_id);
       
       // If no existing mastery state, derive initial value from user profile
-      let initialPMastery = 0.25; // Default baseline
+      // Values: strong=25%, neutral=10%, weak=5%
+      let initialPMastery = 0.10; // Default neutral
       if (!mastery) {
         if (strongAreas.includes(skill.unit_id)) {
-          initialPMastery = 0.50; // Strong area
+          initialPMastery = 0.25; // Strong area
         } else if (weakAreas.includes(skill.unit_id)) {
-          initialPMastery = 0.10; // Weak area - needs focus
+          initialPMastery = 0.05; // Weak area - needs focus
         }
       }
       

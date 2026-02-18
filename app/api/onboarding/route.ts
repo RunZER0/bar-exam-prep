@@ -64,10 +64,11 @@ export async function POST(request: NextRequest) {
     // ============================================
     // INITIALIZE MASTERY STATES FROM ONBOARDING
     // ============================================
-    // This creates the "first snapshot" - initial mastery based on self-assessment
-    // - Strong areas start at 0.50 (some prior knowledge)
-    // - Neutral areas start at 0.25 (baseline)
-    // - Weak areas start at 0.10 (needs extra focus)
+    // This creates the "first snapshot" - initial mastery based on ALL self-assessment data
+    // Initial mastery values:
+    // - Strong areas: 25% (0.25) - student has prior knowledge
+    // - Neutral areas: 10% (0.10) - baseline starting point
+    // - Weak areas: 5% (0.05) - needs significant work
     
     try {
       // Get all active micro_skills
@@ -83,34 +84,64 @@ export async function POST(request: NextRequest) {
       `);
       const existingSkillIds = new Set((existingMasteryResult.rows as Array<{ skill_id: string }>).map(r => r.skill_id));
       
-      // Determine initial p_mastery based on user's self-assessment
-      const confidenceMultiplier = data.confidenceLevel ? 
-        (parseInt(data.confidenceLevel.split('-')[0]) / 10) : 0.5; // Scale confidence 0-10 to 0-1
+      // ============================================
+      // CALCULATE MODIFIERS FROM ALL ONBOARDING DATA
+      // ============================================
+      
+      // 1. Confidence level (1-10 scale) - affects overall mastery multiplier
+      const confidenceLevel = data.confidenceLevel ? 
+        parseInt(data.confidenceLevel.split('-')[0]) / 10 : 0.5;
+      
+      // 2. Years in law - more experience = slightly higher base
+      const yearsInLaw = parseInt(String(data.yearsInLaw || '0').replace(/[^0-9]/g, '')) || 0;
+      const experienceBonus = Math.min(0.05, yearsInLaw * 0.01); // Max 5% bonus
+      
+      // 3. Previous bar attempts - retakers may have partial knowledge
+      const previousAttempts = parseInt(String(data.previousAttempts || '0').replace(/[^0-9]/g, '')) || 0;
+      const retakerBonus = previousAttempts > 0 ? 0.05 : 0; // 5% bonus for retakers
+      
+      // 4. Commitment level affects study velocity (stored for pacing, not initial mastery)
+      const commitmentMultiplier = data.commitmentLevel === 'fulltime' ? 1.2 : 
+                                   data.commitmentLevel === 'parttime' ? 1.0 : 0.9;
+      
+      // 5. Learning style affects format weights (stored in profile)
+      // Visual = prefers written, Auditory = prefers oral, Kinesthetic = prefers practice
       
       // Insert mastery states for skills that don't exist yet
       for (const skill of skills) {
         if (existingSkillIds.has(skill.id)) continue;
         
-        // Determine initial mastery based on unit classification
-        let baseMastery = 0.25; // Default: neutral
+        // Base mastery based on unit classification (strong=25%, neutral=10%, weak=5%)
+        let baseMastery: number;
         
         if (strongUnits.includes(skill.unit_id)) {
-          baseMastery = 0.50; // Strong area - higher starting point
+          baseMastery = 0.25; // Strong area
         } else if (weakUnits.includes(skill.unit_id)) {
-          baseMastery = 0.10; // Weak area - needs more work
+          baseMastery = 0.05; // Weak area
+        } else {
+          baseMastery = 0.10; // Neutral area
         }
         
-        // Adjust by confidence level (±20%)
-        const adjustedMastery = Math.max(0.05, Math.min(0.70, baseMastery * (0.8 + confidenceMultiplier * 0.4)));
+        // Apply modifiers: confidence, experience, retaker status
+        // Confidence affects by ±30%, experience/retaker adds flat bonus
+        const confidenceModifier = 0.7 + (confidenceLevel * 0.6); // Range: 0.7 to 1.3
+        const adjustedMastery = Math.max(
+          0.02, 
+          Math.min(0.40, baseMastery * confidenceModifier + experienceBonus + retakerBonus)
+        );
+        
+        // Stability starts at 1.0 for new skills, adjusted by commitment
+        const initialStability = commitmentMultiplier;
         
         await db.execute(sql`
           INSERT INTO mastery_state (user_id, skill_id, p_mastery, stability, created_at, updated_at)
-          VALUES (${dbUser.id}::uuid, ${skill.id}, ${adjustedMastery}, 1.0, NOW(), NOW())
+          VALUES (${dbUser.id}::uuid, ${skill.id}, ${adjustedMastery}, ${initialStability}, NOW(), NOW())
           ON CONFLICT (user_id, skill_id) DO NOTHING
         `);
       }
       
       console.log(`[Onboarding] Initialized mastery for ${skills.length - existingSkillIds.size} skills for user ${dbUser.id}`);
+      console.log(`[Onboarding] Profile: confidence=${confidenceLevel}, yearsInLaw=${yearsInLaw}, attempts=${previousAttempts}`);
     } catch (masteryError) {
       // Log but don't fail - mastery will be initialized lazily if this fails
       console.error('[Onboarding] Error initializing mastery states:', masteryError);

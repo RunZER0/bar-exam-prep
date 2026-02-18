@@ -109,13 +109,44 @@ export default function ReadinessDashboard() {
   }, [fetchReadiness]);
 
   const fetchUnitSkills = async (unitId: string) => {
-    // TODO: Fetch from API
-    // Demo data
-    setUnitSkills([
-      { skillId: 's1', skillName: 'Issue Spotting - Civil Claims', pMastery: 0.82, verified: true, lastAttempt: '2h ago', trend: 'improving', errorTags: [], formatTags: ['written', 'oral'] },
-      { skillId: 's2', skillName: 'Pleadings Structure', pMastery: 0.75, verified: false, lastAttempt: '1d ago', trend: 'stable', errorTags: ['WRONG_FORMAT'], formatTags: ['drafting'] },
-      { skillId: 's3', skillName: 'Jurisdiction Analysis', pMastery: 0.65, verified: false, lastAttempt: '3d ago', trend: 'declining', errorTags: ['MISSED_ISSUE', 'WEAK_CITATION'], formatTags: ['written'] },
-    ]);
+    try {
+      setUnitSkills([]); // Clear while loading
+      const token = await getIdToken();
+      
+      // Fetch skills for this unit from API
+      const response = await fetch(`/api/mastery/readiness?unitId=${unitId}&skills=true`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to fetch unit skills');
+        return;
+      }
+      
+      const data = await response.json();
+      
+      // If the API returns skills array, use it; otherwise show default message
+      if (data.skills && Array.isArray(data.skills)) {
+        setUnitSkills(data.skills);
+      } else {
+        // Fallback: Show unit-level data as placeholder
+        const unitData = readiness?.units.find(u => u.unitId === unitId);
+        if (unitData) {
+          setUnitSkills([{
+            skillId: `${unitId}-summary`,
+            skillName: 'Start practicing to see skill breakdown',
+            pMastery: unitData.score / 100,
+            verified: false,
+            lastAttempt: null,
+            trend: unitData.trend,
+            errorTags: [],
+            formatTags: ['written'],
+          }]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching unit skills:', error);
+    }
   };
 
   const handleUnitClick = (unitId: string) => {

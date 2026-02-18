@@ -14,7 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 
@@ -214,106 +214,282 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * Generate weekly report from data
+ * Generate weekly report from REAL database data
  */
 async function generateWeeklyReport(
   userId: string,
   weekStart: Date,
   weekEnd: Date
 ): Promise<WeeklyReportData> {
-  // TODO: Query actual data from database
-  // This is a demo implementation showing the structure
+  const weekStartStr = weekStart.toISOString().split('T')[0];
+  const weekEndStr = weekEnd.toISOString().split('T')[0];
   
-  // Mock data for demonstration
-  const unitReadiness = ATP_UNITS.slice(0, 9).map((unit, index) => ({
-    unitId: unit.id,
-    unitName: unit.name,
-    readiness: 40 + Math.floor(Math.random() * 40), // 40-80
-    trend: (['improving', 'stable', 'declining'] as const)[Math.floor(Math.random() * 3)],
-    topIssues: index < 3 ? ['Needs more timed practice', 'Error patterns in issue spotting'] : [],
-    skillsVerified: Math.floor(Math.random() * 5),
-    skillsTotal: 8 + Math.floor(Math.random() * 4),
-  }));
+  // ============================================
+  // Query actual mastery states for this user
+  // ============================================
+  const masteryResult = await db.execute(sql`
+    SELECT 
+      ms.skill_id,
+      ms.p_mastery,
+      ms.stability,
+      ms.is_verified,
+      ms.last_practiced_at,
+      sk.name as skill_name,
+      sk.unit_id
+    FROM mastery_state ms
+    JOIN micro_skills sk ON ms.skill_id = sk.id
+    WHERE ms.user_id = ${userId}::uuid
+  `);
   
-  const overallReadiness = Math.round(
-    unitReadiness.reduce((sum, u) => sum + u.readiness, 0) / unitReadiness.length
-  );
+  const masteryStates = masteryResult.rows as Array<{
+    skill_id: string;
+    p_mastery: string;
+    stability: string;
+    is_verified: boolean;
+    last_practiced_at: string | null;
+    skill_name: string;
+    unit_id: string;
+  }>;
+  
+  // ============================================
+  // Query attempts from this week
+  // ============================================
+  const attemptsResult = await db.execute(sql`
+    SELECT 
+      ma.skill_id,
+      ma.score_norm,
+      ma.delta,
+      ma.error_tags,
+      ma.is_timed,
+      ma.format,
+      ma.created_at
+    FROM mastery_attempts ma
+    WHERE ma.user_id = ${userId}::uuid
+      AND ma.created_at >= ${weekStartStr}::date
+      AND ma.created_at <= ${weekEndStr}::date + interval '1 day'
+    ORDER BY ma.created_at DESC
+  `);
+  
+  const weekAttempts = attemptsResult.rows as Array<{
+    skill_id: string;
+    score_norm: string;
+    delta: string;
+    error_tags: string[];
+    is_timed: boolean;
+    format: string;
+    created_at: string;
+  }>;
+  
+  // ============================================
+  // Calculate per-unit readiness from mastery states
+  // ============================================
+  const unitMasteryMap = new Map<string, { total: number; count: number; verified: number; skillsTotal: number }>();
+  
+  for (const state of masteryStates) {
+    const existing = unitMasteryMap.get(state.unit_id) || { total: 0, count: 0, verified: 0, skillsTotal: 0 };
+    existing.total += parseFloat(state.p_mastery) * 100;
+    existing.count++;
+    existing.skillsTotal++;
+    if (state.is_verified) existing.verified++;
+    unitMasteryMap.set(state.unit_id, existing);
+  }
+  
+  // Build unit readiness array
+  const unitReadiness = ATP_UNITS.slice(0, 9).map(unit => {
+    const unitData = unitMasteryMap.get(unit.id);
+    const readiness = unitData && unitData.count > 0 
+      ? Math.round(unitData.total / unitData.count) 
+      : 0;
+    
+    // Determine trend based on attempts this week
+    const unitAttempts = weekAttempts.filter(a => masteryStates.find(m => m.skill_id === a.skill_id && m.unit_id === unit.id));
+    const avgDelta = unitAttempts.length > 0 
+      ? unitAttempts.reduce((sum, a) => sum + parseFloat(a.delta || '0'), 0) / unitAttempts.length
+      : 0;
+    
+    const trend: 'improving' | 'stable' | 'declining' = avgDelta > 0.02 ? 'improving' : avgDelta < -0.02 ? 'declining' : 'stable';
+    
+    return {
+      unitId: unit.id,
+      unitName: unit.name,
+      readiness,
+      trend,
+      topIssues: readiness < 50 ? ['Needs more practice', 'Low mastery in core skills'] : [],
+      skillsVerified: unitData?.verified || 0,
+      skillsTotal: unitData?.skillsTotal || 0,
+    };
+  });
+  
+  // ============================================
+  // Calculate overall metrics from real data
+  // ============================================
+  const overallReadiness = unitReadiness.length > 0
+    ? Math.round(unitReadiness.reduce((sum, u) => sum + u.readiness, 0) / unitReadiness.length)
+    : 0;
+  
+  // Calculate format-specific readiness
+  const writtenAttempts = weekAttempts.filter(a => a.format === 'essay' || a.format === 'written');
+  const oralAttempts = weekAttempts.filter(a => a.format === 'oral');
+  const mcqAttempts = weekAttempts.filter(a => a.format === 'mcq');
+  
+  const calcAvgScore = (attempts: typeof weekAttempts) => 
+    attempts.length > 0 
+      ? Math.round(attempts.reduce((sum, a) => sum + parseFloat(a.score_norm) * 100, 0) / attempts.length)
+      : overallReadiness;
+  
+  // ============================================
+  // Find top improving and declining skills
+  // ============================================
+  const skillDeltas: Array<{ skillId: string; skillName: string; unitId: string; delta: number; attempts: typeof weekAttempts }> = [];
+  
+  const skillAttemptsMap = new Map<string, typeof weekAttempts>();
+  for (const attempt of weekAttempts) {
+    const existing = skillAttemptsMap.get(attempt.skill_id) || [];
+    existing.push(attempt);
+    skillAttemptsMap.set(attempt.skill_id, existing);
+  }
+  
+  for (const [skillId, attempts] of skillAttemptsMap) {
+    const skillInfo = masteryStates.find(m => m.skill_id === skillId);
+    if (!skillInfo) continue;
+    
+    const totalDelta = attempts.reduce((sum, a) => sum + parseFloat(a.delta || '0'), 0);
+    skillDeltas.push({
+      skillId,
+      skillName: skillInfo.skill_name,
+      unitId: skillInfo.unit_id,
+      delta: Math.round(totalDelta * 100),
+      attempts,
+    });
+  }
+  
+  // Sort by delta for top improving/declining
+  skillDeltas.sort((a, b) => b.delta - a.delta);
+  
+  const topImproving = skillDeltas
+    .filter(s => s.delta > 0)
+    .slice(0, 3)
+    .map(s => ({
+      skillId: s.skillId,
+      skillName: s.skillName,
+      unitId: s.unitId,
+      delta: s.delta,
+      evidence: [`+${s.delta}% mastery gain from ${s.attempts.length} attempts this week`],
+    }));
+  
+  const topDeclining = skillDeltas
+    .filter(s => s.delta < 0)
+    .slice(-3)
+    .reverse()
+    .map(s => ({
+      skillId: s.skillId,
+      skillName: s.skillName,
+      unitId: s.unitId,
+      delta: s.delta,
+      reasons: [`${Math.abs(s.delta)}% mastery loss from ${s.attempts.length} attempts`],
+      recommendedActions: ['Schedule focused practice session', 'Review related lecture material'],
+    }));
+  
+  // ============================================
+  // Aggregate error tags
+  // ============================================
+  const errorTagCounts = new Map<string, { count: number; skills: Set<string> }>();
+  
+  for (const attempt of weekAttempts) {
+    for (const tag of (attempt.error_tags || [])) {
+      const existing = errorTagCounts.get(tag) || { count: 0, skills: new Set() };
+      existing.count++;
+      existing.skills.add(attempt.skill_id);
+      errorTagCounts.set(tag, existing);
+    }
+  }
+  
+  const ERROR_TAG_NAMES: Record<string, string> = {
+    'MISSED_ISSUE': 'Missed Legal Issue',
+    'WRONG_RULE': 'Incorrect Rule Applied',
+    'WRONG_CITATION': 'Incorrect Citation',
+    'POOR_APPLICATION': 'Weak Fact Application',
+    'INCOMPLETE': 'Incomplete Answer',
+    'WRONG_PROCEDURE': 'Wrong Procedure',
+    'TIMING': 'Time Management',
+    'STRUCTURE': 'Poor Structure',
+  };
+  
+  const topErrorTags = Array.from(errorTagCounts.entries())
+    .map(([code, data]) => ({
+      code,
+      name: ERROR_TAG_NAMES[code] || code,
+      count: data.count,
+      affectedSkills: Array.from(data.skills),
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+  
+  // ============================================
+  // Activity summary from real data
+  // ============================================
+  const activitySummary = {
+    attemptsCount: weekAttempts.length,
+    minutesStudied: weekAttempts.length * 8, // Estimate ~8 mins per attempt
+    skillsPracticed: new Set(weekAttempts.map(a => a.skill_id)).size,
+    timedAttempts: weekAttempts.filter(a => a.is_timed).length,
+    gatesPassed: masteryStates.filter(m => m.is_verified).length,
+  };
+  
+  // ============================================
+  // Generate recommendations based on data
+  // ============================================
+  const weakestUnits = [...unitReadiness].sort((a, b) => a.readiness - b.readiness).slice(0, 2);
+  const focusNextWeek = [
+    ...weakestUnits.map(u => `Priority: ${u.unitName} (${u.readiness}% readiness)`),
+    ...(topErrorTags.length > 0 ? [`Clear ${topErrorTags[0].name} error pattern - ${topErrorTags[0].count} occurrences`] : []),
+    activitySummary.timedAttempts < 3 ? 'Schedule more timed practice attempts' : null,
+  ].filter(Boolean) as string[];
+  
+  // ============================================
+  // Prediction based on real readiness
+  // ============================================
+  const prediction = overallReadiness >= 70 ? 'likely_pass' as const 
+    : overallReadiness >= 50 ? 'borderline' as const 
+    : 'needs_work' as const;
+  
+  // Calculate trend from this week's deltas
+  const avgWeekDelta = weekAttempts.length > 0 
+    ? weekAttempts.reduce((sum, a) => sum + parseFloat(a.delta || '0'), 0) / weekAttempts.length
+    : 0;
+  const readinessTrend: 'improving' | 'stable' | 'declining' = avgWeekDelta > 0.02 ? 'improving' : avgWeekDelta < -0.02 ? 'declining' : 'stable';
   
   const report: WeeklyReportData = {
     userId,
-    weekStart: weekStart.toISOString().split('T')[0],
-    weekEnd: weekEnd.toISOString().split('T')[0],
+    weekStart: weekStartStr,
+    weekEnd: weekEndStr,
     
     overallReadiness,
-    writtenReadiness: overallReadiness + Math.floor(Math.random() * 10) - 5,
-    oralReadiness: overallReadiness + Math.floor(Math.random() * 10) - 5,
-    draftingReadiness: overallReadiness + Math.floor(Math.random() * 10) - 5,
+    writtenReadiness: calcAvgScore(writtenAttempts),
+    oralReadiness: calcAvgScore(oralAttempts),
+    draftingReadiness: calcAvgScore(mcqAttempts.length > 0 ? mcqAttempts : writtenAttempts),
     
-    readinessTrend: overallReadiness > 60 ? 'improving' : 'stable',
-    readinessDelta: Math.floor(Math.random() * 10) - 3,
+    readinessTrend,
+    readinessDelta: Math.round(avgWeekDelta * 100),
     
     unitReadiness,
-    
-    activitySummary: {
-      attemptsCount: Math.floor(Math.random() * 30) + 10,
-      minutesStudied: Math.floor(Math.random() * 300) + 120,
-      skillsPracticed: Math.floor(Math.random() * 15) + 5,
-      timedAttempts: Math.floor(Math.random() * 10) + 2,
-      gatesPassed: Math.floor(Math.random() * 3),
-    },
-    
-    topImproving: [
-      {
-        skillId: 'skill-1',
-        skillName: 'Issue Spotting in Civil Procedure',
-        unitId: 'atp-100',
-        delta: 15,
-        evidence: ['Passed 3 consecutive timed attempts', 'No MISSED_ISSUE errors in last 5 attempts'],
-      },
-      {
-        skillId: 'skill-2',
-        skillName: 'Criminal Bail Applications',
-        unitId: 'atp-101',
-        delta: 12,
-        evidence: ['Improved from 45% to 72% accuracy', 'Cleared WRONG_PROCEDURE error pattern'],
-      },
-    ],
-    
-    topDeclining: [
-      {
-        skillId: 'skill-3',
-        skillName: 'Evidence Act s.34 Hearsay',
-        unitId: 'atp-101',
-        delta: -8,
-        reasons: ['Recurring WRONG_RULE error (3 times this week)', 'Low retention from 2 weeks ago'],
-        recommendedActions: ['Review lecture on hearsay exceptions', 'Complete 2 focused drills'],
-      },
-    ],
-    
-    topErrorTags: [
-      { code: 'MISSED_ISSUE', name: 'Missed Legal Issue', count: 5, affectedSkills: ['skill-1', 'skill-4'] },
-      { code: 'WRONG_CITATION', name: 'Incorrect Citation', count: 3, affectedSkills: ['skill-2'] },
-      { code: 'POOR_APPLICATION', name: 'Weak Fact Application', count: 3, affectedSkills: ['skill-3'] },
-    ],
-    
-    focusNextWeek: [
-      'Priority: Criminal Litigation (lowest readiness at 52%)',
-      'Clear MISSED_ISSUE error pattern - 2 targeted drills recommended',
-      'Schedule 1 timed oral simulation for Trial Advocacy',
-      'Review Evidence Act lecture chapters 4-6',
-    ],
+    activitySummary,
+    topImproving,
+    topDeclining,
+    topErrorTags,
+    focusNextWeek,
     
     mockPrediction: {
-      overallPrediction: overallReadiness >= 70 ? 'likely_pass' : overallReadiness >= 55 ? 'borderline' : 'needs_work',
+      overallPrediction: prediction,
       unitPredictions: unitReadiness.map(u => ({
         unitId: u.unitId,
-        prediction: u.readiness >= 70 ? 'pass' : u.readiness >= 55 ? 'borderline' : 'fail',
+        prediction: u.readiness >= 70 ? 'pass' : u.readiness >= 50 ? 'borderline' : 'needs_work',
       })),
-      confidence: 0.65,
-      caveat: 'Prediction based on current mastery levels and historical patterns. Actual exam performance may vary.',
+      confidence: Math.min(0.9, 0.5 + (activitySummary.attemptsCount / 100)),
+      caveat: 'Based on current mastery levels. Continue practicing to improve accuracy.',
     },
     
-    evidenceAttemptIds: [], // Would contain actual attempt IDs
+    evidenceAttemptIds: weekAttempts.map(a => a.skill_id).slice(0, 20),
     generatedAt: new Date().toISOString(),
   };
   

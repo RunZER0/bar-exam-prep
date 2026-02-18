@@ -428,6 +428,15 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function SkillsMapPlaceholder() {
   const router = useRouter();
+  const { user } = useAuth();
+  const [prioritySkills, setPrioritySkills] = useState<{
+    skillId: string;
+    name: string;
+    unitId: string;
+    weight: number;
+    mastery: number;
+  }[]>([]);
+  const [loading, setLoading] = useState(true);
   
   // ATP Units for navigation
   const ATP_UNITS = [
@@ -441,6 +450,27 @@ function SkillsMapPlaceholder() {
     { id: 'atp-107', name: 'Company Law', icon: '🏢', skills: 32 },
     { id: 'atp-108', name: 'Land Law', icon: '🗺️', skills: 33 },
   ];
+
+  useEffect(() => {
+    async function fetchPrioritySkills() {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch('/api/mastery/readiness?priority=true', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setPrioritySkills(data.prioritySkills || []);
+        }
+      } catch (e) {
+        console.error('Failed to fetch priority skills:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPrioritySkills();
+  }, [user]);
 
   return (
     <Card>
@@ -481,32 +511,32 @@ function SkillsMapPlaceholder() {
             <span className="text-xs font-normal text-muted-foreground">(by exam weight)</span>
           </h4>
           <div className="space-y-2">
-            {[
-              { name: 'Issue Spotting - Civil Claims', unit: 'atp-100', weight: 12, mastery: 75 },
-              { name: 'Criminal Evidence Rules', unit: 'atp-102', weight: 10, mastery: 62 },
-              { name: 'Contract Formation', unit: 'atp-103', weight: 8, mastery: 45 },
-              { name: 'Constitutional Rights', unit: 'atp-106', weight: 8, mastery: 80 },
-              { name: 'Professional Ethics', unit: 'atp-100', weight: 7, mastery: 88 },
-            ].map((skill, i) => (
-              <button
-                key={i}
-                onClick={() => router.push(`/study/${skill.unit}?focus=${encodeURIComponent(skill.name)}`)}
-                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group"
-              >
-                <div className="w-12 h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className={`h-2 rounded-full transition-all ${
-                      skill.mastery >= 80 ? 'bg-green-500' : 
-                      skill.mastery >= 60 ? 'bg-amber-500' : 'bg-red-500'
-                    }`}
-                    style={{ width: `${skill.mastery}%` }}
-                  />
-                </div>
-                <span className="flex-1 text-sm text-left group-hover:text-primary transition-colors">{skill.name}</span>
-                <span className="text-xs text-muted-foreground">{skill.weight}% weight</span>
-                <span className="text-sm font-medium w-12 text-right">{skill.mastery}%</span>
-              </button>
-            ))}
+            {loading ? (
+              <div className="text-sm text-muted-foreground">Loading priority skills...</div>
+            ) : prioritySkills.length === 0 ? (
+              <div className="text-sm text-muted-foreground">Complete some practice to see priority skills</div>
+            ) : (
+              prioritySkills.map((skill, i) => (
+                <button
+                  key={skill.skillId || i}
+                  onClick={() => router.push(`/study/${skill.unitId}?focus=${encodeURIComponent(skill.name)}`)}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group"
+                >
+                  <div className="w-12 h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className={`h-2 rounded-full transition-all ${
+                        skill.mastery >= 80 ? 'bg-green-500' : 
+                        skill.mastery >= 60 ? 'bg-amber-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${skill.mastery}%` }}
+                    />
+                  </div>
+                  <span className="flex-1 text-sm text-left group-hover:text-primary transition-colors">{skill.name}</span>
+                  <span className="text-xs text-muted-foreground">{skill.weight}% weight</span>
+                  <span className="text-sm font-medium w-12 text-right">{skill.mastery}%</span>
+                </button>
+              ))
+            )}
           </div>
         </div>
       </CardContent>

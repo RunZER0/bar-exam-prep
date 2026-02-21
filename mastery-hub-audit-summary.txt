@@ -1,0 +1,175 @@
+MASTERY HUB EXECUTIVE AUDIT - 2026-02-21T07:27:39.515Z
+
+VERDICT: CRITICAL ISSUES FOUND
+
+FINDINGS SUMMARY:
+  - Critical Issues: 1
+  - High Priority Issues: 1
+  - Medium/Low Issues: 1
+
+ALGORITHM VALIDATION:
+  - Mastery Update: PASS
+  - Gate Verification: PASS
+
+COMPLEX SCENARIOS: 5/5 passed
+  - Rapid Progress Expert: PASS
+  - Struggling Student: PASS
+  - Inconsistent Performance: PASS
+  - Gate Gaming Prevention: PASS
+  - Coverage Debt Prioritization: PASS
+
+KEY RECOMMENDATIONS:
+  1. Fix Anthropic import in item/route.ts - use OpenAI Responses API
+  2. Ensure micro_skills have linked items for consistent practice
+  3. Add stability tracking to inconsistent student detection
+
+═══════════════════════════════════════════════════════════════
+CRITICAL FINDINGS:
+
+[CRITICAL] Database Schema: Missing required tables: units
+  Impact: Mastery Hub cannot function without these tables
+  Evidence: Required: 12, Found: 47
+
+[MEDIUM] Curriculum: 8 units have no practice items
+  Impact: Users rely on AI generation for these units (slower, less consistent)
+  Evidence: Units with 0 items: check item_skill_map linkage
+
+[HIGH] AI Provider: app/api/mastery/item/route.ts: Uses Anthropic instead of OpenAI
+  Impact: Inconsistent AI provider usage, may fail without ANTHROPIC_API_KEY
+  Evidence: import Anthropic from '@anthropic-ai/sdk'
+
+
+═══════════════════════════════════════════════════════════════
+RAW LOGS:
+
+[2026-02-21T07:27:39.517Z] === DATABASE SCHEMA AUDIT ===
+[2026-02-21T07:27:40.375Z] Found 47 tables in database
+[2026-02-21T07:27:40.376Z] CRITICAL: Missing tables: units
+[2026-02-21T07:27:41.074Z] Table micro_skills: 273 rows
+[2026-02-21T07:27:41.297Z] Table items: 100 rows
+[2026-02-21T07:27:41.513Z] Mastery State: 6 users, 421 records
+[2026-02-21T07:27:41.514Z] Mastered >= 85%: 0, Verified: 0
+[2026-02-21T07:27:41.514Z] Average p_mastery: 3.2%
+[2026-02-21T07:27:41.514Z] 
+=== CURRICULUM AUDIT ===
+[2026-02-21T07:27:41.767Z] Found 9 curriculum units
+[2026-02-21T07:27:41.767Z]   Unit atp-100: 139 skills (64 core), 100 items, weight: 0.080
+[2026-02-21T07:27:41.767Z]   Unit atp-101: 37 skills (5 core), 0 items, weight: 0.060
+[2026-02-21T07:27:41.767Z]   Unit atp-108: 33 skills (11 core), 0 items, weight: 0.060
+[2026-02-21T07:27:41.767Z]   Unit atp-107: 32 skills (12 core), 0 items, weight: 0.080
+[2026-02-21T07:27:41.768Z]   Unit atp-106: 25 skills (5 core), 0 items, weight: 0.060
+[2026-02-21T07:27:41.768Z]   Unit atp-105: 23 skills (8 core), 0 items, weight: 0.060
+[2026-02-21T07:27:41.768Z]   Unit atp-103: 22 skills (8 core), 0 items, weight: 0.060
+[2026-02-21T07:27:41.768Z]   Unit atp-104: 21 skills (9 core), 0 items, weight: 0.100
+[2026-02-21T07:27:41.768Z]   Unit atp-102: 21 skills (10 core), 0 items, weight: 0.060
+[2026-02-21T07:27:41.769Z] Total: 353 skills, 100 items across 9 units
+[2026-02-21T07:27:41.985Z] WARNING: 10+ skills have no mapped items
+[2026-02-21T07:27:41.985Z]   - Client Interview & Conferencing
+[2026-02-21T07:27:41.985Z]   - Legal Opinion Drafting
+[2026-02-21T07:27:41.985Z]   - Demand Letter Drafting
+[2026-02-21T07:27:41.986Z] 
+=== MASTERY ALGORITHM VALIDATION ===
+[2026-02-21T07:27:41.986Z] Score 1 @ p=0.5: delta=0.0750, newP=0.5750 [PASS]
+[2026-02-21T07:27:41.986Z] Score 0 @ p=0.5: delta=-0.0750, newP=0.4250 [PASS]
+[2026-02-21T07:27:41.987Z] Score 0.7 @ p=0.3: delta=0.0600, newP=0.3600 [PASS]
+[2026-02-21T07:27:41.987Z] Score 0.3 @ p=0.9: delta=-0.0900, newP=0.8100 [PASS]
+[2026-02-21T07:27:41.987Z] 
+=== GATE VERIFICATION VALIDATION ===
+[2026-02-21T07:27:41.987Z] p=0.9, passes=2, hrs=25, repeat=false: verified [PASS]
+[2026-02-21T07:27:41.987Z] p=0.8, passes=2, hrs=25, repeat=false: low_mastery [PASS]
+[2026-02-21T07:27:41.988Z] p=0.9, passes=1, hrs=25, repeat=false: insufficient_passes [PASS]
+[2026-02-21T07:27:41.988Z] p=0.9, passes=2, hrs=20, repeat=false: too_soon [PASS]
+[2026-02-21T07:27:41.988Z] p=0.9, passes=2, hrs=25, repeat=true: error_repeat [PASS]
+[2026-02-21T07:27:41.988Z] 
+=== COMPLEX SCENARIO SIMULATIONS ===
+[2026-02-21T07:27:41.988Z] 
+[Scenario 1] Rapid Progress - Expert scoring 95%+ consistently
+[2026-02-21T07:27:41.989Z] Attempt 1: score=0.95, delta=0.0968, p: 0.3000 → 0.3968
+[2026-02-21T07:27:41.989Z] Attempt 2: score=0.92, delta=0.0779, p: 0.3968 → 0.4747
+[2026-02-21T07:27:41.989Z] Attempt 3: score=0.98, delta=0.0760, p: 0.4747 → 0.5507
+[2026-02-21T07:27:41.989Z] Attempt 4: score=0.90, delta=0.0526, p: 0.5507 → 0.6033
+[2026-02-21T07:27:41.989Z] Attempt 5: score=0.96, delta=0.0534, p: 0.6033 → 0.6567
+[2026-02-21T07:27:41.990Z] Attempt 6: score=0.98, delta=0.0488, p: 0.6567 → 0.7055
+[2026-02-21T07:27:41.990Z] Attempt 7: score=0.99, delta=0.0430, p: 0.7055 → 0.7485
+[2026-02-21T07:27:41.990Z] Attempt 8: score=0.92, delta=0.0258, p: 0.7485 → 0.7743
+[2026-02-21T07:27:41.990Z] Attempt 9: score=0.96, delta=0.0272, p: 0.7743 → 0.8015
+[2026-02-21T07:27:41.990Z] Attempt 10: score=0.94, delta=0.0212, p: 0.8015 → 0.8227
+[2026-02-21T07:27:41.990Z] Attempt 11: score=0.91, delta=0.0130, p: 0.8227 → 0.8357
+[2026-02-21T07:27:41.990Z] Attempt 12: score=0.95, delta=0.0172, p: 0.8357 → 0.8529
+[2026-02-21T07:27:41.991Z] Attempt 13: score=0.97, delta=0.0182, p: 0.8529 → 0.8711
+[2026-02-21T07:27:41.991Z] Attempt 14: score=0.97, delta=0.0147, p: 0.8711 → 0.8858
+[2026-02-21T07:27:41.991Z] Attempt 15: score=0.94, delta=0.0081, p: 0.8858 → 0.8939
+[2026-02-21T07:27:41.991Z] SUCCESS: Reached 89.4% mastery after 15 attempts
+[2026-02-21T07:27:41.992Z] 
+[Scenario 2] Struggling Student - 30% correctness over 50 attempts
+[2026-02-21T07:27:41.997Z] Attempt 1: score=0.64, p: 0.3000 → 0.3514
+[2026-02-21T07:27:41.998Z] Attempt 11: score=0.56, p: 0.2999 → 0.3393
+[2026-02-21T07:27:41.999Z] Attempt 21: score=0.33, p: 0.2631 → 0.2732
+[2026-02-21T07:27:41.999Z] Attempt 31: score=0.10, p: 0.2372 → 0.2166
+[2026-02-21T07:27:41.999Z] Attempt 41: score=0.63, p: 0.1553 → 0.2269
+[2026-02-21T07:27:41.999Z] Attempt 50: score=0.48, p: 0.3131 → 0.3384
+[2026-02-21T07:27:41.999Z] EXPECTED: Struggling student at 33.8% (not crushed to zero)
+[2026-02-21T07:27:42.000Z] 
+[Scenario 3] Inconsistent - Alternating 90%/40% scores
+[2026-02-21T07:27:42.002Z] Attempt 1: score=0.90, p: 0.5000 → 0.5600, stability: 0.90
+[2026-02-21T07:27:42.002Z] Attempt 2: score=0.35, p: 0.5600 → 0.5285, stability: 0.90
+[2026-02-21T07:27:42.003Z] Attempt 3: score=0.90, p: 0.5285 → 0.5842, stability: 0.80
+[2026-02-21T07:27:42.004Z] Attempt 4: score=0.35, p: 0.5842 → 0.5491, stability: 0.80
+[2026-02-21T07:27:42.004Z] Attempt 5: score=0.90, p: 0.5491 → 0.6017, stability: 0.70
+[2026-02-21T07:27:42.004Z] Attempt 6: score=0.35, p: 0.6017 → 0.5640, stability: 0.70
+[2026-02-21T07:27:42.004Z] Attempt 7: score=0.90, p: 0.5640 → 0.6144, stability: 0.60
+[2026-02-21T07:27:42.005Z] Attempt 8: score=0.35, p: 0.6144 → 0.5747, stability: 0.60
+[2026-02-21T07:27:42.005Z] Attempt 9: score=0.90, p: 0.5747 → 0.6235, stability: 0.50
+[2026-02-21T07:27:42.005Z] Attempt 10: score=0.35, p: 0.6235 → 0.5825, stability: 0.50
+[2026-02-21T07:27:42.005Z] Attempt 11: score=0.90, p: 0.5825 → 0.6301, stability: 0.40
+[2026-02-21T07:27:42.005Z] Attempt 12: score=0.35, p: 0.6301 → 0.5881, stability: 0.40
+[2026-02-21T07:27:42.006Z] Attempt 13: score=0.90, p: 0.5881 → 0.6349, stability: 0.30
+[2026-02-21T07:27:42.006Z] Attempt 14: score=0.35, p: 0.6349 → 0.5921, stability: 0.30
+[2026-02-21T07:27:42.006Z] Attempt 15: score=0.90, p: 0.5921 → 0.6383, stability: 0.30
+[2026-02-21T07:27:42.006Z] Attempt 16: score=0.35, p: 0.6383 → 0.5951, stability: 0.30
+[2026-02-21T07:27:42.006Z] Attempt 17: score=0.90, p: 0.5951 → 0.6408, stability: 0.30
+[2026-02-21T07:27:42.006Z] Attempt 18: score=0.35, p: 0.6408 → 0.5972, stability: 0.30
+[2026-02-21T07:27:42.006Z] Attempt 19: score=0.90, p: 0.5972 → 0.6426, stability: 0.30
+[2026-02-21T07:27:42.007Z] Attempt 20: score=0.35, p: 0.6426 → 0.5987, stability: 0.30
+[2026-02-21T07:27:42.007Z] EXPECTED: Inconsistent student at p=59.9%, stability=0.30 - gate appropriately blocked
+[2026-02-21T07:27:42.007Z] 
+[Scenario 4] Gate Gaming - Attempting rapid succession passes
+[2026-02-21T07:27:42.007Z] Gaming attempt: 1 hours between passes (need 24h)
+[2026-02-21T07:27:42.008Z] EXPECTED: Gate gaming blocked - only 1h between passes (need 24h)
+[2026-02-21T07:27:42.008Z] 
+[Scenario 5] Coverage Debt - Ignoring certain units
+[2026-02-21T07:27:42.012Z]   Land Law: debt=3.446
+[2026-02-21T07:27:42.012Z]   Civil Procedure: debt=2.747
+[2026-02-21T07:27:42.012Z]   Criminal Law: debt=0.110
+[2026-02-21T07:27:42.012Z] EXPECTED: Planner prioritizes Land Law (highest debt)
+[2026-02-21T07:27:42.013Z] 
+=== CODE QUALITY AUDIT ===
+[2026-02-21T07:27:42.013Z] Checking app/api/mastery/item/route.ts: Uses Anthropic instead of OpenAI
+[2026-02-21T07:27:42.014Z] 
+=== GENERATING EXECUTIVE SUMMARY ===
+[2026-02-21T07:27:42.015Z] MASTERY HUB EXECUTIVE AUDIT - 2026-02-21T07:27:39.515Z
+[2026-02-21T07:27:42.015Z] 
+[2026-02-21T07:27:42.015Z] VERDICT: CRITICAL ISSUES FOUND
+[2026-02-21T07:27:42.015Z] 
+[2026-02-21T07:27:42.015Z] FINDINGS SUMMARY:
+[2026-02-21T07:27:42.016Z]   - Critical Issues: 1
+[2026-02-21T07:27:42.016Z]   - High Priority Issues: 1
+[2026-02-21T07:27:42.017Z]   - Medium/Low Issues: 1
+[2026-02-21T07:27:42.018Z] 
+[2026-02-21T07:27:42.018Z] ALGORITHM VALIDATION:
+[2026-02-21T07:27:42.018Z]   - Mastery Update: PASS
+[2026-02-21T07:27:42.018Z]   - Gate Verification: PASS
+[2026-02-21T07:27:42.018Z] 
+[2026-02-21T07:27:42.018Z] COMPLEX SCENARIOS: 5/5 passed
+[2026-02-21T07:27:42.019Z]   - Rapid Progress Expert: PASS
+[2026-02-21T07:27:42.019Z]   - Struggling Student: PASS
+[2026-02-21T07:27:42.020Z]   - Inconsistent Performance: PASS
+[2026-02-21T07:27:42.020Z]   - Gate Gaming Prevention: PASS
+[2026-02-21T07:27:42.020Z]   - Coverage Debt Prioritization: PASS
+[2026-02-21T07:27:42.021Z] 
+[2026-02-21T07:27:42.021Z] KEY RECOMMENDATIONS:
+[2026-02-21T07:27:42.021Z]   1. Fix Anthropic import in item/route.ts - use OpenAI Responses API
+[2026-02-21T07:27:42.021Z]   2. Ensure micro_skills have linked items for consistent practice
+[2026-02-21T07:27:42.021Z]   3. Add stability tracking to inconsistent student detection
+[2026-02-21T07:27:42.024Z] 
+Full report written to: C:\Users\victo\Desktop\Bar Exam Prep\mastery-hub-audit-report.json

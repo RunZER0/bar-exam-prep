@@ -10,7 +10,7 @@ import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 
 interface ItemData {
   id: string;
@@ -217,17 +217,11 @@ async function generateItemForSkill(
   skill: { id: string; name: string; unit_id: string; format_tags: string[] },
   _format: string // Ignored - always written
 ): Promise<ItemData> {
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
   
-  const writtenPrompt = `Generate a written bar exam question to test the skill "${skill.name}" for the Kenya bar exam.
+  const systemPrompt = `You are a Kenya bar exam question writer. Generate high-quality written exam questions that test legal analysis skills.
 
-Create a realistic scenario-based question that requires:
-1. Issue identification
-2. Application of Kenyan law (statutes and case law)
-3. Structured legal analysis (IRAC)
-4. A clear conclusion
-
-Format your response as JSON:
+Format your response as JSON only:
 {
   "prompt": "A detailed scenario-based question (2-3 paragraphs) requiring full legal analysis",
   "context": "Additional factual background or instructions if needed",
@@ -235,21 +229,22 @@ Format your response as JSON:
   "keyPoints": ["Key legal issue 1", "Relevant statute/section", "Key case law with citation", "Correct application principle"]
 }`;
 
+  const userPrompt = `Generate a written bar exam question to test the skill "${skill.name}" for the Kenya bar exam.
+
+Create a realistic scenario-based question that requires:
+1. Issue identification
+2. Application of Kenyan law (statutes and case law)
+3. Structured legal analysis (IRAC)
+4. A clear conclusion`;
+
   try {
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2500,
-      messages: [
-        {
-          role: 'user',
-          content: writtenPrompt,
-        },
-      ],
+    const response = await openai.responses.create({
+      model: 'gpt-4o',
+      instructions: systemPrompt,
+      input: userPrompt,
     });
 
-    const content = response.content[0].type === 'text' 
-      ? response.content[0].text 
-      : '';
+    const content = response.output_text || '';
     
     // Parse JSON from response
     const jsonMatch = content.match(/\{[\s\S]*\}/);

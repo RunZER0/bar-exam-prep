@@ -7,7 +7,7 @@
  * P0: Evidence over vibes - every feedback point ties to rubric, transcript, or authority
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { z } from 'zod';
 import { 
   WRITTEN_RUBRIC_DIMENSIONS, 
@@ -259,21 +259,23 @@ ERROR TAG CODES FOR DRAFTING:
 // GRADING SERVICE
 // ============================================
 
-let _anthropic: Anthropic | null = null;
-const getAnthropic = () => {
-  if (!_anthropic && process.env.ANTHROPIC_API_KEY) {
-    _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+let _openai: OpenAI | null = null;
+const getOpenAI = () => {
+  if (!_openai && process.env.OPENAI_API_KEY) {
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   }
-  return _anthropic;
+  return _openai;
 };
+
+const GRADING_MODEL = process.env.GRADING_MODEL || 'gpt-4o';
 
 /**
  * Grade a written response
  */
 export async function gradeWrittenResponse(request: GradingRequest): Promise<GradingOutput> {
-  const anthropic = getAnthropic();
-  if (!anthropic) {
-    throw new Error('AI grading not available - ANTHROPIC_API_KEY not configured');
+  const openai = getOpenAI();
+  if (!openai) {
+    throw new Error('AI grading not available - OPENAI_API_KEY not configured');
   }
   
   // Build rubric string
@@ -330,15 +332,15 @@ export async function gradeWrittenResponse(request: GradingRequest): Promise<Gra
   }
   
   // Call AI with retry and validation
-  return callGradingAIWithRetry(anthropic, prompt, 'written');
+  return callGradingAIWithRetry(openai, prompt, 'written');
 }
 
 /**
  * Grade an oral response
  */
 export async function gradeOralResponse(request: GradingRequest): Promise<GradingOutput> {
-  const anthropic = getAnthropic();
-  if (!anthropic) {
+  const openai = getOpenAI();
+  if (!openai) {
     throw new Error('AI grading not available');
   }
   
@@ -375,15 +377,15 @@ export async function gradeOralResponse(request: GradingRequest): Promise<Gradin
   }
   
   // Call AI with retry and validation
-  return callGradingAIWithRetry(anthropic, prompt, 'oral');
+  return callGradingAIWithRetry(openai, prompt, 'oral');
 }
 
 /**
  * Grade a drafting response
  */
 export async function gradeDraftingResponse(request: GradingRequest): Promise<GradingOutput> {
-  const anthropic = getAnthropic();
-  if (!anthropic) {
+  const openai = getOpenAI();
+  if (!openai) {
     throw new Error('AI grading not available');
   }
   
@@ -412,7 +414,7 @@ export async function gradeDraftingResponse(request: GradingRequest): Promise<Gr
   }
   
   // Call AI with retry and validation
-  return callGradingAIWithRetry(anthropic, prompt, 'drafting');
+  return callGradingAIWithRetry(openai, prompt, 'drafting');
 }
 
 /**
@@ -502,25 +504,24 @@ function extractJsonFromResponse(text: string): string {
  * Call AI with retry logic and validation
  */
 async function callGradingAIWithRetry(
-  anthropic: Anthropic,
+  openai: OpenAI,
   prompt: string,
   format: string,
   attempt: number = 1
 ): Promise<GradingOutput> {
   try {
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      messages: [{ role: 'user', content: prompt }],
+    const response = await openai.responses.create({
+      model: GRADING_MODEL,
+      input: prompt,
     });
     
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type from AI');
+    const content = response.output_text;
+    if (!content) {
+      throw new Error('Empty response from AI');
     }
     
     // Extract and parse JSON
-    const jsonText = extractJsonFromResponse(content.text);
+    const jsonText = extractJsonFromResponse(content);
     let parsed: unknown;
     
     try {
@@ -542,7 +543,7 @@ async function callGradingAIWithRetry(
       // Retry with stronger JSON instruction
       const retryPrompt = prompt + `\n\nIMPORTANT: Your previous response was not valid JSON. Respond with ONLY a valid JSON object, no markdown, no explanations, no code blocks. Start with { and end with }.`;
       
-      return callGradingAIWithRetry(anthropic, retryPrompt, format, attempt + 1);
+      return callGradingAIWithRetry(openai, retryPrompt, format, attempt + 1);
     }
     
     // All retries exhausted - use fallback if enabled

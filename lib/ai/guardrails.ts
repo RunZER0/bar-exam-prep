@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import { 
   getRelevantContext, 
@@ -8,14 +7,6 @@ import {
   type CaseLaw 
 } from '@/lib/knowledge/kenyan-law-base';
 
-let _anthropic: Anthropic | null = null;
-const getAnthropic = () => {
-  if (!_anthropic && process.env.ANTHROPIC_API_KEY) {
-    _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  }
-  return _anthropic;
-};
-
 let _openai: OpenAI | null = null;
 const getOpenAI = () => {
   if (!_openai && process.env.OPENAI_API_KEY) {
@@ -24,16 +15,15 @@ const getOpenAI = () => {
   return _openai;
 };
 
-// Check if any AI provider is configured
+// Check if AI is configured
 export const isAIConfigured = (): boolean => {
-  return Boolean(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY);
+  return Boolean(process.env.OPENAI_API_KEY);
 };
 
-// Provider selection - defaults to OpenAI, falls back to Anthropic
-type AIProvider = 'openai' | 'anthropic' | 'none';
+// Provider selection - OpenAI only
+type AIProvider = 'openai' | 'none';
 const getPreferredProvider = (): AIProvider => {
   if (process.env.OPENAI_API_KEY) return 'openai';
-  if (process.env.ANTHROPIC_API_KEY) return 'anthropic';
   return 'none';
 };
 
@@ -658,39 +648,21 @@ async function callAI(prompt: string, maxTokens: number = 2000): Promise<string>
     throw new Error('AI_NOT_CONFIGURED');
   }
   
-  if (provider === 'openai') {
-    const openai = getOpenAI();
-    if (openai) {
-      try {
-        const response = await openai.chat.completions.create({
-          model: 'gpt-4o',
-          max_tokens: maxTokens,
-          messages: [{ role: 'user', content: prompt }],
-        });
-        return response.choices[0]?.message?.content || '';
-      } catch (error) {
-        console.error('OpenAI error, falling back to Anthropic:', error);
-        // Fall back to Anthropic
-      }
-    }
-  }
-  
-  const anthropic = getAnthropic();
-  if (!anthropic) {
+  const openai = getOpenAI();
+  if (!openai) {
     throw new Error('AI_NOT_CONFIGURED');
   }
   
-  const response = await anthropic.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
-    max_tokens: maxTokens,
-    messages: [{ role: 'user', content: prompt }],
+  const response = await openai.responses.create({
+    model: 'gpt-4o',
+    input: prompt,
   });
   
-  return response.content[0].type === 'text' ? response.content[0].text : '';
+  return response.output_text || '';
 }
 
 /**
- * Fast AI call using ChatGPT 5.2 Instant for speed-critical generation
+ * Fast AI call using GPT-4o-mini for speed-critical generation
  * Used for preloading content in background where speed > quality
  */
 export async function callAIFast(prompt: string, maxTokens: number = 2000): Promise<string> {
@@ -699,14 +671,11 @@ export async function callAIFast(prompt: string, maxTokens: number = 2000): Prom
   if (openai) {
     try {
       // Use GPT-4o-mini for fast, cost-effective generation
-      // In production, switch to 'gpt-5.2-instant' when available
-      const response = await openai.chat.completions.create({
+      const response = await openai.responses.create({
         model: process.env.OPENAI_FAST_MODEL || 'gpt-4o-mini',
-        max_tokens: maxTokens,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
+        input: prompt,
       });
-      return response.choices[0]?.message?.content || '';
+      return response.output_text || '';
     } catch (error) {
       console.error('Fast AI error:', error);
     }

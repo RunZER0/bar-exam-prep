@@ -59,6 +59,16 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Helper to call OpenAI Responses API
+async function callOpenAI(systemPrompt: string, userPrompt: string): Promise<string> {
+  const response = await openai.responses.create({
+    model: MODEL_CONFIG.generatorModel,
+    instructions: systemPrompt,
+    input: userPrompt,
+  });
+  return response.output_text || '';
+}
+
 // ============================================
 // MAIN ENTRY POINT
 // ============================================
@@ -269,12 +279,7 @@ async function generateMemoryPrompts(
       sourceType: p.sourceType,
     }));
 
-    const response = await openai.chat.completions.create({
-      model: MODEL_CONFIG.generatorModel,
-      messages: [
-        {
-          role: 'system',
-          content: `Generate recall/memory check questions for law students studying ${skillName}.
+    const systemPrompt = `Generate recall/memory check questions for law students studying ${skillName}.
 Each question should test recall of specific legal rules, elements, or holdings from the provided sources.
 Difficulty: ${difficulty || 'medium'}
 
@@ -287,18 +292,12 @@ Return JSON with format:
       "explanation": "According to [source], ..."
     }
   ]
-}`,
-        },
-        {
-          role: 'user',
-          content: `Generate ${passages.length} memory check questions based on these sources:\n\n${JSON.stringify(passageContext)}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.4,
-    });
+}`;
 
-    const content = response.choices[0]?.message?.content;
+    const content = await callOpenAI(
+      systemPrompt,
+      `Generate ${passages.length} memory check questions based on these sources:\n\n${JSON.stringify(passageContext)}`
+    );
     if (!content) return [];
 
     const parsed = JSON.parse(content);
@@ -372,12 +371,7 @@ async function generateFlashcardContent(
       sourceType: p.sourceType,
     }));
 
-    const response = await openai.chat.completions.create({
-      model: MODEL_CONFIG.generatorModel,
-      messages: [
-        {
-          role: 'system',
-          content: `Generate flashcards for law students studying ${skillName}.
+    const systemPrompt = `Generate flashcards for law students studying ${skillName}.
 Include mix of:
 - Definition cards (front: term, back: definition)
 - Cloze cards (sentence with blank to fill)
@@ -388,18 +382,12 @@ Return JSON:
   "cards": [
     { "front": "...", "back": "...", "cloze": "optional cloze version" }
   ]
-}`,
-        },
-        {
-          role: 'user',
-          content: `Generate ${count} flashcards based on:\n\n${JSON.stringify(passageContext)}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.4,
-    });
+}`;
 
-    const content = response.choices[0]?.message?.content;
+    const content = await callOpenAI(
+      systemPrompt,
+      `Generate ${count} flashcards based on:\n\n${JSON.stringify(passageContext)}`
+    );
     if (!content) return [];
 
     const parsed = JSON.parse(content);
@@ -479,12 +467,7 @@ async function generateQuizQuestions(
       sourceType: p.sourceType,
     }));
 
-    const response = await openai.chat.completions.create({
-      model: MODEL_CONFIG.generatorModel,
-      messages: [
-        {
-          role: 'system',
-          content: `Generate quiz questions for law students studying ${skillName}.
+    const systemPrompt = `Generate quiz questions for law students studying ${skillName}.
 Mix of MCQ (with 4 options) and short answer questions.
 Difficulty: ${difficulty || 'medium'}
 Each question must be directly answerable from the provided sources.
@@ -506,18 +489,12 @@ Return JSON:
       "explanation": "..."
     }
   ]
-}`,
-        },
-        {
-          role: 'user',
-          content: `Generate ${count} questions (mix MCQ and short answer) based on:\n\n${JSON.stringify(passageContext)}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.4,
-    });
+}`;
 
-    const content = response.choices[0]?.message?.content;
+    const content = await callOpenAI(
+      systemPrompt,
+      `Generate ${count} questions (mix MCQ and short answer) based on:\n\n${JSON.stringify(passageContext)}`
+    );
     if (!content) return [];
 
     const parsed = JSON.parse(content);
@@ -602,12 +579,7 @@ async function generateIssueSpotterScenario(
       sourceType: p.sourceType,
     }));
 
-    const response = await openai.chat.completions.create({
-      model: MODEL_CONFIG.generatorModel,
-      messages: [
-        {
-          role: 'system',
-          content: `Generate an issue spotter exercise for law students studying ${skillName}.
+    const systemPrompt = `Generate an issue spotter exercise for law students studying ${skillName}.
 Create a short fact pattern (150-250 words) that raises 2-4 legal issues.
 For each issue, provide the rule statement (grounded in sources) and brief analysis.
 
@@ -621,18 +593,12 @@ Return JSON:
       "analysis": "Here, John and Mary..."
     }
   ]
-}`,
-        },
-        {
-          role: 'user',
-          content: `Generate issue spotter based on:\n\n${JSON.stringify(passageContext)}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.5,
-    });
+}`;
 
-    const content = response.choices[0]?.message?.content;
+    const content = await callOpenAI(
+      systemPrompt,
+      `Generate issue spotter based on:\n\n${JSON.stringify(passageContext)}`
+    );
     if (!content) {
       return {
         factPattern: `Consider a scenario involving ${skillName}. ${GROUNDING_RULES.fallbackMessage}`,
@@ -712,12 +678,7 @@ async function generateElementDrills(
       sourceType: p.sourceType,
     }));
 
-    const response = await openai.chat.completions.create({
-      model: MODEL_CONFIG.generatorModel,
-      messages: [
-        {
-          role: 'system',
-          content: `Generate rule elements drills for law students studying ${skillName}.
+    const systemPrompt = `Generate rule elements drills for law students studying ${skillName}.
 Each drill asks students to list/identify the elements of a legal rule, test, or doctrine.
 
 Return JSON:
@@ -729,18 +690,12 @@ Return JSON:
       "explanation": "According to [source], these elements must be satisfied..."
     }
   ]
-}`,
-        },
-        {
-          role: 'user',
-          content: `Generate ${count} rule element drills based on:\n\n${JSON.stringify(passageContext)}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.3,
-    });
+}`;
 
-    const content = response.choices[0]?.message?.content;
+    const content = await callOpenAI(
+      systemPrompt,
+      `Generate ${count} rule element drills based on:\n\n${JSON.stringify(passageContext)}`
+    );
     if (!content) return [];
 
     const parsed = JSON.parse(content);
@@ -827,12 +782,7 @@ async function generateEssayOutlineContent(
       sourceType: p.sourceType,
     }));
 
-    const response = await openai.chat.completions.create({
-      model: MODEL_CONFIG.generatorModel,
-      messages: [
-        {
-          role: 'system',
-          content: `Generate an essay outline exercise for law students studying ${skillName}.
+    const systemPrompt = `Generate an essay outline exercise for law students studying ${skillName}.
 Include a sample essay question and a model outline structure.
 
 Return JSON:
@@ -850,18 +800,12 @@ Return JSON:
       "keyAuthority": "Reference [Source]"
     }
   ]
-}`,
-        },
-        {
-          role: 'user',
-          content: `Generate essay outline based on:\n\n${JSON.stringify(passageContext)}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.4,
-    });
+}`;
 
-    const content = response.choices[0]?.message?.content;
+    const content = await callOpenAI(
+      systemPrompt,
+      `Generate essay outline based on:\n\n${JSON.stringify(passageContext)}`
+    );
     if (!content) {
       return {
         question: `Discuss the key legal principles relating to ${skillName}.`,
@@ -940,12 +884,7 @@ async function generateErrorCorrectionExercises(
       citation: p.citation,
     }));
 
-    const response = await openai.chat.completions.create({
-      model: MODEL_CONFIG.generatorModel,
-      messages: [
-        {
-          role: 'system',
-          content: `Generate error correction exercises for law students studying ${skillName}.
+    const systemPrompt = `Generate error correction exercises for law students studying ${skillName}.
 Each exercise presents an incorrect legal statement that students must identify and correct.
 
 Return JSON:
@@ -957,18 +896,12 @@ Return JSON:
       "explanation": "According to [source], ..."
     }
   ]
-}`,
-        },
-        {
-          role: 'user',
-          content: `Generate ${count} error correction exercises based on:\n\n${JSON.stringify(passageContext)}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.4,
-    });
+}`;
 
-    const content = response.choices[0]?.message?.content;
+    const content = await callOpenAI(
+      systemPrompt,
+      `Generate ${count} error correction exercises based on:\n\n${JSON.stringify(passageContext)}`
+    );
     if (!content) return [];
 
     const parsed = JSON.parse(content);
@@ -1037,12 +970,7 @@ async function generatePastPaperQuestion(
       sourceType: p.sourceType,
     }));
 
-    const response = await openai.chat.completions.create({
-      model: MODEL_CONFIG.generatorModel,
-      messages: [
-        {
-          role: 'system',
-          content: `Generate a past paper style question for Kenya Bar ATP exam on ${skillName}.
+    const systemPrompt = `Generate a past paper style question for Kenya Bar ATP exam on ${skillName}.
 Format similar to actual ATP exam questions with appropriate marks allocation.
 
 Return JSON:
@@ -1050,18 +978,12 @@ Return JSON:
   "question": "Question text (20 marks)...",
   "modelAnswer": "A comprehensive model answer...",
   "markingGuide": "Points for: Introduction (2), Rule statement (5), Application (10), Conclusion (3)"
-}`,
-        },
-        {
-          role: 'user',
-          content: `Generate past paper question based on:\n\n${JSON.stringify(passageContext)}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.5,
-    });
+}`;
 
-    const content = response.choices[0]?.message?.content;
+    const content = await callOpenAI(
+      systemPrompt,
+      `Generate past paper question based on:\n\n${JSON.stringify(passageContext)}`
+    );
     if (!content) {
       return {
         question: `Discuss the legal principles relating to ${skillName}. (20 marks)`,

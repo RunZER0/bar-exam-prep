@@ -6,10 +6,12 @@
  * Complete inline training experience within Mastery Hub.
  * Uses the real grading service for evidence-based feedback.
  * 
+ * WRITTEN EXAMS ONLY - No MCQ, oral, or drafting.
+ * 
  * Flow:
- * 1. Fetch item from DB (or AI-generate if none)
+ * 1. Fetch written item from DB (or AI-generate if none)
  * 2. Display question with study notes option
- * 3. Accept answer (MCQ, written, oral, drafting)
+ * 3. Accept written essay answer
  * 4. Submit to /api/mastery/attempt for structured grading
  * 5. Display rubric breakdown, missing points, model answer
  */
@@ -36,7 +38,7 @@ export interface PracticeTask {
   skillName: string;
   unitId: string;
   unitName: string;
-  itemType: 'mcq' | 'written' | 'oral' | 'drafting' | 'flashcard';
+  itemType: 'written'; // Mastery Hub is WRITTEN EXAMS ONLY
   mode: 'practice' | 'timed' | 'exam_sim';
   reason: string;
   itemId?: string; // If we already have a specific item
@@ -44,13 +46,12 @@ export interface PracticeTask {
 
 interface ItemData {
   id: string;
-  itemType: string;
-  format: string;
+  itemType: 'written'; // Mastery Hub is WRITTEN EXAMS ONLY
+  format: 'written';
   prompt: string;
   context: string | null;
   modelAnswer: string | null;
   keyPoints: string[];
-  options?: { label: string; text: string; isCorrect: boolean }[];
   difficulty: number;
   estimatedMinutes: number;
   skillId: string;
@@ -116,7 +117,6 @@ export default function EmbeddedPracticePanel({
   const [phase, setPhase] = useState<Phase>('loading');
   const [item, setItem] = useState<ItemData | null>(null);
   const [userAnswer, setUserAnswer] = useState('');
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [attemptCount, setAttemptCount] = useState(0);
   
   // Grading result
@@ -127,13 +127,15 @@ export default function EmbeddedPracticePanel({
   const [showRubricDetails, setShowRubricDetails] = useState(false);
   const [showModelAnswer, setShowModelAnswer] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [notesSections, setNotesSections] = useState<{ id: string; title: string; content: string; source?: string; examTips?: string }[]>([]);
+  const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
 
   // Load item when task changes
   const loadItem = useCallback(async () => {
     setPhase('loading');
     setError(null);
     setUserAnswer('');
-    setSelectedOption(null);
     
     try {
       const token = await getIdToken();
@@ -159,12 +161,8 @@ export default function EmbeddedPracticePanel({
       setPhase('question');
       startTimeRef.current = new Date();
       
-      // Auto-advance to answering for non-MCQ
-      if (data.item.itemType !== 'mcq') {
-        setTimeout(() => setPhase('answering'), 500);
-      } else {
-        setPhase('answering');
-      }
+      // Auto-advance to answering phase
+      setTimeout(() => setPhase('answering'), 500);
     } catch (err) {
       console.error('Error loading item:', err);
       setError('Failed to load practice item. Please try again.');
@@ -176,18 +174,50 @@ export default function EmbeddedPracticePanel({
     loadItem();
   }, [loadItem]);
 
+  // Fetch curated notes when notes panel is opened
+  const loadNotes = useCallback(async () => {
+    if (notesSections.length > 0 || notesLoading) return; // Already loaded or loading
+    
+    setNotesLoading(true);
+    try {
+      const token = await getIdToken();
+      const response = await fetch(`/api/mastery/notes?skillId=${task.skillId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setNotesSections(data.sections || []);
+        // Auto-expand first note
+        if (data.sections?.length > 0) {
+          setExpandedNoteId(data.sections[0].id);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching notes:', err);
+    } finally {
+      setNotesLoading(false);
+    }
+  }, [task.skillId, getIdToken, notesSections.length, notesLoading]);
+
+  // Load notes when panel is opened
+  useEffect(() => {
+    if (showNotes) {
+      loadNotes();
+    }
+  }, [showNotes, loadNotes]);
+
   // Auto-focus textarea
   useEffect(() => {
-    if (phase === 'answering' && textareaRef.current && item?.itemType !== 'mcq') {
+    if (phase === 'answering' && textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, [phase, item?.itemType]);
+  }, [phase]);
 
   // Submit answer for grading
   const submitAnswer = async () => {
     if (!item) return;
-    if (item.itemType === 'mcq' && !selectedOption) return;
-    if (item.itemType !== 'mcq' && !userAnswer.trim()) return;
+    if (!userAnswer.trim()) return;
     
     setPhase('grading');
     setError(null);
@@ -199,20 +229,18 @@ export default function EmbeddedPracticePanel({
     try {
       const token = await getIdToken();
       
-      // Build proper AttemptSubmission
+      // Build AttemptSubmission for written answer
       const submission = {
         itemId: item.id,
-        format: item.itemType as 'written' | 'oral' | 'drafting' | 'mcq',
+        format: 'written' as const,
         mode: task.mode,
-        response: item.itemType === 'mcq' ? selectedOption! : userAnswer,
-        selectedOption: item.itemType === 'mcq' ? selectedOption : undefined,
+        response: userAnswer,
         startedAt: startTimeRef.current?.toISOString() || new Date().toISOString(),
         timeTakenSec,
         prompt: item.prompt,
         context: item.context,
         keyPoints: item.keyPoints,
         modelAnswer: item.modelAnswer,
-        options: item.options,
         skillIds: [item.skillId],
         coverageWeights: { [item.skillId]: item.coverageWeight },
         unitId: item.unitId,
@@ -269,7 +297,7 @@ export default function EmbeddedPracticePanel({
               {task.skillName}
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
-              {task.unitName} • {formatItemType(task.itemType)} • {task.mode}
+              {task.unitName} • {formatItemType()} • {task.mode}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -306,24 +334,80 @@ export default function EmbeddedPracticePanel({
         )}
 
         {/* Study Notes Panel (collapsible) */}
-        {showNotes && item && (
-          <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
+        {showNotes && (
+          <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg max-h-[400px] overflow-y-auto">
+            <div className="flex items-center gap-2 mb-3">
               <BookOpen className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <span className="font-medium text-blue-800 dark:text-blue-200">Study Notes</span>
+              <span className="font-medium text-blue-800 dark:text-blue-200">Curated Study Notes</span>
             </div>
-            <div className="text-sm text-blue-700 dark:text-blue-300 space-y-2">
-              <p>Key points for <strong>{item.skillName}</strong>:</p>
-              {item.keyPoints.length > 0 ? (
+            
+            {notesLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                <span className="ml-2 text-sm text-blue-600">Loading notes...</span>
+              </div>
+            ) : notesSections.length > 0 ? (
+              <div className="space-y-2">
+                {notesSections.map((section) => (
+                  <div 
+                    key={section.id}
+                    className="border border-blue-200 dark:border-blue-700 rounded-lg overflow-hidden bg-white dark:bg-blue-900/20"
+                  >
+                    <button
+                      onClick={() => setExpandedNoteId(expandedNoteId === section.id ? null : section.id)}
+                      className="w-full px-3 py-2 text-left flex items-center justify-between hover:bg-blue-100 dark:hover:bg-blue-800/30"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-blue-800 dark:text-blue-200 line-clamp-2">
+                          {section.title}
+                        </span>
+                        {section.source && (
+                          <span className="text-xs text-blue-500 dark:text-blue-400 block">
+                            {section.source}
+                          </span>
+                        )}
+                      </div>
+                      {expandedNoteId === section.id ? (
+                        <ChevronUp className="h-4 w-4 text-blue-500 flex-shrink-0 ml-2" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-blue-500 flex-shrink-0 ml-2" />
+                      )}
+                    </button>
+                    
+                    {expandedNoteId === section.id && (
+                      <div className="px-3 py-3 border-t border-blue-200 dark:border-blue-700">
+                        <div className="prose prose-sm dark:prose-invert max-w-none text-blue-900 dark:text-blue-100">
+                          <MarkdownRenderer content={section.content} />
+                        </div>
+                        {section.examTips && (
+                          <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-900/30 rounded border border-amber-200 dark:border-amber-700">
+                            <p className="text-xs font-medium text-amber-800 dark:text-amber-200 flex items-center gap-1">
+                              <Lightbulb className="h-3 w-3" /> Exam Tip
+                            </p>
+                            <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                              {section.examTips}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : item?.keyPoints && item.keyPoints.length > 0 ? (
+              <div className="text-sm text-blue-700 dark:text-blue-300 space-y-2">
+                <p>Key points for <strong>{item.skillName}</strong>:</p>
                 <ul className="list-disc list-inside space-y-1">
                   {item.keyPoints.map((point, i) => (
                     <li key={i}>{point}</li>
                   ))}
                 </ul>
-              ) : (
-                <p className="italic">Focus on relevant statutory provisions and case law.</p>
-              )}
-            </div>
+              </div>
+            ) : (
+              <p className="text-sm text-blue-600 dark:text-blue-400 italic">
+                No curated notes available for this skill yet. Focus on relevant statutory provisions and case law.
+              </p>
+            )}
           </div>
         )}
 
@@ -351,7 +435,7 @@ export default function EmbeddedPracticePanel({
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      {formatItemType(item.itemType)} Question
+                      {formatItemType()} Question
                     </span>
                     <span className="text-xs text-muted-foreground">
                       ~{item.estimatedMinutes} min
@@ -370,40 +454,18 @@ export default function EmbeddedPracticePanel({
               </div>
             </div>
 
-            {/* MCQ Options */}
-            {item.itemType === 'mcq' && item.options && (
-              <div className="space-y-2">
-                {item.options.map((option) => (
-                  <button
-                    key={option.label}
-                    onClick={() => setSelectedOption(option.label)}
-                    className={`w-full text-left p-4 rounded-lg border transition-all ${
-                      selectedOption === option.label
-                        ? 'border-primary bg-primary/10 shadow-sm'
-                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                    }`}
-                  >
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-muted text-sm font-medium mr-3">
-                      {option.label}
-                    </span>
-                    <span className="text-sm">{option.text}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Text Answer Input */}
-            {item.itemType !== 'mcq' && phase === 'answering' && (
+            {/* Written Answer Input */}
+            {phase === 'answering' && (
               <div className="space-y-2">
                 <Textarea
                   ref={textareaRef}
-                  placeholder={getPlaceholder(item.itemType)}
+                  placeholder="Write your essay answer here..."
                   value={userAnswer}
                   onChange={(e) => setUserAnswer(e.target.value)}
                   className="min-h-[180px] resize-y"
                 />
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{getFormatGuidance(item.itemType)}</span>
+                  <span>Structure your answer with a clear introduction, analysis, and conclusion</span>
                   <span>{userAnswer.length} characters</span>
                 </div>
               </div>
@@ -412,10 +474,7 @@ export default function EmbeddedPracticePanel({
             {/* Submit Button */}
             <Button 
               onClick={submitAnswer}
-              disabled={
-                (item.itemType === 'mcq' && !selectedOption) ||
-                (item.itemType !== 'mcq' && !userAnswer.trim())
-              }
+              disabled={!userAnswer.trim()}
               className="w-full"
               size="lg"
             >
@@ -600,39 +659,6 @@ export default function EmbeddedPracticePanel({
 // HELPER FUNCTIONS
 // ============================================
 
-function formatItemType(type: string): string {
-  const labels: Record<string, string> = {
-    mcq: 'Multiple Choice',
-    written: 'Written',
-    oral: 'Oral',
-    drafting: 'Drafting',
-    flashcard: 'Quick Review',
-  };
-  return labels[type] || type;
-}
-
-function getPlaceholder(type: string): string {
-  switch (type) {
-    case 'written':
-      return 'Write your answer here. Use IRAC structure: Issue, Rule, Application, Conclusion. Cite relevant statutory provisions and case law...';
-    case 'oral':
-      return 'Prepare your oral response here. Write as you would speak in an examination setting...';
-    case 'drafting':
-      return 'Draft the required legal document here. Include all necessary clauses, parties, and formalities...';
-    default:
-      return 'Type your answer here...';
-  }
-}
-
-function getFormatGuidance(type: string): string {
-  switch (type) {
-    case 'written':
-      return 'Use IRAC structure. Cite authorities.';
-    case 'oral':
-      return 'Clear, structured, confident response.';
-    case 'drafting':
-      return 'Include all required clauses and parties.';
-    default:
-      return '';
-  }
+function formatItemType(): string {
+  return 'Written'; // Mastery Hub is WRITTEN EXAMS ONLY
 }

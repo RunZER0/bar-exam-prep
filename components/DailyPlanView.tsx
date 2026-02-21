@@ -29,7 +29,7 @@ export interface PlanTask {
   skillId: string;
   skillName: string;
   itemId: string;
-  itemType: 'mcq' | 'written' | 'oral' | 'drafting' | 'flashcard';
+  itemType: 'written'; // Mastery Hub is WRITTEN EXAMS ONLY
   mode: 'practice' | 'timed' | 'exam_sim';
   
   unitId: string;

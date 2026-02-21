@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
       WHERE user_id = ${user.id}::uuid
     `);
     
-    // Query REAL items from database
+    // Query REAL items from database - WRITTEN FORMAT ONLY for Mastery Hub
     const itemsResult = await db.execute(sql`
       SELECT 
         i.id as item_id,
@@ -117,6 +117,7 @@ export async function GET(req: NextRequest) {
       FROM items i
       JOIN item_skill_map ism ON i.id = ism.item_id
       WHERE i.is_active = true
+        AND i.format = 'written'
     `);
     
     // Build planner input from real database data

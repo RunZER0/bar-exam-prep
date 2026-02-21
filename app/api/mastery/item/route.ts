@@ -49,7 +49,8 @@ export async function GET(req: NextRequest) {
 
     const url = new URL(req.url);
     const skillId = url.searchParams.get('skillId');
-    const format = url.searchParams.get('format') || 'written';
+    // Mastery Hub is WRITTEN EXAMS ONLY - ignore format param
+    const format = 'written';
     const itemId = url.searchParams.get('itemId'); // If we already have an item ID
 
     if (!skillId) {
@@ -209,71 +210,39 @@ function parseMcqOptions(prompt: string): { label: string; text: string; isCorre
 }
 
 /**
- * Generate an item using AI when none exists in DB
+ * Generate a written exam item using AI when none exists in DB
+ * Mastery Hub is WRITTEN EXAMS ONLY
  */
 async function generateItemForSkill(
   skill: { id: string; name: string; unit_id: string; format_tags: string[] },
-  format: string
+  _format: string // Ignored - always written
 ): Promise<ItemData> {
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
   
-  const formatPrompts: Record<string, string> = {
-    mcq: `Generate a challenging multiple choice question to test the skill "${skill.name}" for the Kenya bar exam.
+  const writtenPrompt = `Generate a written bar exam question to test the skill "${skill.name}" for the Kenya bar exam.
+
+Create a realistic scenario-based question that requires:
+1. Issue identification
+2. Application of Kenyan law (statutes and case law)
+3. Structured legal analysis (IRAC)
+4. A clear conclusion
 
 Format your response as JSON:
 {
-  "prompt": "The full question text",
-  "options": [
-    {"label": "A", "text": "Option A text", "isCorrect": false},
-    {"label": "B", "text": "Option B text", "isCorrect": false},
-    {"label": "C", "text": "Option C text", "isCorrect": true},
-    {"label": "D", "text": "Option D text", "isCorrect": false}
-  ],
-  "modelAnswer": "Explanation of why C is correct",
-  "keyPoints": ["Key point 1", "Key point 2"]
-}`,
-    
-    written: `Generate a written exam question to test the skill "${skill.name}" for the Kenya bar exam.
-
-Format your response as JSON:
-{
-  "prompt": "A scenario-based question requiring legal analysis",
-  "context": "Additional factual background if needed",
-  "modelAnswer": "A comprehensive model answer with IRAC structure",
-  "keyPoints": ["Key legal issue 1", "Relevant statute", "Key case law", "Correct application"]
-}`,
-    
-    oral: `Generate an oral examination question to test the skill "${skill.name}" for the Kenya bar exam.
-
-Format your response as JSON:
-{
-  "prompt": "A question an examiner would ask in oral examination",
-  "context": "Optional scenario or facts",
-  "modelAnswer": "Key points to cover in oral response",
-  "keyPoints": ["Point 1", "Point 2", "Point 3"]
-}`,
-    
-    drafting: `Generate a legal drafting exercise to test the skill "${skill.name}" for the Kenya bar exam.
-
-Format your response as JSON:
-{
-  "prompt": "Instructions for what legal document to draft",
-  "context": "Factual scenario with party details, amounts, dates etc.",
-  "modelAnswer": "A model draft of the required document",
-  "keyPoints": ["Essential clause 1", "Essential clause 2", "Required formalities"]
-}`,
-  };
-
-  const systemPrompt = formatPrompts[format] || formatPrompts.written;
+  "prompt": "A detailed scenario-based question (2-3 paragraphs) requiring full legal analysis",
+  "context": "Additional factual background or instructions if needed",
+  "modelAnswer": "A comprehensive model answer using IRAC structure with specific Kenyan statutory provisions and case law",
+  "keyPoints": ["Key legal issue 1", "Relevant statute/section", "Key case law with citation", "Correct application principle"]
+}`;
 
   try {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
+      max_tokens: 2500,
       messages: [
         {
           role: 'user',
-          content: systemPrompt,
+          content: writtenPrompt,
         },
       ],
     });
@@ -289,15 +258,14 @@ Format your response as JSON:
       
       return {
         id: `generated-${Date.now()}`,
-        itemType: format,
-        format,
+        itemType: 'written',
+        format: 'written',
         prompt: parsed.prompt,
         context: parsed.context || null,
         modelAnswer: parsed.modelAnswer || null,
         keyPoints: parsed.keyPoints || [],
-        options: parsed.options,
         difficulty: 3,
-        estimatedMinutes: format === 'mcq' ? 3 : format === 'drafting' ? 20 : 10,
+        estimatedMinutes: 15,
         skillId: skill.id,
         skillName: skill.name,
         unitId: skill.unit_id,
@@ -311,14 +279,19 @@ Format your response as JSON:
   // Fallback static item
   return {
     id: `fallback-${Date.now()}`,
-    itemType: format,
-    format,
-    prompt: `Practice question for ${skill.name}: Explain the key legal principles and their application under Kenyan law.`,
+    itemType: 'written',
+    format: 'written',
+    prompt: `Practice question for ${skill.name}:\n\nExplain the key legal principles governing this area under Kenyan law. Your answer should:\n\n1. Identify the relevant statutory framework\n2. Discuss leading case law and their rationale\n3. Analyze how these principles apply in practice\n4. Consider any recent developments or reforms`,
     context: null,
-    modelAnswer: `Key points to address:\n1. Relevant statutory framework\n2. Key case law\n3. Practical application`,
-    keyPoints: ['Identify legal principles', 'Cite relevant authorities', 'Apply to facts'],
+    modelAnswer: `Model Answer Structure:\n\n1. **Issue**: Identify the core legal issues in ${skill.name}\n\n2. **Rule**: State the relevant statutory provisions and case law principles\n\n3. **Application**: Apply these rules to practical scenarios\n\n4. **Conclusion**: Summarize the legal position and any recommendations`,
+    keyPoints: [
+      'Identify relevant statutory provisions',
+      'Cite leading Kenyan case law',
+      'Apply principles to facts',
+      'Provide clear conclusions'
+    ],
     difficulty: 3,
-    estimatedMinutes: 10,
+    estimatedMinutes: 15,
     skillId: skill.id,
     skillName: skill.name,
     unitId: skill.unit_id,

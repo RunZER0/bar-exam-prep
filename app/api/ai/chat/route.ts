@@ -41,7 +41,7 @@ export const POST = withAuth(async (req: NextRequest, user) => {
     // Check if AI is configured before processing
     if (!isAIConfigured()) {
       return NextResponse.json({
-        response: "AI services are currently being configured. Please try again later or contact support if this persists. The platform administrators need to set up the AI API keys (OPENAI_API_KEY or ANTHROPIC_API_KEY) in the environment variables.",
+        response: "AI services are currently unavailable. Please contact support to ensure OPENAI_API_KEY is configured in the environment.",
         filtered: false,
         guardrails: {
           isHallucination: false,

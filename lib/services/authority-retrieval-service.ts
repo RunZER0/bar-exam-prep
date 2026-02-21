@@ -198,12 +198,9 @@ async function proposeCandidateUrls(
   const prompt = buildSearchPrompt(query);
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await openai.responses.create({
       model: MODEL_CONFIG.searchModel,
-      messages: [
-        {
-          role: 'system',
-          content: `You are a legal research assistant specializing in ${query.jurisdiction || 'Kenyan'} law.
+      instructions: `You are a legal research assistant specializing in ${query.jurisdiction || 'Kenyan'} law.
 Suggest 3-5 specific URLs where the legal authority for this concept can be found.
 Focus on:
 1. Kenya Law (kenyalaw.org) for Kenyan cases and statutes
@@ -218,15 +215,11 @@ Return JSON array with format:
   "suggestedCitation": "[YYYY] Court XXX or Act s.XX"
 }]
 
-Only suggest real, specific URLs - never fabricate.`
-        },
-        { role: 'user', content: prompt }
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.3,
+Only suggest real, specific URLs - never fabricate.`,
+      input: prompt,
     });
 
-    const content = response.choices[0]?.message?.content;
+    const content = response.output_text;
     if (!content) return [];
 
     const parsed = JSON.parse(content);
@@ -493,12 +486,9 @@ async function extractRelevantPassages(
   const truncatedText = sourceText.substring(0, 30000);
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await openai.responses.create({
       model: MODEL_CONFIG.extractionModel,
-      messages: [
-        {
-          role: 'system',
-          content: `You are extracting relevant legal passages from a ${sourceType.toLowerCase()}.
+      instructions: `You are extracting relevant legal passages from a ${sourceType.toLowerCase()}.
 Find the most relevant passages that support or define the concept.
 
 Return JSON:
@@ -515,18 +505,11 @@ Return JSON:
 }
 
 IMPORTANT: Only include passages that are EXACT quotes from the provided text.
-Maximum 3 passages, each 50-500 characters.`
-        },
-        {
-          role: 'user',
-          content: `Concept: "${concept}"\n\nSource text:\n${truncatedText}`
-        }
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.2,
+Maximum 3 passages, each 50-500 characters.`,
+      input: `Concept: "${concept}"\n\nSource text:\n${truncatedText}`,
     });
 
-    const content = response.choices[0]?.message?.content;
+    const content = response.output_text;
     if (!content) return [];
 
     const parsed = JSON.parse(content);

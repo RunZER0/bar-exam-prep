@@ -47,6 +47,16 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Helper function using OpenAI Responses API
+async function callOpenAI(systemPrompt: string, userPrompt: string): Promise<string> {
+  const response = await openai.responses.create({
+    model: MODEL_CONFIG.generatorModel,
+    instructions: systemPrompt,
+    input: userPrompt,
+  });
+  return response.output_text || '';
+}
+
 // ============================================
 // MAIN GENERATOR
 // ============================================
@@ -131,12 +141,7 @@ async function generateEssayRubric(
       sourceType: p.sourceType,
     }));
 
-    const response = await openai.chat.completions.create({
-      model: MODEL_CONFIG.generatorModel,
-      messages: [
-        {
-          role: 'system',
-          content: `Generate a grading rubric for essay/problem questions on ${skillName}.
+    const systemPrompt = `Generate a grading rubric for essay/problem questions on ${skillName}.
 Include 4-6 criteria covering:
 - Issue identification
 - Rule statement (correctly citing authorities)
@@ -156,18 +161,12 @@ Return JSON:
       "fullMarksDescription": "All issues identified with clear framing"
     }
   ]
-}`,
-        },
-        {
-          role: 'user',
-          content: `Generate rubric for ${skillName} essay. Relevant authorities:\n\n${JSON.stringify(passageContext)}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.3,
-    });
+}`;
 
-    const content = response.choices[0]?.message?.content;
+    const content = await callOpenAI(
+      systemPrompt,
+      `Generate rubric for ${skillName} essay. Relevant authorities:\n\n${JSON.stringify(passageContext)}`
+    );
     if (!content) return getDefaultEssayCriteria();
 
     const parsed = JSON.parse(content);
@@ -282,12 +281,7 @@ async function generateGeneralRubric(
       citation: p.citation,
     }));
 
-    const response = await openai.chat.completions.create({
-      model: MODEL_CONFIG.generatorModel,
-      messages: [
-        {
-          role: 'system',
-          content: `Generate a grading rubric for ${skillName} assessment.
+    const systemPrompt = `Generate a grading rubric for ${skillName} assessment.
 Include 4-5 criteria appropriate for mixed question types.
 
 Return JSON:
@@ -301,18 +295,12 @@ Return JSON:
       "fullMarksDescription": "All key concepts correctly identified"
     }
   ]
-}`,
-        },
-        {
-          role: 'user',
-          content: `Generate rubric for ${skillName}. Sources:\n\n${JSON.stringify(passageContext)}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.3,
-    });
+}`;
 
-    const content = response.choices[0]?.message?.content;
+    const content = await callOpenAI(
+      systemPrompt,
+      `Generate rubric for ${skillName}. Sources:\n\n${JSON.stringify(passageContext)}`
+    );
     if (!content) return getDefaultGeneralCriteria();
 
     const parsed = JSON.parse(content);

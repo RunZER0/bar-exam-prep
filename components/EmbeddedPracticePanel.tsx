@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import InteractiveStudyNotes from '@/components/InteractiveStudyNotes';
 import { 
   Loader2, CheckCircle, XCircle, ArrowRight, 
   MessageSquare, Lightbulb, BookOpen, RotateCcw,
@@ -92,7 +93,7 @@ interface AttemptResult {
   };
 }
 
-type Phase = 'loading' | 'question' | 'answering' | 'grading' | 'feedback';
+type Phase = 'loading' | 'study' | 'question' | 'answering' | 'grading' | 'feedback';
 
 interface EmbeddedPracticePanelProps {
   task: PracticeTask;
@@ -131,14 +132,20 @@ export default function EmbeddedPracticePanel({
   const [notesSections, setNotesSections] = useState<{ id: string; title: string; content: string; source?: string; examTips?: string }[]>([]);
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
 
-  // Load item when task changes
+  // Load item AND notes when task changes (study-first approach)
   const loadItem = useCallback(async () => {
     setPhase('loading');
     setError(null);
     setUserAnswer('');
+    setNotesSections([]);
     
     try {
       const token = await getIdToken();
+      
+      // Fetch notes and item in parallel for study-first flow
+      const notesPromise = fetch(`/api/mastery/notes?skillId=${task.skillId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(r => r.ok ? r.json() : { sections: [] }).catch(() => ({ sections: [] }));
       
       const params = new URLSearchParams({
         skillId: task.skillId,
@@ -156,13 +163,27 @@ export default function EmbeddedPracticePanel({
         throw new Error('Failed to load practice item');
       }
 
-      const data = await response.json();
-      setItem(data.item);
-      setPhase('question');
-      startTimeRef.current = new Date();
+      // Wait for both notes and item
+      const [notesData, itemData] = await Promise.all([
+        notesPromise,
+        response.json(),
+      ]);
       
-      // Auto-advance to answering phase
-      setTimeout(() => setPhase('answering'), 500);
+      setNotesSections(notesData.sections || []);
+      if (notesData.sections?.length > 0) {
+        setExpandedNoteId(notesData.sections[0].id);
+      }
+      setItem(itemData.item);
+      
+      // STUDY-FIRST: Show notes before question
+      // If notes exist, go to study phase first, else go straight to question
+      if (notesData.sections?.length > 0) {
+        setPhase('study');
+      } else {
+        setPhase('question');
+        startTimeRef.current = new Date();
+        setTimeout(() => setPhase('answering'), 500);
+      }
     } catch (err) {
       console.error('Error loading item:', err);
       setError('Failed to load practice item. Please try again.');
@@ -417,10 +438,24 @@ export default function EmbeddedPracticePanel({
             <div className="text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-primary" />
               <p className="text-sm text-muted-foreground">
-                Preparing your practice question...
+                Loading study materials and practice question...
               </p>
             </div>
           </div>
+        )}
+
+        {/* STUDY PHASE - Interactive Study Notes with Ask AI */}
+        {phase === 'study' && (
+          <InteractiveStudyNotes
+            skillName={task.skillName}
+            unitName={task.unitName}
+            sections={notesSections}
+            onProceed={() => {
+              setPhase('question');
+              startTimeRef.current = new Date();
+              setTimeout(() => setPhase('answering'), 500);
+            }}
+          />
         )}
 
         {/* QUESTION & ANSWERING */}

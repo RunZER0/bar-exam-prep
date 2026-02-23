@@ -4,6 +4,22 @@ import { microSkills, skillOutlineMap, outlineTopics, vettedAuthorities } from '
 import { eq, inArray, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import { CIVIL_PROCEDURE_ACT, CIVIL_PROCEDURE_RULES, CIVIL_LITIGATION_CASES } from '@/lib/knowledge/kenyan-law-base';
+import OpenAI from 'openai';
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// Unit names for display
+const UNIT_NAMES: Record<string, string> = {
+  'atp-100': 'Civil Litigation',
+  'atp-101': 'Criminal Litigation',
+  'atp-102': 'Conveyancing',
+  'atp-103': 'Family Law',
+  'atp-104': 'Probate and Administration',
+  'atp-105': 'Commercial Transactions',
+  'atp-106': 'Legal Ethics',
+  'atp-107': 'Legal Writing',
+  'atp-108': 'Oral Advocacy',
+};
 
 // ============================================
 // GET /api/mastery/notes?skillId=xxx
@@ -147,12 +163,64 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 5. If still empty, generate a helpful fallback
+    // 5. If still empty, generate AI-powered study notes
     if (sections.length === 0) {
+      const unitName = UNIT_NAMES[skill.unitId] || 'Legal Practice';
+      
+      try {
+        const response = await openai.responses.create({
+          model: 'gpt-4o-mini',
+          instructions: `You are a Kenyan bar exam tutor. Generate concise, exam-focused study notes for a specific legal skill.
+
+The student is preparing for the Kenya Council of Legal Education (CLE) bar examination.
+Unit: ${unitName}
+Skill: ${skill.title}
+
+Generate 2-3 key study sections that cover:
+1. Core legal principles and relevant statutory provisions (cite specific Kenya laws)
+2. Practical application and how this skill appears in bar exams
+3. Key cases or authorities (cite actual Kenyan cases if you know them, otherwise use "leading authority principles")
+
+Keep each section focused and exam-relevant. Include specific citations where possible.
+
+IMPORTANT: Return valid JSON only, no markdown, with this structure:
+{
+  "sections": [
+    {
+      "id": "section-1",
+      "title": "Section Title",
+      "content": "Content with **markdown** formatting",
+      "source": "Optional source reference",
+      "examTips": "Optional exam tip"
+    }
+  ]
+}`,
+          input: `Generate study notes for the skill: "${skill.title}" in the ${unitName} unit.`,
+        });
+
+        const parsed = JSON.parse(response.output_text);
+        if (parsed.sections && Array.isArray(parsed.sections)) {
+          sections.push(...parsed.sections.map((s: any, i: number) => ({
+            id: `ai-${i}`,
+            title: s.title,
+            content: s.content,
+            source: s.source,
+            examTips: s.examTips,
+          })));
+        }
+      } catch (aiError) {
+        console.error('AI notes generation error:', aiError);
+      }
+    }
+    
+    // 6. Final fallback if AI fails too
+    if (sections.length === 0) {
+      const unitName = UNIT_NAMES[skill.unitId] || 'Legal Practice';
       sections.push({
         id: 'fallback-1',
         title: `Study Notes: ${skill.title}`,
-        content: `This skill covers: ${skill.description || skill.title}\n\nFocus on understanding the legal principles, relevant statutory provisions, and how they apply in practice scenarios.`,
+        content: `**${skill.title}**\n\nThis skill is part of the ${unitName} unit in the Kenya Bar Examination.\n\n**Key Focus Areas:**\n- Understand the relevant statutory provisions\n- Review applicable case law and precedents\n- Practice applying the principles to factual scenarios\n\n**Study Tips:**\n- Focus on the Constitution of Kenya 2010 where relevant\n- Review any statutory requirements that govern this area\n- Practice writing structured legal answers`,
+        examTips: 'Always cite specific provisions and use IRAC method (Issue, Rule, Application, Conclusion).',
       });
     }
 

@@ -1,0 +1,482 @@
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║              MASTERY HUB - COMPREHENSIVE TECHNICAL AUDIT                     ║
+║              Full End-to-End System Analysis with Real Proof                 ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Audit Date: 2026-02-21T07:52:01.693Z
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ SECTION 1: DATABASE SCHEMA REALITY                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Total Tables: 47
+
+All Tables:
+  attempts (19 columns)
+  authority_passages (8 columns)
+  authority_records (19 columns)
+  background_jobs (15 columns)
+  chat_history (9 columns)
+  chat_messages (7 columns)
+  chat_sessions (8 columns)
+  clarification_requests (11 columns)
+  content_assets (13 columns)
+  content_updates (8 columns)
+  coverage_debt (8 columns)
+  daily_plan_items (16 columns)
+  daily_plans (18 columns)
+  domains (34 columns)
+  error_tags (8 columns)
+  evidence_spans (15 columns)
+  exam_cycles (9 columns)
+  exam_events (10 columns)
+  item_skill_map (7 columns)
+  items (16 columns)
+  lecture_chunks (11 columns)
+  lecture_skill_map (9 columns)
+  lectures (12 columns)
+  mastery_state (15 columns)
+  micro_skills (13 columns)
+  missing_authority_log (11 columns)
+  notification_log (10 columns)
+  outline_topics (14 columns)
+  practice_sessions (10 columns)
+  push_subscriptions (8 columns)
+  questions (13 columns)
+  rubrics (8 columns)
+  session_events (5 columns)
+  skill_edges (6 columns)
+  skill_error_signature (8 columns)
+  skill_outline_map (5 columns)
+  study_assets (13 columns)
+  study_sessions (21 columns)
+  study_streaks (7 columns)
+  topics (9 columns)
+  user_exam_profiles (9 columns)
+  user_profiles (18 columns)
+  user_progress (9 columns)
+  user_responses (10 columns)
+  users (11 columns)
+  vetted_authorities (16 columns)
+  weekly_reports (25 columns)
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ SECTION 2: CURRICULUM DATA (MICRO SKILLS)                                    │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Skills by Unit:
+  Unit atp-100: 59 skills (24 core), avg weight: 0.0469
+  Unit atp-101: 37 skills (5 core), avg weight: 0.0376
+  Unit atp-102: 21 skills (10 core), avg weight: 0.0452
+  Unit atp-103: 22 skills (8 core), avg weight: 0.0432
+  Unit atp-104: 21 skills (9 core), avg weight: 0.0476
+  Unit atp-105: 23 skills (8 core), avg weight: 0.0426
+  Unit atp-106: 25 skills (5 core), avg weight: 0.0400
+  Unit atp-107: 32 skills (12 core), avg weight: 0.0438
+  Unit atp-108: 33 skills (11 core), avg weight: 0.0430
+
+Total Active Skills: 273
+
+Sample Skills (first 15):
+  [atp-100] Plaint Drafting
+      ID: e985cb8f-14c8-48df-9e44-d9366bfcf6cd
+      Weight: 0.080, Difficulty: core, Core: true
+      Formats: ["drafting"]
+  [atp-100] Jurisdiction Analysis
+      ID: 2cf7931a-0ca2-4ca1-9446-079a1e69fd9c
+      Weight: 0.080, Difficulty: foundation, Core: true
+      Formats: ["written","mcq"]
+  [atp-100] Trial Conduct & Evidence
+      ID: 4bcf4795-eee0-41e3-ae59-090fc1f14523
+      Weight: 0.080, Difficulty: advanced, Core: true
+      Formats: ["oral","written"]
+  [atp-100] Injunction Applications
+      ID: ccbb6bb3-96c5-4ff8-81f7-9e8a179fac3e
+      Weight: 0.080, Difficulty: core, Core: true
+      Formats: ["written","oral","drafting"]
+  [atp-100] Cause of Action Elements
+      ID: b6e9c96e-5120-4f89-aab6-54353654cfc6
+      Weight: 0.070, Difficulty: foundation, Core: true
+      Formats: ["written","mcq"]
+  [atp-100] Interlocutory Applications
+      ID: cebdba45-0ba2-43de-b7eb-4966db1f21b6
+      Weight: 0.070, Difficulty: core, Core: true
+      Formats: ["written","oral","drafting"]
+  [atp-100] Constitutional Litigation
+      ID: 96503692-579a-487f-b2f1-378211b73c61
+      Weight: 0.060, Difficulty: advanced, Core: true
+      Formats: ["written","drafting","oral"]
+  [atp-100] Appeals Procedure
+      ID: 05ba56af-1472-45f2-9456-f9b420edf5b4
+      Weight: 0.060, Difficulty: advanced, Core: true
+      Formats: ["written","oral","drafting"]
+  [atp-100] Witness Examination
+      ID: 19eb79e9-309a-4716-9277-15d6971a93f3
+      Weight: 0.060, Difficulty: advanced, Core: true
+      Formats: ["oral"]
+  [atp-100] Defence Drafting
+      ID: ee585ff6-fba2-4957-b3c2-fcd50102576f
+      Weight: 0.060, Difficulty: core, Core: true
+      Formats: ["drafting"]
+  [atp-100] Courts and Jurisdiction Analysis
+      ID: 9991485d-a1a3-4161-bb83-5460c90cda14
+      Weight: 0.060, Difficulty: advanced, Core: true
+      Formats: ["written","mcq"]
+  [atp-100] Plaint Drafting
+      ID: ae13c46c-2969-484a-b4e7-b257e0c28cdc
+      Weight: 0.060, Difficulty: advanced, Core: true
+      Formats: ["drafting"]
+  [atp-100] Appeals & Review
+      ID: df990a6d-da90-4fe9-9e09-ea80343bbe62
+      Weight: 0.060, Difficulty: advanced, Core: true
+      Formats: ["written","oral"]
+  [atp-100] Discovery & Interrogatories
+      ID: ea96688f-4eef-4508-934a-efc4bcc42640
+      Weight: 0.050, Difficulty: core, Core: false
+      Formats: ["written","drafting"]
+  [atp-100] Summary Judgment
+      ID: ad751f50-e7a8-4c70-865b-482f914db2e9
+      Weight: 0.050, Difficulty: core, Core: false
+      Formats: ["written","oral"]
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ SECTION 3: PRACTICE ITEMS INVENTORY                                          │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Items by Type/Format:
+  issue_spot/written: 44 items, avg difficulty: 3.11
+  drafting_task/drafting: 22 items, avg difficulty: 3.09
+  oral_prompt/oral: 18 items, avg difficulty: 3.56
+  mcq/mcq: 16 items, avg difficulty: 2.25
+
+Total Active Items: 100
+
+Sample Items (first 5 with full prompts):
+
+  ─── Item 1 ───
+  ID: 90950ee5-b845-46c9-9d40-c7107833ed88
+  Type: issue_spot, Format: written, Difficulty: 4
+  Skill: Appeals & Review (atp-100)
+  Prompt:
+    Practice question 5 for Appeals & Review...
+  Key Points: []
+
+  ─── Item 2 ───
+  ID: 74323e5c-3e54-46ff-ab5d-e7aa2122c861
+  Type: oral_prompt, Format: oral, Difficulty: 4
+  Skill: Appeals & Review (atp-100)
+  Prompt:
+    Practice question 4 for Appeals & Review...
+  Key Points: []
+
+  ─── Item 3 ───
+  ID: c3e6ebc7-b7f8-4094-a901-c1f438ea84e5
+  Type: issue_spot, Format: written, Difficulty: 4
+  Skill: Appeals & Review (atp-100)
+  Prompt:
+    Practice question 3 for Appeals & Review...
+  Key Points: []
+
+  ─── Item 4 ───
+  ID: 776736a9-74bd-4fec-a733-8950803b49ea
+  Type: oral_prompt, Format: oral, Difficulty: 4
+  Skill: Appeals & Review (atp-100)
+  Prompt:
+    Practice question 2 for Appeals & Review...
+  Key Points: []
+
+  ─── Item 5 ───
+  ID: 04d8a413-5e5a-4b80-ae43-ae8e7b80a4b0
+  Type: issue_spot, Format: written, Difficulty: 4
+  Skill: Appeals & Review (atp-100)
+  Prompt:
+    Practice question 1 for Appeals & Review...
+  Key Points: []
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ SECTION 4: USER MASTERY STATE (REAL DATABASE RECORDS)                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Total Users with Mastery Data: 6
+Total Mastery Records: 421
+Total Attempts Logged: 521
+Average p_mastery: 3.23%
+Mastery Range: 0.00% - 19.00%
+Skills at >=85% Mastery: 0
+Skills Verified (gate passed): 0
+
+Per-User Mastery Breakdown:
+
+  User: sim_expert_student_1771404744172@sim.local
+      Skills Practiced: 120
+      Total Attempts: 157
+      Average Mastery: 6.78%
+      Last Active: Tue Mar 10 2026 11:52:24 GMT+0300 (East Africa Time)
+
+  User: sim_strong_student_1771404743904@sim.local
+      Skills Practiced: 98
+      Total Attempts: 120
+      Average Mastery: 4.26%
+      Last Active: Tue Mar 10 2026 11:52:24 GMT+0300 (East Africa Time)
+
+  User: sim_average_student_1771404743651@sim.local
+      Skills Practiced: 83
+      Total Attempts: 100
+      Average Mastery: 1.47%
+      Last Active: Tue Mar 10 2026 11:52:24 GMT+0300 (East Africa Time)
+
+  User: sim_beginner_student_1771404743397@sim.local
+      Skills Practiced: 68
+      Total Attempts: 80
+      Average Mastery: 0.09%
+      Last Active: Tue Mar 10 2026 11:52:24 GMT+0300 (East Africa Time)
+
+  User: sim_weak_student_1771404743134@sim.local
+      Skills Practiced: 51
+      Total Attempts: 60
+      Average Mastery: 0.00%
+      Last Active: Tue Mar 10 2026 11:52:24 GMT+0300 (East Africa Time)
+
+  User: test_test_student_-_weak_1771319142513@test.e2e.local
+      Skills Practiced: 1
+      Total Attempts: 4
+      Average Mastery: 0.00%
+      Last Active: Tue Feb 17 2026 12:06:03 GMT+0300 (East Africa Time)
+
+Sample Mastery Records (first 10):
+
+  Skill: Testamentary Capacity
+      User: ab94b3c9-b0d...
+      p_mastery: 0.00%
+      Stability: 0.70
+      Attempts: 2, Correct: 0
+      Verified: false
+      Last Practiced: Tue Mar 10 2026 11:52:24 GMT+0300 (East Africa Time)
+      Next Review: null
+
+  Skill: Chargee Remedies
+      User: 0d708c00-aa5...
+      p_mastery: 0.00%
+      Stability: 0.85
+      Attempts: 1, Correct: 0
+      Verified: false
+      Last Practiced: Tue Mar 10 2026 11:52:24 GMT+0300 (East Africa Time)
+      Next Review: null
+
+  Skill: Recruitment & Selection
+      User: ab94b3c9-b0d...
+      p_mastery: 2.10%
+      Stability: 1.20
+      Attempts: 2, Correct: 2
+      Verified: false
+      Last Practiced: Tue Mar 10 2026 11:52:24 GMT+0300 (East Africa Time)
+      Next Review: null
+
+  Skill: ADR Advocacy
+      User: ec83c6f6-da4...
+      p_mastery: 5.70%
+      Stability: 1.20
+      Attempts: 2, Correct: 2
+      Verified: false
+      Last Practiced: Tue Mar 10 2026 11:52:24 GMT+0300 (East Africa Time)
+      Next Review: null
+
+  Skill: Foreign Succession
+      User: ec83c6f6-da4...
+      p_mastery: 4.00%
+      Stability: 1.20
+      Attempts: 2, Correct: 2
+      Verified: false
+      Last Practiced: Tue Mar 10 2026 11:52:24 GMT+0300 (East Africa Time)
+      Next Review: null
+
+  Skill: Advocate Liability
+      User: 3dbe8c73-de7...
+      p_mastery: 7.80%
+      Stability: 1.20
+      Attempts: 2, Correct: 2
+      Verified: false
+      Last Practiced: Tue Mar 10 2026 11:52:24 GMT+0300 (East Africa Time)
+      Next Review: null
+
+  Skill: Trust Deed Drafting
+      User: 3dbe8c73-de7...
+      p_mastery: 9.30%
+      Stability: 1.20
+      Attempts: 2, Correct: 2
+      Verified: false
+      Last Practiced: Tue Mar 10 2026 11:52:24 GMT+0300 (East Africa Time)
+      Next Review: null
+
+  Skill: Defence Case
+      User: 0d708c00-aa5...
+      p_mastery: 0.00%
+      Stability: 0.70
+      Attempts: 2, Correct: 0
+      Verified: false
+      Last Practiced: Tue Mar 10 2026 11:52:24 GMT+0300 (East Africa Time)
+      Next Review: null
+
+  Skill: Pre-Litigation Considerations
+      User: 0d708c00-aa5...
+      p_mastery: 0.00%
+      Stability: 0.70
+      Attempts: 2, Correct: 0
+      Verified: false
+      Last Practiced: Tue Mar 10 2026 11:52:24 GMT+0300 (East Africa Time)
+      Next Review: null
+
+  Skill: Record Management
+      User: a91aa366-e9a...
+      p_mastery: 0.00%
+      Stability: 0.85
+      Attempts: 1, Correct: 0
+      Verified: false
+      Last Practiced: Tue Mar 10 2026 11:52:24 GMT+0300 (East Africa Time)
+      Next Review: null
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ SECTION 5: ATTEMPT HISTORY (PROOF OF GRADING SYSTEM WORKING)                 │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Total Attempts Recorded: 4
+Unique Users: 1
+Unique Items Attempted: 2
+Average Score: 35.00%
+Average Time per Attempt: 0 seconds
+
+Recent Attempts (last 10) with Full Details:
+
+  ─── Attempt 1 ───
+  ID: f9e1abac-fdfc-46b4-8641-08b55f9dddbf
+  User: f15b02de-4b1...
+  Created: Sun Feb 15 2026 13:51:27 GMT+0300 (East Africa Time)
+  Format: written, Mode: practice
+  Score: 35.0%
+  Time Taken: N/A seconds
+  Skill: Cause of Action Elements
+  Prompt Preview: Practice question 1 for Cause of Action Elements...
+  Rubric Breakdown:
+
+  ─── Attempt 2 ───
+  ID: b2d66d7f-6d13-44c8-8c6f-924919dae899
+  User: f15b02de-4b1...
+  Created: Sun Feb 15 2026 13:35:33 GMT+0300 (East Africa Time)
+  Format: written, Mode: practice
+  Score: 35.0%
+  Time Taken: N/A seconds
+  Skill: Cause of Action Elements
+  Prompt Preview: Practice question 1 for Cause of Action Elements...
+  Rubric Breakdown:
+
+  ─── Attempt 3 ───
+  ID: c827933a-1495-47c2-9a1a-aba78a9b9bae
+  User: f15b02de-4b1...
+  Created: Sun Feb 15 2026 13:34:23 GMT+0300 (East Africa Time)
+  Format: written, Mode: practice
+  Score: 35.0%
+  Time Taken: N/A seconds
+  Skill: Cause of Action Elements
+  Prompt Preview: Practice question 1 for Cause of Action Elements...
+  Rubric Breakdown:
+
+  ─── Attempt 4 ───
+  ID: ae3a2e84-d27d-4866-82d1-673cf87e25fc
+  User: f15b02de-4b1...
+  Created: Sat Feb 14 2026 13:23:24 GMT+0300 (East Africa Time)
+  Format: written, Mode: practice
+  Score: 35.0%
+  Time Taken: N/A seconds
+  Skill: Jurisdiction Analysis
+  Prompt Preview: Analyze which court has jurisdiction over a contract dispute worth KES 2 million where the contract was executed in Nairobi but the defendant resides in Mombasa....
+  Rubric Breakdown:
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ SECTION 6: DAILY PLANS (PROOF PLANNER IS GENERATING)                         │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Total Daily Plans: 0
+Unique Users with Plans: 0
+
+Recent Daily Plans:
+  No daily plans found in database.
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ SECTION 7: USER PROFILES (ONBOARDING COMPLETION)                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Total User Profiles: 2
+
+Sample User Profiles:
+
+  User: victormawira00@gmail.com
+
+  User: vikkicleo@gmail.com
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ SECTION 8: ALGORITHM PROOF (MASTERY UPDATE CALCULATION)                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Testing Mastery Delta Formula:
+  Formula: delta = learningRate × (scoreNorm - currentP) × formatWeight × modeWeight
+  Clamped to: [-0.12, +0.10] per attempt
+
+  Perfect score from 30%:
+      Input: score=1, currentP=0.3
+      Raw Delta: 0.1050
+      Clamped Delta: 0.1000
+      New p_mastery: 0.30 → 0.4000 (40.0%)
+
+  90% score from 50%:
+      Input: score=0.9, currentP=0.5
+      Raw Delta: 0.0600
+      Clamped Delta: 0.0600
+      New p_mastery: 0.50 → 0.5600 (56.0%)
+
+  Failed attempt from 70%:
+      Input: score=0, currentP=0.7
+      Raw Delta: -0.1050
+      Clamped Delta: -0.1050
+      New p_mastery: 0.70 → 0.5950 (59.5%)
+
+  At-level performance:
+      Input: score=0.6, currentP=0.6
+      Raw Delta: 0.0000
+      Clamped Delta: 0.0000
+      New p_mastery: 0.60 → 0.6000 (60.0%)
+
+  Perfect score from 90%:
+      Input: score=1, currentP=0.9
+      Raw Delta: 0.0150
+      Clamped Delta: 0.0150
+      New p_mastery: 0.90 → 0.9150 (91.5%)
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ SECTION 9: GATE VERIFICATION LOGIC                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Gate Requirements (from mastery-engine.ts):
+  1. p_mastery >= 85%
+  2. 2 timed/exam_sim passes required
+  3. >= 24 hours between passes
+  4. Top-3 error tags must not repeat
+
+Gate Verification Tests:
+  p=90%, passes=2, hours=30, repeat=false
+      Result: verified [PASS]
+  p=80%, passes=2, hours=30, repeat=false
+      Result: p<85% [PASS]
+  p=90%, passes=1, hours=30, repeat=false
+      Result: passes<2 [PASS]
+  p=90%, passes=2, hours=12, repeat=false
+      Result: hours<24 [PASS]
+  p=90%, passes=2, hours=30, repeat=true
+      Result: error_repeat [PASS]
+
+═══════════════════════════════════════════════════════════════════════════════
+                              END OF AUDIT REPORT
+═══════════════════════════════════════════════════════════════════════════════

@@ -415,11 +415,11 @@ export default function OnboardingPage() {
         body: JSON.stringify(apiData),
       });
       
-      // Navigate to tutor dashboard if they opted for mentorship
+      // Navigate to tutor dashboard if they opted for mentorship, else to Mastery Hub
       if (formData.wantsMentorship) {
         router.push('/tutor');
       } else {
-        router.push('/dashboard');
+        router.push('/mastery');
       }
     } catch (error) {
       console.error('Onboarding error:', error);

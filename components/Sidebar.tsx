@@ -29,8 +29,8 @@ import {
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/mastery', label: 'Mastery Hub', icon: Target },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/progress', label: 'My Progress', icon: TrendingUp },
   { href: '/drafting', label: 'Legal Drafting', icon: FileText },
   { href: '/study', label: 'Study', icon: BookOpen },
@@ -60,6 +60,7 @@ export default function Sidebar() {
   };
 
   const isActive = (href: string) => {
+    if (href === '/mastery') return pathname === '/mastery' || pathname === '/';
     if (href === '/dashboard') return pathname === '/dashboard';
     return pathname.startsWith(href);
   };

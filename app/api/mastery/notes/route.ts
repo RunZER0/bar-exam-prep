@@ -8,6 +8,7 @@ import OpenAI from 'openai';
 
 const FAST_MODEL = process.env.OPENAI_FAST_MODEL || 'gpt-5.1-mini';
 const GROUNDED_MODEL = process.env.OPENAI_GROUNDED_MODEL || 'gpt-5.1';
+const AI_NOTES_TIMEOUT_MS = Number(process.env.NOTES_AI_TIMEOUT_MS || 8000);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Unit names for display
@@ -116,7 +117,7 @@ export async function GET(req: NextRequest) {
         .map(a => `${a.type}: ${a.title}${a.citation ? ` (${a.citation})` : ''}`)
         .join('\n');
 
-      const response = await openai.responses.create({
+      const aiCall = openai.responses.create({
         model: GROUNDED_MODEL,
         instructions: `You are a Kenyan bar exam tutor. Build a focused study session for the given skill.
 
@@ -143,7 +144,13 @@ Do not include any extra keys or prose outside JSON.`,
         input: `Unit: ${unitName}\nSkill: ${skillName}\nOutline topics (must cover all):\n${outlineContext || '- (no outline topics provided, use core syllabus expectations)'}\nKnown authorities to prefer:\n${authorityContext || '- none provided, use standard Kenya leading authorities where known.'}`,
       });
 
-      const parsed = JSON.parse(response.output_text);
+      const aiResponse = await Promise.race([
+        aiCall,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('AI notes timeout')), AI_NOTES_TIMEOUT_MS)),
+      ]);
+
+      // @ts-expect-error fine: Promise.race union
+      const parsed = JSON.parse(aiResponse.output_text || '');
       if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
         sections.push(
           ...parsed.sections.map((s: any, i: number) => ({

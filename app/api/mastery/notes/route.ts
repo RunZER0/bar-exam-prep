@@ -6,6 +6,8 @@ import { verifyIdToken } from '@/lib/firebase/admin';
 import { CIVIL_PROCEDURE_ACT, CIVIL_PROCEDURE_RULES, CIVIL_LITIGATION_CASES } from '@/lib/knowledge/kenyan-law-base';
 import OpenAI from 'openai';
 
+const FAST_MODEL = process.env.OPENAI_FAST_MODEL || 'gpt-5.1-mini';
+const GROUNDED_MODEL = process.env.OPENAI_GROUNDED_MODEL || 'gpt-5.1';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Unit names for display
@@ -75,31 +77,20 @@ export async function GET(req: NextRequest) {
     const sections: NotesSection[] = [];
     const authorities: NotesResponse['authorities'] = [];
 
-    const skillName = (skill as any).name || (skill as any).title || 'This skill';
+    const skillName: string = (skill as any).name || (skill as any).title || 'This skill';
 
-    // 2. Try to get outline topics linked to this skill
-    const outlineLinks = await db
-      .select({
-        topicId: skillOutlineMap.topicId,
-      })
-      .from(skillOutlineMap)
-      .where(eq(skillOutlineMap.skillId, skillId));
+      // 2. Pull outline topics linked to this skill (used as context for LLM-generated notes)
+      const outlineLinks = await db
+        .select({ topicId: skillOutlineMap.topicId })
+        .from(skillOutlineMap)
+        .where(eq(skillOutlineMap.skillId, skillId));
 
-    if (outlineLinks.length > 0) {
-      const topicIds = outlineLinks.map(l => l.topicId);
-      const topics = await db
-        .select()
-        .from(outlineTopics)
-        .where(inArray(outlineTopics.id, topicIds));
-
-      for (const topic of topics) {
-        sections.push({
-          id: topic.id,
-          title: topic.title,
-          content: topic.description || `Study the key concepts of ${topic.title}`,
-        });
-      }
-    }
+      const outlineTopicsForSkill = outlineLinks.length
+        ? await db
+            .select()
+            .from(outlineTopics)
+            .where(inArray(outlineTopics.id, outlineLinks.map(l => l.topicId)))
+        : [];
 
     // 3. Get vetted authorities for this skill's unit
     const unitAuthorities = await db
@@ -117,24 +108,77 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 4. Fall back to kenyan-law-base content if no outline topics
-    if (sections.length === 0) {
-      // Get relevant provisions for this unit
-      const unitProvisions = [...CIVIL_PROCEDURE_ACT, ...CIVIL_PROCEDURE_RULES]
-        .filter(p => p.unitId === skill.unitId);
+    // 4. Generate AI-powered notes using outlines + authorities as context
+    const unitName = UNIT_NAMES[skill.unitId] || 'Legal Practice';
+    try {
+      const outlineContext = outlineTopicsForSkill.map(t => `- ${t.title}: ${t.description || ''}`).join('\n');
+      const authorityContext = authorities
+        .map(a => `${a.type}: ${a.title}${a.citation ? ` (${a.citation})` : ''}`)
+        .join('\n');
 
-      // Find provisions whose keywords match the skill
-      const skillKeywords = skillName.toLowerCase().split(' ');
-      const matchingProvisions = unitProvisions.filter(p => 
-        p.keywords.some(k => skillKeywords.some(sk => 
-          k.toLowerCase().includes(sk) || sk.includes(k.toLowerCase())
-        ))
+      const response = await openai.responses.create({
+        model: GROUNDED_MODEL,
+        instructions: `You are a Kenyan bar exam tutor. Build a focused study session for the given skill.
+
+Requirements:
+- Use the provided outline topics as the coverage backbone (do not skip any).
+- Tie every legal point to specific Kenya statutes/cases where possible.
+- Keep it concise and exam-focused; avoid fluff.
+- Include micro-drills inside each section: 1-2 short questions with brief answers.
+
+Output JSON ONLY with this shape:
+{
+  "sections": [
+    {
+      "id": "section-1",
+      "title": "Short title",
+      "content": "Markdown content covering the outline topics, with **Key rules**, citations, practical application, and a 'Quick check' subsection with 1-2 Q&A",
+      "source": "Optional source reference",
+      "examTips": "Optional exam tip"
+    }
+  ]
+}
+
+Do not include any extra keys or prose outside JSON.`,
+        input: `Unit: ${unitName}\nSkill: ${skillName}\nOutline topics (must cover all):\n${outlineContext || '- (no outline topics provided, use core syllabus expectations)'}\nKnown authorities to prefer:\n${authorityContext || '- none provided, use standard Kenya leading authorities where known.'}`,
+      });
+
+      const parsed = JSON.parse(response.output_text);
+      if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
+        sections.push(
+          ...parsed.sections.map((s: any, i: number) => ({
+            id: s.id || `ai-${i}`,
+            title: s.title,
+            content: s.content,
+            source: s.source,
+            examTips: s.examTips,
+          }))
+        );
+      }
+    } catch (aiError) {
+      console.error('AI notes generation error:', aiError);
+    }
+
+    // 5. Fallbacks if AI returns nothing
+    if (sections.length === 0 && outlineTopicsForSkill.length > 0) {
+      for (const topic of outlineTopicsForSkill) {
+        sections.push({
+          id: topic.id,
+          title: topic.title,
+          content: topic.description || `Study the key concepts of ${topic.title}`,
+        });
+      }
+    }
+
+    // 6. Civil-litigation base + cases fallback if still empty
+    if (sections.length === 0) {
+      const unitProvisions = [...CIVIL_PROCEDURE_ACT, ...CIVIL_PROCEDURE_RULES].filter(p => p.unitId === skill.unitId);
+      const skillKeywords: string[] = skillName.toLowerCase().split(' ');
+      const matchingProvisions = unitProvisions.filter(p =>
+        p.keywords.some(k => skillKeywords.some(sk => k.toLowerCase().includes(sk) || sk.includes(k.toLowerCase())))
       );
 
-      // Use matching provisions or all unit provisions
-      const relevantProvisions = matchingProvisions.length > 0 
-        ? matchingProvisions.slice(0, 5) 
-        : unitProvisions.slice(0, 5);
+      const relevantProvisions = matchingProvisions.length > 0 ? matchingProvisions.slice(0, 5) : unitProvisions.slice(0, 5);
 
       for (const provision of relevantProvisions) {
         sections.push({
@@ -146,7 +190,6 @@ export async function GET(req: NextRequest) {
         });
       }
 
-      // Add relevant case law
       const caseLaw = CIVIL_LITIGATION_CASES.filter(c => c.unitId === skill.unitId).slice(0, 3);
       for (const caseItem of caseLaw) {
         sections.push({
@@ -165,59 +208,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 5. If still empty, generate AI-powered study notes
+    // 7. Final safety fallback if absolutely nothing
     if (sections.length === 0) {
-      const unitName = UNIT_NAMES[skill.unitId] || 'Legal Practice';
-      
-      try {
-        const response = await openai.responses.create({
-          model: 'gpt-4o-mini',
-          instructions: `You are a Kenyan bar exam tutor. Generate concise, exam-focused study notes for a specific legal skill.
-
-The student is preparing for the Kenya Council of Legal Education (CLE) bar examination.
-Unit: ${unitName}
-Skill: ${skill.title}
-
-Generate 2-3 key study sections that cover:
-1. Core legal principles and relevant statutory provisions (cite specific Kenya laws)
-2. Practical application and how this skill appears in bar exams
-3. Key cases or authorities (cite actual Kenyan cases if you know them, otherwise use "leading authority principles")
-
-Keep each section focused and exam-relevant. Include specific citations where possible.
-
-IMPORTANT: Return valid JSON only, no markdown, with this structure:
-{
-  "sections": [
-    {
-      "id": "section-1",
-      "title": "Section Title",
-      "content": "Content with **markdown** formatting",
-      "source": "Optional source reference",
-      "examTips": "Optional exam tip"
-    }
-  ]
-}`,
-          input: `Generate study notes for the skill: "${skillName}" in the ${unitName} unit.`,
-        });
-
-        const parsed = JSON.parse(response.output_text);
-        if (parsed.sections && Array.isArray(parsed.sections)) {
-          sections.push(...parsed.sections.map((s: any, i: number) => ({
-            id: `ai-${i}`,
-            title: s.title,
-            content: s.content,
-            source: s.source,
-            examTips: s.examTips,
-          })));
-        }
-      } catch (aiError) {
-        console.error('AI notes generation error:', aiError);
-      }
-    }
-    
-    // 6. Final fallback if AI fails too
-    if (sections.length === 0) {
-      const unitName = UNIT_NAMES[skill.unitId] || 'Legal Practice';
       sections.push({
         id: 'fallback-1',
         title: `Study Notes: ${skillName}`,

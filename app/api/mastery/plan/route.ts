@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
     }
 
     const today = new Date().toISOString().split('T')[0];
+    const force = req.nextUrl.searchParams.get('force') === '1';
     
     // Get user profile for exam dates and weak/strong areas
     const userProfileResult = await db.execute(sql`
@@ -220,6 +221,11 @@ export async function GET(req: NextRequest) {
     
     // Generate plan using real data
     const plan = generateDailyPlan(plannerInput);
+
+    // Light randomization to avoid showing the exact same order repeatedly
+    if (force) {
+      plan.tasks = [...plan.tasks].sort(() => Math.random() - 0.5);
+    }
     
     // Get unit IDs from skills
     const taskUnitIds = plan.tasks.map(t => {
@@ -242,7 +248,7 @@ export async function GET(req: NextRequest) {
       tasks: plan.tasks.map((task, index) => {
         const skill = plannerInput.skills.get(task.skillId);
         return {
-          id: `task-${index}`,
+          id: force ? `task-${Date.now()}-${index}` : `task-${index}`,
           taskType: task.taskType,
           itemId: task.itemId,
           skillId: task.skillId,
@@ -304,21 +310,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const body = await req.json();
-    const { date, timeBudgetMinutes } = body;
-    
-    // TODO: Implement force regeneration
-    // This would:
-    // 1. Clear existing plan for the date
-    // 2. Re-pull mastery states
-    // 3. Re-calculate coverage debt
-    // 4. Generate fresh plan
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Plan generation triggered',
-      date: date ?? new Date().toISOString().split('T')[0],
+    const body = await req.json().catch(() => ({}));
+    const timeBudgetMinutes = body.timeBudgetMinutes ?? 60;
+
+    // Reuse GET logic with force to regenerate a fresh ordering
+    const url = new URL(req.url);
+    url.searchParams.set('force', '1');
+    const forcedReq = new NextRequest(url.toString(), {
+      headers: req.headers,
+      method: 'GET',
     });
+    return GET(forcedReq);
 
   } catch (error) {
     console.error('Error generating plan:', error);

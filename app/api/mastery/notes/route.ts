@@ -75,6 +75,8 @@ export async function GET(req: NextRequest) {
     const sections: NotesSection[] = [];
     const authorities: NotesResponse['authorities'] = [];
 
+    const skillName = (skill as any).name || (skill as any).title || 'This skill';
+
     // 2. Try to get outline topics linked to this skill
     const outlineLinks = await db
       .select({
@@ -122,7 +124,7 @@ export async function GET(req: NextRequest) {
         .filter(p => p.unitId === skill.unitId);
 
       // Find provisions whose keywords match the skill
-      const skillKeywords = skill.title.toLowerCase().split(' ');
+      const skillKeywords = skillName.toLowerCase().split(' ');
       const matchingProvisions = unitProvisions.filter(p => 
         p.keywords.some(k => skillKeywords.some(sk => 
           k.toLowerCase().includes(sk) || sk.includes(k.toLowerCase())
@@ -195,7 +197,7 @@ IMPORTANT: Return valid JSON only, no markdown, with this structure:
     }
   ]
 }`,
-          input: `Generate study notes for the skill: "${skill.title}" in the ${unitName} unit.`,
+          input: `Generate study notes for the skill: "${skillName}" in the ${unitName} unit.`,
         });
 
         const parsed = JSON.parse(response.output_text);
@@ -218,15 +220,15 @@ IMPORTANT: Return valid JSON only, no markdown, with this structure:
       const unitName = UNIT_NAMES[skill.unitId] || 'Legal Practice';
       sections.push({
         id: 'fallback-1',
-        title: `Study Notes: ${skill.title}`,
-        content: `**${skill.title}**\n\nThis skill is part of the ${unitName} unit in the Kenya Bar Examination.\n\n**Key Focus Areas:**\n- Understand the relevant statutory provisions\n- Review applicable case law and precedents\n- Practice applying the principles to factual scenarios\n\n**Study Tips:**\n- Focus on the Constitution of Kenya 2010 where relevant\n- Review any statutory requirements that govern this area\n- Practice writing structured legal answers`,
+        title: `Study Notes: ${skillName}`,
+        content: `**${skillName}**\n\nThis skill is part of the ${unitName} unit in the Kenya Bar Examination.\n\n**Key Focus Areas:**\n- Understand the relevant statutory provisions\n- Review applicable case law and precedents\n- Practice applying the principles to factual scenarios\n\n**Study Tips:**\n- Focus on the Constitution of Kenya 2010 where relevant\n- Review any statutory requirements that govern this area\n- Practice writing structured legal answers`,
         examTips: 'Always cite specific provisions and use IRAC method (Issue, Rule, Application, Conclusion).',
       });
     }
 
     return NextResponse.json({
       skillId: skill.id,
-      skillName: skill.title,
+      skillName,
       unitId: skill.unitId,
       sections,
       authorities,

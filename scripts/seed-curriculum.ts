@@ -23,7 +23,7 @@ dotenv.config();
 interface SkillDef {
   code: string;
   name: string;
-  difficulty: 'foundation' | 'core' | 'advanced';
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
   weight: number;
   formats: ('mcq' | 'written' | 'oral' | 'drafting')[];
   isCore: boolean;
@@ -77,19 +77,19 @@ function fmtToMinutes(f: string): number {
 // ─────────────────────────────────────────
 const ATP100_SKILLS: SkillDef[] = [
   // Foundation
-  { code: 'cp-jurisdiction', name: 'Jurisdiction Analysis', difficulty: 'foundation', weight: 0.08, formats: ['written', 'mcq'], isCore: true },
-  { code: 'cp-parties', name: 'Parties to Civil Proceedings', difficulty: 'foundation', weight: 0.05, formats: ['written', 'mcq'], isCore: true },
-  { code: 'cp-cause-action', name: 'Cause of Action Elements', difficulty: 'foundation', weight: 0.07, formats: ['written', 'mcq'], isCore: true },
-  { code: 'cp-limitation', name: 'Limitation Periods', difficulty: 'foundation', weight: 0.05, formats: ['mcq', 'written'], isCore: false },
-  { code: 'cp-service', name: 'Service of Process', difficulty: 'foundation', weight: 0.04, formats: ['mcq', 'drafting'], isCore: false },
+  { code: 'cp-jurisdiction', name: 'Jurisdiction Analysis', difficulty: 'beginner', weight: 0.08, formats: ['written', 'mcq'], isCore: true },
+  { code: 'cp-parties', name: 'Parties to Civil Proceedings', difficulty: 'beginner', weight: 0.05, formats: ['written', 'mcq'], isCore: true },
+  { code: 'cp-cause-action', name: 'Cause of Action Elements', difficulty: 'beginner', weight: 0.07, formats: ['written', 'mcq'], isCore: true },
+  { code: 'cp-limitation', name: 'Limitation Periods', difficulty: 'beginner', weight: 0.05, formats: ['mcq', 'written'], isCore: false },
+  { code: 'cp-service', name: 'Service of Process', difficulty: 'beginner', weight: 0.04, formats: ['mcq', 'drafting'], isCore: false },
   // Core
-  { code: 'cp-plaint-draft', name: 'Plaint Drafting', difficulty: 'core', weight: 0.08, formats: ['drafting'], isCore: true, prereqs: ['cp-jurisdiction', 'cp-parties', 'cp-cause-action'] },
-  { code: 'cp-defence-draft', name: 'Defence Drafting', difficulty: 'core', weight: 0.06, formats: ['drafting'], isCore: true, prereqs: ['cp-plaint-draft'] },
-  { code: 'cp-counterclaim', name: 'Counterclaim Procedure', difficulty: 'core', weight: 0.05, formats: ['written', 'drafting'], isCore: false, prereqs: ['cp-defence-draft'] },
-  { code: 'cp-interlocutory', name: 'Interlocutory Applications', difficulty: 'core', weight: 0.07, formats: ['written', 'oral', 'drafting'], isCore: true, prereqs: ['cp-plaint-draft'] },
-  { code: 'cp-injunction', name: 'Injunction Applications', difficulty: 'core', weight: 0.08, formats: ['written', 'oral', 'drafting'], isCore: true, prereqs: ['cp-interlocutory'] },
-  { code: 'cp-summary-judg', name: 'Summary Judgment', difficulty: 'core', weight: 0.05, formats: ['written', 'oral'], isCore: false, prereqs: ['cp-plaint-draft', 'cp-defence-draft'] },
-  { code: 'cp-discovery', name: 'Discovery & Interrogatories', difficulty: 'core', weight: 0.05, formats: ['written', 'drafting'], isCore: false, prereqs: ['cp-plaint-draft'] },
+  { code: 'cp-plaint-draft', name: 'Plaint Drafting', difficulty: 'intermediate', weight: 0.08, formats: ['drafting'], isCore: true, prereqs: ['cp-jurisdiction', 'cp-parties', 'cp-cause-action'] },
+  { code: 'cp-defence-draft', name: 'Defence Drafting', difficulty: 'intermediate', weight: 0.06, formats: ['drafting'], isCore: true, prereqs: ['cp-plaint-draft'] },
+  { code: 'cp-counterclaim', name: 'Counterclaim Procedure', difficulty: 'intermediate', weight: 0.05, formats: ['written', 'drafting'], isCore: false, prereqs: ['cp-defence-draft'] },
+  { code: 'cp-interlocutory', name: 'Interlocutory Applications', difficulty: 'intermediate', weight: 0.07, formats: ['written', 'oral', 'drafting'], isCore: true, prereqs: ['cp-plaint-draft'] },
+  { code: 'cp-injunction', name: 'Injunction Applications', difficulty: 'intermediate', weight: 0.08, formats: ['written', 'oral', 'drafting'], isCore: true, prereqs: ['cp-interlocutory'] },
+  { code: 'cp-summary-judg', name: 'Summary Judgment', difficulty: 'intermediate', weight: 0.05, formats: ['written', 'oral'], isCore: false, prereqs: ['cp-plaint-draft', 'cp-defence-draft'] },
+  { code: 'cp-discovery', name: 'Discovery & Interrogatories', difficulty: 'intermediate', weight: 0.05, formats: ['written', 'drafting'], isCore: false, prereqs: ['cp-plaint-draft'] },
   // Advanced
   { code: 'cp-trial-conduct', name: 'Trial Conduct & Evidence', difficulty: 'advanced', weight: 0.08, formats: ['oral', 'written'], isCore: true, prereqs: ['cp-interlocutory', 'cp-discovery'] },
   { code: 'cp-examination', name: 'Witness Examination', difficulty: 'advanced', weight: 0.06, formats: ['oral'], isCore: true, prereqs: ['cp-trial-conduct'] },
@@ -98,12 +98,15 @@ const ATP100_SKILLS: SkillDef[] = [
   { code: 'cp-appeals', name: 'Appeals & Review', difficulty: 'advanced', weight: 0.06, formats: ['written', 'oral'], isCore: true, prereqs: ['cp-judgment-draft'] },
   { code: 'cp-jud-review', name: 'Judicial Review', difficulty: 'advanced', weight: 0.06, formats: ['written', 'drafting'], isCore: true, prereqs: ['cp-interlocutory'] },
   { code: 'cp-const-lit', name: 'Constitutional Litigation', difficulty: 'advanced', weight: 0.06, formats: ['written', 'drafting'], isCore: true, prereqs: ['cp-jud-review'] },
+  { code: 'cp-overriding-obj', name: 'Overriding Objective in Civil Litigation', difficulty: 'beginner', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
+  { code: 'cp-costs', name: 'Costs and Taxation of Bills', difficulty: 'advanced', weight: 0.07, formats: ['written', 'drafting', 'mcq'], isCore: true, prereqs: ['cp-trial-conduct'] },
+  { code: 'cp-civil-review', name: 'Civil Review under S.80 CPA', difficulty: 'advanced', weight: 0.04, formats: ['written', 'drafting'], isCore: false, prereqs: ['cp-judgment-draft'] },
   // CASE LAW MASTERY
-  { code: 'cp-case-giella', name: 'Case: Giella v Cassman Brown (Injunction Principles)', difficulty: 'core', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['cp-injunction'] },
-  { code: 'cp-case-shah', name: 'Case: Shah v Mbogo (Striking Out)', difficulty: 'core', weight: 0.03, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['cp-interlocutory'] },
+  { code: 'cp-case-giella', name: 'Case: Giella v Cassman Brown (Injunction Principles)', difficulty: 'intermediate', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['cp-injunction'] },
+  { code: 'cp-case-shah', name: 'Case: Shah v Mbogo (Striking Out)', difficulty: 'intermediate', weight: 0.03, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['cp-interlocutory'] },
   { code: 'cp-case-anarita', name: 'Case: Anarita Karimi v Republic (Constitutional Petitions)', difficulty: 'advanced', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['cp-const-lit'] },
-  { code: 'cp-case-jasbir', name: 'Case: Jasbir Singh Rai v Tarlochan Singh (Default Judgment)', difficulty: 'core', weight: 0.03, formats: ['mcq', 'written'], isCore: false, isCaseLaw: true, prereqs: ['cp-defence-draft'] },
-  { code: 'cp-case-mukisa', name: 'Case: Mukisa Biscuit v West End Distributors (Preliminary Objections)', difficulty: 'core', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['cp-interlocutory'] },
+  { code: 'cp-case-jasbir', name: 'Case: Jasbir Singh Rai v Tarlochan Singh (Default Judgment)', difficulty: 'intermediate', weight: 0.03, formats: ['mcq', 'written'], isCore: false, isCaseLaw: true, prereqs: ['cp-defence-draft'] },
+  { code: 'cp-case-mukisa', name: 'Case: Mukisa Biscuit v West End Distributors (Preliminary Objections)', difficulty: 'intermediate', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['cp-interlocutory'] },
 ];
 
 // ─────────────────────────────────────────
@@ -111,17 +114,17 @@ const ATP100_SKILLS: SkillDef[] = [
 // ─────────────────────────────────────────
 const ATP101_SKILLS: SkillDef[] = [
   // Foundation
-  { code: 'cr-jurisdiction', name: 'Criminal Court Jurisdiction', difficulty: 'foundation', weight: 0.06, formats: ['mcq', 'written'], isCore: true },
-  { code: 'cr-arrests', name: 'Arrests & Rights of Suspects', difficulty: 'foundation', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
-  { code: 'cr-bail-bond', name: 'Bail and Bond', difficulty: 'foundation', weight: 0.06, formats: ['written', 'drafting'], isCore: true },
-  { code: 'cr-charges', name: 'Framing and Drafting Charges', difficulty: 'foundation', weight: 0.07, formats: ['drafting', 'mcq'], isCore: true },
+  { code: 'cr-jurisdiction', name: 'Criminal Court Jurisdiction', difficulty: 'beginner', weight: 0.06, formats: ['mcq', 'written'], isCore: true },
+  { code: 'cr-arrests', name: 'Arrests & Rights of Suspects', difficulty: 'beginner', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
+  { code: 'cr-bail-bond', name: 'Bail and Bond', difficulty: 'beginner', weight: 0.06, formats: ['written', 'drafting'], isCore: true },
+  { code: 'cr-charges', name: 'Framing and Drafting Charges', difficulty: 'beginner', weight: 0.07, formats: ['drafting', 'mcq'], isCore: true },
   // Core
-  { code: 'cr-plea', name: 'Plea and Plea Bargaining', difficulty: 'core', weight: 0.06, formats: ['written', 'oral'], isCore: true, prereqs: ['cr-charges'] },
-  { code: 'cr-trial-process', name: 'Criminal Trial Process', difficulty: 'core', weight: 0.08, formats: ['oral', 'written'], isCore: true, prereqs: ['cr-plea'] },
-  { code: 'cr-evidence-handling', name: 'Evidence Handling in Criminal Trials', difficulty: 'core', weight: 0.07, formats: ['oral', 'written'], isCore: true, prereqs: ['cr-trial-process'] },
-  { code: 'cr-sentencing', name: 'Sentencing & Mitigation', difficulty: 'core', weight: 0.06, formats: ['oral', 'written'], isCore: true, prereqs: ['cr-trial-process'] },
-  { code: 'cr-id-parade', name: 'Identification Parade Procedures', difficulty: 'core', weight: 0.04, formats: ['written', 'mcq'], isCore: false, prereqs: ['cr-arrests'] },
-  { code: 'cr-file-prep', name: 'Prosecution File Preparation', difficulty: 'core', weight: 0.04, formats: ['written', 'drafting'], isCore: false, prereqs: ['cr-charges'] },
+  { code: 'cr-plea', name: 'Plea and Plea Bargaining', difficulty: 'intermediate', weight: 0.06, formats: ['written', 'oral'], isCore: true, prereqs: ['cr-charges'] },
+  { code: 'cr-trial-process', name: 'Criminal Trial Process', difficulty: 'intermediate', weight: 0.08, formats: ['oral', 'written'], isCore: true, prereqs: ['cr-plea'] },
+  { code: 'cr-evidence-handling', name: 'Evidence Handling in Criminal Trials', difficulty: 'intermediate', weight: 0.07, formats: ['oral', 'written'], isCore: true, prereqs: ['cr-trial-process'] },
+  { code: 'cr-sentencing', name: 'Sentencing & Mitigation', difficulty: 'intermediate', weight: 0.06, formats: ['oral', 'written'], isCore: true, prereqs: ['cr-trial-process'] },
+  { code: 'cr-id-parade', name: 'Identification Parade Procedures', difficulty: 'intermediate', weight: 0.04, formats: ['written', 'mcq'], isCore: false, prereqs: ['cr-arrests'] },
+  { code: 'cr-file-prep', name: 'Prosecution File Preparation', difficulty: 'intermediate', weight: 0.04, formats: ['written', 'drafting'], isCore: false, prereqs: ['cr-charges'] },
   // Advanced
   { code: 'cr-appeals', name: 'Criminal Appeals', difficulty: 'advanced', weight: 0.07, formats: ['written', 'oral', 'drafting'], isCore: true, prereqs: ['cr-sentencing'] },
   { code: 'cr-revision', name: 'Criminal Revision', difficulty: 'advanced', weight: 0.04, formats: ['written', 'drafting'], isCore: false, prereqs: ['cr-sentencing'] },
@@ -129,10 +132,12 @@ const ATP101_SKILLS: SkillDef[] = [
   { code: 'cr-private-prosecution', name: 'Private Prosecution', difficulty: 'advanced', weight: 0.04, formats: ['written', 'drafting'], isCore: false, prereqs: ['cr-charges'] },
   { code: 'cr-extradition', name: 'Extradition Proceedings', difficulty: 'advanced', weight: 0.03, formats: ['written'], isCore: false, prereqs: ['cr-jurisdiction'] },
   { code: 'cr-special-courts', name: 'Specialized Criminal Courts', difficulty: 'advanced', weight: 0.03, formats: ['written', 'mcq'], isCore: false, prereqs: ['cr-jurisdiction'] },
+  { code: 'cr-inquests', name: 'Inquest Procedures', difficulty: 'advanced', weight: 0.03, formats: ['written', 'drafting'], isCore: false, prereqs: ['cr-jurisdiction'] },
+  { code: 'cr-jud-review', name: 'Judicial Review in Criminal Matters', difficulty: 'advanced', weight: 0.04, formats: ['written', 'drafting'], isCore: false, prereqs: ['cr-trial-process'] },
   // CASE LAW MASTERY
-  { code: 'cr-case-woolmington', name: 'Case: Woolmington v DPP (Burden of Proof)', difficulty: 'foundation', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true },
+  { code: 'cr-case-woolmington', name: 'Case: Woolmington v DPP (Burden of Proof)', difficulty: 'beginner', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true },
   { code: 'cr-case-abolfathi', name: 'Case: Republic v Ahmad Abolfathi (Terrorism Trials)', difficulty: 'advanced', weight: 0.03, formats: ['mcq', 'written'], isCore: false, isCaseLaw: true, prereqs: ['cr-trial-process'] },
-  { code: 'cr-case-karanja', name: 'Case: Republic v Karanja (Confession & Voir Dire)', difficulty: 'core', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['cr-evidence-handling'] },
+  { code: 'cr-case-karanja', name: 'Case: Republic v Karanja (Confession & Voir Dire)', difficulty: 'intermediate', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['cr-evidence-handling'] },
   { code: 'cr-case-muruatetu', name: 'Case: Muruatetu v Republic (Mandatory Death Sentence)', difficulty: 'advanced', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['cr-sentencing'] },
 ];
 
@@ -141,27 +146,29 @@ const ATP101_SKILLS: SkillDef[] = [
 // ─────────────────────────────────────────
 const ATP102_SKILLS: SkillDef[] = [
   // Foundation
-  { code: 'pb-succession-framework', name: 'Legal Framework of Succession', difficulty: 'foundation', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
-  { code: 'pb-wills-valid', name: 'Validity of Wills (Requirements)', difficulty: 'foundation', weight: 0.07, formats: ['written', 'mcq'], isCore: true },
-  { code: 'pb-intestacy-rules', name: 'Intestate Succession Rules', difficulty: 'foundation', weight: 0.07, formats: ['written', 'mcq'], isCore: true },
+  { code: 'pb-succession-framework', name: 'Legal Framework of Succession', difficulty: 'beginner', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
+  { code: 'pb-wills-valid', name: 'Validity of Wills (Requirements)', difficulty: 'beginner', weight: 0.07, formats: ['written', 'mcq'], isCore: true },
+  { code: 'pb-intestacy-rules', name: 'Intestate Succession Rules', difficulty: 'beginner', weight: 0.07, formats: ['written', 'mcq'], isCore: true },
   // Core
-  { code: 'pb-will-drafting', name: 'Will & Codicil Drafting', difficulty: 'core', weight: 0.08, formats: ['drafting'], isCore: true, prereqs: ['pb-wills-valid'] },
-  { code: 'pb-revocation', name: 'Revocation & Alteration of Wills', difficulty: 'core', weight: 0.05, formats: ['written', 'mcq'], isCore: false, prereqs: ['pb-wills-valid'] },
-  { code: 'pb-proof-wills', name: 'Proof of Wills', difficulty: 'core', weight: 0.05, formats: ['written', 'oral'], isCore: true, prereqs: ['pb-wills-valid'] },
-  { code: 'pb-petition-grant', name: 'Petition for Grant of Letters', difficulty: 'core', weight: 0.08, formats: ['drafting', 'written'], isCore: true, prereqs: ['pb-succession-framework'] },
-  { code: 'pb-objections', name: 'Objections to Grants', difficulty: 'core', weight: 0.06, formats: ['written', 'drafting', 'oral'], isCore: true, prereqs: ['pb-petition-grant'] },
-  { code: 'pb-distribution', name: 'Distribution of Estate', difficulty: 'core', weight: 0.06, formats: ['written', 'mcq'], isCore: true, prereqs: ['pb-intestacy-rules'] },
-  { code: 'pb-reasonable-provision', name: 'Application for Reasonable Provision', difficulty: 'core', weight: 0.05, formats: ['written', 'drafting'], isCore: false, prereqs: ['pb-distribution'] },
+  { code: 'pb-will-drafting', name: 'Will & Codicil Drafting', difficulty: 'intermediate', weight: 0.08, formats: ['drafting'], isCore: true, prereqs: ['pb-wills-valid'] },
+  { code: 'pb-revocation', name: 'Revocation & Alteration of Wills', difficulty: 'intermediate', weight: 0.05, formats: ['written', 'mcq'], isCore: false, prereqs: ['pb-wills-valid'] },
+  { code: 'pb-proof-wills', name: 'Proof of Wills', difficulty: 'intermediate', weight: 0.05, formats: ['written', 'oral'], isCore: true, prereqs: ['pb-wills-valid'] },
+  { code: 'pb-petition-grant', name: 'Petition for Grant of Letters', difficulty: 'intermediate', weight: 0.08, formats: ['drafting', 'written'], isCore: true, prereqs: ['pb-succession-framework'] },
+  { code: 'pb-objections', name: 'Objections to Grants', difficulty: 'intermediate', weight: 0.06, formats: ['written', 'drafting', 'oral'], isCore: true, prereqs: ['pb-petition-grant'] },
+  { code: 'pb-distribution', name: 'Distribution of Estate', difficulty: 'intermediate', weight: 0.06, formats: ['written', 'mcq'], isCore: true, prereqs: ['pb-intestacy-rules'] },
+  { code: 'pb-reasonable-provision', name: 'Application for Reasonable Provision', difficulty: 'intermediate', weight: 0.05, formats: ['written', 'drafting'], isCore: false, prereqs: ['pb-distribution'] },
   // Advanced
   { code: 'pb-confirmation', name: 'Confirmation of Grants', difficulty: 'advanced', weight: 0.06, formats: ['written', 'drafting'], isCore: true, prereqs: ['pb-petition-grant'] },
   { code: 'pb-revocation-grant', name: 'Revocation & Annulment of Grants', difficulty: 'advanced', weight: 0.05, formats: ['written', 'drafting'], isCore: false, prereqs: ['pb-confirmation'] },
   { code: 'pb-pr-duties', name: 'Duties of Personal Representatives', difficulty: 'advanced', weight: 0.05, formats: ['written', 'mcq'], isCore: true, prereqs: ['pb-petition-grant'] },
   { code: 'pb-estate-accounts', name: 'Estate Accounts', difficulty: 'advanced', weight: 0.04, formats: ['written', 'drafting'], isCore: false, prereqs: ['pb-pr-duties'] },
   { code: 'pb-foreign-succession', name: 'Foreign Succession', difficulty: 'advanced', weight: 0.03, formats: ['written'], isCore: false, prereqs: ['pb-succession-framework'] },
+  { code: 'pb-intermeddling', name: 'Intermeddling & Protection of Estate', difficulty: 'intermediate', weight: 0.04, formats: ['written', 'mcq'], isCore: false, prereqs: ['pb-succession-framework'] },
+  { code: 'pb-limited-grants', name: 'Limited Grants (Types & Procedure)', difficulty: 'advanced', weight: 0.04, formats: ['written', 'drafting'], isCore: false, prereqs: ['pb-petition-grant'] },
   // CASE LAW MASTERY
-  { code: 'pb-case-otieno', name: 'Case: In re Estate of SM Otieno (Customary vs Statutory)', difficulty: 'core', weight: 0.05, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['pb-succession-framework'] },
-  { code: 'pb-case-ruenji', name: 'Case: In re Estate of Ruenji (Grant Applications)', difficulty: 'core', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['pb-petition-grant'] },
-  { code: 'pb-case-wanjiku', name: 'Case: Hortensia Wanjiku v Stephen Thuita (Dependant Claims)', difficulty: 'core', weight: 0.03, formats: ['mcq', 'written'], isCore: false, isCaseLaw: true, prereqs: ['pb-reasonable-provision'] },
+  { code: 'pb-case-otieno', name: 'Case: In re Estate of SM Otieno (Customary vs Statutory)', difficulty: 'intermediate', weight: 0.05, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['pb-succession-framework'] },
+  { code: 'pb-case-ruenji', name: 'Case: In re Estate of Ruenji (Grant Applications)', difficulty: 'intermediate', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['pb-petition-grant'] },
+  { code: 'pb-case-wanjiku', name: 'Case: Hortensia Wanjiku v Stephen Thuita (Dependant Claims)', difficulty: 'intermediate', weight: 0.03, formats: ['mcq', 'written'], isCore: false, isCaseLaw: true, prereqs: ['pb-reasonable-provision'] },
 ];
 
 // ─────────────────────────────────────────
@@ -169,17 +176,17 @@ const ATP102_SKILLS: SkillDef[] = [
 // ─────────────────────────────────────────
 const ATP103_SKILLS: SkillDef[] = [
   // Foundation
-  { code: 'lw-plain-english', name: 'Plain English & Legal Clarity', difficulty: 'foundation', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
-  { code: 'lw-paragraphing', name: 'Paragraphing & Structure', difficulty: 'foundation', weight: 0.05, formats: ['written'], isCore: true },
-  { code: 'lw-case-briefing', name: 'Case Briefing', difficulty: 'foundation', weight: 0.06, formats: ['written'], isCore: true },
-  { code: 'lw-case-analysis', name: 'Case Analysis', difficulty: 'foundation', weight: 0.06, formats: ['written'], isCore: true, prereqs: ['lw-case-briefing'] },
-  { code: 'lw-research-skills', name: 'Legal Research & Analysis', difficulty: 'foundation', weight: 0.05, formats: ['written'], isCore: false },
+  { code: 'lw-plain-english', name: 'Plain English & Legal Clarity', difficulty: 'beginner', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
+  { code: 'lw-paragraphing', name: 'Paragraphing & Structure', difficulty: 'beginner', weight: 0.05, formats: ['written'], isCore: true },
+  { code: 'lw-case-briefing', name: 'Case Briefing', difficulty: 'beginner', weight: 0.06, formats: ['written'], isCore: true },
+  { code: 'lw-case-analysis', name: 'Case Analysis', difficulty: 'beginner', weight: 0.06, formats: ['written'], isCore: true, prereqs: ['lw-case-briefing'] },
+  { code: 'lw-research-skills', name: 'Legal Research & Analysis', difficulty: 'beginner', weight: 0.05, formats: ['written'], isCore: false },
   // Core
-  { code: 'lw-letters', name: 'Drafting Legal Letters', difficulty: 'core', weight: 0.06, formats: ['drafting'], isCore: true, prereqs: ['lw-plain-english'] },
-  { code: 'lw-demand-letters', name: 'Drafting Demand Letters', difficulty: 'core', weight: 0.06, formats: ['drafting'], isCore: true, prereqs: ['lw-letters'] },
-  { code: 'lw-legal-opinions', name: 'Drafting Legal Opinions', difficulty: 'core', weight: 0.07, formats: ['drafting', 'written'], isCore: true, prereqs: ['lw-case-analysis', 'lw-letters'] },
-  { code: 'lw-contracts', name: 'Contract Drafting', difficulty: 'core', weight: 0.07, formats: ['drafting'], isCore: true, prereqs: ['lw-plain-english'] },
-  { code: 'lw-affidavits', name: 'Drafting Affidavits & Statutory Declarations', difficulty: 'core', weight: 0.06, formats: ['drafting'], isCore: true, prereqs: ['lw-plain-english'] },
+  { code: 'lw-letters', name: 'Drafting Legal Letters', difficulty: 'intermediate', weight: 0.06, formats: ['drafting'], isCore: true, prereqs: ['lw-plain-english'] },
+  { code: 'lw-demand-letters', name: 'Drafting Demand Letters', difficulty: 'intermediate', weight: 0.06, formats: ['drafting'], isCore: true, prereqs: ['lw-letters'] },
+  { code: 'lw-legal-opinions', name: 'Drafting Legal Opinions', difficulty: 'intermediate', weight: 0.07, formats: ['drafting', 'written'], isCore: true, prereqs: ['lw-case-analysis', 'lw-letters'] },
+  { code: 'lw-contracts', name: 'Contract Drafting', difficulty: 'intermediate', weight: 0.07, formats: ['drafting'], isCore: true, prereqs: ['lw-plain-english'] },
+  { code: 'lw-affidavits', name: 'Drafting Affidavits & Statutory Declarations', difficulty: 'intermediate', weight: 0.06, formats: ['drafting'], isCore: true, prereqs: ['lw-plain-english'] },
   // Advanced
   { code: 'lw-bill-structure', name: 'Structure of a Bill', difficulty: 'advanced', weight: 0.06, formats: ['drafting', 'written'], isCore: true, prereqs: ['lw-contracts'] },
   { code: 'lw-legislative-sentence', name: 'The Legislative Sentence', difficulty: 'advanced', weight: 0.04, formats: ['written', 'drafting'], isCore: false, prereqs: ['lw-bill-structure'] },
@@ -193,25 +200,26 @@ const ATP103_SKILLS: SkillDef[] = [
 // ─────────────────────────────────────────
 const ATP104_SKILLS: SkillDef[] = [
   // Foundation
-  { code: 'ta-qualities', name: 'Qualities of a Trial Lawyer', difficulty: 'foundation', weight: 0.04, formats: ['written', 'mcq'], isCore: false },
-  { code: 'ta-ethics', name: 'Ethical Duties of Trial Lawyers', difficulty: 'foundation', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
-  { code: 'ta-court-etiquette', name: 'Court Etiquette', difficulty: 'foundation', weight: 0.04, formats: ['mcq', 'oral'], isCore: false },
-  { code: 'ta-conflict-interest', name: 'Conflict of Interest in Advocacy', difficulty: 'foundation', weight: 0.05, formats: ['written', 'mcq'], isCore: true },
-  { code: 'ta-pretrial-prep', name: 'Pre-Trial Preparation & Case Theory', difficulty: 'foundation', weight: 0.07, formats: ['written'], isCore: true },
+  { code: 'ta-qualities', name: 'Qualities of a Trial Lawyer', difficulty: 'beginner', weight: 0.04, formats: ['written', 'mcq'], isCore: false },
+  { code: 'ta-ethics', name: 'Ethical Duties of Trial Lawyers', difficulty: 'beginner', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
+  { code: 'ta-court-etiquette', name: 'Court Etiquette', difficulty: 'beginner', weight: 0.04, formats: ['mcq', 'oral'], isCore: false },
+  { code: 'ta-conflict-interest', name: 'Conflict of Interest in Advocacy', difficulty: 'beginner', weight: 0.05, formats: ['written', 'mcq'], isCore: true },
+  { code: 'ta-pretrial-prep', name: 'Pre-Trial Preparation & Case Theory', difficulty: 'beginner', weight: 0.07, formats: ['written'], isCore: true },
   // Core
-  { code: 'ta-opening-statement', name: 'Opening Statement', difficulty: 'core', weight: 0.07, formats: ['oral'], isCore: true, prereqs: ['ta-pretrial-prep'] },
-  { code: 'ta-examination-chief', name: 'Examination-in-Chief', difficulty: 'core', weight: 0.08, formats: ['oral'], isCore: true, prereqs: ['ta-opening-statement'] },
-  { code: 'ta-cross-examination', name: 'Cross-Examination', difficulty: 'core', weight: 0.09, formats: ['oral'], isCore: true, prereqs: ['ta-examination-chief'] },
-  { code: 'ta-re-examination', name: 'Re-Examination', difficulty: 'core', weight: 0.05, formats: ['oral'], isCore: true, prereqs: ['ta-cross-examination'] },
-  { code: 'ta-objections', name: 'Trial Objections', difficulty: 'core', weight: 0.06, formats: ['oral', 'written'], isCore: true, prereqs: ['ta-examination-chief'] },
+  { code: 'ta-opening-statement', name: 'Opening Statement', difficulty: 'intermediate', weight: 0.07, formats: ['oral'], isCore: true, prereqs: ['ta-pretrial-prep'] },
+  { code: 'ta-examination-chief', name: 'Examination-in-Chief', difficulty: 'intermediate', weight: 0.08, formats: ['oral'], isCore: true, prereqs: ['ta-opening-statement'] },
+  { code: 'ta-cross-examination', name: 'Cross-Examination', difficulty: 'intermediate', weight: 0.09, formats: ['oral'], isCore: true, prereqs: ['ta-examination-chief'] },
+  { code: 'ta-re-examination', name: 'Re-Examination', difficulty: 'intermediate', weight: 0.05, formats: ['oral'], isCore: true, prereqs: ['ta-cross-examination'] },
+  { code: 'ta-objections', name: 'Trial Objections', difficulty: 'intermediate', weight: 0.06, formats: ['oral', 'written'], isCore: true, prereqs: ['ta-examination-chief'] },
   // Advanced
   { code: 'ta-closing-argument', name: 'Closing Argument', difficulty: 'advanced', weight: 0.07, formats: ['oral'], isCore: true, prereqs: ['ta-re-examination'] },
   { code: 'ta-expert-witnesses', name: 'Handling Expert Witnesses', difficulty: 'advanced', weight: 0.06, formats: ['oral', 'written'], isCore: true, prereqs: ['ta-cross-examination'] },
   { code: 'ta-skeleton-arguments', name: 'Skeleton Arguments Drafting', difficulty: 'advanced', weight: 0.06, formats: ['drafting'], isCore: true, prereqs: ['ta-closing-argument'] },
   { code: 'ta-appellate-advocacy', name: 'Appellate Advocacy', difficulty: 'advanced', weight: 0.05, formats: ['oral', 'written'], isCore: true, prereqs: ['ta-closing-argument'] },
+  { code: 'ta-adr', name: 'Alternative Dispute Resolution in Advocacy', difficulty: 'advanced', weight: 0.04, formats: ['written', 'oral'], isCore: false, prereqs: ['ta-pretrial-prep'] },
   // CASE LAW MASTERY
-  { code: 'ta-case-browne', name: 'Case: Browne v Dunn (Duty to Cross-Examine)', difficulty: 'core', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['ta-cross-examination'] },
-  { code: 'ta-case-turnbull', name: 'Case: R v Turnbull (Identification Evidence)', difficulty: 'core', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['ta-examination-chief'] },
+  { code: 'ta-case-browne', name: 'Case: Browne v Dunn (Duty to Cross-Examine)', difficulty: 'intermediate', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['ta-cross-examination'] },
+  { code: 'ta-case-turnbull', name: 'Case: R v Turnbull (Identification Evidence)', difficulty: 'intermediate', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['ta-examination-chief'] },
 ];
 
 // ─────────────────────────────────────────
@@ -219,26 +227,26 @@ const ATP104_SKILLS: SkillDef[] = [
 // ─────────────────────────────────────────
 const ATP105_SKILLS: SkillDef[] = [
   // Foundation
-  { code: 'pe-profession', name: 'Law as a Profession', difficulty: 'foundation', weight: 0.04, formats: ['written', 'mcq'], isCore: false },
-  { code: 'pe-lsk-role', name: 'Role of LSK', difficulty: 'foundation', weight: 0.04, formats: ['written', 'mcq'], isCore: false },
-  { code: 'pe-core-values', name: 'Core Professional Values (SOPPEC)', difficulty: 'foundation', weight: 0.07, formats: ['written', 'mcq'], isCore: true },
-  { code: 'pe-confidentiality', name: 'Confidentiality & Privilege', difficulty: 'foundation', weight: 0.07, formats: ['written', 'mcq'], isCore: true },
+  { code: 'pe-profession', name: 'Law as a Profession', difficulty: 'beginner', weight: 0.04, formats: ['written', 'mcq'], isCore: false },
+  { code: 'pe-lsk-role', name: 'Role of LSK', difficulty: 'beginner', weight: 0.04, formats: ['written', 'mcq'], isCore: false },
+  { code: 'pe-core-values', name: 'Core Professional Values (SOPPEC)', difficulty: 'beginner', weight: 0.07, formats: ['written', 'mcq'], isCore: true },
+  { code: 'pe-confidentiality', name: 'Confidentiality & Privilege', difficulty: 'beginner', weight: 0.07, formats: ['written', 'mcq'], isCore: true },
   // Core
-  { code: 'pe-conflict-interest', name: 'Conflict of Interest', difficulty: 'core', weight: 0.07, formats: ['written', 'mcq'], isCore: true, prereqs: ['pe-core-values'] },
-  { code: 'pe-competence', name: 'Competence & Diligence', difficulty: 'core', weight: 0.05, formats: ['written', 'drafting'], isCore: true, prereqs: ['pe-core-values'] },
-  { code: 'pe-fees-retainer', name: 'Professional Fee & Retainer', difficulty: 'core', weight: 0.06, formats: ['written', 'drafting'], isCore: true, prereqs: ['pe-core-values'] },
-  { code: 'pe-taxation-costs', name: 'Taxation of Bills of Costs', difficulty: 'core', weight: 0.06, formats: ['written', 'drafting'], isCore: true, prereqs: ['pe-fees-retainer'] },
-  { code: 'pe-fiduciary', name: 'Fiduciary Duty & Client Accounts', difficulty: 'core', weight: 0.06, formats: ['written', 'mcq'], isCore: true, prereqs: ['pe-core-values'] },
-  { code: 'pe-undertakings', name: 'Professional Undertakings', difficulty: 'core', weight: 0.06, formats: ['written', 'drafting'], isCore: true, prereqs: ['pe-core-values'] },
-  { code: 'pe-advocate-lien', name: 'Advocate Lien', difficulty: 'core', weight: 0.04, formats: ['written', 'mcq'], isCore: false, prereqs: ['pe-fees-retainer'] },
+  { code: 'pe-conflict-interest', name: 'Conflict of Interest', difficulty: 'intermediate', weight: 0.07, formats: ['written', 'mcq'], isCore: true, prereqs: ['pe-core-values'] },
+  { code: 'pe-competence', name: 'Competence & Diligence', difficulty: 'intermediate', weight: 0.05, formats: ['written', 'drafting'], isCore: true, prereqs: ['pe-core-values'] },
+  { code: 'pe-fees-retainer', name: 'Professional Fee & Retainer', difficulty: 'intermediate', weight: 0.06, formats: ['written', 'drafting'], isCore: true, prereqs: ['pe-core-values'] },
+  { code: 'pe-taxation-costs', name: 'Taxation of Bills of Costs', difficulty: 'intermediate', weight: 0.06, formats: ['written', 'drafting'], isCore: true, prereqs: ['pe-fees-retainer'] },
+  { code: 'pe-fiduciary', name: 'Fiduciary Duty & Client Accounts', difficulty: 'intermediate', weight: 0.06, formats: ['written', 'mcq'], isCore: true, prereqs: ['pe-core-values'] },
+  { code: 'pe-undertakings', name: 'Professional Undertakings', difficulty: 'intermediate', weight: 0.06, formats: ['written', 'drafting'], isCore: true, prereqs: ['pe-core-values'] },
+  { code: 'pe-advocate-lien', name: 'Advocate Lien', difficulty: 'intermediate', weight: 0.04, formats: ['written', 'mcq'], isCore: false, prereqs: ['pe-fees-retainer'] },
   // Advanced
   { code: 'pe-contempt', name: 'Contempt of Court', difficulty: 'advanced', weight: 0.06, formats: ['written', 'drafting'], isCore: true, prereqs: ['pe-core-values'] },
   { code: 'pe-disciplinary', name: 'Advocates Disciplinary Process', difficulty: 'advanced', weight: 0.05, formats: ['written', 'drafting'], isCore: false, prereqs: ['pe-core-values'] },
   { code: 'pe-aml', name: 'Anti-Money Laundering Obligations', difficulty: 'advanced', weight: 0.05, formats: ['written', 'mcq'], isCore: true, prereqs: ['pe-fiduciary'] },
   { code: 'pe-ai-ethics', name: 'Techno Ethics & AI in Law', difficulty: 'advanced', weight: 0.03, formats: ['written', 'mcq'], isCore: false },
   // CASE LAW MASTERY
-  { code: 'pe-case-otieno-clifford', name: 'Case: Republic v Otieno Clifford (Professional Misconduct)', difficulty: 'core', weight: 0.03, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['pe-disciplinary'] },
-  { code: 'pe-case-lsk-police', name: 'Case: LSK v Kenya Police (Advocates Rights)', difficulty: 'core', weight: 0.03, formats: ['mcq', 'written'], isCore: false, isCaseLaw: true, prereqs: ['pe-core-values'] },
+  { code: 'pe-case-otieno-clifford', name: 'Case: Republic v Otieno Clifford (Professional Misconduct)', difficulty: 'intermediate', weight: 0.03, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['pe-disciplinary'] },
+  { code: 'pe-case-lsk-police', name: 'Case: LSK v Kenya Police (Advocates Rights)', difficulty: 'intermediate', weight: 0.03, formats: ['mcq', 'written'], isCore: false, isCaseLaw: true, prereqs: ['pe-core-values'] },
 ];
 
 // ─────────────────────────────────────────
@@ -246,20 +254,20 @@ const ATP105_SKILLS: SkillDef[] = [
 // ─────────────────────────────────────────
 const ATP106_SKILLS: SkillDef[] = [
   // Foundation
-  { code: 'pm-office-admin', name: 'Office Administration', difficulty: 'foundation', weight: 0.05, formats: ['written', 'mcq'], isCore: false },
-  { code: 'pm-record-mgmt', name: 'Record Management', difficulty: 'foundation', weight: 0.04, formats: ['written', 'mcq'], isCore: false },
-  { code: 'pm-ict', name: 'ICT in Legal Practice', difficulty: 'foundation', weight: 0.04, formats: ['written', 'mcq'], isCore: false },
-  { code: 'pm-standards', name: 'Standards & Policies in Law Offices', difficulty: 'foundation', weight: 0.04, formats: ['written', 'mcq'], isCore: false },
+  { code: 'pm-office-admin', name: 'Office Administration', difficulty: 'beginner', weight: 0.05, formats: ['written', 'mcq'], isCore: false },
+  { code: 'pm-record-mgmt', name: 'Record Management', difficulty: 'beginner', weight: 0.04, formats: ['written', 'mcq'], isCore: false },
+  { code: 'pm-ict', name: 'ICT in Legal Practice', difficulty: 'beginner', weight: 0.04, formats: ['written', 'mcq'], isCore: false },
+  { code: 'pm-standards', name: 'Standards & Policies in Law Offices', difficulty: 'beginner', weight: 0.04, formats: ['written', 'mcq'], isCore: false },
   // Core — HR
-  { code: 'pm-hr-planning', name: 'HR Planning & Management', difficulty: 'core', weight: 0.05, formats: ['written', 'mcq'], isCore: false, prereqs: ['pm-office-admin'] },
-  { code: 'pm-recruitment', name: 'Recruitment & Selection', difficulty: 'core', weight: 0.05, formats: ['written', 'mcq'], isCore: true, prereqs: ['pm-hr-planning'] },
-  { code: 'pm-training', name: 'Training & Development', difficulty: 'core', weight: 0.04, formats: ['written'], isCore: false, prereqs: ['pm-hr-planning'] },
-  { code: 'pm-separation', name: 'Internal Mobility & Separation', difficulty: 'core', weight: 0.04, formats: ['written', 'mcq'], isCore: false, prereqs: ['pm-hr-planning'] },
+  { code: 'pm-hr-planning', name: 'HR Planning & Management', difficulty: 'intermediate', weight: 0.05, formats: ['written', 'mcq'], isCore: false, prereqs: ['pm-office-admin'] },
+  { code: 'pm-recruitment', name: 'Recruitment & Selection', difficulty: 'intermediate', weight: 0.05, formats: ['written', 'mcq'], isCore: true, prereqs: ['pm-hr-planning'] },
+  { code: 'pm-training', name: 'Training & Development', difficulty: 'intermediate', weight: 0.04, formats: ['written'], isCore: false, prereqs: ['pm-hr-planning'] },
+  { code: 'pm-separation', name: 'Internal Mobility & Separation', difficulty: 'intermediate', weight: 0.04, formats: ['written', 'mcq'], isCore: false, prereqs: ['pm-hr-planning'] },
   // Core — Accounting
-  { code: 'pm-accounting-basics', name: 'Accounting Principles (IFRS)', difficulty: 'core', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
-  { code: 'pm-bookkeeping', name: 'Bookkeeping & Trial Balance', difficulty: 'core', weight: 0.06, formats: ['written', 'mcq'], isCore: true, prereqs: ['pm-accounting-basics'] },
-  { code: 'pm-bank-recon', name: 'Bank Reconciliation', difficulty: 'core', weight: 0.06, formats: ['written'], isCore: true, prereqs: ['pm-bookkeeping'] },
-  { code: 'pm-final-accounts', name: 'Preparation of Final Accounts', difficulty: 'core', weight: 0.06, formats: ['written'], isCore: true, prereqs: ['pm-bookkeeping'] },
+  { code: 'pm-accounting-basics', name: 'Accounting Principles (IFRS)', difficulty: 'intermediate', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
+  { code: 'pm-bookkeeping', name: 'Bookkeeping & Trial Balance', difficulty: 'intermediate', weight: 0.06, formats: ['written', 'mcq'], isCore: true, prereqs: ['pm-accounting-basics'] },
+  { code: 'pm-bank-recon', name: 'Bank Reconciliation', difficulty: 'intermediate', weight: 0.06, formats: ['written'], isCore: true, prereqs: ['pm-bookkeeping'] },
+  { code: 'pm-final-accounts', name: 'Preparation of Final Accounts', difficulty: 'intermediate', weight: 0.06, formats: ['written'], isCore: true, prereqs: ['pm-bookkeeping'] },
   // Advanced
   { code: 'pm-advocate-accounts', name: 'Advocates Accounts & Client Money', difficulty: 'advanced', weight: 0.08, formats: ['written', 'drafting'], isCore: true, prereqs: ['pm-final-accounts'] },
   { code: 'pm-partnership-accounts', name: 'Partnership Accounts', difficulty: 'advanced', weight: 0.05, formats: ['written'], isCore: false, prereqs: ['pm-final-accounts'] },
@@ -272,17 +280,17 @@ const ATP106_SKILLS: SkillDef[] = [
 // ─────────────────────────────────────────
 const ATP107_SKILLS: SkillDef[] = [
   // Foundation
-  { code: 'cv-legal-framework', name: 'Land Law Legal Framework', difficulty: 'foundation', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
-  { code: 'cv-categories-land', name: 'Categories of Land & Tenure', difficulty: 'foundation', weight: 0.05, formats: ['written', 'mcq'], isCore: true },
-  { code: 'cv-client-interview', name: 'Pre-Contract Due Diligence', difficulty: 'foundation', weight: 0.06, formats: ['written', 'drafting'], isCore: true },
+  { code: 'cv-legal-framework', name: 'Land Law Legal Framework', difficulty: 'beginner', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
+  { code: 'cv-categories-land', name: 'Categories of Land & Tenure', difficulty: 'beginner', weight: 0.05, formats: ['written', 'mcq'], isCore: true },
+  { code: 'cv-client-interview', name: 'Pre-Contract Due Diligence', difficulty: 'beginner', weight: 0.06, formats: ['written', 'drafting'], isCore: true },
   // Core
-  { code: 'cv-sale-agreement', name: 'Sale Agreement Drafting', difficulty: 'core', weight: 0.08, formats: ['drafting'], isCore: true, prereqs: ['cv-legal-framework', 'cv-client-interview'] },
-  { code: 'cv-transfer', name: 'Transfer & Registration', difficulty: 'core', weight: 0.07, formats: ['drafting', 'written'], isCore: true, prereqs: ['cv-sale-agreement'] },
-  { code: 'cv-completion', name: 'Completion Documents', difficulty: 'core', weight: 0.05, formats: ['written', 'drafting'], isCore: true, prereqs: ['cv-transfer'] },
-  { code: 'cv-leases', name: 'Leases & Tenancies', difficulty: 'core', weight: 0.07, formats: ['drafting', 'written'], isCore: true, prereqs: ['cv-legal-framework'] },
-  { code: 'cv-charges', name: 'Charges (Mortgages) Drafting', difficulty: 'core', weight: 0.07, formats: ['drafting', 'written'], isCore: true, prereqs: ['cv-legal-framework'] },
-  { code: 'cv-remedies-lessor', name: 'Remedies of Lessor & Lessee', difficulty: 'core', weight: 0.05, formats: ['written', 'oral'], isCore: false, prereqs: ['cv-leases'] },
-  { code: 'cv-chargee-remedies', name: 'Remedies of the Chargee', difficulty: 'core', weight: 0.05, formats: ['written', 'oral'], isCore: true, prereqs: ['cv-charges'] },
+  { code: 'cv-sale-agreement', name: 'Sale Agreement Drafting', difficulty: 'intermediate', weight: 0.08, formats: ['drafting'], isCore: true, prereqs: ['cv-legal-framework', 'cv-client-interview'] },
+  { code: 'cv-transfer', name: 'Transfer & Registration', difficulty: 'intermediate', weight: 0.07, formats: ['drafting', 'written'], isCore: true, prereqs: ['cv-sale-agreement'] },
+  { code: 'cv-completion', name: 'Completion Documents', difficulty: 'intermediate', weight: 0.05, formats: ['written', 'drafting'], isCore: true, prereqs: ['cv-transfer'] },
+  { code: 'cv-leases', name: 'Leases & Tenancies', difficulty: 'intermediate', weight: 0.07, formats: ['drafting', 'written'], isCore: true, prereqs: ['cv-legal-framework'] },
+  { code: 'cv-charges', name: 'Charges (Mortgages) Drafting', difficulty: 'intermediate', weight: 0.07, formats: ['drafting', 'written'], isCore: true, prereqs: ['cv-legal-framework'] },
+  { code: 'cv-remedies-lessor', name: 'Remedies of Lessor & Lessee', difficulty: 'intermediate', weight: 0.05, formats: ['written', 'oral'], isCore: false, prereqs: ['cv-leases'] },
+  { code: 'cv-chargee-remedies', name: 'Remedies of the Chargee', difficulty: 'intermediate', weight: 0.05, formats: ['written', 'oral'], isCore: true, prereqs: ['cv-charges'] },
   // Advanced
   { code: 'cv-transmissions', name: 'Involuntary Transfers', difficulty: 'advanced', weight: 0.04, formats: ['written'], isCore: false, prereqs: ['cv-transfer'] },
   { code: 'cv-stamp-duty', name: 'Stamp Duty & Taxation', difficulty: 'advanced', weight: 0.06, formats: ['written', 'mcq'], isCore: true, prereqs: ['cv-completion'] },
@@ -291,8 +299,8 @@ const ATP107_SKILLS: SkillDef[] = [
   { code: 'cv-cautions', name: 'Cautions, Inhibitions & Restrictions', difficulty: 'advanced', weight: 0.04, formats: ['written', 'drafting'], isCore: false, prereqs: ['cv-transfer'] },
   { code: 'cv-electronic', name: 'Electronic Conveyancing (NLIMS)', difficulty: 'advanced', weight: 0.03, formats: ['written', 'mcq'], isCore: false },
   // CASE LAW MASTERY
-  { code: 'cv-case-macharia', name: 'Case: Macharia v Kiome (Spousal Interest in Land)', difficulty: 'core', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['cv-sale-agreement'] },
-  { code: 'cv-case-isack', name: 'Case: Isack MInanga Mwiru v AG (Trust Land)', difficulty: 'core', weight: 0.03, formats: ['mcq', 'written'], isCore: false, isCaseLaw: true, prereqs: ['cv-categories-land'] },
+  { code: 'cv-case-macharia', name: 'Case: Macharia v Kiome (Spousal Interest in Land)', difficulty: 'intermediate', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['cv-sale-agreement'] },
+  { code: 'cv-case-isack', name: 'Case: Isack MInanga Mwiru v AG (Trust Land)', difficulty: 'intermediate', weight: 0.03, formats: ['mcq', 'written'], isCore: false, isCaseLaw: true, prereqs: ['cv-categories-land'] },
   { code: 'cv-case-mtana', name: 'Case: Mtana Lewa v Kahindi Ngala (Adverse Possession)', difficulty: 'advanced', weight: 0.03, formats: ['mcq', 'written'], isCore: false, isCaseLaw: true, prereqs: ['cv-transfer'] },
 ];
 
@@ -301,16 +309,16 @@ const ATP107_SKILLS: SkillDef[] = [
 // ─────────────────────────────────────────
 const ATP108_SKILLS: SkillDef[] = [
   // Foundation
-  { code: 'ct-company-formation', name: 'Company Formation & Types', difficulty: 'foundation', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
-  { code: 'ct-statutory-compliance', name: 'Statutory Compliance', difficulty: 'foundation', weight: 0.05, formats: ['written', 'mcq'], isCore: true },
-  { code: 'ct-partnerships', name: 'Partnerships (General & LLP)', difficulty: 'foundation', weight: 0.06, formats: ['written', 'drafting'], isCore: true },
+  { code: 'ct-company-formation', name: 'Company Formation & Types', difficulty: 'beginner', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
+  { code: 'ct-statutory-compliance', name: 'Statutory Compliance', difficulty: 'beginner', weight: 0.05, formats: ['written', 'mcq'], isCore: true },
+  { code: 'ct-partnerships', name: 'Partnerships (General & LLP)', difficulty: 'beginner', weight: 0.06, formats: ['written', 'drafting'], isCore: true },
   // Core
-  { code: 'ct-shareholder-agreements', name: 'Shareholder Agreements & Resolutions', difficulty: 'core', weight: 0.07, formats: ['drafting', 'written'], isCore: true, prereqs: ['ct-company-formation'] },
-  { code: 'ct-partnership-deed', name: 'Partnership Deed Drafting', difficulty: 'core', weight: 0.06, formats: ['drafting'], isCore: true, prereqs: ['ct-partnerships'] },
-  { code: 'ct-mergers', name: 'Mergers & Acquisitions', difficulty: 'core', weight: 0.07, formats: ['written', 'drafting'], isCore: true, prereqs: ['ct-company-formation'] },
-  { code: 'ct-due-diligence', name: 'Due Diligence', difficulty: 'core', weight: 0.06, formats: ['written', 'drafting'], isCore: true, prereqs: ['ct-mergers'] },
-  { code: 'ct-commercial-agreements', name: 'Commercial Agreements (JV, Distribution, Franchise)', difficulty: 'core', weight: 0.06, formats: ['drafting', 'written'], isCore: true, prereqs: ['ct-company-formation'] },
-  { code: 'ct-share-transfers', name: 'Share Transfers', difficulty: 'core', weight: 0.04, formats: ['written', 'drafting'], isCore: false, prereqs: ['ct-shareholder-agreements'] },
+  { code: 'ct-shareholder-agreements', name: 'Shareholder Agreements & Resolutions', difficulty: 'intermediate', weight: 0.07, formats: ['drafting', 'written'], isCore: true, prereqs: ['ct-company-formation'] },
+  { code: 'ct-partnership-deed', name: 'Partnership Deed Drafting', difficulty: 'intermediate', weight: 0.06, formats: ['drafting'], isCore: true, prereqs: ['ct-partnerships'] },
+  { code: 'ct-mergers', name: 'Mergers & Acquisitions', difficulty: 'intermediate', weight: 0.07, formats: ['written', 'drafting'], isCore: true, prereqs: ['ct-company-formation'] },
+  { code: 'ct-due-diligence', name: 'Due Diligence', difficulty: 'intermediate', weight: 0.06, formats: ['written', 'drafting'], isCore: true, prereqs: ['ct-mergers'] },
+  { code: 'ct-commercial-agreements', name: 'Commercial Agreements (JV, Distribution, Franchise)', difficulty: 'intermediate', weight: 0.06, formats: ['drafting', 'written'], isCore: true, prereqs: ['ct-company-formation'] },
+  { code: 'ct-share-transfers', name: 'Share Transfers', difficulty: 'intermediate', weight: 0.04, formats: ['written', 'drafting'], isCore: false, prereqs: ['ct-shareholder-agreements'] },
   // Advanced — Insolvency
   { code: 'ct-bankruptcy', name: 'Bankruptcy Applications', difficulty: 'advanced', weight: 0.05, formats: ['written', 'drafting'], isCore: true, prereqs: ['ct-company-formation'] },
   { code: 'ct-liquidation', name: 'Corporate Liquidation', difficulty: 'advanced', weight: 0.06, formats: ['written', 'drafting'], isCore: true, prereqs: ['ct-bankruptcy'] },
@@ -320,9 +328,11 @@ const ATP108_SKILLS: SkillDef[] = [
   { code: 'ct-data-protection', name: 'Data Protection in Commerce', difficulty: 'advanced', weight: 0.04, formats: ['written', 'mcq'], isCore: false },
   { code: 'ct-taxation', name: 'Taxation in Commercial Transactions', difficulty: 'advanced', weight: 0.06, formats: ['written', 'mcq'], isCore: true },
   { code: 'ct-tax-disputes', name: 'Tax Dispute Resolution', difficulty: 'advanced', weight: 0.04, formats: ['written', 'drafting'], isCore: false, prereqs: ['ct-taxation'] },
+  { code: 'ct-financial-services', name: 'Financial Services Regulation', difficulty: 'intermediate', weight: 0.04, formats: ['written', 'mcq'], isCore: false },
+  { code: 'ct-payment-systems', name: 'National Payment Systems', difficulty: 'intermediate', weight: 0.04, formats: ['written', 'mcq'], isCore: false, prereqs: ['ct-financial-services'] },
   // CASE LAW MASTERY
-  { code: 'ct-case-foss', name: 'Case: Foss v Harbottle (Majority Rule)', difficulty: 'core', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['ct-shareholder-agreements'] },
-  { code: 'ct-case-salomon', name: 'Case: Salomon v Salomon (Separate Legal Entity)', difficulty: 'foundation', weight: 0.05, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true },
+  { code: 'ct-case-foss', name: 'Case: Foss v Harbottle (Majority Rule)', difficulty: 'intermediate', weight: 0.04, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['ct-shareholder-agreements'] },
+  { code: 'ct-case-salomon', name: 'Case: Salomon v Salomon (Separate Legal Entity)', difficulty: 'beginner', weight: 0.05, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true },
   { code: 'ct-case-nakumatt', name: 'Case: Nakumatt Holdings (Administration & Liquidation)', difficulty: 'advanced', weight: 0.03, formats: ['mcq', 'written'], isCore: true, isCaseLaw: true, prereqs: ['ct-liquidation'] },
   { code: 'ct-case-imperial', name: 'Case: CBK v Imperial Bank (Statutory Management)', difficulty: 'advanced', weight: 0.03, formats: ['mcq', 'written'], isCore: false, isCaseLaw: true, prereqs: ['ct-company-formation'] },
 ];
@@ -389,6 +399,29 @@ const SKILL_PROMPTS: Record<string, ItemSeed[]> = {
     { prompt: 'Draft a notice of preliminary objection compliant with Mukisa Biscuit principles.', keyPoints: ['Clear statement', 'Point of law', 'No facts required', 'Dispositive if sustained'] },
     { prompt: 'Multiple choice: Under Mukisa Biscuit, a preliminary objection must: (A) Be filed before trial, (B) Concern only jurisdiction, (C) Be a pure point of law requiring no factual investigation, (D) Be agreed by both parties', keyPoints: ['Pure point of law'] },
     { prompt: 'Explain why an objection that requires investigation of the facts fails the Mukisa test. Give two examples.', keyPoints: ['Factual investigation disqualifies', 'Examples of mixed questions'] },
+  ],
+
+  // ── ATP100 NEW: Overriding Objective & Costs ──
+  'cp-overriding-obj': [
+    { prompt: 'Explain the concept of the "Overriding Objective" in civil litigation under Sections 1A and 1B of the Civil Procedure Act and its constitutional basis under Article 159.', keyPoints: ['Just determination', 'Efficient disposal', 'Proportionality', 'Use of ADR', 'Article 159 Constitution'] },
+    { prompt: 'A party files frivolous interlocutory applications to delay trial. What sanctions can the court impose under the overriding objective?', keyPoints: ['S.1A CPA', 'Costs sanction', 'Strikes out delaying applications', 'Adverse cost orders'] },
+    { prompt: 'How does the overriding objective affect the court\'s exercise of discretion in granting adjournments? Discuss with case law.', keyPoints: ['D\'Orta-Ekenaike principle', 'Proportionality', 'Active case management', 'Timely disposal'] },
+    { prompt: 'Multiple choice: The overriding objective requires the court to deal with cases: (A) As cheaply as possible, (B) Justly, expeditiously, proportionately, and affordably, (C) Only according to strict rules, (D) In favour of unrepresented parties', keyPoints: ['Just, expeditious, proportionate, affordable'] },
+    { prompt: 'Draft submissions invoking the overriding objective to oppose an application for extension of time to file a defence 6 months late.', keyPoints: ['Prejudice to plaintiff', 'Proportionality', 'Efficient use of court resources', 'S.1A obligations'] },
+  ],
+  'cp-costs': [
+    { prompt: 'Explain the principle that "costs follow the event" and identify the exceptions recognized in Kenyan civil litigation.', keyPoints: ['General rule', 'Court discretion', 'Conduct of parties', 'Offer to settle', 'Constitutional petitions exception'] },
+    { prompt: 'Draft a bill of costs for party-and-party taxation after a 3-day civil trial in the High Court. Include instruction fees, getting up, attendance, and disbursements.', keyPoints: ['Instruction fees', 'Getting up fees', 'Court attendance', 'Disbursements', 'Advocates Remuneration Order'], modelAnswer: 'A standard bill of costs should include: (1) Instruction fees based on the Advocates Remuneration Order scale, (2) Getting up fees per day of trial, (3) Attendance at court per day, (4) All disbursements with receipts.' },
+    { prompt: 'Distinguish party-and-party costs from advocate-client costs. When does the court award each?', keyPoints: ['Standard basis', 'Indemnity basis', 'S.27 Advocates Act', 'Discretion of taxing officer'] },
+    { prompt: 'Multiple choice: Throw-away costs are: (A) Costs of abandoned applications, (B) Costs paid immediately regardless of outcome, (C) Costs wasted due to adjournment caused by one party, (D) Costs that cannot be taxed', keyPoints: ['Costs wasted due to adjournment'] },
+    { prompt: 'Explain the four principles of taxation applicable to bills of costs between party and party in Kenya.', keyPoints: ['Reasonableness', 'Proportionality', 'Necessity', 'Fair value for work done'] },
+  ],
+  'cp-civil-review': [
+    { prompt: 'Distinguish a civil review under Section 80 CPA from an appeal. When is review the appropriate remedy?', keyPoints: ['Discovery of new evidence', 'Mistake apparent on record', 'Any sufficient reason', 'Same court', 'No appeal alternative'] },
+    { prompt: 'Draft an application for review of a judgment under Order 45 Rule 1 CPR, stating all grounds.', keyPoints: ['New and important matter', 'Mistake or error apparent', 'Any other sufficient reason', 'Limitation period'] },
+    { prompt: 'Multiple choice: A review under S.80 CPA can be filed: (A) Within 30 days of judgment, (B) At any time, (C) Only if no appeal has been filed, (D) Within 14 days', keyPoints: ['Within 30 days'] },
+    { prompt: 'Is a review available where a party has already appealed? Discuss the relationship between review and appeal.', keyPoints: ['Cannot run parallel', 'Election of remedies', 'Review heard by same court'] },
+    { prompt: 'Explain "mistake or error apparent on the face of the record" with reference to Kenyan case law.', keyPoints: ['Patent error', 'Not arguable point', 'Goes to jurisdiction or procedure'] },
   ],
 
   // ── ATP101 CRIMINAL LITIGATION ──
@@ -681,39 +714,44 @@ async function seedCurriculum() {
         for (let i = 0; i < prompts.length; i++) {
           const item = prompts[i];
           const fmt = skill.formats[i % skill.formats.length];
-          const diff = skill.difficulty === 'foundation' ? 2 : skill.difficulty === 'core' ? 3 : 4;
+          const diff = skill.difficulty === 'beginner' ? 2 : skill.difficulty === 'intermediate' ? 3 : 4;
 
           const kpArray = item.keyPoints.length > 0
             ? `{${item.keyPoints.map(k => `"${k.replace(/"/g, '\\"')}"`).join(',')}}`
             : '{}';
 
-          const itemResult = await db.execute(sql`
-            INSERT INTO items (item_type, format, unit_id, prompt, context, model_answer, key_points, difficulty, estimated_minutes, is_active)
-            VALUES (
-              ${fmtToItemType(fmt)}::item_type,
-              ${fmt}::format_tag,
-              ${domain.unitId},
-              ${item.prompt},
-              ${item.context || null},
-              ${item.modelAnswer || null},
-              ${kpArray}::text[],
-              ${diff},
-              ${fmtToMinutes(fmt)},
-              true
-            )
-            RETURNING id
-          `);
-          const itemId = (itemResult.rows[0] as { id: string }).id;
-          itemCount++;
-          totalItems++;
+          try {
+            const itemResult = await db.execute(sql`
+              INSERT INTO items (item_type, format, unit_id, prompt, context, model_answer, key_points, difficulty, estimated_minutes, is_active)
+              VALUES (
+                ${fmtToItemType(fmt)}::item_type,
+                ${fmt}::format_tag,
+                ${domain.unitId},
+                ${item.prompt},
+                ${item.context || null},
+                ${item.modelAnswer || null},
+                ${kpArray}::text[],
+                ${diff},
+                ${fmtToMinutes(fmt)},
+                true
+              )
+              RETURNING id
+            `);
+            const itemId = (itemResult.rows[0] as { id: string }).id;
+            itemCount++;
+            totalItems++;
 
-          await db.execute(sql`
-            INSERT INTO item_skill_map (item_id, skill_id, strength, coverage_weight)
-            VALUES (${itemId}::uuid, ${skillId}::uuid, 'primary'::mapping_strength, 1.0)
-            ON CONFLICT (item_id, skill_id) DO NOTHING
-          `);
-          mapCount++;
-          totalMappings++;
+            await db.execute(sql`
+              INSERT INTO item_skill_map (item_id, skill_id, strength, coverage_weight)
+              VALUES (${itemId}::uuid, ${skillId}::uuid, 'primary'::mapping_strength, 1.0)
+              ON CONFLICT (item_id, skill_id) DO NOTHING
+            `);
+            mapCount++;
+            totalMappings++;
+          } catch (itemErr: any) {
+            console.error(`   !! FAILED item for skill ${skill.code} (item ${i}): ${itemErr?.cause?.message || itemErr.message}`);
+            console.error(`      fmt=${fmt}, kpArray=${kpArray.substring(0,80)}...`);
+          }
         }
       }
       console.log(`   Items: ${itemCount}, Mappings: ${mapCount}`);

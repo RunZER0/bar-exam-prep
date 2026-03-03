@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { 
   MessageCircle, X, Send, Loader2, Sparkles, 
-  Paperclip, Mic, MicOff, Image, FileText 
+  Paperclip, Mic, MicOff, Image, FileText, GripVertical 
 } from 'lucide-react';
 
 interface Attachment {
@@ -43,12 +43,79 @@ export default function FloatingChat() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   
+  // Drag state for the floating button
+  const [bubblePos, setBubblePos] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const dragStartPosRef = useRef({ x: 0, y: 0 });
+  const wasDraggedRef = useRef(false);
+  const bubbleRef = useRef<HTMLButtonElement>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ------ DRAG HANDLERS ------
+  const handleDragStart = useCallback((clientX: number, clientY: number) => {
+    if (!bubbleRef.current) return;
+    const rect = bubbleRef.current.getBoundingClientRect();
+    dragOffsetRef.current = { x: clientX - rect.left, y: clientY - rect.top };
+    dragStartPosRef.current = { x: clientX, y: clientY };
+    wasDraggedRef.current = false;
+    setIsDragging(true);
+  }, []);
+
+  const handleDragMove = useCallback((clientX: number, clientY: number) => {
+    if (!isDragging) return;
+    const dx = clientX - dragStartPosRef.current.x;
+    const dy = clientY - dragStartPosRef.current.y;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+      wasDraggedRef.current = true;
+    }
+    const newX = clientX - dragOffsetRef.current.x;
+    const newY = clientY - dragOffsetRef.current.y;
+    // Clamp to viewport
+    const maxX = window.innerWidth - 56; // button width
+    const maxY = window.innerHeight - 56;
+    setBubblePos({
+      x: Math.max(0, Math.min(newX, maxX)),
+      y: Math.max(0, Math.min(newY, maxY)),
+    });
+  }, [isDragging]);
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Mouse events
+  useEffect(() => {
+    if (!isDragging) return;
+    const onMouseMove = (e: MouseEvent) => { e.preventDefault(); handleDragMove(e.clientX, e.clientY); };
+    const onMouseUp = () => handleDragEnd();
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
+  }, [isDragging, handleDragMove, handleDragEnd]);
+
+  // Touch events
+  useEffect(() => {
+    if (!isDragging) return;
+    const onTouchMove = (e: TouchEvent) => { e.preventDefault(); handleDragMove(e.touches[0].clientX, e.touches[0].clientY); };
+    const onTouchEnd = () => handleDragEnd();
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd);
+    return () => { window.removeEventListener('touchmove', onTouchMove); window.removeEventListener('touchend', onTouchEnd); };
+  }, [isDragging, handleDragMove, handleDragEnd]);
+
+  const handleBubbleClick = () => {
+    // Only toggle chat if the user didn't drag
+    if (!wasDraggedRef.current) {
+      setIsOpen(!isOpen);
+    }
+  };
 
   // Check if we're on a restricted page
   const isRestricted = RESTRICTED_PATHS.some(path => pathname.includes(path));
@@ -302,23 +369,33 @@ export default function FloatingChat() {
         multiple
       />
 
-      {/* Floating Button */}
+      {/* Floating Button — draggable */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        ref={bubbleRef}
+        onMouseDown={(e) => { e.preventDefault(); handleDragStart(e.clientX, e.clientY); }}
+        onTouchStart={(e) => handleDragStart(e.touches[0].clientX, e.touches[0].clientY)}
+        onClick={handleBubbleClick}
         className={`
-          fixed bottom-6 right-6 z-50
+          fixed z-50
           w-14 h-14 rounded-full
           bg-emerald-500 hover:bg-emerald-600
           text-white shadow-lg hover:shadow-xl
           flex items-center justify-center
-          transition-all duration-300 ease-out
-          ${isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}
+          transition-opacity duration-300 ease-out
+          ${isDragging ? 'cursor-grabbing scale-110' : 'cursor-grab'}
+          ${isOpen ? 'scale-0 opacity-0 pointer-events-none' : 'scale-100 opacity-100'}
+          select-none touch-none
         `}
-        aria-label="Open quick help chat"
+        style={bubblePos ? { left: bubblePos.x, top: bubblePos.y, bottom: 'auto', right: 'auto' } : { bottom: 24, right: 24 }}
+        aria-label="Open quick help chat (drag to move)"
       >
         <MessageCircle className="h-6 w-6" />
         <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full flex items-center justify-center">
           <Sparkles className="h-2.5 w-2.5 text-amber-900" />
+        </span>
+        {/* Drag hint on hover */}
+        <span className="absolute -left-1 -bottom-1 w-4 h-4 bg-white/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <GripVertical className="h-2.5 w-2.5 text-gray-600" />
         </span>
       </button>
 

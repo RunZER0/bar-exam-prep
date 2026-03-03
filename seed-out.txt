@@ -1,0 +1,74 @@
+(node:40580) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[dotenv@17.3.1] injecting env (15) from .env -- tip: ≡ƒ¢í∩╕Å auth for agents: https://vestauth.com
+YNAI Curriculum Seed ΓÇö All 9 ATP Units
+
+============================================
+
+
+  Civil Litigation (ATP100)
+--------------------------------------------------
+(node:25744) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+(Use `node --trace-warnings ...` to show where the warning was created)
+   Skills: 27 (5 case law)
+   Edges: 25
+   Items: 135, Mappings: 135
+
+  Criminal Litigation (ATP101)
+--------------------------------------------------
+   Skills: 22 (4 case law)
+   Edges: 17
+   Items: 110, Mappings: 110
+
+  Probate and Administration (ATP102)
+--------------------------------------------------
+   Skills: 20 (3 case law)
+   Edges: 17
+   Items: 100, Mappings: 100
+
+  Legal Writing and Drafting (ATP103)
+--------------------------------------------------
+   Skills: 15 (0 case law)
+   Edges: 12
+   Items: 75, Mappings: 75
+
+  Trial Advocacy (ATP104)
+--------------------------------------------------
+   Skills: 17 (2 case law)
+   Edges: 12
+   Items: 85, Mappings: 85
+
+  Professional Ethics (ATP105)
+--------------------------------------------------
+   Skills: 17 (2 case law)
+   Edges: 12
+   Items: 85, Mappings: 85
+
+  Legal Practice Management (ATP106)
+--------------------------------------------------
+   Skills: 16 (0 case law)
+   Edges: 11
+   Items: 80, Mappings: 80
+
+  Conveyancing (ATP107)
+--------------------------------------------------
+   Skills: 19 (3 case law)
+   Edges: 16
+   Items: 95, Mappings: 95
+
+  Commercial Transactions (ATP108)
+--------------------------------------------------
+   Skills: 22 (4 case law)
+   Edges: 15
+   Items: 110, Mappings: 110
+
+============================================
+COMPREHENSIVE CURRICULUM SEED COMPLETE
+============================================
+   Domains:      9
+   Skills:       175
+   Prereq Edges: 137
+   Items:        875
+   Mappings:     875
+   Coverage:     ALL 9 ATP units
+

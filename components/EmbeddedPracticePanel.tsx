@@ -31,7 +31,7 @@ export interface PracticeTask {
   skillName: string;
   unitId: string;
   unitName: string;
-  itemType: "written";
+  itemType: "written" | "mcq" | "short_answer";
   mode: "practice" | "timed" | "exam_sim";
   reason?: string;
   itemId?: string;
@@ -39,10 +39,13 @@ export interface PracticeTask {
 
 interface ItemData {
   id: string;
+  itemType?: string;
+  format?: string;
   prompt: string;
   context?: string;
   keyPoints?: string[];
   modelAnswer?: string;
+  options?: { label: string; text: string; isCorrect: boolean }[];
   skillId: string;
   skillName?: string;
   coverageWeight: number;
@@ -82,6 +85,7 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
   const [phase, setPhase] = useState<Phase>("loading");
   const [item, setItem] = useState<ItemData | null>(null);
   const [userAnswer, setUserAnswer] = useState("");
+  const [selectedOption, setSelectedOption] = useState<string | undefined>(undefined);
   const [attemptCount, setAttemptCount] = useState(0);
   const [result, setResult] = useState<AttemptResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +94,7 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
   const [notesLoading, setNotesLoading] = useState(false);
   const [notesSections, setNotesSections] = useState<StudySection[]>([]);
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
+  const [readyForQuestion, setReadyForQuestion] = useState(false);
 
   const [showRubricDetails, setShowRubricDetails] = useState(false);
   const [showModelAnswer, setShowModelAnswer] = useState(false);
@@ -102,17 +107,23 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
     setError(null);
     setResult(null);
     setUserAnswer("");
+    setSelectedOption(undefined);
     setNotesSections([]);
+    setReadyForQuestion(false);
 
     try {
       const token = await getIdToken();
 
+      // Notes fetch with client-side timeout to avoid endless spinner.
+      const notesController = new AbortController();
+      const notesTimeout = setTimeout(() => notesController.abort(), 7000);
       const notesPromise = fetch(
         `/api/mastery/notes?skillId=${task.skillId}&skillName=${encodeURIComponent(task.skillName)}&unitId=${task.unitId}&unitName=${encodeURIComponent(task.unitName)}&mode=${task.mode}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, signal: notesController.signal }
       )
         .then((r) => (r.ok ? r.json() : { sections: [] }))
-        .catch(() => ({ sections: [] }));
+        .catch(() => ({ sections: [] }))
+        .finally(() => clearTimeout(notesTimeout));
 
       const params = new URLSearchParams({
         skillId: task.skillId,
@@ -130,25 +141,35 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
 
       const [notesData, itemData] = await Promise.all([notesPromise, itemResponse.json()]);
 
-      setNotesSections(notesData.sections || []);
-      if (notesData.sections?.length > 0) {
-        setExpandedNoteId(notesData.sections[0].id);
-      }
+      const resolvedSections: StudySection[] =
+        notesData.sections && notesData.sections.length > 0
+          ? notesData.sections
+          : [
+              {
+                id: "client-fallback",
+                title: `Study Notes: ${task.skillName}`,
+                content: "Notes are still loading. Focus on statutes, leading Kenyan cases, and IRAC while we fetch them.",
+              },
+            ];
+
+      setNotesSections(resolvedSections);
+      setExpandedNoteId(resolvedSections[0]?.id || null);
 
       const loadedItem: ItemData = itemData.item || itemData;
       setItem(loadedItem);
 
-      if (notesData.sections?.length > 0) {
-        setPhase("study");
-      } else {
-        startTimeRef.current = new Date();
-        setPhase("question");
-        setTimeout(() => setPhase("answering"), 300);
-      }
+      setPhase("study");
     } catch (err) {
       console.error("Error loading practice item", err);
       setError("Failed to load practice item. Please try again.");
-      setPhase("question");
+      setNotesSections([
+        {
+          id: "client-fallback-error",
+          title: "Study Notes",
+          content: "We could not load notes. Anchor your analysis on the relevant Kenya statutes and key precedents.",
+        },
+      ]);
+      setPhase("study");
     }
   }, [getIdToken, task]);
 
@@ -157,21 +178,51 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
   }, [loadItem]);
 
   const loadNotes = useCallback(async () => {
-    if (notesSections.length > 0 || notesLoading) return;
+    const hasRealNotes = notesSections.some(
+      (s) => s.id !== "client-fallback" && s.id !== "client-fallback-error"
+    );
+    if (hasRealNotes || notesLoading) return;
     setNotesLoading(true);
     try {
       const token = await getIdToken();
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 7000);
       const response = await fetch(
         `/api/mastery/notes?skillId=${task.skillId}&skillName=${encodeURIComponent(task.skillName)}&unitId=${task.unitId}&unitName=${encodeURIComponent(task.unitName)}&mode=${task.mode}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
       );
+      clearTimeout(timeout);
       if (response.ok) {
         const data = await response.json();
-        setNotesSections(data.sections || []);
-        if (data.sections?.length > 0) setExpandedNoteId(data.sections[0].id);
+        const nextSections = data.sections && data.sections.length > 0 ? data.sections : notesSections;
+        setNotesSections(nextSections);
+        if (nextSections.length > 0) setExpandedNoteId(nextSections[0].id);
+      } else {
+        setNotesSections((prev) =>
+          prev.length > 0
+            ? prev
+            : [
+                {
+                  id: "client-fallback",
+                  title: `Study Notes: ${task.skillName}`,
+                  content: "Detailed notes are taking longer than expected. Please refer to your primary statute book while we finalize the content.",
+                },
+              ]
+        );
       }
     } catch (err) {
       console.error("Error fetching notes", err);
+      setNotesSections((prev) =>
+        prev.length > 0
+          ? prev
+          : [
+              {
+                id: "client-fallback-error",
+                title: "Study Notes",
+                content: "Notes could not load. Anchor your analysis on the relevant Kenya statutes and key precedents.",
+              },
+            ]
+      );
     } finally {
       setNotesLoading(false);
     }
@@ -188,13 +239,15 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
   }, [phase]);
 
   const handleProceedFromNotes = () => {
+    setReadyForQuestion(true);
     setPhase("question");
     startTimeRef.current = new Date();
     setTimeout(() => setPhase("answering"), 300);
   };
 
   const submitAnswer = async () => {
-    if (!item || !userAnswer.trim()) return;
+    const isMcq = (item?.format || item?.itemType) === 'mcq';
+    if (!item || (!isMcq && !userAnswer.trim()) || (isMcq && !selectedOption)) return;
 
     setPhase("grading");
     setError(null);
@@ -207,15 +260,17 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
       const token = await getIdToken();
       const submission = {
         itemId: item.id,
-        format: "written" as const,
+        format: item.format || item.itemType || "written",
         mode: task.mode,
-        response: userAnswer,
+        response: isMcq ? selectedOption : userAnswer,
+        selectedOption: isMcq ? selectedOption : undefined,
         startedAt: startTimeRef.current?.toISOString() || new Date().toISOString(),
         timeTakenSec,
         prompt: item.prompt,
         context: item.context,
         keyPoints: item.keyPoints,
         modelAnswer: item.modelAnswer,
+        options: item.options, // Pass options for MCQ grading
         skillIds: [item.skillId],
         coverageWeights: { [item.skillId]: item.coverageWeight },
         unitId: item.unitId,
@@ -270,10 +325,10 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
               {task.skillName}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              {task.unitName} • {formatItemType()} • {task.mode}
+              {task.unitName} • {formatItemType(item?.format || item?.itemType || task.itemType)} • {task.mode}
             </p>
             <p className="text-sm text-foreground/80">
-              Hey, let's dig into this together. Read the notes first, then we'll quiz and grade you with real rubrics.
+              Hey, let's dig into this together. Read the notes first, then we’ll run through targeted exercises and grade them with the real rubrics.
             </p>
             {task.reason && (
               <p className="text-xs text-muted-foreground mt-1 p-2 bg-muted/50 rounded">
@@ -383,7 +438,7 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-primary" />
-              <p className="text-sm text-muted-foreground">Loading study materials and practice question...</p>
+              <p className="text-sm text-muted-foreground">Loading study materials and practice exercises...</p>
             </div>
           </div>
         )}
@@ -397,7 +452,7 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
           />
         )}
 
-        {(phase === "question" || phase === "answering") && item && (
+        {(readyForQuestion || phase === "question" || phase === "answering") && item && (
           <div className="space-y-4">
             <div className="p-4 bg-muted/50 rounded-lg border">
               <div className="flex items-start gap-3">
@@ -406,7 +461,7 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{formatItemType()} Question</span>
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{formatItemType(item.format || item.itemType)} Exercise</span>
                     <span className="text-xs text-muted-foreground">~{item.estimatedMinutes || 10} min</span>
                   </div>
                   <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -422,23 +477,69 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
               </div>
             </div>
 
-            {phase === "answering" && (
-              <div className="space-y-2">
-                <Textarea
-                  ref={textareaRef}
-                  placeholder="Write your essay answer here..."
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  className="min-h-[180px] resize-y"
-                />
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Write in your own voice; I’ll grade against the real rubric and coach you.</span>
-                  <span>{userAnswer.length} characters</span>
-                </div>
-              </div>
-            )}
+            <div className="mt-4">
+                {item.format === 'mcq' && item.options ? (
+                  <div className="space-y-3">
+                    {item.options?.map((opt) => (
+                      <div 
+                        key={opt.label}
+                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                          selectedOption === opt.label 
+                            ? 'bg-primary/10 border-primary ring-1 ring-primary' 
+                            : 'bg-background hover:bg-muted border-border'
+                        }`}
+                        onClick={() => setSelectedOption(opt.label)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm font-bold flex-shrink-0 transition-colors ${
+                            selectedOption === opt.label ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {opt.label}
+                          </div>
+                          <span className="text-sm font-medium">{opt.text}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : item.format === 'short_answer' ? (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground block">Your Answer:</label>
+                    <input
+                      type="text"
+                      value={userAnswer}
+                      onChange={(e) => setUserAnswer(e.target.value)}
+                      placeholder="Type your answer here..."
+                      className="w-full p-3 border rounded-md bg-background focus:ring-2 focus:ring-primary focus:outline-none"
+                      autoFocus
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Textarea
+                      ref={textareaRef}
+                      placeholder="Write your essay answer here..."
+                      value={userAnswer}
+                      onChange={(e) => setUserAnswer(e.target.value)}
+                      className="min-h-[180px] resize-y"
+                    />
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Write in your own voice; I’ll grade against the real rubric and coach you.</span>
+                      <span>{userAnswer.length} characters</span>
+                    </div>
+                  </div>
+                )}
+            </div>
 
-            <Button onClick={submitAnswer} disabled={!userAnswer.trim()} className="w-full" size="lg">
+            <Button 
+              onClick={submitAnswer} 
+              disabled={
+                item.format === 'mcq' 
+                  ? !selectedOption 
+                  : !userAnswer.trim()
+              } 
+              className="w-full" 
+              size="lg"
+            >
               Submit Answer
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
@@ -605,6 +706,9 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
   );
 }
 
-function formatItemType(): string {
+function formatItemType(type?: string): string {
+  if (type === 'mcq') return "Multiple Choice";
+  if (type === 'short_answer') return "Short Answer";
   return "Written";
 }
+

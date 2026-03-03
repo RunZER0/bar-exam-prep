@@ -37,7 +37,7 @@ import {
 
 interface AttemptSubmission {
   itemId: string;
-  format: 'written' | 'oral' | 'drafting' | 'mcq';
+  format: 'written' | 'oral' | 'drafting' | 'mcq' | 'short_answer';
   mode: 'practice' | 'timed' | 'exam_sim';
   // Response data
   response: string; // Written text, transcript, or selected option
@@ -127,6 +127,40 @@ export async function POST(req: NextRequest) {
         correctOption,
         submission.options ?? []
       );
+    } else if (submission.format === 'short_answer') {
+      // Use AI grading for short answer but treat it as written
+      const gradingRequest: GradingRequest = {
+        userId: user.id,
+        itemId: submission.itemId,
+        format: 'written', // AI model understands 'written' better than 'short_answer' for now
+        mode: submission.mode,
+        prompt: submission.prompt,
+        context: submission.context,
+        keyPoints: submission.keyPoints,
+        modelAnswer: submission.modelAnswer,
+        response: submission.response,
+        timeTakenSec: submission.timeTakenSec,
+        skillIds: submission.skillIds,
+        unitId: submission.unitId,
+      };
+      
+      try {
+        grading = await gradeResponse(gradingRequest);
+      } catch (gradingError) {
+        console.error('Grading failed:', gradingError);
+        // Fallback
+        grading = {
+           scoreNorm: 0.5,
+           scoreRaw: 5,
+           maxScore: 10,
+           rubricBreakdown: [{ category: 'General', score: 5, maxScore: 10, feedback: 'Grading failed.' }],
+           missingPoints: [],
+           errorTags: [],
+           nextDrills: [],
+           modelOutline: '',
+           evidenceRequests: [],
+        };
+      }
     } else {
       // AI-powered grading for written/oral/drafting
       const gradingRequest: GradingRequest = {
@@ -191,7 +225,7 @@ export async function POST(req: NextRequest) {
         currentStability,
         {
           scoreNorm: grading.scoreNorm,
-          format: submission.format,
+          format: (submission.format === 'short_answer' ? 'written' : submission.format) as any,
           mode: submission.mode,
           difficulty: submission.difficulty,
           coverageWeight,

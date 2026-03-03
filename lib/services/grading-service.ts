@@ -267,7 +267,7 @@ const getOpenAI = () => {
   return _openai;
 };
 
-const GRADING_MODEL = process.env.GRADING_MODEL || 'gpt-4o';
+const GRADING_MODEL = process.env.GRADING_MODEL || 'gpt-5.2';
 
 /**
  * Grade a written response

@@ -68,12 +68,31 @@ export const userProfiles = pgTable('user_profiles', {
   weeklyQuizGoal: integer('weekly_quiz_goal').default(3),
   learningStyle: text('learning_style'), // visual, reading, practice
   goals: jsonb('goals').$type<string[]>(), // pass bar, improve drafting, etc.
+  // Senior Partner Protocol Fields
+  examPath: text('exam_path').$type<'APRIL_2026' | 'NOVEMBER_2026'>(),
+  llbOrigin: text('llb_origin').$type<'LOCAL' | 'FOREIGN'>(),
+  professionalExposure: text('professional_exposure').$type<'STUDENT' | 'INTERN' | 'LITIGATION' | 'CORPORATE' | 'ADVOCATE'>(),
+  failureAnalysis: text('failure_analysis'), // If Resit, AI summary of reason
   // Notification preferences
   reminderEnabled: boolean('reminder_enabled').default(true),
   reminderTime: text('reminder_time').default('09:00'), // HH:MM format
   reminderTimezone: text('reminder_timezone').default('Africa/Nairobi'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Witnesses (Latent Weaknesses) for Senior Partner Protocol
+export const witnesses = pgTable('witnesses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  unitId: text('unit_id').notNull(),
+  topicId: text('topic_id').notNull(),
+  title: text('title').notNull(),
+  severityWeight: numeric('severity_weight', { precision: 3, scale: 1 }).notNull().default('1.0'), // 1.0 - 5.0
+  status: text('status').$type<'ACTIVE' | 'RESOLVED' | 'DORMANT'>().default('ACTIVE').notNull(),
+  identifiedAt: timestamp('identified_at').defaultNow().notNull(),
+  resolvedAt: timestamp('resolved_at'),
+  notes: text('notes'),
 });
 
 // User engagement signals - TikTok-style continuous learning
@@ -165,6 +184,41 @@ export const chatMessages = pgTable('chat_messages', {
   attachments: jsonb('attachments').$type<{ type: string; url: string; name: string }[]>(),
   metadata: jsonb('metadata'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Milestone 3: Global Syllabus Map (Ingested from Course Outlines)
+export const syllabusNodes = pgTable('syllabus_nodes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  unitCode: text('unit_code').notNull(), // e.g., 'ATP100', 'ATP106'
+  weekNumber: integer('week_number').notNull(), // KSL sequential week (1-33+)
+  kslTerm: integer('ksl_term').default(1).notNull(), // 1, 2, or 3
+  topicName: text('topic_name').notNull(), // e.g., 'Commencement of Suits'
+  subtopicName: text('subtopic_name'), // e.g., 'Service of Process'
+  isDraftingNode: boolean('is_drafting_node').default(false).notNull(),
+  isHighYield: boolean('is_high_yield').default(false).notNull(), // Exam-critical node
+  learningOutcome: text('learning_outcome'), // "By the end of this lesson..."
+  sectionReference: text('section_reference'), // Key statute/section ref
+  coreTexts: jsonb('core_texts').$type<string[]>(), // Core reading materials
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Node-State Machine: tracks per-user progress through the 4-phase lifecycle
+export const nodeProgress = pgTable('node_progress', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  nodeId: uuid('node_id').references(() => syllabusNodes.id).notNull(),
+  phase: text('phase').$type<'NOTE' | 'EXHIBIT' | 'DIAGNOSIS' | 'MASTERY'>().default('NOTE').notNull(),
+  noteCompleted: boolean('note_completed').default(false).notNull(),
+  exhibitViewed: boolean('exhibit_viewed').default(false).notNull(),
+  diagnosisScore: real('diagnosis_score'), // 0.0 - 1.0 MCQ/ABCD score
+  diagnosisPassed: boolean('diagnosis_passed').default(false).notNull(),
+  masteryScore: real('mastery_score'), // 0.0 - 1.0 simulation/drafting score
+  masteryPassed: boolean('mastery_passed').default(false).notNull(),
+  attempts: integer('attempts').default(0).notNull(),
+  lastAttemptAt: timestamp('last_attempt_at'),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Clarification requests with uploads

@@ -49,8 +49,16 @@ export async function GET(req: NextRequest) {
 
     const url = new URL(req.url);
     const skillId = url.searchParams.get('skillId');
-    // Mastery Hub is WRITTEN EXAMS ONLY - ignore format param
-    const format = 'written';
+    
+    // Support multiple formats: written (essay), mcq, short_answer
+    const requestedFormat = url.searchParams.get('format');
+    const validFormats = ['written', 'mcq', 'short_answer'];
+    
+    // Default to random format if not specified, weighted towards written for bar prep
+    const format = requestedFormat && validFormats.includes(requestedFormat) 
+      ? requestedFormat 
+      : Math.random() > 0.4 ? 'written' : (Math.random() > 0.5 ? 'mcq' : 'short_answer');
+
     const itemId = url.searchParams.get('itemId'); // If we already have an item ID
 
     if (!skillId) {
@@ -215,31 +223,66 @@ function parseMcqOptions(prompt: string): { label: string; text: string; isCorre
  */
 async function generateItemForSkill(
   skill: { id: string; name: string; unit_id: string; format_tags: string[] },
-  _format: string // Ignored - always written
+  format: string
 ): Promise<ItemData> {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
   
-  const systemPrompt = `You are a Kenya bar exam question writer. Generate high-quality written exam questions that test legal analysis skills.
+  let systemPrompt = '';
+  let userPrompt = '';
+
+  if (format === 'mcq') {
+    systemPrompt = `You are a Kenya bar exam tutor. Create a challenging Multiple Choice Question (MCQ) for the given skill.
+      
+Format your response as JSON only:
+{
+  "prompt": "A short scenario or legal question text",
+  "options": [
+    { "label": "A", "text": "Option text", "isCorrect": false },
+    { "label": "B", "text": "Option text", "isCorrect": true },
+    { "label": "C", "text": "Option text", "isCorrect": false },
+    { "label": "D", "text": "Option text", "isCorrect": false }
+  ],
+  "modelAnswer": "Explanation of why B is correct and others are wrong, citing specific sections/cases.",
+  "keyPoints": ["Relevant Section/Article", "Key Case Law"]
+}`;
+    userPrompt = `Generate a hard MCQ for "${skill.name}" (Kenyan Law). Requires deep understanding, not just recall.`;
+
+  } else if (format === 'short_answer') {
+    systemPrompt = `You are a Kenya bar exam tutor. Create a "Short Answer" exercise (type one word or phrase).
+      
+Format your response as JSON only:
+{
+  "prompt": "Direct question asking for a specific term, doctrine, date, or procedure name.",
+  "modelAnswer": "The exact term or phrase expected.",
+  "keyPoints": ["Efficiency", "Accuracy"]
+}`;
+    userPrompt = `Generate a short-answer question for "${skill.name}". Example: "What is the limitation period for torts?" -> "3 years".`;
+
+  } else {
+    // WRITTEN / ESSAY
+    systemPrompt = `You are a Kenya bar exam tutor. Create a practical reinforcement exercise (scenario-based) to test legal analysis skills.
 
 Format your response as JSON only:
 {
-  "prompt": "A detailed scenario-based question (2-3 paragraphs) requiring full legal analysis",
+  "prompt": "A detailed scenario (2-3 paragraphs) followed by a specific task/instruction for the student (e.g., 'Draft a memo...', 'Advise the client...')",
   "context": "Additional factual background or instructions if needed",
   "modelAnswer": "A comprehensive model answer using IRAC structure with specific Kenyan statutory provisions and case law",
   "keyPoints": ["Key legal issue 1", "Relevant statute/section", "Key case law with citation", "Correct application principle"]
 }`;
+    userPrompt = `Generate a written exercise to reinforce the skill "${skill.name}" for the Kenya bar exam.
 
-  const userPrompt = `Generate a written bar exam question to test the skill "${skill.name}" for the Kenya bar exam.
-
-Create a realistic scenario-based question that requires:
+Create a realistic scenario that requires:
 1. Issue identification
 2. Application of Kenyan law (statutes and case law)
 3. Structured legal analysis (IRAC)
-4. A clear conclusion`;
+4. A clear conclusion
+
+This is a learning exercise, so ensure it tests understanding of the core principles.`;
+  }
 
   try {
     const response = await openai.responses.create({
-      model: 'gpt-4o',
+      model: 'gpt-5.2',
       instructions: systemPrompt,
       input: userPrompt,
     });
@@ -253,14 +296,15 @@ Create a realistic scenario-based question that requires:
       
       return {
         id: `generated-${Date.now()}`,
-        itemType: 'written',
-        format: 'written',
+        itemType: format,
+        format: format,
         prompt: parsed.prompt,
         context: parsed.context || null,
         modelAnswer: parsed.modelAnswer || null,
         keyPoints: parsed.keyPoints || [],
+        options: parsed.options, // For MCQs
         difficulty: 3,
-        estimatedMinutes: 15,
+        estimatedMinutes: format === 'written' ? 15 : (format === 'mcq' ? 2 : 5),
         skillId: skill.id,
         skillName: skill.name,
         unitId: skill.unit_id,
@@ -271,12 +315,52 @@ Create a realistic scenario-based question that requires:
     console.error('AI generation failed:', e);
   }
 
-  // Fallback static item
+  // Fallback static items
+  if (format === 'mcq') {
+    return {
+      id: `fallback-mcq-${Date.now()}`,
+      itemType: 'mcq',
+      format: 'mcq',
+      prompt: `Which of the following best describes the principle of *Stare Decisis* in Kenya for ${skill.name}?`,
+      options: [
+        { label: "A", text: "High Court decisions bind the Court of Appeal", isCorrect: false },
+        { label: "B", text: "Supreme Court decisions bind all lower courts", isCorrect: true },
+        { label: "C", text: "Magistrate courts vary by county", isCorrect: false },
+        { label: "D", text: "Tribunal decisions are final", isCorrect: false }
+      ],
+      modelAnswer: "B is correct. Under Article 163(7), Supreme Court decisions bind all other courts.",
+      keyPoints: ["Article 163(7) Constitution"],
+      difficulty: 2,
+      estimatedMinutes: 2,
+      skillId: skill.id,
+      skillName: skill.name,
+      unitId: skill.unit_id,
+      coverageWeight: 1.0,
+      context: null
+    };
+  } else if (format === 'short_answer') {
+    return {
+      id: `fallback-sa-${Date.now()}`,
+      itemType: 'short_answer',
+      format: 'short_answer',
+      prompt: `What is the standard limitation period for a claim based on contract in Kenya?`,
+      modelAnswer: `6 years`,
+      keyPoints: ["Limitation of Actions Act"],
+      difficulty: 1,
+      estimatedMinutes: 2,
+      skillId: skill.id,
+      skillName: skill.name,
+      unitId: skill.unit_id,
+      coverageWeight: 1.0,
+      context: null
+    };
+  }
+
   return {
     id: `fallback-${Date.now()}`,
     itemType: 'written',
     format: 'written',
-    prompt: `Practice question for ${skill.name}:\n\nExplain the key legal principles governing this area under Kenyan law. Your answer should:\n\n1. Identify the relevant statutory framework\n2. Discuss leading case law and their rationale\n3. Analyze how these principles apply in practice\n4. Consider any recent developments or reforms`,
+    prompt: `Practice exercise for ${skill.name}:\n\nExplain the key legal principles governing this area under Kenyan law. Your answer should:\n\n1. Identify the relevant statutory framework\n2. Discuss leading case law and their rationale\n3. Analyze how these principles apply in practice\n4. Consider any recent developments or reforms`,
     context: null,
     modelAnswer: `Model Answer Structure:\n\n1. **Issue**: Identify the core legal issues in ${skill.name}\n\n2. **Rule**: State the relevant statutory provisions and case law principles\n\n3. **Application**: Apply these rules to practical scenarios\n\n4. **Conclusion**: Summarize the legal position and any recommendations`,
     keyPoints: [

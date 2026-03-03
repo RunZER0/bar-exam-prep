@@ -654,7 +654,7 @@ async function callAI(prompt: string, maxTokens: number = 2000): Promise<string>
   }
   
   const response = await openai.responses.create({
-    model: 'gpt-4o',
+    model: 'gpt-5.2',
     input: prompt,
   });
   
@@ -672,7 +672,7 @@ export async function callAIFast(prompt: string, maxTokens: number = 2000): Prom
     try {
       // Use GPT-4o-mini for fast, cost-effective generation
       const response = await openai.responses.create({
-        model: process.env.OPENAI_FAST_MODEL || 'gpt-4o-mini',
+        model: process.env.OPENAI_FAST_MODEL || 'gpt-5.2',
         input: prompt,
       });
       return response.output_text || '';

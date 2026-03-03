@@ -40,7 +40,7 @@ export interface GeneratedRubric {
 // ============================================
 
 const MODEL_CONFIG = {
-  generatorModel: process.env.GENERATOR_MODEL || 'gpt-4o-mini',
+  generatorModel: process.env.GENERATOR_MODEL || 'gpt-5.2',
 };
 
 const openai = new OpenAI({

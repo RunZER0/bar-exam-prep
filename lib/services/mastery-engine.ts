@@ -703,7 +703,11 @@ export function generateDailyPlan(input: PlannerInput): DailyPlanOutput {
   for (const [skillId, items] of input.availableItems) {
     for (const item of items) {
       const skill = input.skills.get(skillId);
-      const format = skill?.formatTags[0] ?? 'written';
+      // Prefer item type if it explicitly indicates format, otherwise use skill default
+      let format = skill?.formatTags[0] ?? 'written';
+      if (item.itemType === 'mcq' || item.itemType === 'short_answer') {
+        format = item.itemType;
+      }
       
       const score = scoreTask(
         skillId,

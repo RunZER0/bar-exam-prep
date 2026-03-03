@@ -6,6 +6,15 @@ import {
   type LegalProvision,
   type CaseLaw 
 } from '@/lib/knowledge/kenyan-law-base';
+import {
+  retrieveRAGContext,
+  formatRAGContextForPrompt,
+} from '@/lib/ai/embedding-service';
+import {
+  AGENT_TOOLS,
+  executeAgentTool,
+  getToolsForResponses,
+} from '@/lib/ai/agent-tools';
 
 let _openai: OpenAI | null = null;
 const getOpenAI = () => {
@@ -302,7 +311,7 @@ If you cannot identify the specific provision, say so explicitly.`;
 
 /**
  * RAG-Enhanced Study Response
- * Uses retrieved legal provisions and case law to provide accurate, grounded responses
+ * Uses pgvector semantic search + hardcoded fallback for grounded, cited responses
  */
 export async function generateStudyResponseWithRAG(
   prompt: string,
@@ -311,15 +320,24 @@ export async function generateStudyResponseWithRAG(
   statutes: string[]
 ): Promise<AIResponse & { sources: { provisions: LegalProvision[]; cases: CaseLaw[] } }> {
   try {
-    // Retrieve relevant legal context using RAG
-    const ragContext = getRelevantContext(prompt, unitId);
+    // 1. Retrieve context via pgvector semantic search
+    let ragContextText = '';
+    try {
+      const ragContext = await retrieveRAGContext(prompt, unitId);
+      ragContextText = formatRAGContextForPrompt(ragContext);
+    } catch (embeddingError) {
+      console.warn('[RAG] Semantic search unavailable, falling back to keyword:', embeddingError);
+    }
+
+    // 2. Also get keyword-matched context as supplement (always works)
+    const keywordContext = getRelevantContext(prompt, unitId);
     
-    const provisionsContext = ragContext.provisions.length > 0
-      ? ragContext.provisions.map(formatProvisionForContext).join('\n\n---\n\n')
+    const provisionsContext = keywordContext.provisions.length > 0
+      ? keywordContext.provisions.map(formatProvisionForContext).join('\n\n---\n\n')
       : '';
     
-    const casesContext = ragContext.cases.length > 0
-      ? ragContext.cases.map(formatCaseForContext).join('\n\n---\n\n')
+    const casesContext = keywordContext.cases.length > 0
+      ? keywordContext.cases.map(formatCaseForContext).join('\n\n---\n\n')
       : '';
     
     const fullPrompt = `${KENYA_LEGAL_CONTEXT}
@@ -329,10 +347,11 @@ You are an expert Kenyan law tutor helping a student prepare for the bar examina
 Study Unit: ${unitName}
 Relevant Statutes: ${statutes.join(', ')}
 
-===== RETRIEVED LEGAL PROVISIONS =====
+${ragContextText ? ragContextText + '\n' : ''}
+===== SUPPLEMENTARY LEGAL PROVISIONS =====
 ${provisionsContext || 'No specific provisions retrieved. Use your knowledge of Kenyan law.'}
 
-===== RELEVANT CASE LAW =====
+===== SUPPLEMENTARY CASE LAW =====
 ${casesContext || 'No specific cases retrieved. Focus on legal principles.'}
 
 ===== STUDENT'S QUESTION =====
@@ -341,12 +360,13 @@ ${prompt}
 ===== INSTRUCTIONS =====
 Provide a comprehensive, educational response that:
 
-1. **Directly answers the question** with accurate Kenyan legal information
+1. **Directly answers the question** with accurate Kenyan legal information  
 2. **Cites SPECIFIC sections** - ALWAYS include the Section number (e.g., "Section 4(1) of the Evidence Act")
 3. **References cases with FULL citations** - Include case name, year, and court (e.g., "[2019] eKLR (Court of Appeal)")
 4. **Explains practical application** - how this applies in legal practice
 5. **Highlights exam tips** - what bar examiners look for on this topic
 6. **Connects related provisions** - cite the specific sections of related law
+7. **PRIORITIZE the retrieved knowledge above** - cite those sources first
 
 CITATION FORMAT (MANDATORY):
 - Constitution: "Under Article 50(2)(a) of the Constitution of Kenya 2010..."
@@ -364,19 +384,18 @@ Be thorough but focused. Aim for depth over breadth.`;
 
     const guardrails = await validateResponse(prompt, content, 'research');
 
-    // Only filter in extreme cases - we want to give helpful responses
     const filtered = guardrails.isHallucination && guardrails.confidence > 85;
 
     if (filtered) {
       return {
-        content: `I want to give you accurate information on this topic within ${unitName}. Let me focus on the verified legal principles:\n\n${ragContext.provisions.length > 0 
-          ? ragContext.provisions.map(formatProvisionForContext).join('\n\n') 
-          : 'For detailed provisions, please consult the ' + statutes.join(', ')}.${ragContext.cases.length > 0 
-          ? '\n\nRelevant cases include:\n' + ragContext.cases.map(c => `- **${c.name}** ${c.citation}: ${c.ratio}`).join('\n') 
+        content: `I want to give you accurate information on this topic within ${unitName}. Let me focus on the verified legal principles:\n\n${keywordContext.provisions.length > 0 
+          ? keywordContext.provisions.map(formatProvisionForContext).join('\n\n') 
+          : 'For detailed provisions, please consult the ' + statutes.join(', ')}.${keywordContext.cases.length > 0 
+          ? '\n\nRelevant cases include:\n' + keywordContext.cases.map(c => `- **${c.name}** ${c.citation}: ${c.ratio}`).join('\n') 
           : ''}\n\nWould you like me to explain any of these provisions in more detail?`,
         guardrails,
         filtered: true,
-        sources: ragContext,
+        sources: keywordContext,
       };
     }
 
@@ -384,7 +403,7 @@ Be thorough but focused. Aim for depth over breadth.`;
       content,
       guardrails,
       filtered: false,
-      sources: ragContext,
+      sources: keywordContext,
     };
   } catch (error: any) {
     console.error('RAG study generation error:', error);
@@ -581,7 +600,8 @@ Format your response as JSON:
 
 /**
  * Generate context-aware response using conversation history
- * This enables the AI to remember previous messages in the session
+ * This is the AGENTIC path: AI gets access to tools and can autonomously
+ * search the knowledge base, check student mastery, and find practice items.
  */
 export async function generateContextAwareResponse(
   message: string,
@@ -602,26 +622,51 @@ export async function generateContextAwareResponse(
       ? `\n\nThe user has attached ${attachments.length} file(s) with their message. Please consider this context.`
       : '';
 
+    // Pre-fetch RAG context for the current message
+    let ragContextText = '';
+    try {
+      const ragContext = await retrieveRAGContext(message, context?.unitId);
+      ragContextText = formatRAGContextForPrompt(ragContext);
+    } catch {
+      // Semantic search unavailable — tools will still work
+    }
+
     const fullPrompt = `${KENYA_LEGAL_CONTEXT}
 
-You are having a continuing conversation with a Kenyan law student. Use the previous messages for context to provide relevant, helpful responses.
+You are having a continuing conversation with a Kenyan law student. You have access to TOOLS that let you search the knowledge base, check student mastery, find practice questions, and look up lecture content. USE THESE TOOLS when you need to cite specific legal provisions, verify claims, or personalize recommendations.
 
 === CONVERSATION HISTORY ===
 ${historyText || '(This is the start of the conversation)'}
+
+${ragContextText ? `=== PRE-RETRIEVED CONTEXT ===\n${ragContextText}\n` : ''}
 
 === CURRENT MESSAGE ===
 ${message}${attachmentContext}
 
 === INSTRUCTIONS ===
 1. Reference previous messages when relevant
-2. Build on concepts already discussed
-3. Maintain consistency with previous responses
-4. If the student is following up on a topic, go deeper rather than repeating basics
-5. Always cite specific legal provisions (Articles, Sections, Cases)
+2. BUILD ON concepts already discussed — go deeper, not broader
+3. Use your tools to search_knowledge_base when you need to cite specific provisions
+4. Use search_related_skills to suggest what to study next
+5. Use get_student_mastery to check the student's progress (if user ID available)
+6. ALWAYS cite specific legal provisions (Articles, Sections, Cases)
+7. If the retrieved context above answers the question, use it directly
 
 Provide a helpful, context-aware response:`;
 
-    const content = await callAI(fullPrompt, 3000);
+    // Use agentic tool-calling path for research/study queries
+    const useTools = competencyType === 'research' || competencyType === 'study';
+    
+    let content: string;
+    if (useTools) {
+      content = await callAIWithTools(fullPrompt, {
+        userId: context?.userId,
+        unitId: context?.unitId,
+      });
+    } else {
+      content = await callAI(fullPrompt, 3000);
+    }
+
     const guardrails = await validateResponse(message, content, 'research');
 
     return {
@@ -639,7 +684,7 @@ Provide a helpful, context-aware response:`;
 }
 
 /**
- * Helper function to call AI provider
+ * Helper function to call AI provider (simple, no tools)
  */
 async function callAI(prompt: string, maxTokens: number = 2000): Promise<string> {
   const provider = getPreferredProvider();
@@ -658,6 +703,83 @@ async function callAI(prompt: string, maxTokens: number = 2000): Promise<string>
     input: prompt,
   });
   
+  return response.output_text || '';
+}
+
+/**
+ * Agentic AI call with function-calling tools
+ * Runs a multi-step tool-use loop: AI decides which tools to call,
+ * we execute them and feed results back, until AI produces a final text response.
+ * Max 5 tool rounds to prevent runaway loops.
+ */
+export async function callAIWithTools(
+  prompt: string,
+  options: {
+    userId?: string;
+    unitId?: string;
+    maxToolRounds?: number;
+  } = {}
+): Promise<string> {
+  const openai = getOpenAI();
+  if (!openai) {
+    throw new Error('AI_NOT_CONFIGURED');
+  }
+
+  const { maxToolRounds = 5 } = options;
+  const tools = getToolsForResponses();
+
+  // First call with tools
+  let response = await openai.responses.create({
+    model: 'gpt-5.2',
+    input: prompt,
+    tools: tools as any,
+  });
+
+  // Multi-step tool-use loop
+  let round = 0;
+  while (round < maxToolRounds) {
+    // Check if any function_call outputs exist
+    const toolCalls = response.output.filter(
+      (item: any) => item.type === 'function_call'
+    ) as Array<{ type: 'function_call'; name: string; arguments: string; call_id: string }>;
+
+    if (toolCalls.length === 0) break; // No more tool calls, we have a text response
+
+    console.log(`[AgentTools] Round ${round + 1}: ${toolCalls.length} tool call(s)`);
+
+    // Execute all tool calls
+    const toolResults: Array<{ type: 'function_call_output'; call_id: string; output: string }> = [];
+    for (const call of toolCalls) {
+      const args = typeof call.arguments === 'string'
+        ? JSON.parse(call.arguments)
+        : call.arguments;
+
+      // Inject userId if the tool needs it and the user provided it
+      if (options.userId && args && !args.user_id) {
+        args.user_id = options.userId;
+      }
+
+      console.log(`[AgentTools] Calling: ${call.name}(${JSON.stringify(args).slice(0, 200)})`);
+      const result = await executeAgentTool(call.name, args);
+      
+      toolResults.push({
+        type: 'function_call_output',
+        call_id: call.call_id,
+        output: result,
+      });
+    }
+
+    // Feed tool results back to the model
+    response = await openai.responses.create({
+      model: 'gpt-5.2',
+      input: toolResults,
+      tools: tools as any,
+      previous_response_id: response.id,
+    });
+
+    round++;
+  }
+
   return response.output_text || '';
 }
 

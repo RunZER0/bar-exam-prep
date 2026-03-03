@@ -5,6 +5,7 @@ import { eq, inArray, sql, desc, or, ilike } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import OpenAI from 'openai';
 import { MENTOR_MODEL, getOpenAIKey } from '@/lib/ai/model-config';
+import { searchKnowledgeBaseSemantic } from '@/lib/ai/embedding-service';
 
 const GROUNDED_MODEL = MENTOR_MODEL;
 const AI_NOTES_TIMEOUT_MS = Number(process.env.NOTES_AI_TIMEOUT_MS || 15000);
@@ -210,8 +211,26 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 4. Generate AI-powered notes using outlines + authorities as context (best-effort, time-boxed)
+    // 4. Generate AI-powered notes using outlines + authorities + knowledge base as context
     const unitName = UNIT_NAMES[skill.unitId] || 'Legal Practice';
+    
+    // 4a. Retrieve semantic knowledge base context
+    let kbContext = '';
+    try {
+      const kbResults = await searchKnowledgeBaseSemantic(
+        `${skillName} ${outlineTopicsForSkill.map(t => t.title).join(' ')}`,
+        { topK: 5, unitId: skill.unitId }
+      );
+      if (kbResults.length > 0) {
+        kbContext = kbResults.map(kb => 
+          `[KB: ${kb.source}${kb.citation ? ` — ${kb.citation}` : ''}] ${kb.title}:\n${kb.content}`
+        ).join('\n---\n');
+        console.log(`[Notes] Retrieved ${kbResults.length} knowledge base entries for "${skillName}"`);
+      }
+    } catch {
+      // Semantic search not available — continue without
+    }
+
     try {
       const outlineContext = outlineTopicsForSkill.map(t => `- ${t.title}: ${t.description || ''}`).join('\n');
       const authorityContext = authorities
@@ -246,7 +265,7 @@ Output JSON ONLY with this shape:
 }
 
 Do not include any extra keys or prose outside JSON.` },
-          { role: "user", content: `Unit: ${unitName}\nSkill: ${skillName}\nOutline topics (must cover all):\n${outlineContext || '- (no outline topics provided, use core syllabus expectations)'}\n\nAvailable authoritative sources (use these for grounding):\n${authorityContext || '- none provided, use standard Kenya leading authorities where known.'}` }
+          { role: "user", content: `Unit: ${unitName}\nSkill: ${skillName}\nOutline topics (must cover all):\n${outlineContext || '- (no outline topics provided, use core syllabus expectations)'}\n\n${kbContext ? `Knowledge Base (verified provisions & case law — use these first):\n${kbContext}\n\n` : ''}Available authoritative sources (use these for grounding):\n${authorityContext || '- none provided, use standard Kenya leading authorities where known.'}` }
         ],
         response_format: { type: "json_object" }
       });

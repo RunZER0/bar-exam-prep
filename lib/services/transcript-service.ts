@@ -552,30 +552,81 @@ function extractExcerpt(text: string, term: string, maxLength: number): string {
 // ============================================
 
 /**
- * Generate embeddings for chunks using OpenAI
- * Returns chunks with embeddings populated
+ * Generate embeddings for chunks using OpenAI text-embedding-3-small
+ * Stores embeddings to DB via pgvector
  */
 export async function generateChunkEmbeddings(
   chunks: TranscriptChunk[]
 ): Promise<TranscriptChunk[]> {
-  // TODO: Integrate with OpenAI embeddings API
-  // For now, return chunks without embeddings
-  
-  console.log('[Transcript Service] Embedding generation not implemented');
-  
-  return chunks;
+  try {
+    const { generateBatchEmbeddings, storeChunkEmbedding } = await import('@/lib/ai/embedding-service');
+    
+    const texts = chunks.map(c => c.text.slice(0, 8000));
+    console.log(`[Transcript Service] Generating embeddings for ${texts.length} chunks...`);
+    
+    const embeddings = await generateBatchEmbeddings(texts);
+    
+    // Store embeddings in DB
+    for (let i = 0; i < chunks.length; i++) {
+      if (chunks[i].id && embeddings[i]) {
+        await storeChunkEmbedding(chunks[i].id, embeddings[i]);
+      }
+    }
+    
+    console.log(`[Transcript Service] Stored ${embeddings.length} chunk embeddings`);
+    return chunks;
+  } catch (error) {
+    console.error('[Transcript Service] Embedding generation failed:', error);
+    return chunks;
+  }
 }
 
 /**
- * Semantic search using embeddings
+ * Semantic search using pgvector cosine similarity
+ * Falls back to keyword search if pgvector unavailable
  */
 export async function searchTranscriptsSemantic(
   query: string,
   chunks: TranscriptChunk[],
   lectures: Map<string, LectureMetadata>
 ): Promise<TranscriptSearchResult[]> {
-  // TODO: Implement semantic search with embeddings
-  // For now, fall back to keyword search
-  
-  return searchTranscriptsKeyword(query, chunks, lectures);
+  try {
+    const { searchLectureChunksSemantic } = await import('@/lib/ai/embedding-service');
+    
+    const results = await searchLectureChunksSemantic(query, { topK: 5 });
+    
+    if (results.length > 0) {
+      return results.map(r => ({
+        chunk: {
+          id: r.id,
+          lectureId: r.lectureId,
+          text: r.content,
+          startSec: 0,
+          endSec: 0,
+          skillIds: [],
+          chunkIndex: r.chunkIndex,
+          wordCount: r.content.split(/\s+/).length,
+          authorityIds: [],
+          keyTerms: [],
+        } satisfies TranscriptChunk,
+        lecture: lectures.get(r.lectureId) || {
+          id: r.lectureId,
+          name: r.lectureTitle,
+          unitId: '',
+          lecturer: '',
+          lectureSourceId: '',
+          duration_sec: 0,
+        } satisfies LectureMetadata,
+        relevanceScore: r.similarity,
+        excerpt: r.content.slice(0, 300),
+        timestamp: '',
+      }));
+    }
+    
+    // Fall back to keyword search if semantic returns nothing
+    return searchTranscriptsKeyword(query, chunks, lectures);
+  } catch {
+    // pgvector not available, fall back to keyword
+    return searchTranscriptsKeyword(query, chunks, lectures);
+  }
 }

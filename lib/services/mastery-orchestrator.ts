@@ -1,6 +1,16 @@
 import { db } from '@/lib/db';
 import { syllabusNodes, userProfiles, nodeProgress } from '@/lib/db/schema';
 import { eq, and, asc, sql } from 'drizzle-orm';
+import OpenAI from 'openai';
+import { ORCHESTRATOR_MODEL } from '@/lib/ai/model-config';
+
+let _openai: OpenAI | null = null;
+const getOpenAI = () => {
+  if (!_openai && process.env.OPENAI_API_KEY) {
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openai;
+};
 
 /**
  * Orchestrator philosophy: NO artificial caps.
@@ -294,14 +304,160 @@ export class MasteryOrchestrator {
     }
 
     /**
-     * Pacing Check: Should we slow down?
+     * Pacing Check: AI-driven adaptive pacing
+     * Uses ORCHESTRATOR_MODEL to analyze performance patterns and recommend pacing adjustments
      */
     static async checkPacing(userId: string, lastAttemptResult: { score: number; isUnderstandingCheck: boolean }) {
+        // Quick heuristic check first
         if (lastAttemptResult.isUnderstandingCheck && lastAttemptResult.score < 0.6) {
             console.log(`[MasteryOrchestrator] Understanding check failed. Slowing down.`);
+
+            // Ask AI orchestrator for specific intervention
+            const openai = getOpenAI();
+            if (openai) {
+                try {
+                    // Get recent performance data
+                    const recentAttempts = await db.execute(sql`
+                        SELECT 
+                            ms.name as skill_name, ms.unit_id,
+                            a.score_norm, a.format, a.error_tags, a.created_at
+                        FROM attempts a
+                        JOIN item_skill_map ism ON ism.item_id = a.item_id
+                        JOIN micro_skills ms ON ms.id = ism.skill_id
+                        WHERE a.user_id = ${userId}
+                        ORDER BY a.created_at DESC
+                        LIMIT 10
+                    `);
+
+                    const response = await openai.responses.create({
+                        model: ORCHESTRATOR_MODEL,
+                        input: `You are an adaptive learning orchestrator for a Kenyan bar exam prep system.
+
+A student just scored ${(lastAttemptResult.score * 100).toFixed(0)}% on an understanding check.
+
+Recent attempt history:
+${JSON.stringify(recentAttempts.rows, null, 2)}
+
+Analyze the pattern and respond with JSON:
+{
+  "action": "SLOW_DOWN" | "REVIEW_PREREQUISITE" | "CHANGE_FORMAT" | "INJECT_EXAMPLE",
+  "inject": "HAMMERING_TASK" | "REVIEW_NOTE" | "WORKED_EXAMPLE" | "SIMPLER_VARIANT",
+  "reason": "Brief explanation",
+  "targetSkill": "Name of skill to focus on",
+  "suggestedDifficulty": 1-5
+}`,
+                    });
+
+                    try {
+                        const jsonMatch = response.output_text.match(/\{[\s\S]*\}/);
+                        if (jsonMatch) {
+                            const aiDecision = JSON.parse(jsonMatch[0]);
+                            console.log(`[MasteryOrchestrator] AI pacing decision:`, aiDecision);
+                            return {
+                                action: aiDecision.action || 'SLOW_DOWN',
+                                inject: aiDecision.inject || 'HAMMERING_TASK',
+                                reason: aiDecision.reason,
+                                targetSkill: aiDecision.targetSkill,
+                                suggestedDifficulty: aiDecision.suggestedDifficulty,
+                            };
+                        }
+                    } catch {
+                        // AI parse failed, use default
+                    }
+                } catch (aiError) {
+                    console.warn('[MasteryOrchestrator] AI pacing check failed:', aiError);
+                }
+            }
+
             return { action: 'SLOW_DOWN' as const, inject: 'HAMMERING_TASK' as const };
         }
         return { action: 'CONTINUE' as const };
+    }
+
+    /**
+     * AI-powered queue prioritization
+     * Takes the SQL-generated queue and uses ORCHESTRATOR_MODEL to re-rank
+     * based on student's error patterns, time constraints, and exam proximity
+     */
+    static async aiPrioritizeQueue(
+        userId: string,
+        queue: Array<{ type: string; priority: string; data: Record<string, unknown> }>,
+        practiceItems: Array<{ type: string; priority: string; data: Record<string, unknown> }>
+    ): Promise<{ rerankedQueue: typeof queue; rerankedPractice: typeof practiceItems; reasoning: string }> {
+        const openai = getOpenAI();
+        if (!openai || queue.length === 0) {
+            return { rerankedQueue: queue, rerankedPractice: practiceItems, reasoning: 'AI not available — using default SQL ordering' };
+        }
+
+        try {
+            // Get error pattern summary
+            const errorPatterns = await db.execute(sql`
+                SELECT error_tags, COUNT(*) as cnt
+                FROM attempts
+                WHERE user_id = ${userId} AND error_tags IS NOT NULL AND error_tags != '[]'
+                GROUP BY error_tags
+                ORDER BY cnt DESC
+                LIMIT 5
+            `);
+
+            const response = await openai.responses.create({
+                model: ORCHESTRATOR_MODEL,
+                input: `You are an adaptive learning orchestrator. Re-prioritize this study queue for maximum exam readiness.
+
+QUEUE (${queue.length} syllabus items):
+${queue.slice(0, 15).map((item, i) => `${i + 1}. ${JSON.stringify(item.data)}`).join('\n')}
+
+PRACTICE ITEMS (${practiceItems.length}):
+${practiceItems.slice(0, 10).map((item, i) => `${i + 1}. ${JSON.stringify(item.data)}`).join('\n')}
+
+ERROR PATTERNS:
+${JSON.stringify(errorPatterns.rows)}
+
+Respond with JSON:
+{
+  "syllabusOrder": [1, 3, 2, ...],  // re-ordered indices (1-based)
+  "practiceOrder": [2, 1, 3, ...],  // re-ordered indices (1-based)
+  "reasoning": "Brief explanation of prioritization logic"
+}`,
+            });
+
+            try {
+                const jsonMatch = response.output_text.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    const decision = JSON.parse(jsonMatch[0]);
+                    
+                    // Reorder queue based on AI indices
+                    const rerankedQueue = (decision.syllabusOrder || [])
+                        .filter((idx: number) => idx >= 1 && idx <= queue.length)
+                        .map((idx: number) => queue[idx - 1]);
+                    // Append any items not mentioned by AI
+                    const mentionedSet = new Set(decision.syllabusOrder || []);
+                    queue.forEach((item, i) => {
+                        if (!mentionedSet.has(i + 1)) rerankedQueue.push(item);
+                    });
+
+                    const rerankedPractice = (decision.practiceOrder || [])
+                        .filter((idx: number) => idx >= 1 && idx <= practiceItems.length)
+                        .map((idx: number) => practiceItems[idx - 1]);
+                    const mentionedPractice = new Set(decision.practiceOrder || []);
+                    practiceItems.forEach((item, i) => {
+                        if (!mentionedPractice.has(i + 1)) rerankedPractice.push(item);
+                    });
+
+                    return {
+                        rerankedQueue,
+                        rerankedPractice,
+                        reasoning: decision.reasoning || 'AI-prioritized',
+                    };
+                }
+            } catch {
+                // Parse failed
+            }
+        } catch (error) {
+            console.warn('[MasteryOrchestrator] AI prioritization failed:', error);
+        }
+
+        return { rerankedQueue: queue, rerankedPractice: practiceItems, reasoning: 'Default SQL ordering' };
     }
 
     /**

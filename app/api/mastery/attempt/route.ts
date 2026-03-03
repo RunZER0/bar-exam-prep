@@ -30,6 +30,10 @@ import {
   type GradingRequest,
   type GradingOutput,
 } from '@/lib/services/grading-service';
+import {
+  searchKnowledgeBaseSemantic,
+  searchLectureChunksSemantic,
+} from '@/lib/ai/embedding-service';
 
 // ============================================
 // TYPES
@@ -163,6 +167,34 @@ export async function POST(req: NextRequest) {
       }
     } else {
       // AI-powered grading for written/oral/drafting
+      // Retrieve relevant context via pgvector semantic search
+      let relevantLectureChunks: { content: string; lectureTitle: string; timestamp?: string }[] = [];
+      let relevantAuthorities: { citation: string; summary: string }[] = [];
+
+      try {
+        const queryText = `${submission.prompt} ${submission.context || ''}`.slice(0, 500);
+        const [chunks, knowledge] = await Promise.all([
+          searchLectureChunksSemantic(queryText, { topK: 3, unitId: submission.unitId }).catch(() => []),
+          searchKnowledgeBaseSemantic(queryText, { topK: 5, unitId: submission.unitId }).catch(() => []),
+        ]);
+
+        relevantLectureChunks = chunks.map(c => ({
+          content: c.content,
+          lectureTitle: c.lectureTitle,
+        }));
+
+        relevantAuthorities = knowledge.map(k => ({
+          citation: k.citation || k.source,
+          summary: `${k.title}: ${k.content.slice(0, 400)}`,
+        }));
+
+        if (relevantAuthorities.length > 0 || relevantLectureChunks.length > 0) {
+          console.log(`[Attempt] RAG context: ${relevantAuthorities.length} authorities, ${relevantLectureChunks.length} lecture chunks`);
+        }
+      } catch (ragError) {
+        console.warn('[Attempt] RAG retrieval failed, grading without context:', ragError);
+      }
+
       const gradingRequest: GradingRequest = {
         userId: user.id,
         itemId: submission.itemId,
@@ -176,9 +208,8 @@ export async function POST(req: NextRequest) {
         timeTakenSec: submission.timeTakenSec,
         skillIds: submission.skillIds,
         unitId: submission.unitId,
-        // TODO: Add retrieval of relevant lectures and authorities
-        // relevantLectureChunks: await retrieveLectureChunks(submission.skillIds),
-        // relevantAuthorities: await retrieveAuthorities(submission.skillIds),
+        relevantLectureChunks,
+        relevantAuthorities,
       };
       
       try {

@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Zap, BookOpen, AlertCircle, PlayCircle, CheckCircle2 } from 'lucide-react';
 import MasteryCarousel from '@/components/MasteryCarousel';
@@ -66,7 +65,7 @@ export default function MasteryPage() {
         setActiveTask(task);
     };
 
-    const handleTaskComplete = (result: any) => {
+    const handleTaskComplete = (result: Record<string, unknown>) => {
         // Logic to update local state (remove item from queue)
         // And trigger backend update (p_mastery, witness_severity)
         console.log("Task completed", result);
@@ -144,7 +143,7 @@ export default function MasteryPage() {
             <div className="space-y-4">
                 <h2 className="text-xl font-semibold flex items-center gap-2">
                     <Zap className="h-5 w-5 text-yellow-500" />
-                    Today's Execution Queue
+                    Today&apos;s Execution Queue
                 </h2>
                 
                 {queueData?.queue.length === 0 ? (
@@ -152,7 +151,7 @@ export default function MasteryPage() {
                         <CheckCircle2 className="h-4 w-4 text-green-600" />
                         <AlertTitle>All Clear</AlertTitle>
                         <AlertDescription>
-                            You have completed today's scheduled objectives. Review active witnesses or start a free-practice session.
+                            You have completed today&apos;s scheduled objectives. Review active witnesses or start a free-practice session.
                         </AlertDescription>
                     </Alert>
                 ) : (

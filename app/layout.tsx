@@ -11,7 +11,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://ynai.co.ke";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Ynai — Kenya Bar Exam Preparation Platform",
+    default: "Ynai | Kenya Bar Exam Preparation Platform",
     template: "%s | Ynai",
   },
   description:

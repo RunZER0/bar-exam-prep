@@ -3,6 +3,13 @@ import { syllabusNodes, userProfiles, nodeProgress } from '@/lib/db/schema';
 import { eq, and, asc, sql } from 'drizzle-orm';
 
 /**
+ * Orchestrator philosophy: NO artificial caps.
+ * The queue is shaped by what the student NEEDS, not by arbitrary limits.
+ * The engine serves all relevant syllabus nodes + micro-skill practice items
+ * for the current study window, weighted by urgency and mastery state.
+ */
+
+/**
  * KSL 2026/2027 Academic Calendar
  * Term 1: Feb 3 – Apr 14 (11 weeks)
  * Term 2: Apr 28 – Jul 7 (11 weeks)
@@ -82,7 +89,7 @@ export class MasteryOrchestrator {
         let queue: typeof syllabus = [];
 
         if (isPathA) {
-            // PATH A: Surgical Strike — Only failed units, prioritize high-yield + drafting
+            // PATH A: Surgical Strike — Only failed units, ALL unmastered nodes
             const targetedNodes = syllabus.filter(node => 
                 failedUnits.some(f => 
                     node.unitCode.toLowerCase() === f.toLowerCase() ||
@@ -91,45 +98,106 @@ export class MasteryOrchestrator {
                 ) && !masteredNodeIds.has(node.id)
             );
             
-            // Sort: high-yield + drafting first, then by week
+            // Sort: high-yield + drafting first, then by week — NO CAP
             const criticalNodes = targetedNodes.filter(n => n.isHighYield || n.isDraftingNode);
             const standardNodes = targetedNodes.filter(n => !n.isHighYield && !n.isDraftingNode);
             
-            queue = [...criticalNodes.slice(0, 3), ...standardNodes.slice(0, 2)];
+            queue = [...criticalNodes, ...standardNodes];
             
         } else {
             // PATH B: Paced Build — Sync to current KSL week across all 9 courses
-            // Get nodes for current week and one week behind (catch-up buffer)
+            // Get nodes for current week, previous week, and one week ahead (full window)
             const weeklyNodes = syllabus.filter(node => 
-                (node.weekNumber === absoluteWeek || node.weekNumber === absoluteWeek - 1) &&
+                (node.weekNumber >= absoluteWeek - 1 && node.weekNumber <= absoluteWeek + 1) &&
                 !masteredNodeIds.has(node.id)
             );
             
-            queue = weeklyNodes.slice(0, 9); // Up to 9 nodes (one per course for the week)
+            // NO CAP — serve all relevant nodes for the study window
+            queue = weeklyNodes;
             
-            // If under-filled, pull from backlog (unmastered earlier nodes)
-            if (queue.length < 5) {
-                const backlog = syllabus.filter(n => 
-                    n.weekNumber < absoluteWeek && 
-                    !masteredNodeIds.has(n.id) &&
-                    !queue.some(q => q.id === n.id)
-                );
-                // Prioritize high-yield backlog
-                const hyBacklog = backlog.filter(n => n.isHighYield || n.isDraftingNode);
-                const stdBacklog = backlog.filter(n => !n.isHighYield && !n.isDraftingNode);
-                queue.push(...hyBacklog.slice(0, 5 - queue.length));
-                if (queue.length < 5) {
-                    queue.push(...stdBacklog.slice(0, 5 - queue.length));
-                }
-            }
+            // Backfill with any unmastered earlier nodes (no artificial floor either)
+            const backlog = syllabus.filter(n => 
+                n.weekNumber < absoluteWeek - 1 && 
+                !masteredNodeIds.has(n.id) &&
+                !queue.some(q => q.id === n.id)
+            );
+            // Prioritize high-yield backlog, then standard
+            const hyBacklog = backlog.filter(n => n.isHighYield || n.isDraftingNode);
+            const stdBacklog = backlog.filter(n => !n.isHighYield && !n.isDraftingNode);
+            queue.push(...hyBacklog, ...stdBacklog);
         }
 
-        // 4. Build response with node progress phase info
+        // 4a. Fetch micro-skill practice items for queued units
+        const queuedUnitCodes = [...new Set(queue.map(n => n.unitCode))];
+        let microSkillItems: Array<{
+          type: 'PRACTICE';
+          priority: 'HIGH' | 'NORMAL';
+          data: {
+            skillId: string;
+            skillName: string;
+            skillCode: string;
+            itemId: string;
+            prompt: string;
+            format: string;
+            difficulty: number;
+            unitId: string;
+            isCaseLaw: boolean;
+          };
+        }> = [];
+
+        if (queuedUnitCodes.length > 0) {
+          try {
+            const practiceRows = await db.execute(sql`
+              SELECT
+                ms.id as skill_id,
+                ms.name as skill_name,
+                ms.code as skill_code,
+                ms.is_core,
+                ms.difficulty,
+                ms.unit_id,
+                i.id as item_id,
+                i.prompt,
+                i.format,
+                i.difficulty as item_difficulty
+              FROM micro_skills ms
+              JOIN item_skill_map ism ON ism.skill_id = ms.id
+              JOIN items i ON i.id = ism.item_id
+              LEFT JOIN mastery_state mst ON mst.skill_id = ms.id AND mst.user_id = ${userId}
+              WHERE ms.unit_id = ANY(${queuedUnitCodes}::text[])
+                AND ms.is_active = true
+                AND i.is_active = true
+                AND (mst.p_mastery IS NULL OR mst.p_mastery < 0.85)
+              ORDER BY
+                CASE WHEN ms.is_core THEN 0 ELSE 1 END,
+                COALESCE(mst.p_mastery, 0) ASC,
+                ms.exam_weight DESC
+            `);
+
+            microSkillItems = (practiceRows.rows as Array<Record<string, unknown>>).map(row => ({
+              type: 'PRACTICE' as const,
+              priority: (row.is_core ? 'HIGH' : 'NORMAL') as 'HIGH' | 'NORMAL',
+              data: {
+                skillId: String(row.skill_id),
+                skillName: String(row.skill_name),
+                skillCode: String(row.skill_code),
+                itemId: String(row.item_id),
+                prompt: String(row.prompt),
+                format: String(row.format),
+                difficulty: Number(row.item_difficulty),
+                unitId: String(row.unit_id),
+                isCaseLaw: String(row.skill_code).includes('-case-'),
+              },
+            }));
+          } catch {
+            // micro_skills tables may not exist yet — gracefully skip
+            console.log('[MasteryOrchestrator] micro_skills query skipped (tables may not exist)');
+          }
+        }
+
+        // 5. Build response with node progress phase info + micro-skill items
         const progressMap = new Map(progress.map(p => [p.nodeId, p]));
 
-        return {
-            date: new Date().toISOString().split('T')[0],
-            queue: queue.map(node => {
+        const syllabusQueue = queue.map(node => {
                 const np = progressMap.get(node.id);
                 return {
                     type: 'SYLLABUS' as const,
@@ -146,13 +214,20 @@ export class MasteryOrchestrator {
                         currentPhase: np?.phase || 'NOTE',
                     }
                 };
-            }),
+            });
+
+        return {
+            date: new Date().toISOString().split('T')[0],
+            queue: syllabusQueue,
+            practiceItems: microSkillItems,
             meta: {
                 termFocus: isPathA 
                     ? `April Resit: Targeting ${failedUnits.join(', ')}` 
-                    : `Term ${term}, Week ${weekInTerm}: ${queue.length} nodes queued`,
+                    : `Term ${term}, Week ${weekInTerm}: ${queue.length} nodes + ${microSkillItems.length} practice items`,
                 totalNodes: syllabus.length,
                 masteredNodes: masteredNodeIds.size,
+                practiceItemCount: microSkillItems.length,
+                caseLawItemCount: microSkillItems.filter(i => i.data.isCaseLaw).length,
                 completionPct: syllabus.length > 0 
                     ? Math.round((masteredNodeIds.size / syllabus.length) * 100) 
                     : 0,

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import InteractiveStudyNotes, { StudySection } from "@/components/InteractiveStudyNotes";
+import EngagingLoader from "@/components/EngagingLoader";
 import {
   Loader2,
   CheckCircle,
@@ -435,12 +436,7 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
         )}
 
         {phase === "loading" && (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-primary" />
-              <p className="text-sm text-muted-foreground">Loading study materials and practice exercises...</p>
-            </div>
-          </div>
+          <EngagingLoader size="sm" message="Loading study materials..." />
         )}
 
         {phase === "study" && (

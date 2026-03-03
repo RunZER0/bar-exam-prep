@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CheckCircle2, Lock, ChevronRight, AlertTriangle, BookOpen, Loader2, ArrowRight } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import EngagingLoader from '@/components/EngagingLoader';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -81,12 +82,7 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
     };
 
     if (loading) {
-        return (
-            <div className="h-[500px] flex flex-col items-center justify-center gap-4 text-muted-foreground">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" /> 
-                <p>Retrieving Senior Partner Briefing...</p>
-            </div>
-        );
+        return <EngagingLoader size="md" message="Preparing your study materials..." />;
     }
     
     if (!content) {

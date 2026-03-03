@@ -19,6 +19,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetHeader, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 
+import EngagingLoader from '@/components/EngagingLoader';
+import { getCachedData, setCachedData } from '@/lib/services/autonomous-preload';
+
 // ============================================
 // TYPES
 // ============================================
@@ -84,6 +87,15 @@ export default function ReadinessDashboard() {
 
   const fetchReadiness = useCallback(async () => {
     try {
+      // Try prefetch cache first
+      const cached = getCachedData<ReadinessData>('mastery:readiness');
+      if (cached) {
+        console.log('[ReadinessDashboard] Using prefetched readiness data');
+        setReadiness(cached);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       const token = await getIdToken();
       
@@ -97,6 +109,7 @@ export default function ReadinessDashboard() {
       
       const data = await response.json();
       setReadiness(data);
+      setCachedData('mastery:readiness', data, 10 * 60 * 1000);
     } catch (err) {
       console.error('Error fetching readiness:', err);
     } finally {
@@ -162,11 +175,7 @@ export default function ReadinessDashboard() {
   const selectedUnitData = readiness?.units.find(u => u.unitId === selectedUnit);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
+    return <EngagingLoader size="md" message="Calculating your readiness..." />;
   }
 
   if (!readiness) {

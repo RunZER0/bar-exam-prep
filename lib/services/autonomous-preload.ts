@@ -5,24 +5,49 @@
  * Implements TikTok-style anticipatory loading.
  * 
  * Features:
- * - Auto-starts on app initialization
+ * - Auto-starts on app initialization (fires on login)
  * - Periodic refresh of recommendations (every 15 minutes)
+ * - Preloads mastery plan + readiness so Hub loads instantly
  * - Preloads next likely content based on user behavior
  * - Runs silently in background without blocking UI
+ * - Client-side cache for instant data on navigation
  * - Handles stale data refresh
  */
 
 interface PreloadTask {
   id: string;
-  type: 'recommendations' | 'quiz' | 'exam' | 'progress' | 'streak';
+  type: 'recommendations' | 'quiz' | 'exam' | 'progress' | 'streak' | 'mastery_plan' | 'mastery_readiness';
   priority: number; // 1 = highest
   lastRun: number | null;
   intervalMs: number;
   endpoint: string;
   method: 'GET' | 'POST';
+  cacheKey?: string; // If set, response is cached for instant access
 }
 
 const PRELOAD_TASKS: PreloadTask[] = [
+  // === MASTERY ENGINE (highest priority — fires first on login) ===
+  {
+    id: 'mastery_plan',
+    type: 'mastery_plan',
+    priority: 0, // Highest — user lands here after login
+    lastRun: null,
+    intervalMs: 10 * 60 * 1000, // 10 minutes
+    endpoint: '/api/mastery/plan',
+    method: 'GET',
+    cacheKey: 'mastery:plan',
+  },
+  {
+    id: 'mastery_readiness',
+    type: 'mastery_readiness',
+    priority: 0,
+    lastRun: null,
+    intervalMs: 10 * 60 * 1000,
+    endpoint: '/api/mastery/readiness',
+    method: 'GET',
+    cacheKey: 'mastery:readiness',
+  },
+  // === TUTOR & PROGRESS ===
   {
     id: 'recommendations',
     type: 'recommendations',
@@ -51,6 +76,50 @@ const PRELOAD_TASKS: PreloadTask[] = [
     method: 'GET',
   },
 ];
+
+// ──────────────────────────────────────────────
+// CLIENT-SIDE CACHE (in-memory, survives navigation)
+// ──────────────────────────────────────────────
+interface CacheEntry {
+  data: unknown;
+  timestamp: number;
+  maxAge: number; // ms
+}
+
+const dataCache = new Map<string, CacheEntry>();
+
+/**
+ * Get cached data if still fresh.
+ * Returns null if stale or missing.
+ */
+export function getCachedData<T = unknown>(key: string): T | null {
+  const entry = dataCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > entry.maxAge) {
+    dataCache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+}
+
+/**
+ * Manually set cache (e.g. after a page-level fetch that should benefit others)
+ */
+export function setCachedData(key: string, data: unknown, maxAgeMs = 10 * 60 * 1000) {
+  dataCache.set(key, { data, timestamp: Date.now(), maxAge: maxAgeMs });
+}
+
+/**
+ * Invalidate a cache key (e.g. after an attempt submission)
+ */
+export function invalidateCache(key: string) {
+  dataCache.delete(key);
+}
+
+export function invalidateMasteryCache() {
+  dataCache.delete('mastery:plan');
+  dataCache.delete('mastery:readiness');
+}
 
 class AutonomousPreloadService {
   private authToken: string | null = null;
@@ -197,6 +266,17 @@ class AutonomousPreloadService {
 
       const success = response.ok;
       this.taskStatus.set(task.id, { lastRun: Date.now(), success });
+
+      // Cache the response if the task has a cacheKey
+      if (success && task.cacheKey) {
+        try {
+          const data = await response.json();
+          setCachedData(task.cacheKey, data, task.intervalMs);
+          console.log(`[AutonomousPreload] Cached ${task.cacheKey}`);
+        } catch {
+          // JSON parse failed — that's fine, we still preloaded on the server side
+        }
+      }
       
       if (success) {
         console.log(`[AutonomousPreload] Task ${task.id} completed successfully`);

@@ -7,6 +7,7 @@ import { useSidebar } from '@/contexts/SidebarContext';
 import Sidebar from '@/components/Sidebar';
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import FloatingChat from '@/components/FloatingChat';
+import EngagingLoader from '@/components/EngagingLoader';
 import { autonomousPreload } from '@/lib/services/autonomous-preload';
 
 export default function AuthenticatedLayout({
@@ -53,11 +54,8 @@ export default function AuthenticatedLayout({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <EngagingLoader size="lg" message="Setting up your workspace..." />
       </div>
     );
   }

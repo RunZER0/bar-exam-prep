@@ -9,6 +9,8 @@ import { Loader2, Zap, BookOpen, AlertCircle, PlayCircle, CheckCircle2, BarChart
 import MasteryCarousel from '@/components/MasteryCarousel';
 import ReadinessDashboard from '@/components/ReadinessDashboard';
 import EmbeddedPracticePanel, { type PracticeTask } from '@/components/EmbeddedPracticePanel';
+import EngagingLoader from '@/components/EngagingLoader';
+import { getCachedData, setCachedData, invalidateMasteryCache } from '@/lib/services/autonomous-preload';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
 
@@ -57,9 +59,20 @@ export default function MasteryPage() {
     const [activeTask, setActiveTask] = useState<OrchestratedTask | null>(null);
     const [activePractice, setActivePractice] = useState<PracticeTask | null>(null);
 
-    // Fetch the queue (Integrated Execution Engine)
-    const fetchQueue = useCallback(async () => {
+    // Fetch the queue — uses prefetch cache if available (instant), else fetches live
+    const fetchQueue = useCallback(async (skipCache = false) => {
         try {
+            // Check prefetch cache first (populated by autonomous-preload on login)
+            if (!skipCache) {
+                const cached = getCachedData<DailyQueue>('mastery:plan');
+                if (cached) {
+                    console.log('[MasteryHub] Using prefetched plan data (instant load)');
+                    setQueueData(cached);
+                    setLoading(false);
+                    return;
+                }
+            }
+
             setLoading(true);
             const token = await getIdToken();
             if (!token) return;
@@ -70,6 +83,8 @@ export default function MasteryPage() {
             if (res.ok) {
                 const data = await res.json();
                 setQueueData(data);
+                // Cache for future navigations
+                setCachedData('mastery:plan', data, 10 * 60 * 1000);
             }
         } catch (e) {
             console.error("Failed to load queue", e);
@@ -121,8 +136,9 @@ export default function MasteryPage() {
 
     const handlePracticeComplete = () => {
         setActivePractice(null);
-        // Refresh the whole queue to pick up mastery updates
-        fetchQueue();
+        // Invalidate cache and fetch fresh data after mastery update
+        invalidateMasteryCache();
+        fetchQueue(true);
     };
 
     // ------- ACTIVE CAROUSEL VIEW -------
@@ -140,12 +156,7 @@ export default function MasteryPage() {
 
     // ------- LOADING -------
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="ml-3 text-muted-foreground">Loading Mastery Hub...</span>
-            </div>
-        );
+        return <EngagingLoader size="lg" message="Preparing your personalized study plan..." />;
     }
 
     return (

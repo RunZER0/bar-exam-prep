@@ -179,7 +179,7 @@ export default function MasteryPage() {
                             <div>
                                 <h1 className="text-lg font-semibold text-foreground">Mastery Hub</h1>
                                 <p className="text-xs text-muted-foreground">
-                                    {queueData?.meta.termFocus || "Your study command center"}
+                                    {queueData?.meta.termFocus || "Your personalized study plan"}
                                 </p>
                             </div>
                         </div>

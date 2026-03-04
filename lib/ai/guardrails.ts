@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { 
   getRelevantContext, 
   formatProvisionForContext, 
@@ -15,6 +16,13 @@ import {
   executeAgentTool,
   getToolsForResponses,
 } from '@/lib/ai/agent-tools';
+import {
+  ORCHESTRATOR_MODEL,
+  MENTOR_MODEL,
+  AUDITOR_MODEL,
+  FAST_MODEL,
+  getAnthropicKey,
+} from '@/lib/ai/model-config';
 
 let _openai: OpenAI | null = null;
 const getOpenAI = () => {
@@ -22,6 +30,15 @@ const getOpenAI = () => {
     _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   }
   return _openai;
+};
+
+let _anthropic: Anthropic | null = null;
+const getAnthropic = () => {
+  const key = getAnthropicKey();
+  if (!_anthropic && key) {
+    _anthropic = new Anthropic({ apiKey: key });
+  }
+  return _anthropic;
 };
 
 // Check if AI is configured
@@ -139,33 +156,44 @@ async function validateResponse(
   }
   
   try {
-    // Use Claude to validate the response for hallucinations and accuracy
-    const validationPrompt = `
-You are a validator checking AI-generated content for a Kenyan bar exam prep platform.
+    // Cross-agent validation: use AUDITOR (Claude) to verify MENTOR (GPT) output
+    const validationPrompt = `You are the AUDITOR — a Senior Partner reviewing AI-generated legal content for a Kenyan bar exam prep platform. Your role is to catch hallucinations, verify citations, and ensure accuracy.
 
 User Query: ${prompt}
 AI Response: ${response}
 Context: ${context}
 
 Evaluate this response for:
-1. Factual accuracy regarding Kenyan law
-2. Whether it contains hallucinated case law or statutes
+1. Factual accuracy regarding Kenyan law — are statutes/sections cited correctly?
+2. Whether it contains hallucinated case law or statutes that don't exist
 3. Relevance to the query and Kenyan bar exam
-4. Potential misinformation
-5. Whether citations are verifiable
+4. Potential misinformation that could harm a student's preparation
+5. Whether citations are verifiable against real Kenyan legislation
 
-Respond in JSON format:
-{
-  "isHallucination": boolean,
-  "isOffTopic": boolean,
-  "isReliable": boolean,
-  "confidence": number (0-100),
-  "warnings": ["warning1", "warning2"],
-  "reasoning": "brief explanation"
-}
-`;
+Respond in JSON format ONLY:
+{"isHallucination": boolean, "isOffTopic": boolean, "isReliable": boolean, "confidence": number, "warnings": ["..."], "reasoning": "..."}`;
 
-    const validationText = await callAI(validationPrompt, 1000);
+    // Prefer AUDITOR (Claude) for cross-agent verification; fall back to self-validation
+    let validationText: string;
+    const anthropic = getAnthropic();
+    if (anthropic) {
+      try {
+        const auditResponse = await anthropic.messages.create({
+          model: AUDITOR_MODEL,
+          max_tokens: 500,
+          messages: [{ role: 'user', content: validationPrompt }],
+          system: 'You are a legal accuracy auditor. Respond with JSON only, no markdown.',
+        });
+        const textBlock = auditResponse.content.find(b => b.type === 'text');
+        validationText = textBlock && textBlock.type === 'text' ? textBlock.text : '';
+        console.log('[Guardrails] Cross-agent validation: AUDITOR (Claude) verified MENTOR output');
+      } catch (auditError) {
+        console.warn('[Guardrails] AUDITOR unavailable, falling back to self-validation:', auditError);
+        validationText = await callAI(validationPrompt, 1000);
+      }
+    } else {
+      validationText = await callAI(validationPrompt, 1000);
+    }
     
     // Extract JSON from the response
     const jsonMatch = validationText.match(/\{[\s\S]*\}/);
@@ -654,16 +682,16 @@ ${message}${attachmentContext}
 
 Provide a helpful, context-aware response:`;
 
-    // Use agentic tool-calling path for research/study queries
-    const useTools = competencyType === 'research' || competencyType === 'study';
-    
+    // Use agentic tool-calling path for ALL conversation types
+    // Tools let the AI search knowledge base, check mastery, find practice items etc.
     let content: string;
-    if (useTools) {
+    try {
       content = await callAIWithTools(fullPrompt, {
         userId: context?.userId,
         unitId: context?.unitId,
       });
-    } else {
+    } catch (toolError) {
+      console.warn('[Guardrails] Tool-use path failed, falling back to plain AI:', toolError);
       content = await callAI(fullPrompt, 3000);
     }
 
@@ -699,7 +727,7 @@ async function callAI(prompt: string, maxTokens: number = 2000): Promise<string>
   }
   
   const response = await openai.responses.create({
-    model: 'gpt-5.2',
+    model: MENTOR_MODEL,
     input: prompt,
   });
   
@@ -730,7 +758,7 @@ export async function callAIWithTools(
 
   // First call with tools
   let response = await openai.responses.create({
-    model: 'gpt-5.2',
+    model: ORCHESTRATOR_MODEL,
     input: prompt,
     tools: tools as any,
   });
@@ -747,31 +775,31 @@ export async function callAIWithTools(
 
     console.log(`[AgentTools] Round ${round + 1}: ${toolCalls.length} tool call(s)`);
 
-    // Execute all tool calls
-    const toolResults: Array<{ type: 'function_call_output'; call_id: string; output: string }> = [];
-    for (const call of toolCalls) {
-      const args = typeof call.arguments === 'string'
-        ? JSON.parse(call.arguments)
-        : call.arguments;
+    // Execute all tool calls in parallel for speed
+    const toolResults: Array<{ type: 'function_call_output'; call_id: string; output: string }> = 
+      await Promise.all(toolCalls.map(async (call) => {
+        const args = typeof call.arguments === 'string'
+          ? JSON.parse(call.arguments)
+          : call.arguments;
 
-      // Inject userId if the tool needs it and the user provided it
-      if (options.userId && args && !args.user_id) {
-        args.user_id = options.userId;
-      }
+        // Inject userId if the tool needs it and the user provided it
+        if (options.userId && args && !args.user_id) {
+          args.user_id = options.userId;
+        }
 
-      console.log(`[AgentTools] Calling: ${call.name}(${JSON.stringify(args).slice(0, 200)})`);
-      const result = await executeAgentTool(call.name, args);
-      
-      toolResults.push({
-        type: 'function_call_output',
-        call_id: call.call_id,
-        output: result,
-      });
-    }
+        console.log(`[AgentTools] Calling: ${call.name}(${JSON.stringify(args).slice(0, 200)})`);
+        const result = await executeAgentTool(call.name, args);
+        
+        return {
+          type: 'function_call_output' as const,
+          call_id: call.call_id,
+          output: result,
+        };
+      }));
 
     // Feed tool results back to the model
     response = await openai.responses.create({
-      model: 'gpt-5.2',
+      model: ORCHESTRATOR_MODEL,
       input: toolResults,
       tools: tools as any,
       previous_response_id: response.id,
@@ -794,7 +822,7 @@ export async function callAIFast(prompt: string, maxTokens: number = 2000): Prom
     try {
       // Use GPT-4o-mini for fast, cost-effective generation
       const response = await openai.responses.create({
-        model: process.env.OPENAI_FAST_MODEL || 'gpt-5.2',
+        model: FAST_MODEL,
         input: prompt,
       });
       return response.output_text || '';

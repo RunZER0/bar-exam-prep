@@ -1,0 +1,5 @@
+de3203f feat: pgvector embeddings + agent function-calling tools ΓÇö real agentic AI
+0275fac feat: Agents fire on login + engaging loaders with legal fun facts
+dc03520 feat: Wire ReadinessDashboard + EmbeddedPracticePanel into Mastery Hub, make chat bubble draggable
+d2f26c0 M3.6: Gap-fill + enum fix ΓÇö 175 skills, 875 items seeded across all 9 ATP courses
+195a87e M3.5: Comprehensive curriculum seed ΓÇö all 9 ATP units, case law mastery, uncapped orchestrator

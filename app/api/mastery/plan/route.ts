@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import { MasteryOrchestrator } from '@/lib/services/mastery-orchestrator';
 
@@ -116,19 +116,15 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
     
-    // TODO: Update in database when schema is migrated
-    // await db.update(dailyPlanItems)
-    //   .set({ 
-    //     status, 
-    //     actualMinutes, 
-    //     deferredTo,
-    //     completedAt: status === 'completed' ? new Date() : null,
-    //     skippedAt: status === 'skipped' ? new Date() : null,
-    //   })
-    //   .where(and(
-    //     eq(dailyPlanItems.id, taskId),
-    //     eq(dailyPlanItems.userId, user.id)
-    //   ));
+    // Update task status in daily_plans table
+    await db.execute(sql`
+      UPDATE daily_plans 
+      SET 
+        status = ${status},
+        updated_at = NOW()
+      WHERE id = ${taskId}::uuid
+        AND user_id = ${user.id}::uuid
+    `);
     
     return NextResponse.json({
       success: true,

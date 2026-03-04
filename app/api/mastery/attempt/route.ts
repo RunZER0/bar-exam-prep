@@ -298,12 +298,32 @@ export async function POST(req: NextRequest) {
     // STEP 3: UPDATE ERROR SIGNATURES
     // ========================================
     
-    // TODO: For each error tag in grading.errorTags:
-    // - Look up or create error tag ID
-    // - Increment count in skill_error_signature table
-    // for (const errorCode of grading.errorTags) {
-    //   await updateErrorSignature(user.id, submission.skillIds, errorCode);
-    // }
+    if (grading.errorTags && grading.errorTags.length > 0) {
+      for (const errorCode of grading.errorTags) {
+        for (const skillId of submission.skillIds) {
+          // Look up or create the error tag
+          const tagResult = await db.execute(sql`
+            INSERT INTO error_tags (code, label)
+            VALUES (${errorCode}, ${errorCode})
+            ON CONFLICT (code) DO UPDATE SET label = error_tags.label
+            RETURNING id
+          `);
+          const tagId = (tagResult.rows[0] as { id: string })?.id;
+          if (!tagId) continue;
+
+          // Upsert into skill_error_signature
+          await db.execute(sql`
+            INSERT INTO skill_error_signature (user_id, skill_id, error_tag_id, occurrence_count, last_seen_at)
+            VALUES (${user.id}::uuid, ${skillId}::uuid, ${tagId}::uuid, 1, NOW())
+            ON CONFLICT (user_id, skill_id, error_tag_id)
+            DO UPDATE SET
+              occurrence_count = skill_error_signature.occurrence_count + 1,
+              last_seen_at = NOW()
+          `);
+        }
+      }
+      console.log(`[ERROR SIGS] Recorded ${grading.errorTags.length} error tags for ${submission.skillIds.length} skills`);
+    }
 
     // ========================================
     // STEP 4: CHECK GATE VERIFICATION
@@ -313,49 +333,75 @@ export async function POST(req: NextRequest) {
     
     if (submission.mode !== 'practice') {
       for (const skillId of submission.skillIds) {
-        // TODO: Fetch timed attempts history from DB
-        const mockTimedAttempts: { attemptId: string; scoreNorm: number; submittedAt: Date; errorTagIds: string[] }[] = [
-          {
-            attemptId: 'prev-1',
-            scoreNorm: 0.75,
-            submittedAt: new Date(Date.now() - 48 * 60 * 60 * 1000), // 48 hours ago
-            errorTagIds: [] as string[],
-          },
-        ];
-        
-        // Add current attempt if it's a pass
+        // Fetch real timed attempts history from DB for this skill
+        const historyResult = await db.execute(sql`
+          SELECT a.id as attempt_id, a.score_norm, a.created_at,
+                 COALESCE(a.feedback_json->>'errorTags', '[]') as error_tags_raw
+          FROM attempts a
+          JOIN item_skill_map ism ON ism.item_id = a.item_id
+          WHERE a.user_id = ${user.id}::uuid
+            AND ism.skill_id = ${skillId}::uuid
+            AND a.mode IN ('timed', 'exam_sim')
+            AND a.score_norm >= 0.6
+          ORDER BY a.created_at DESC
+          LIMIT 10
+        `);
+
+        const timedAttempts = (historyResult.rows as any[]).map(r => ({
+          attemptId: r.attempt_id,
+          scoreNorm: parseFloat(r.score_norm),
+          submittedAt: new Date(r.created_at),
+          errorTagIds: (() => { try { return JSON.parse(r.error_tags_raw); } catch { return []; } })(),
+        }));
+
+        // Add current attempt if it's a timed pass
         if (grading.scoreNorm >= 0.6) {
-          mockTimedAttempts.push({
+          timedAttempts.unshift({
             attemptId: 'current',
             scoreNorm: grading.scoreNorm,
             submittedAt: new Date(),
             errorTagIds: grading.errorTags,
           });
         }
+
+        // Fetch top recurring error tags for this skill
+        const topErrorsResult = await db.execute(sql`
+          SELECT et.code
+          FROM skill_error_signature ses
+          JOIN error_tags et ON et.id = ses.error_tag_id
+          WHERE ses.user_id = ${user.id}::uuid AND ses.skill_id = ${skillId}::uuid
+          ORDER BY ses.occurrence_count DESC
+          LIMIT 5
+        `);
+        const topErrorTagIds = (topErrorsResult.rows as any[]).map(r => r.code);
         
         const masteryUpdate = masteryUpdates.find(u => u.skillId === skillId);
         
         const gateResult = checkGateVerification({
           skillId,
           pMastery: masteryUpdate?.newPMastery ?? 0,
-          timedAttempts: mockTimedAttempts,
-          topErrorTagIds: [], // TODO: Fetch from history
+          timedAttempts,
+          topErrorTagIds,
         });
         
         gateResults.push(gateResult);
         
-        // TODO: If verified, create verification record
-        // if (gateResult.isVerified) {
-        //   await db.insert(skillVerifications).values({
-        //     userId: user.id,
-        //     skillId,
-        //     attemptId: newAttemptId,
-        //     pMasteryAtVerification: masteryUpdate.newPMastery,
-        //     timedPassCount: gateResult.timedPassCount,
-        //     hoursBetweenPasses: gateResult.hoursSinceFirstPass,
-        //     verifiedAt: new Date(),
-        //   });
-        // }
+        // If verified, persist the verification record
+        if (gateResult.isVerified && masteryUpdate) {
+          await db.execute(sql`
+            INSERT INTO mastery_state (user_id, skill_id, is_verified, verified_at, p_mastery, stability)
+            VALUES (
+              ${user.id}::uuid, ${skillId}::uuid, true, NOW(),
+              ${masteryUpdate.newPMastery}, ${masteryUpdate.newStability}
+            )
+            ON CONFLICT (user_id, skill_id)
+            DO UPDATE SET
+              is_verified = true,
+              verified_at = NOW(),
+              updated_at = NOW()
+          `);
+          console.log(`[GATE VERIFIED] User ${user.id} Skill ${skillId} — ${gateResult.timedPassCount} timed passes`);
+        }
       }
     }
 
@@ -417,7 +463,27 @@ export async function POST(req: NextRequest) {
         scorePercent,
         improvementAreas,
         nextRecommendedSkills,
-        streakMaintained: true, // TODO: Check actual streak
+        streakMaintained: await (async () => {
+          try {
+            const todayStr = new Date().toISOString().split('T')[0];
+            // Upsert today's streak record (increment minutes by time taken)
+            await db.execute(sql`
+              INSERT INTO study_streaks (user_id, date, minutes_studied, sessions_count)
+              VALUES (${user.id}::uuid, ${todayStr}::date, ${Math.ceil(submission.timeTakenSec / 60)}, 1)
+              ON CONFLICT (user_id, date)
+              DO UPDATE SET
+                minutes_studied = study_streaks.minutes_studied + ${Math.ceil(submission.timeTakenSec / 60)},
+                sessions_count = study_streaks.sessions_count + 1
+            `);
+            // Check if yesterday also had activity
+            const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            const yesterdayResult = await db.execute(sql`
+              SELECT 1 FROM study_streaks
+              WHERE user_id = ${user.id}::uuid AND date = ${yesterdayStr}::date AND minutes_studied > 0
+            `);
+            return yesterdayResult.rows.length > 0;
+          } catch { return true; }
+        })(),
       },
     };
 

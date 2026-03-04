@@ -712,7 +712,8 @@ Provide a helpful, context-aware response:`;
 }
 
 /**
- * Helper function to call AI provider (simple, no tools)
+ * Helper function to call AI provider (simple, no function tools)
+ * Uses web_search_preview for grounding legal responses in real web sources.
  */
 async function callAI(prompt: string, maxTokens: number = 2000): Promise<string> {
   const provider = getPreferredProvider();
@@ -729,6 +730,7 @@ async function callAI(prompt: string, maxTokens: number = 2000): Promise<string>
   const response = await openai.responses.create({
     model: MENTOR_MODEL,
     input: prompt,
+    tools: [{ type: 'web_search_preview' as const }],
   });
   
   return response.output_text || '';
@@ -754,13 +756,20 @@ export async function callAIWithTools(
   }
 
   const { maxToolRounds = 5 } = options;
-  const tools = getToolsForResponses();
+  const functionTools = getToolsForResponses();
+
+  // Combine function-calling tools with OpenAI's built-in web_search_preview
+  // for grounding legal research in real web sources (kenyalaw.org, etc.)
+  const tools: any[] = [
+    { type: 'web_search_preview' as const },
+    ...functionTools,
+  ];
 
   // First call with tools
   let response = await openai.responses.create({
     model: ORCHESTRATOR_MODEL,
     input: prompt,
-    tools: tools as any,
+    tools,
   });
 
   // Multi-step tool-use loop
@@ -801,7 +810,7 @@ export async function callAIWithTools(
     response = await openai.responses.create({
       model: ORCHESTRATOR_MODEL,
       input: toolResults,
-      tools: tools as any,
+      tools,
       previous_response_id: response.id,
     });
 

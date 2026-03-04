@@ -6,9 +6,9 @@ import { eq, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import OpenAI from 'openai';
 import { z } from 'zod';
+import { ORCHESTRATOR_MODEL } from '@/lib/ai/model-config';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const ANALYZE_MODEL = 'gpt-5.2'; // "High-Reasoning" model
 
 const OnboardingSchema = z.object({
   examPath: z.enum(['APRIL_2026', 'NOVEMBER_2026']),
@@ -104,13 +104,14 @@ export async function POST(req: NextRequest) {
       }
     `;
 
-    const aiResponse = await openai.chat.completions.create({
-      model: ANALYZE_MODEL,
-      messages: [{ role: 'system', content: systemPrompt }],
-      response_format: { type: 'json_object' }
+    const aiResponse = await openai.responses.create({
+      model: ORCHESTRATOR_MODEL,
+      instructions: 'You are the Senior Partner. Respond with valid JSON only.',
+      input: systemPrompt,
+      text: { format: { type: 'json_object' } },
     });
 
-    const analysis = JSON.parse(aiResponse.choices[0].message.content || '{}');
+    const analysis = JSON.parse(aiResponse.output_text || '{}');
 
     // 3. Seed Witnesses (Latent Weaknesses)
     if (analysis.initial_witnesses && Array.isArray(analysis.initial_witnesses)) {

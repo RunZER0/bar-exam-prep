@@ -237,10 +237,9 @@ export async function GET(req: NextRequest) {
         .map(a => `Source: ${a.type}: ${a.title}${a.citation ? ` (${a.citation})` : ''}${a.url ? ` [${a.url}]` : ''}\nSnippet/Text:\n"""${a.snippet || '(no text available)'}"""\n`)
         .join('\n---\n');
 
-      const aiCall = openai.chat.completions.create({
+      const aiCall = openai.responses.create({
         model: GROUNDED_MODEL,
-        messages: [
-          { role: "system", content: `You are a Kenyan bar exam tutor. Build a comprehensive study session for the given skill. The student needs to learn this topic deeply before practicing.
+        instructions: `You are a Kenyan bar exam tutor. Build a comprehensive study session for the given skill. The student needs to learn this topic deeply before practicing.
 
 Requirements:
 - Use the provided outline topics as the coverage backbone (do not skip any).
@@ -264,10 +263,10 @@ Output JSON ONLY with this shape:
   ]
 }
 
-Do not include any extra keys or prose outside JSON.` },
-          { role: "user", content: `Unit: ${unitName}\nSkill: ${skillName}\nOutline topics (must cover all):\n${outlineContext || '- (no outline topics provided, use core syllabus expectations)'}\n\n${kbContext ? `Knowledge Base (verified provisions & case law — use these first):\n${kbContext}\n\n` : ''}Available authoritative sources (use these for grounding):\n${authorityContext || '- none provided, use standard Kenya leading authorities where known.'}` }
-        ],
-        response_format: { type: "json_object" }
+Do not include any extra keys or prose outside JSON.`,
+        input: `Unit: ${unitName}\nSkill: ${skillName}\nOutline topics (must cover all):\n${outlineContext || '- (no outline topics provided, use core syllabus expectations)'}\n\n${kbContext ? `Knowledge Base (verified provisions & case law — use these first):\n${kbContext}\n\n` : ''}Available authoritative sources (use these for grounding):\n${authorityContext || '- none provided, use standard Kenya leading authorities where known.'}`,
+        tools: [{ type: 'web_search_preview' as const }],
+        text: { format: { type: 'json_object' } },
       });
 
       const aiResponse = await Promise.race([
@@ -276,7 +275,7 @@ Do not include any extra keys or prose outside JSON.` },
       ]);
 
       // @ts-expect-error fine: Promise.race union
-      const content = aiResponse.choices[0].message.content || '{}';
+      const content = aiResponse.output_text || '{}';
       const parsed = JSON.parse(content);
       if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
         sections.push(

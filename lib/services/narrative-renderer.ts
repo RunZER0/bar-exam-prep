@@ -98,16 +98,15 @@ ${contextBlock}
                 throw new Error('OpenAI client unavailable — OPENAI_API_KEY not set');
             }
 
-            const response = await openai.chat.completions.create({
+            const response = await openai.responses.create({
                 model: MENTOR_MODEL,
-                messages: [
-                    { role: 'system', content: 'You are a 30-year Kenyan Senior Counsel. You do not summarize; you instruct. Every statement carries the weight of practice.' },
-                    { role: 'user', content: prompt }
-                ],
+                instructions: 'You are a 30-year Kenyan Senior Counsel. You do not summarize; you instruct. Every statement carries the weight of practice.',
+                input: prompt,
+                tools: [{ type: 'web_search_preview' as const }],
                 temperature: 0.2,
             });
 
-            const content = response.choices[0].message.content;
+            const content = response.output_text;
             if (!content) throw new Error('Empty response from Mentor model');
             return content;
         } catch (error) {

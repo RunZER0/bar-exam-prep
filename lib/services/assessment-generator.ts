@@ -76,17 +76,15 @@ RULES:
                 throw new Error('OpenAI client unavailable — OPENAI_API_KEY not set');
             }
 
-            const response = await openai.chat.completions.create({
+            const response = await openai.responses.create({
                 model: ASSESSMENT_MODEL,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ],
-                response_format: { type: 'json_object' },
+                instructions: systemPrompt,
+                input: userPrompt,
+                text: { format: { type: 'json_object' } },
                 temperature: 0.4,
             });
 
-            const content = response.choices[0].message.content;
+            const content = response.output_text;
             if (!content) throw new Error('Empty response from assessment model');
 
             const parsed = JSON.parse(content) as AssessmentStack;

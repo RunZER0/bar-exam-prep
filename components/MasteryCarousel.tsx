@@ -27,8 +27,19 @@ interface CarouselProps {
 /* ================================================================
    CITATION DETECTION  —  Kenyan legal citation patterns
    ================================================================ */
-const CITATION_RE =
-    /(?:(?:Section|s\.|Art(?:icle)?\.?\s*)[\dIVXLCDM]+(?:\([^)]*\))?(?:\s+of\s+(?:the\s+)?)?)?(?:the\s+)?((?:[A-Z][A-Za-z''\u2019]+[\s,()-]*)+(?:Act|Regulations?|Rules?|Order|Code|Constitution|Ordinance)(?:,?\s*(?:Cap\.?\s*\d+|No\.?\s*\d+(?:\s+of\s+\d{4})?|\d{4}))?)(?:\s*[-\u2013]\s*((?:Part|Chapter|Section|Schedule|Division)\s+[IVXLCDM\d]+(?:\s*\([^)]*\))?))?/g;
+// Statute pattern: "section 45(1) of the Companies Act, 2015" etc.
+const STATUTE_RE =
+    /(?:(?:[Ss]ection|s\.|[Aa]rt(?:icle)?\.?\s*|[Rr]ule|[Rr]egulation|[Oo]rder|[Ss]chedule|[Pp]art)\s+[\dIVXLCDM]+(?:\([^)]*\))*(?:\([^)]*\))?(?:\s+of\s+(?:the\s+)?)?)?(?:the\s+)?((?:[A-Z][A-Za-z''\u2019]+[\s,()-]*)+(?:Act|Regulations?|Rules?|Order|Code|Constitution|Ordinance)(?:,?\s*(?:Cap\.?\s*\d+|No\.?\s*\d+(?:\s+of\s+\d{4})?|\d{4}))?)(?:\s*[-\u2013]\s*((?:Part|Chapter|Section|Schedule|Division)\s+[IVXLCDM\d]+(?:\s*\([^)]*\))?))?/g;
+
+// Case law pattern: "Case Name [Year] eKLR" or "Case Name (Year) KLR ..."
+const CASE_RE =
+    /([A-Z][A-Za-z''.\-]+(?:\s+(?:v|vs?\.?|&|and)\s+[A-Z][A-Za-z''.\-]+(?:\s+[A-Za-z''.\-]+)*)?)\s+(\[\d{4}\]\s*eKLR|\(\d{4}\)\s*(?:\d+\s+)?KLR\s*[\d\s]*|\[\d{4}\]\s*\d*\s*(?:EA|KLR)\s*\d*)/g;
+
+// Inline "section NN(N)" references (without full Act name)
+const SECTION_INLINE_RE =
+    /[Ss]ection\s+\d+(?:\([^)]*\))*/g;
+
+type CitationType = 'statute' | 'case' | 'section';
 
 interface ParsedCitation {
     fullMatch: string;
@@ -36,37 +47,59 @@ interface ParsedCitation {
     section?: string;
     startIndex: number;
     endIndex: number;
+    type: CitationType;
 }
 
 function parseCitations(text: string): ParsedCitation[] {
     const results: ParsedCitation[] = [];
-    const seen = new Set<string>();
-    const regex = new RegExp(CITATION_RE.source, CITATION_RE.flags);
+    const occupied = new Set<number>();
+
+    const claim = (start: number, end: number): boolean => {
+        for (let i = start; i < end; i++) if (occupied.has(i)) return false;
+        for (let i = start; i < end; i++) occupied.add(i);
+        return true;
+    };
+
+    // 1) Statutes (longest matches first)
+    const sRe = new RegExp(STATUTE_RE.source, STATUTE_RE.flags);
     let m: RegExpExecArray | null;
-    while ((m = regex.exec(text)) !== null) {
-        const key = `${m.index}:${m[0]}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        results.push({
-            fullMatch: m[0],
-            statute: m[1] || m[0],
-            section: m[2] || undefined,
-            startIndex: m.index,
-            endIndex: m.index + m[0].length,
-        });
+    while ((m = sRe.exec(text)) !== null) {
+        if (!claim(m.index, m.index + m[0].length)) continue;
+        results.push({ fullMatch: m[0], statute: m[1] || m[0], section: m[2] || undefined, startIndex: m.index, endIndex: m.index + m[0].length, type: 'statute' });
     }
+
+    // 2) Case law
+    const cRe = new RegExp(CASE_RE.source, CASE_RE.flags);
+    while ((m = cRe.exec(text)) !== null) {
+        if (!claim(m.index, m.index + m[0].length)) continue;
+        results.push({ fullMatch: m[0], statute: m[1] || m[0], section: m[2] || undefined, startIndex: m.index, endIndex: m.index + m[0].length, type: 'case' });
+    }
+
+    // 3) Inline section refs (only if not already part of a statute match)
+    const iRe = new RegExp(SECTION_INLINE_RE.source, SECTION_INLINE_RE.flags);
+    while ((m = iRe.exec(text)) !== null) {
+        if (!claim(m.index, m.index + m[0].length)) continue;
+        results.push({ fullMatch: m[0], statute: m[0], startIndex: m.index, endIndex: m.index + m[0].length, type: 'section' });
+    }
+
     return results.sort((a, b) => a.startIndex - b.startIndex);
 }
 
 /* ================================================================
    CITATION LINK  —  clickable amber-styled inline token
    ================================================================ */
-function CitationLink({ text, onClick }: { text: string; onClick: () => void }) {
+function CitationLink({ text, onClick, type }: { text: string; onClick: () => void; type: CitationType }) {
+    const isCase = type === 'case';
     return (
         <button
             onClick={(e) => { e.stopPropagation(); onClick(); }}
-            className="citation-link inline font-semibold text-amber-700 dark:text-amber-400 underline decoration-amber-400/50 dark:decoration-amber-500/40 decoration-[1.5px] underline-offset-2 hover:decoration-amber-600 hover:text-amber-900 dark:hover:text-amber-300 transition-colors cursor-pointer bg-transparent border-none p-0 m-0 text-left leading-inherit"
-            title={`View statute: ${text}`}
+            className={cn(
+                "citation-link inline underline decoration-[1.5px] underline-offset-2 transition-colors cursor-pointer bg-transparent border-none p-0 m-0 text-left leading-inherit font-semibold",
+                isCase
+                    ? "italic text-teal-700 dark:text-teal-400 decoration-teal-400/40 dark:decoration-teal-500/30 hover:text-teal-900 dark:hover:text-teal-300 hover:decoration-teal-600"
+                    : "text-amber-700 dark:text-amber-400 decoration-amber-400/50 dark:decoration-amber-500/40 hover:text-amber-900 dark:hover:text-amber-300 hover:decoration-amber-600"
+            )}
+            title={isCase ? `View case: ${text}` : `View statute: ${text}`}
         >
             {text}
         </button>
@@ -84,7 +117,7 @@ function TextWithCitations({ children, onCitationClick }: { children: string; on
     let last = 0;
     citations.forEach((c, i) => {
         if (c.startIndex > last) parts.push(<Fragment key={`t${i}`}>{children.slice(last, c.startIndex)}</Fragment>);
-        parts.push(<CitationLink key={`c${i}`} text={c.fullMatch} onClick={() => onCitationClick(c)} />);
+        parts.push(<CitationLink key={`c${i}`} text={c.fullMatch} type={c.type} onClick={() => onCitationClick(c)} />);
         last = c.endIndex;
     });
     if (last < children.length) parts.push(<Fragment key="tail">{children.slice(last)}</Fragment>);
@@ -110,7 +143,9 @@ function StatutePanel({ citation, onClose, getIdToken }: { citation: ParsedCitat
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({
-                        message: `You are a Kenyan legal reference tool. The user clicked on this citation: "${citation.fullMatch}".\n\nProvide the VERBATIM text of this statutory provision as it appears in Kenyan law:\n1. Full title of the Act/Regulation\n2. The specific Part/Section heading\n3. The verbatim section text with all sub-sections numbered (1),(2),(a),(b),(i),(ii)\n4. If you do not have the exact verbatim text, give the closest accurate paraphrase and note that.\n\nUse proper legal formatting.`,
+                        message: citation.type === 'case'
+                            ? `You are a Kenyan legal reference tool. The user clicked on this case citation: "${citation.fullMatch}".\n\nProvide:\n1. Full case name, court, and citation\n2. Brief facts (2-3 sentences)\n3. The key legal issue(s)\n4. The holding/ratio decidendi - what the court decided and why\n5. The principle of law established\n\nBe concise and accurate. If you are unsure of the exact details, state that clearly.`
+                            : `You are a Kenyan legal reference tool. The user clicked on this citation: "${citation.fullMatch}".\n\nProvide the VERBATIM text of this statutory provision as it appears in Kenyan law:\n1. Full title of the Act/Regulation\n2. The specific Part/Section heading\n3. The verbatim section text with all sub-sections numbered (1),(2),(a),(b),(i),(ii)\n4. If you do not have the exact verbatim text, give the closest accurate paraphrase and note that.\n\nUse proper legal formatting.`,
                         intent: 'study',
                     }),
                 });
@@ -128,15 +163,21 @@ function StatutePanel({ citation, onClose, getIdToken }: { citation: ParsedCitat
             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
             <div className="relative ml-auto w-full max-w-lg bg-card border-l border-border shadow-2xl flex flex-col h-full animate-in slide-in-from-right duration-300">
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b bg-amber-50/80 dark:bg-amber-950/20">
+                <div className={cn(
+                    "flex items-center justify-between p-4 border-b",
+                    citation.type === 'case' ? "bg-teal-50/80 dark:bg-teal-950/20" : "bg-amber-50/80 dark:bg-amber-950/20"
+                )}>
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <Scale className="h-4 w-4 text-amber-700 dark:text-amber-400 flex-shrink-0" />
+                        <Scale className={cn("h-4 w-4 flex-shrink-0", citation.type === 'case' ? "text-teal-700 dark:text-teal-400" : "text-amber-700 dark:text-amber-400")} />
                         <div className="min-w-0">
-                            <h3 className="text-sm font-bold text-amber-900 dark:text-amber-300 truncate">{citation.statute}</h3>
-                            {citation.section && <p className="text-[11px] text-amber-700/70 dark:text-amber-400/60">{citation.section}</p>}
+                            <p className={cn("text-[10px] uppercase tracking-widest font-medium mb-0.5", citation.type === 'case' ? "text-teal-600/60 dark:text-teal-400/50" : "text-amber-600/60 dark:text-amber-400/50")}>
+                                {citation.type === 'case' ? 'Case Law' : 'Statute'}
+                            </p>
+                            <h3 className={cn("text-sm font-bold truncate", citation.type === 'case' ? "text-teal-900 dark:text-teal-300 italic" : "text-amber-900 dark:text-amber-300")}>{citation.statute}</h3>
+                            {citation.section && <p className="text-[11px] text-muted-foreground/70 mt-0.5">{citation.section}</p>}
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-amber-200/50 dark:hover:bg-amber-800/30 text-amber-700 dark:text-amber-400 transition-colors flex-shrink-0">
+                    <button onClick={onClose} className={cn("p-1.5 rounded-lg transition-colors flex-shrink-0", citation.type === 'case' ? "hover:bg-teal-200/50 dark:hover:bg-teal-800/30 text-teal-700 dark:text-teal-400" : "hover:bg-amber-200/50 dark:hover:bg-amber-800/30 text-amber-700 dark:text-amber-400")}>
                         <X className="h-4 w-4" />
                     </button>
                 </div>
@@ -231,7 +272,7 @@ function useMdComponents(onCite: (c: ParsedCitation) => void) {
             const text = typeof children === 'string' ? children : '';
             const cites = text ? parseCitations(text) : [];
             if (cites.length > 0 && cites[0].fullMatch.length > text.length * 0.4) {
-                return <CitationLink text={text} onClick={() => onCite(cites[0])} />;
+                return <CitationLink text={text} type={cites[0].type} onClick={() => onCite(cites[0])} />;
             }
             return <strong className="font-bold text-foreground" {...p}>{children}</strong>;
         },

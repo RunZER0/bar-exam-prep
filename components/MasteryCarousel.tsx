@@ -1,149 +1,302 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { useState, useEffect, useRef, useCallback, Fragment, useMemo } from 'react';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CheckCircle2, ChevronRight, ChevronLeft, AlertTriangle, BookOpen, ArrowRight, Copy, Sparkles, X, Loader2, RefreshCw } from 'lucide-react';
+import {
+    CheckCircle2, ChevronRight, ChevronLeft, AlertTriangle,
+    BookOpen, ArrowRight, Copy, Sparkles, X, Loader2,
+    RefreshCw, Maximize2, Minimize2, Scale
+} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import EngagingLoader from '@/components/EngagingLoader';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Types
+/* ================================================================
+   TYPES
+   ================================================================ */
 interface CarouselProps {
     task: any;
     onComplete: (result: any) => void;
 }
 
-// ============================================
-// TEXT SELECTION TOOLBAR
-// ============================================
-interface SelectionToolbarProps {
-    position: { x: number; y: number } | null;
-    selectedText: string;
-    onCopy: () => void;
-    onRephrase: () => void;
-    onAskAI: () => void;
-    onClose: () => void;
-    isLoading: boolean;
+/* ================================================================
+   CITATION DETECTION  —  Kenyan legal citation patterns
+   ================================================================ */
+const CITATION_RE =
+    /(?:(?:Section|s\.|Art(?:icle)?\.?\s*)[\dIVXLCDM]+(?:\([^)]*\))?(?:\s+of\s+(?:the\s+)?)?)?(?:the\s+)?((?:[A-Z][A-Za-z''\u2019]+[\s,()-]*)+(?:Act|Regulations?|Rules?|Order|Code|Constitution|Ordinance)(?:,?\s*(?:Cap\.?\s*\d+|No\.?\s*\d+(?:\s+of\s+\d{4})?|\d{4}))?)(?:\s*[-\u2013]\s*((?:Part|Chapter|Section|Schedule|Division)\s+[IVXLCDM\d]+(?:\s*\([^)]*\))?))?/g;
+
+interface ParsedCitation {
+    fullMatch: string;
+    statute: string;
+    section?: string;
+    startIndex: number;
+    endIndex: number;
 }
 
-function SelectionToolbar({ position, selectedText, onCopy, onRephrase, onAskAI, onClose, isLoading }: SelectionToolbarProps) {
-    if (!position || !selectedText) return null;
+function parseCitations(text: string): ParsedCitation[] {
+    const results: ParsedCitation[] = [];
+    const seen = new Set<string>();
+    const regex = new RegExp(CITATION_RE.source, CITATION_RE.flags);
+    let m: RegExpExecArray | null;
+    while ((m = regex.exec(text)) !== null) {
+        const key = `${m.index}:${m[0]}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        results.push({
+            fullMatch: m[0],
+            statute: m[1] || m[0],
+            section: m[2] || undefined,
+            startIndex: m.index,
+            endIndex: m.index + m[0].length,
+        });
+    }
+    return results.sort((a, b) => a.startIndex - b.startIndex);
+}
 
+/* ================================================================
+   CITATION LINK  —  clickable amber-styled inline token
+   ================================================================ */
+function CitationLink({ text, onClick }: { text: string; onClick: () => void }) {
     return (
-        <div
-            className="fixed z-50 animate-in fade-in zoom-in-95 duration-150"
-            style={{ left: position.x, top: position.y }}
+        <button
+            onClick={(e) => { e.stopPropagation(); onClick(); }}
+            className="citation-link inline font-semibold text-amber-700 dark:text-amber-400 underline decoration-amber-400/50 dark:decoration-amber-500/40 decoration-[1.5px] underline-offset-2 hover:decoration-amber-600 hover:text-amber-900 dark:hover:text-amber-300 transition-colors cursor-pointer bg-transparent border-none p-0 m-0 text-left leading-inherit"
+            title={`View statute: ${text}`}
         >
-            <div className="bg-popover border border-border rounded-lg shadow-lg p-1 flex items-center gap-0.5">
-                <button
-                    onClick={onCopy}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    title="Copy"
-                >
-                    <Copy className="h-3 w-3" />
-                    Copy
-                </button>
-                <div className="w-px h-4 bg-border" />
-                <button
-                    onClick={onRephrase}
-                    disabled={isLoading}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
-                    title="Rephrase in simpler language"
-                >
-                    {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                    Simplify
-                </button>
-                <div className="w-px h-4 bg-border" />
-                <button
-                    onClick={onAskAI}
-                    disabled={isLoading}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
-                    title="Ask AI about this"
-                >
-                    <Sparkles className="h-3 w-3" />
-                    Explain
-                </button>
-                <div className="w-px h-4 bg-border" />
-                <button
-                    onClick={onClose}
-                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                >
-                    <X className="h-3 w-3" />
-                </button>
+            {text}
+        </button>
+    );
+}
+
+/* ================================================================
+   TEXT-WITH-CITATIONS  —  renders plain text with citation hotspots
+   ================================================================ */
+function TextWithCitations({ children, onCitationClick }: { children: string; onCitationClick: (c: ParsedCitation) => void }) {
+    if (typeof children !== 'string') return <>{children}</>;
+    const citations = parseCitations(children);
+    if (citations.length === 0) return <>{children}</>;
+    const parts: React.ReactNode[] = [];
+    let last = 0;
+    citations.forEach((c, i) => {
+        if (c.startIndex > last) parts.push(<Fragment key={`t${i}`}>{children.slice(last, c.startIndex)}</Fragment>);
+        parts.push(<CitationLink key={`c${i}`} text={c.fullMatch} onClick={() => onCitationClick(c)} />);
+        last = c.endIndex;
+    });
+    if (last < children.length) parts.push(<Fragment key="tail">{children.slice(last)}</Fragment>);
+    return <>{parts}</>;
+}
+
+/* ================================================================
+   STATUTE SIDE-PANEL  —  shows verbatim statute section
+   ================================================================ */
+function StatutePanel({ citation, onClose, getIdToken }: { citation: ParsedCitation | null; onClose: () => void; getIdToken: () => Promise<string | null> }) {
+    const [content, setContent] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        if (!citation) return;
+        let cancelled = false;
+        setLoading(true); setContent(null); setError(false);
+        (async () => {
+            try {
+                const token = await getIdToken();
+                const res = await fetch('/api/ai/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({
+                        message: `You are a Kenyan legal reference tool. The user clicked on this citation: "${citation.fullMatch}".\n\nProvide the VERBATIM text of this statutory provision as it appears in Kenyan law:\n1. Full title of the Act/Regulation\n2. The specific Part/Section heading\n3. The verbatim section text with all sub-sections numbered (1),(2),(a),(b),(i),(ii)\n4. If you do not have the exact verbatim text, give the closest accurate paraphrase and note that.\n\nUse proper legal formatting.`,
+                        intent: 'study',
+                    }),
+                });
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                if (!cancelled) setContent(data.response || data.content || 'Unable to retrieve statute text.');
+            } catch { if (!cancelled) setError(true); } finally { if (!cancelled) setLoading(false); }
+        })();
+        return () => { cancelled = true; };
+    }, [citation, getIdToken]);
+
+    if (!citation) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex animate-in fade-in duration-200">
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+            <div className="relative ml-auto w-full max-w-lg bg-card border-l border-border shadow-2xl flex flex-col h-full animate-in slide-in-from-right duration-300">
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b bg-amber-50/80 dark:bg-amber-950/20">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <Scale className="h-4 w-4 text-amber-700 dark:text-amber-400 flex-shrink-0" />
+                        <div className="min-w-0">
+                            <h3 className="text-sm font-bold text-amber-900 dark:text-amber-300 truncate">{citation.statute}</h3>
+                            {citation.section && <p className="text-[11px] text-amber-700/70 dark:text-amber-400/60">{citation.section}</p>}
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-amber-200/50 dark:hover:bg-amber-800/30 text-amber-700 dark:text-amber-400 transition-colors flex-shrink-0">
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
+                {/* Body */}
+                <ScrollArea className="flex-1">
+                    <div className="p-5 sm:p-6">
+                        {loading && (
+                            <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
+                                <Loader2 className="h-6 w-6 animate-spin text-amber-600" />
+                                <p className="text-sm">Retrieving statute text&hellip;</p>
+                            </div>
+                        )}
+                        {error && (
+                            <div className="text-center py-16 text-muted-foreground">
+                                <AlertTriangle className="h-6 w-6 mx-auto mb-2 text-amber-500" />
+                                <p className="text-sm">Could not retrieve the statute. Try again later.</p>
+                            </div>
+                        )}
+                        {content && (
+                            <div className="statute-content prose prose-sm max-w-none dark:prose-invert prose-headings:text-amber-900 dark:prose-headings:text-amber-300 prose-strong:text-amber-800 dark:prose-strong:text-amber-400">
+                                <ReactMarkdown>{content}</ReactMarkdown>
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
+                <div className="px-4 py-2.5 border-t bg-muted/30 text-center">
+                    <p className="text-[10px] text-muted-foreground">Source: Kenya Law Reports &middot; Always verify with the official gazette</p>
+                </div>
             </div>
         </div>
     );
 }
 
-// ============================================
-// AI EXPLANATION PANEL (inline, not modal)
-// ============================================
-function AIExplanation({ text, onClose }: { text: string; onClose: () => void }) {
+/* ================================================================
+   SELECTION TOOLBAR  —  floating popup on text highlight
+   ================================================================ */
+function SelectionToolbar({ position, selectedText, onCopy, onSimplify, onAskAI, onClose, isLoading }: {
+    position: { x: number; y: number } | null; selectedText: string;
+    onCopy: () => void; onSimplify: () => void; onAskAI: () => void; onClose: () => void; isLoading: boolean;
+}) {
+    if (!position || !selectedText) return null;
     return (
-        <div className="mx-6 mb-4 mt-2 p-4 rounded-lg border border-primary/20 bg-primary/5 animate-in slide-in-from-top-2 duration-200">
-            <div className="flex items-start justify-between gap-3 mb-2">
-                <div className="flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-primary" />
-                    <span className="text-xs font-semibold text-primary">AI Explanation</span>
-                </div>
-                <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-0.5">
+        <div className="fixed z-[60] animate-in fade-in zoom-in-95 duration-150" style={{ left: position.x, top: position.y }}>
+            <div className="bg-popover border border-border rounded-xl shadow-xl p-1.5 flex items-center gap-1">
+                <button onClick={onCopy} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Copy">
+                    <Copy className="h-3.5 w-3.5" /> Copy
+                </button>
+                <div className="w-px h-5 bg-border" />
+                <button onClick={onSimplify} disabled={isLoading} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-900/20 transition-colors disabled:opacity-50" title="Simplify">
+                    {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Simplify
+                </button>
+                <div className="w-px h-5 bg-border" />
+                <button onClick={onAskAI} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/20 transition-colors" title="Ask AI">
+                    <Sparkles className="h-3.5 w-3.5" /> Ask AI
+                </button>
+                <div className="w-px h-5 bg-border" />
+                <button onClick={onClose} className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                     <X className="h-3.5 w-3.5" />
                 </button>
             </div>
-            <div className="text-sm text-foreground/90 leading-relaxed prose prose-sm max-w-none dark:prose-invert">
-                <ReactMarkdown>{text}</ReactMarkdown>
-            </div>
         </div>
     );
 }
 
+/* ================================================================
+   CUSTOM MARKDOWN COMPONENTS  —  warm palette + citation detection
+   ================================================================ */
+function processChildren(children: any, onCite: (c: ParsedCitation) => void): React.ReactNode {
+    if (typeof children === 'string') return <TextWithCitations onCitationClick={onCite}>{children}</TextWithCitations>;
+    if (Array.isArray(children)) return children.map((ch: any, i: number) => typeof ch === 'string' ? <TextWithCitations key={i} onCitationClick={onCite}>{ch}</TextWithCitations> : ch);
+    return children;
+}
+
+function useMdComponents(onCite: (c: ParsedCitation) => void) {
+    return useMemo(() => ({
+        h1: ({ children, ...p }: any) => <h1 className="text-2xl font-bold text-amber-900 dark:text-amber-200 mt-7 mb-3 border-b border-amber-200/30 dark:border-amber-800/25 pb-2" {...p}>{children}</h1>,
+        h2: ({ children, ...p }: any) => <h2 className="text-xl font-bold text-amber-800 dark:text-amber-300 mt-6 mb-2.5" {...p}>{children}</h2>,
+        h3: ({ children, ...p }: any) => <h3 className="text-lg font-semibold text-orange-800 dark:text-orange-300 mt-5 mb-2" {...p}>{children}</h3>,
+        h4: ({ children, ...p }: any) => <h4 className="text-base font-semibold text-stone-800 dark:text-stone-300 mt-4 mb-1.5" {...p}>{children}</h4>,
+        p: ({ children, ...p }: any) => {
+            const txt = typeof children === 'string' ? children : Array.isArray(children) ? children.map((c: any) => typeof c === 'string' ? c : '').join('') : '';
+            if (/exam\s+pitfall/i.test(txt)) {
+                return (
+                    <div className="my-4 p-4 rounded-xl border-l-4 border-rose-400 dark:border-rose-500 bg-rose-50/50 dark:bg-rose-950/15" {...p}>
+                        <p className="text-[15px] leading-[1.75] text-rose-900 dark:text-rose-200">{processChildren(children, onCite)}</p>
+                    </div>
+                );
+            }
+            return <p className="text-[15px] leading-[1.85] text-foreground/90 mb-3.5" {...p}>{processChildren(children, onCite)}</p>;
+        },
+        strong: ({ children, ...p }: any) => {
+            const text = typeof children === 'string' ? children : '';
+            const cites = text ? parseCitations(text) : [];
+            if (cites.length > 0 && cites[0].fullMatch.length > text.length * 0.4) {
+                return <CitationLink text={text} onClick={() => onCite(cites[0])} />;
+            }
+            return <strong className="font-bold text-foreground" {...p}>{children}</strong>;
+        },
+        em: ({ children, ...p }: any) => {
+            const text = typeof children === 'string' ? children : '';
+            if (/exam\s+pitfall/i.test(text)) return <span className="font-semibold text-rose-700 dark:text-rose-400 not-italic" {...p}>{children}</span>;
+            return <em className="text-stone-600 dark:text-stone-400" {...p}>{children}</em>;
+        },
+        ul: ({ children, ...p }: any) => <ul className="my-3 ml-1 space-y-2 list-none" {...p}>{children}</ul>,
+        ol: ({ children, ...p }: any) => <ol className="my-3 ml-1 space-y-2 list-decimal list-inside" {...p}>{children}</ol>,
+        li: ({ children, ...p }: any) => (
+            <li className="text-[15px] leading-relaxed text-foreground/85 pl-4 relative before:content-[''] before:absolute before:left-0 before:top-[11px] before:w-1.5 before:h-1.5 before:rounded-full before:bg-amber-400 dark:before:bg-amber-600" {...p}>
+                {processChildren(children, onCite)}
+            </li>
+        ),
+        blockquote: ({ children, ...p }: any) => (
+            <blockquote className="my-4 pl-4 border-l-[3px] border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-950/10 py-2.5 pr-3 rounded-r-lg text-stone-700 dark:text-stone-300 italic" {...p}>{children}</blockquote>
+        ),
+        hr: () => <hr className="my-6 border-t border-amber-200/30 dark:border-amber-800/15" />,
+    }), [onCite]);
+}
+
+/* ================================================================
+   MAIN CAROUSEL
+   ================================================================ */
 export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
     const { getIdToken } = useAuth();
     const [loading, setLoading] = useState(true);
     const [content, setContent] = useState<any>(null);
-    
-    // View State Management
+
+    // View + sub-state
     const [view, setView] = useState<'NARRATIVE' | 'EXHIBIT' | 'ASSESSMENT' | 'COMPLETE'>('NARRATIVE');
-    
-    // Sub-states
     const [currentSlide, setCurrentSlide] = useState(0);
     const [stackLevel, setStackLevel] = useState(1);
     const [mcqAnswer, setMcqAnswer] = useState<number | null>(null);
     const [mcqPassed, setMcqPassed] = useState(false);
 
-    // Text selection state
+    // Fullscreen
+    const [isMaximized, setIsMaximized] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    // Text selection
     const [selectionPos, setSelectionPos] = useState<{ x: number; y: number } | null>(null);
     const [selectedText, setSelectedText] = useState('');
-    const [aiExplanation, setAiExplanation] = useState<string | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
     const narrativeRef = useRef<HTMLDivElement>(null);
 
-    // Sections with possible rephrase replacements
-    const [rephrased, setRephrased] = useState<Map<string, string>>(new Map());
+    // Statute panel
+    const [activeCitation, setActiveCitation] = useState<ParsedCitation | null>(null);
 
-    // Session persistence key
+    // Session cache
     const cacheKey = `mastery_session_${task.data.id}`;
 
-    // Save progress to sessionStorage
-    const saveProgress = (updates?: { v?: string; s?: number; l?: number }) => {
+    const saveProgress = useCallback((updates?: { v?: string; s?: number; l?: number }) => {
         try {
-            const state = {
+            sessionStorage.setItem(cacheKey, JSON.stringify({
                 view: updates?.v || view,
                 currentSlide: updates?.s ?? currentSlide,
                 stackLevel: updates?.l ?? stackLevel,
-                content: content,
-                timestamp: Date.now(),
-            };
-            sessionStorage.setItem(cacheKey, JSON.stringify(state));
-        } catch { /* quota exceeded - ignore */ }
-    };
+                content, timestamp: Date.now(),
+            }));
+        } catch { /* quota */ }
+    }, [cacheKey, view, currentSlide, stackLevel, content]);
 
-    // Handle text selection in narrative
+    /* ---- Text Selection ---- */
     const handleMouseUp = useCallback(() => {
         const sel = window.getSelection();
         const text = sel?.toString().trim();
@@ -153,28 +306,21 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                 const rect = range.getBoundingClientRect();
                 setSelectedText(text);
                 setSelectionPos({
-                    x: Math.min(rect.left + rect.width / 2 - 100, window.innerWidth - 280),
-                    y: rect.top - 48,
+                    x: Math.min(rect.left + rect.width / 2 - 130, window.innerWidth - 340),
+                    y: Math.max(rect.top - 54, 8),
                 });
             }
         } else {
-            // Small delay so toolbar click can register before clearing
-            setTimeout(() => {
-                if (!aiLoading) {
-                    setSelectionPos(null);
-                    setSelectedText('');
-                }
-            }, 200);
+            setTimeout(() => { if (!aiLoading) { setSelectionPos(null); setSelectedText(''); } }, 200);
         }
     }, [aiLoading]);
 
     const handleCopy = useCallback(() => {
         navigator.clipboard.writeText(selectedText);
-        setSelectionPos(null);
-        setSelectedText('');
+        setSelectionPos(null); setSelectedText('');
     }, [selectedText]);
 
-    const handleRephrase = useCallback(async () => {
+    const handleSimplify = useCallback(async () => {
         if (!selectedText || aiLoading) return;
         setAiLoading(true);
         try {
@@ -182,180 +328,114 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
             const res = await fetch('/api/ai/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({
-                    message: `Rephrase the following legal text in simpler, clearer language while preserving all legal accuracy and meaning. Return ONLY the rephrased text, nothing else.\n\nOriginal:\n"${selectedText}"`,
-                    intent: 'study',
-                }),
+                body: JSON.stringify({ message: `Rephrase the following legal text in simpler, clearer language while preserving all legal accuracy and meaning. Return ONLY the rephrased text.\n\n"${selectedText}"`, intent: 'study' }),
             });
             if (res.ok) {
                 const data = await res.json();
-                const simplified = data.response || data.content || '';
-                if (simplified) {
-                    // Replace the text in the current section content
-                    const sections = [...(content?.narrativeSections || [])];
-                    const current = sections[currentSlide] || '';
-                    // Try to find and replace the selected text in the section
-                    if (current.includes(selectedText)) {
-                        sections[currentSlide] = current.replace(selectedText, simplified);
-                        setContent({ ...content, narrativeSections: sections });
-                        setRephrased(prev => new Map(prev).set(selectedText, simplified));
-                    } else {
-                        // If exact match fails (markdown formatting), show as explanation
-                        setAiExplanation(`**Simplified:** ${simplified}`);
+                const simple = data.response || data.content || '';
+                if (simple) {
+                    const secs = [...(content?.narrativeSections || [])];
+                    const cur = secs[currentSlide] || '';
+                    if (cur.includes(selectedText)) {
+                        secs[currentSlide] = cur.replace(selectedText, simple);
+                        setContent({ ...content, narrativeSections: secs });
                     }
                 }
             }
-        } catch (e) {
-            console.error('Rephrase failed:', e);
-        } finally {
-            setAiLoading(false);
-            setSelectionPos(null);
-            setSelectedText('');
-        }
+        } catch (e) { console.error('Simplify failed:', e); }
+        finally { setAiLoading(false); setSelectionPos(null); setSelectedText(''); }
     }, [selectedText, aiLoading, getIdToken, content, currentSlide]);
 
-    const handleAskAI = useCallback(async () => {
-        if (!selectedText || aiLoading) return;
-        setAiLoading(true);
-        setSelectionPos(null);
-        try {
-            const token = await getIdToken();
-            const res = await fetch('/api/ai/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({
-                    message: `A law student studying for the Kenya Bar Exam highlighted this text and wants a clear explanation:\n\n"${selectedText}"\n\nContext: They are studying "${task.data.title || content?.title || 'Kenyan law'}". Give a concise, helpful explanation. Use examples if it helps. Keep it under 150 words.`,
-                    intent: 'study',
-                }),
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setAiExplanation(data.response || data.content || 'No explanation available.');
-            }
-        } catch (e) {
-            console.error('Ask AI failed:', e);
-            setAiExplanation('Could not get an explanation right now. Please try again.');
-        } finally {
-            setAiLoading(false);
-            setSelectedText('');
-        }
-    }, [selectedText, aiLoading, getIdToken, task, content]);
+    // Ask AI → opens FloatingChat with prefilled prompt
+    const handleAskAI = useCallback(() => {
+        if (!selectedText) return;
+        const prompt = `Explain this in the context of Kenyan law:\n\n"${selectedText}"`;
+        window.dispatchEvent(new CustomEvent('ynai:openChat', { detail: { prefill: prompt } }));
+        setSelectionPos(null); setSelectedText('');
+        window.getSelection()?.removeAllRanges();
+    }, [selectedText]);
 
     const clearSelection = useCallback(() => {
-        setSelectionPos(null);
-        setSelectedText('');
+        setSelectionPos(null); setSelectedText('');
         window.getSelection()?.removeAllRanges();
     }, []);
-    
-    // Fetch content (with session cache)
+
+    /* ---- Citation Click ---- */
+    const handleCitationClick = useCallback((c: ParsedCitation) => { setActiveCitation(c); }, []);
+
+    /* ---- Fullscreen ---- */
+    const toggleMaximize = useCallback(() => setIsMaximized(p => !p), []);
+
     useEffect(() => {
-        const fetchContent = async () => {
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') { if (activeCitation) setActiveCitation(null); else if (isMaximized) setIsMaximized(false); }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [isMaximized, activeCitation]);
+
+    /* ---- Fetch Content ---- */
+    useEffect(() => {
+        const load = async () => {
             try {
                 const cached = sessionStorage.getItem(cacheKey);
                 if (cached) {
-                    const state = JSON.parse(cached);
-                    if (state.content && Date.now() - state.timestamp < 2 * 60 * 60 * 1000) {
-                        setContent(state.content);
-                        setView(state.view || 'NARRATIVE');
-                        setCurrentSlide(state.currentSlide || 0);
-                        setStackLevel(state.stackLevel || 1);
-                        setLoading(false);
-                        return;
+                    const s = JSON.parse(cached);
+                    if (s.content && Date.now() - s.timestamp < 2 * 3600_000) {
+                        setContent(s.content); setView(s.view || 'NARRATIVE');
+                        setCurrentSlide(s.currentSlide || 0); setStackLevel(s.stackLevel || 1);
+                        setLoading(false); return;
                     }
                 }
-            } catch { /* fetch fresh */ }
-
+            } catch { /* fresh */ }
             const token = await getIdToken();
             try {
-                const params = new URLSearchParams({
-                    skillId: task.data.id,
-                    type: task.type
-                });
-                
-                const res = await fetch(`/api/mastery/content?${params}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                
-                if (!res.ok) throw new Error("Failed to fetch content");
-                
+                const params = new URLSearchParams({ skillId: task.data.id, type: task.type });
+                const res = await fetch(`/api/mastery/content?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+                if (!res.ok) throw new Error();
                 const data = await res.json();
                 setContent(data);
-                try {
-                    sessionStorage.setItem(cacheKey, JSON.stringify({
-                        view: 'NARRATIVE', currentSlide: 0, stackLevel: 1,
-                        content: data, timestamp: Date.now(),
-                    }));
-                } catch { /* ignore */ }
-            } catch (e) {
-                console.error("Failed to load content", e);
-            } finally {
-                setLoading(false);
-            }
+                try { sessionStorage.setItem(cacheKey, JSON.stringify({ view: 'NARRATIVE', currentSlide: 0, stackLevel: 1, content: data, timestamp: Date.now() })); } catch {}
+            } catch (e) { console.error('Failed to load content', e); }
+            finally { setLoading(false); }
         };
-        fetchContent();
+        load();
     }, [task, getIdToken, cacheKey]);
 
-    // Navigation
-    const handleNext = () => {
+    /* ---- Navigation ---- */
+    const handleNext = useCallback(() => {
         if (view === 'NARRATIVE') {
             if (currentSlide < (content?.narrativeSections?.length || 0) - 1) {
-                const next = currentSlide + 1;
-                setCurrentSlide(next);
-                setAiExplanation(null);
-                saveProgress({ s: next });
+                const n = currentSlide + 1; setCurrentSlide(n); saveProgress({ s: n });
             } else {
-                if (content?.exhibit) {
-                    setView('EXHIBIT');
-                    saveProgress({ v: 'EXHIBIT' });
-                } else {
-                    setView('ASSESSMENT');
-                    saveProgress({ v: 'ASSESSMENT' });
-                }
-                setAiExplanation(null);
+                const next = content?.exhibit ? 'EXHIBIT' : 'ASSESSMENT';
+                setView(next as any); saveProgress({ v: next });
             }
         } else if (view === 'EXHIBIT') {
-             setView('ASSESSMENT');
-             setAiExplanation(null);
-             saveProgress({ v: 'ASSESSMENT' });
+            setView('ASSESSMENT'); saveProgress({ v: 'ASSESSMENT' });
         }
-    };
+    }, [view, currentSlide, content, saveProgress]);
 
-    const handleBack = () => {
+    const handleBack = useCallback(() => {
         if (view === 'NARRATIVE' && currentSlide > 0) {
-            const prev = currentSlide - 1;
-            setCurrentSlide(prev);
-            setAiExplanation(null);
-            saveProgress({ s: prev });
+            const p = currentSlide - 1; setCurrentSlide(p); saveProgress({ s: p });
         } else if (view === 'EXHIBIT') {
-            // Go back to last narrative slide
             setView('NARRATIVE');
-            const lastSlide = (content?.narrativeSections?.length || 1) - 1;
-            setCurrentSlide(lastSlide);
-            setAiExplanation(null);
-            saveProgress({ v: 'NARRATIVE', s: lastSlide });
+            const last = (content?.narrativeSections?.length || 1) - 1;
+            setCurrentSlide(last); saveProgress({ v: 'NARRATIVE', s: last });
         } else if (view === 'ASSESSMENT' && stackLevel === 1) {
-            // Go back to exhibit or last narrative slide
-            if (content?.exhibit) {
-                setView('EXHIBIT');
-                saveProgress({ v: 'EXHIBIT' });
-            } else {
-                setView('NARRATIVE');
-                const lastSlide = (content?.narrativeSections?.length || 1) - 1;
-                setCurrentSlide(lastSlide);
-                saveProgress({ v: 'NARRATIVE', s: lastSlide });
-            }
-            setAiExplanation(null);
+            if (content?.exhibit) { setView('EXHIBIT'); saveProgress({ v: 'EXHIBIT' }); }
+            else { setView('NARRATIVE'); const last = (content?.narrativeSections?.length || 1) - 1; setCurrentSlide(last); saveProgress({ v: 'NARRATIVE', s: last }); }
         }
-    };
+    }, [view, currentSlide, content, stackLevel, saveProgress]);
 
-    const canGoBack = (view === 'NARRATIVE' && currentSlide > 0) ||
-        view === 'EXHIBIT' ||
-        (view === 'ASSESSMENT' && stackLevel === 1);
+    const canGoBack = (view === 'NARRATIVE' && currentSlide > 0) || view === 'EXHIBIT' || (view === 'ASSESSMENT' && stackLevel === 1);
 
-    if (loading) {
-        return <EngagingLoader size="md" message="Preparing your study materials..." />;
-    }
-    
+    // Markdown components (memoised per citation handler)
+    const mdComponents = useMdComponents(handleCitationClick);
+
+    /* ---- Loading / Error ---- */
+    if (loading) return <EngagingLoader size="md" message="Preparing your study materials..." />;
     if (!content) {
         return (
             <div className="p-8 text-center border border-border rounded-xl bg-card">
@@ -366,290 +446,211 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
         );
     }
 
-    // --- VIEW: GOLDEN EXHIBIT ---
+    // Shared container class
+    const wrap = isMaximized ? 'fixed inset-0 z-40 bg-background flex flex-col p-0' : 'w-full px-2 sm:px-3';
+    const cardHeight = isMaximized ? 'h-full' : 'h-[calc(100vh-100px)]';
+
+    /* ============================================================
+       VIEW: EXHIBIT
+       ============================================================ */
     if (view === 'EXHIBIT' && content.exhibit) {
         return (
-            <div className="animate-in fade-in duration-500">
-                <Card className="w-full max-w-5xl mx-auto h-[75vh] flex flex-col border-amber-400 bg-amber-50/30 shadow-lg">
-                    <CardHeader className="border-b bg-amber-100/50 flex flex-row items-center justify-between pb-4 pt-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-amber-200 rounded-full">
-                                <BookOpen className="h-5 w-5 text-amber-900" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-amber-900 text-xl font-serif">
-                                    {content.exhibit.title}
-                                </CardTitle>
-                                <p className="text-xs text-amber-700 uppercase tracking-wider font-medium mt-1">
-                                    Source Material
-                                </p>
-                            </div>
-                        </div>
-                        <Badge variant="outline" className="bg-white text-amber-800 border-amber-300 shadow-sm text-[10px]">
-                            Reference
-                        </Badge>
-                    </CardHeader>
-                    
-                    <CardContent className="flex-1 p-0 overflow-hidden relative bg-white dark:bg-zinc-950">
-                        <ScrollArea className="h-full">
-                            <div className="p-8 max-w-4xl mx-auto">
-                                <div className="prose prose-sm md:prose-base max-w-none dark:prose-invert font-serif border p-12 shadow-sm bg-white text-black min-h-[500px] mx-auto">
-                                    <ReactMarkdown>{content.exhibit.content}</ReactMarkdown>
+            <div ref={containerRef} className={wrap}>
+                <div className={cn('animate-in fade-in duration-500 flex flex-col', cardHeight)}>
+                    <Card className="flex-1 flex flex-col border-amber-400/50 dark:border-amber-700/40 bg-card shadow-lg overflow-hidden rounded-xl">
+                        <div className="flex items-center justify-between px-4 py-3 border-b bg-amber-50/80 dark:bg-amber-950/30">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="p-1.5 bg-amber-200 dark:bg-amber-800 rounded-lg"><BookOpen className="h-4 w-4 text-amber-900 dark:text-amber-200" /></div>
+                                <div className="min-w-0">
+                                    <h2 className="text-base font-semibold text-amber-900 dark:text-amber-200 truncate">{content.exhibit.title}</h2>
+                                    <p className="text-[10px] text-amber-700/60 dark:text-amber-400/50 uppercase tracking-widest font-medium">Source Material</p>
                                 </div>
                             </div>
-                        </ScrollArea>
-                    </CardContent>
-                    
-                    <CardFooter className="p-4 border-t bg-amber-50/80 backdrop-blur flex justify-between items-center">
-                        <button 
-                            onClick={handleBack}
-                            className="flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 transition-colors"
-                        >
-                            <ChevronLeft className="h-3.5 w-3.5" />
-                            Back to notes
-                        </button>
-                        <Button 
-                            onClick={handleNext} 
-                            className="bg-amber-900 hover:bg-amber-800 text-white shadow-md"
-                            size="default"
-                        >
-                            Continue to Assessment <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>
-                    </CardFooter>
-                </Card>
+                            <div className="flex items-center gap-2">
+                                <button onClick={toggleMaximize} className="p-1.5 rounded-md hover:bg-amber-200/60 dark:hover:bg-amber-800/40 text-amber-700 dark:text-amber-400 transition-colors">
+                                    {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                                </button>
+                                <Badge variant="outline" className="bg-white dark:bg-zinc-900 text-amber-800 dark:text-amber-400 border-amber-300 dark:border-amber-700 text-[10px]">Reference</Badge>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                            <ScrollArea className="h-full">
+                                <div className="p-5 sm:p-8 lg:p-10">
+                                    <div className="prose prose-sm md:prose-base max-w-none dark:prose-invert font-serif border border-amber-200/30 dark:border-amber-800/20 p-6 sm:p-10 shadow-sm bg-white dark:bg-zinc-950 rounded-lg min-h-[400px]">
+                                        <ReactMarkdown>{content.exhibit.content}</ReactMarkdown>
+                                    </div>
+                                </div>
+                            </ScrollArea>
+                        </div>
+                        <div className="px-4 py-3 border-t bg-amber-50/60 dark:bg-amber-950/20 flex justify-between items-center">
+                            <button onClick={handleBack} className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors font-medium">
+                                <ChevronLeft className="h-4 w-4" /> Back
+                            </button>
+                            <Button onClick={handleNext} className="bg-amber-800 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 text-white shadow-md px-5" size="default">
+                                Continue to Assessment <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </div>
+                    </Card>
+                </div>
             </div>
         );
     }
-    
-    // --- VIEW: ASSESSMENT ---
+
+    /* ============================================================
+       VIEW: ASSESSMENT
+       ============================================================ */
     if (view === 'ASSESSMENT') {
-        // Find current level assessment
         const assessment = content.stack?.stack?.find((s: any) => s.level === stackLevel);
-        
-        // If no more assessments, we are done
         if (!assessment) {
             return (
-                <div className="animate-in zoom-in duration-300">
-                    <Card className="w-full max-w-2xl mx-auto text-center py-12 border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/20 dark:bg-emerald-950/10">
-                        <CardContent className="space-y-6">
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-emerald-200 rounded-full blur-xl opacity-40 animate-pulse"></div>
-                                <CheckCircle2 className="h-16 w-16 text-emerald-600 mx-auto relative z-10" />
-                            </div>
-                            <div>
-                                <h2 className="text-2xl font-bold">Topic Complete</h2>
-                                <p className="text-muted-foreground mt-1">Well done - you've mastered this section.</p>
-                            </div>
-                            <Button 
-                                onClick={() => {
-                                    // Clear session cache on completion
-                                    try { sessionStorage.removeItem(cacheKey); } catch {}
-                                    onComplete({ passed: true, score: 100 });
-                                }} 
-                                size="lg"
-                                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-8 py-5 rounded-xl"
-                            >
-                                Back to Mastery Hub
-                            </Button>
-                        </CardContent>
-                    </Card>
+                <div ref={containerRef} className={wrap}>
+                    <div className="animate-in zoom-in duration-300 flex items-center justify-center min-h-[60vh]">
+                        <Card className="w-full max-w-lg text-center py-12 border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/20 dark:bg-emerald-950/10 rounded-xl">
+                            <CardContent className="space-y-6">
+                                <div className="relative"><div className="absolute inset-0 bg-emerald-200 rounded-full blur-xl opacity-40 animate-pulse" /><CheckCircle2 className="h-16 w-16 text-emerald-600 mx-auto relative z-10" /></div>
+                                <div><h2 className="text-2xl font-bold">Topic Complete</h2><p className="text-muted-foreground mt-1">Well done - you&apos;ve covered this section.</p></div>
+                                <Button onClick={() => { try { sessionStorage.removeItem(cacheKey); } catch {} onComplete({ passed: true, score: 100 }); }} size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-8 py-5 rounded-xl">Back to Mastery Hub</Button>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
             );
         }
-
-        // Render Active Assessment Question
         return (
-             <Card className="w-full max-w-3xl mx-auto mt-4 border-t-2 border-t-primary shadow-lg animate-in slide-in-from-right duration-300">
-                <CardHeader className="bg-card border-b pb-4">
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                            {canGoBack && (
-                                <button onClick={handleBack} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                                    <ChevronLeft className="h-4 w-4" />
-                                </button>
-                            )}
-                            <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/10">
-                                Question {stackLevel}
-                            </Badge>
+            <div ref={containerRef} className={wrap}>
+                <div className={cn('animate-in slide-in-from-right duration-300 flex flex-col', cardHeight)}>
+                    <Card className="flex-1 flex flex-col border-t-2 border-t-primary shadow-lg overflow-hidden rounded-xl">
+                        <div className="px-5 py-4 border-b bg-card">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                    {canGoBack && <button onClick={handleBack} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><ChevronLeft className="h-4 w-4" /></button>}
+                                    <Badge variant="secondary" className="bg-primary/10 text-primary">Question {stackLevel}</Badge>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-muted-foreground tabular-nums">{stackLevel} of {content.stack?.stack?.length || 3}</span>
+                                    <button onClick={toggleMaximize} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors">{isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}</button>
+                                </div>
+                            </div>
+                            <h3 className="text-base font-semibold leading-snug text-foreground">{assessment.title || 'Assessment'}</h3>
                         </div>
-                        <span className="text-[10px] text-muted-foreground">
-                            {stackLevel} of {content.stack?.stack?.length || 3}
-                        </span>
-                    </div>
-                    <CardTitle className="text-base leading-snug">
-                        {assessment.title || "Assessment"}
-                    </CardTitle>
-                </CardHeader>
-                
-                <CardContent className="pt-5 px-5 pb-4">
-                    {/* Question text - proper wrapping for long scenarios */}
-                    <div className="mb-5">
-                        <p className="text-sm leading-relaxed text-foreground">
-                            {assessment.question}
-                        </p>
-                    </div>
-                    
-                    {/* MCQ Options - proper text wrapping */}
-                    {assessment.type === 'MCQ' && (
-                        <div className="space-y-2.5">
-                            {assessment.options.map((opt: string, idx: number) => {
-                                const isSelected = mcqAnswer === idx;
-                                const isCorrect = idx === assessment.correctIndex;
-                                const showCorrect = mcqPassed && isCorrect;
-                                const showWrong = isSelected && !mcqPassed && mcqAnswer !== null;
-                                
-                                return (
-                                    <button
-                                        key={idx}
-                                        onClick={() => {
-                                            if (mcqPassed) return;
-                                            setMcqAnswer(idx);
-                                            if (isCorrect) {
-                                                setMcqPassed(true);
-                                                setTimeout(() => {
-                                                    setMcqPassed(false);
-                                                    setMcqAnswer(null);
-                                                    const nextLevel = stackLevel + 1;
-                                                    setStackLevel(nextLevel);
-                                                    saveProgress({ l: nextLevel });
-                                                }, 1500);
-                                            }
-                                        }}
-                                        disabled={mcqPassed}
-                                        className={cn(
-                                            "w-full text-left flex items-start gap-3 p-3.5 rounded-lg border transition-all duration-150",
-                                            !isSelected && !showCorrect && "border-border/60 bg-card hover:border-primary/30 hover:bg-primary/5",
-                                            showCorrect && "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 ring-1 ring-emerald-400",
-                                            showWrong && "border-red-300 bg-red-50/50 dark:bg-red-950/20",
-                                            isSelected && !showWrong && !showCorrect && "border-primary/40 bg-primary/5",
-                                        )}
-                                    >
-                                        <span className={cn(
-                                            "flex-shrink-0 w-6 h-6 rounded-full border flex items-center justify-center text-[11px] font-medium mt-0.5",
-                                            showCorrect && "bg-emerald-500 border-emerald-500 text-white",
-                                            showWrong && "bg-red-400 border-red-400 text-white",
-                                            !showCorrect && !showWrong && "text-muted-foreground border-border",
-                                        )}>
-                                            {showCorrect ? '✓' : showWrong ? '✗' : String.fromCharCode(65 + idx)}
-                                        </span>
-                                        <span className="text-sm leading-relaxed text-foreground/90 whitespace-normal">
-                                            {opt}
-                                        </span>
-                                    </button>
-                                );
-                            })}
+                        <div className="flex-1 overflow-hidden">
+                            <ScrollArea className="h-full">
+                                <div className="p-5 sm:p-6">
+                                    <p className="text-[15px] leading-[1.8] text-foreground/90 mb-5">{assessment.question}</p>
+                                    {assessment.type === 'MCQ' && (
+                                        <div className="space-y-3">
+                                            {assessment.options.map((opt: string, idx: number) => {
+                                                const isSelected = mcqAnswer === idx;
+                                                const isCorrect = idx === assessment.correctIndex;
+                                                const showCorrect = mcqPassed && isCorrect;
+                                                const showWrong = isSelected && !mcqPassed && mcqAnswer !== null;
+                                                return (
+                                                    <button key={idx} onClick={() => {
+                                                        if (mcqPassed) return; setMcqAnswer(idx);
+                                                        if (isCorrect) { setMcqPassed(true); setTimeout(() => { setMcqPassed(false); setMcqAnswer(null); const nl = stackLevel + 1; setStackLevel(nl); saveProgress({ l: nl }); }, 1800); }
+                                                    }} disabled={mcqPassed}
+                                                        className={cn(
+                                                            'w-full text-left flex items-start gap-3 p-4 rounded-xl border-2 transition-all duration-200',
+                                                            !isSelected && !showCorrect && 'border-border/40 bg-card hover:border-amber-300/60 hover:bg-amber-50/30 dark:hover:bg-amber-950/10',
+                                                            showCorrect && 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 ring-1 ring-emerald-400',
+                                                            showWrong && 'border-red-300 bg-red-50/50 dark:bg-red-950/20',
+                                                            isSelected && !showWrong && !showCorrect && 'border-primary/40 bg-primary/5',
+                                                        )}>
+                                                        <span className={cn(
+                                                            'flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs font-bold mt-0.5',
+                                                            showCorrect && 'bg-emerald-500 border-emerald-500 text-white',
+                                                            showWrong && 'bg-red-400 border-red-400 text-white',
+                                                            !showCorrect && !showWrong && 'text-muted-foreground border-border/60',
+                                                        )}>{showCorrect ? '✓' : showWrong ? '✗' : String.fromCharCode(65 + idx)}</span>
+                                                        <span className="text-sm leading-relaxed text-foreground/90 whitespace-normal pt-0.5">{opt}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    {mcqPassed && assessment.explanation && (
+                                        <div className="mt-5 p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 animate-in fade-in duration-300">
+                                            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1.5">Why this is correct:</p>
+                                            <p className="text-sm text-emerald-600 dark:text-emerald-300/80 leading-relaxed">{assessment.explanation}</p>
+                                        </div>
+                                    )}
+                                    {assessment.type !== 'MCQ' && (
+                                        <div className="p-6 border border-dashed rounded-xl bg-muted/30 text-center">
+                                            <p className="text-muted-foreground mb-3 text-sm">{assessment.type} questions coming soon.</p>
+                                            <Button onClick={() => { const nl = stackLevel + 1; setStackLevel(nl); saveProgress({ l: nl }); }} variant="secondary" size="sm">Skip</Button>
+                                        </div>
+                                    )}
+                                </div>
+                            </ScrollArea>
                         </div>
-                    )}
-                    
-                    {/* Explanation after correct answer */}
-                    {mcqPassed && assessment.explanation && (
-                        <div className="mt-4 p-3 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 animate-in fade-in duration-300">
-                            <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1">Why this is correct:</p>
-                            <p className="text-xs text-emerald-600 dark:text-emerald-300/80 leading-relaxed">{assessment.explanation}</p>
-                        </div>
-                    )}
-                    
-                    {/* Fallback for non-MCQ types */}
-                    {assessment.type !== 'MCQ' && (
-                        <div className="p-5 border border-dashed rounded-lg bg-muted/30 text-center">
-                             <p className="text-muted-foreground mb-3 text-sm">{assessment.type} questions coming soon.</p>
-                             <Button onClick={() => { const nl = stackLevel + 1; setStackLevel(nl); saveProgress({ l: nl }); }} variant="secondary" size="sm">
-                                 Skip
-                             </Button>
-                        </div>
-                    )}
-                </CardContent>
-                <CardFooter className="bg-muted/30 border-t px-5 py-2.5 justify-center">
-                    <p className="text-[11px] text-muted-foreground">
-                         Select the correct answer to continue
-                    </p>
-                </CardFooter>
-            </Card>
+                        <div className="px-5 py-3 border-t bg-muted/20 text-center"><p className="text-[11px] text-muted-foreground">Select the correct answer to continue</p></div>
+                    </Card>
+                </div>
+            </div>
         );
     }
 
-    // --- VIEW: NARRATIVE (Default) ---
-    const currentText = (content?.narrativeSections || [])[currentSlide] || "Loading...";
-    const isLastSlide = content?.narrativeSections ? currentSlide === content.narrativeSections.length - 1 : false;
+    /* ============================================================
+       VIEW: NARRATIVE  (Study Notes)
+       ============================================================ */
+    const currentText = (content?.narrativeSections || [])[currentSlide] || 'Loading...';
+    const totalSlides = content?.narrativeSections?.length || 1;
+    const isLastSlide = currentSlide === totalSlides - 1;
+    const progressPct = ((currentSlide + 1) / totalSlides) * 100;
 
     return (
-        <>
-        <SelectionToolbar
-            position={selectionPos}
-            selectedText={selectedText}
-            onCopy={handleCopy}
-            onRephrase={handleRephrase}
-            onAskAI={handleAskAI}
-            onClose={clearSelection}
-            isLoading={aiLoading}
-        />
-        <Card className="max-w-4xl mx-auto h-[80vh] flex flex-col shadow-md border-border/60">
-            <CardHeader className="bg-card border-b pb-3 pt-4">
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {currentSlide > 0 && (
-                            <button onClick={handleBack} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
-                                <ChevronLeft className="h-4 w-4" />
+        <div ref={containerRef} className={wrap}>
+            {/* Selection Toolbar */}
+            <SelectionToolbar position={selectionPos} selectedText={selectedText} onCopy={handleCopy} onSimplify={handleSimplify} onAskAI={handleAskAI} onClose={clearSelection} isLoading={aiLoading} />
+
+            {/* Statute Side Panel */}
+            <StatutePanel citation={activeCitation} onClose={() => setActiveCitation(null)} getIdToken={getIdToken} />
+
+            {/* Study Notes Card */}
+            <div className={cn('flex flex-col animate-in fade-in duration-400', cardHeight)}>
+                <Card className="flex-1 flex flex-col shadow-lg border-border/50 overflow-hidden rounded-xl bg-card">
+                    {/* ---- HEADER ---- */}
+                    <div className="px-4 py-3 border-b bg-gradient-to-r from-amber-50/60 via-orange-50/20 to-transparent dark:from-amber-950/20 dark:via-transparent">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <BookOpen className="h-4 w-4 text-amber-700 dark:text-amber-400 flex-shrink-0" />
+                                <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">Study Notes</span>
+                                <span className="text-muted-foreground text-xs mx-0.5">&middot;</span>
+                                <span className="text-xs text-muted-foreground tabular-nums">{currentSlide + 1} of {totalSlides}</span>
+                            </div>
+                            <button onClick={toggleMaximize} className="p-1.5 rounded-md hover:bg-amber-100 dark:hover:bg-amber-900/30 text-muted-foreground hover:text-amber-700 dark:hover:text-amber-400 transition-colors" title={isMaximized ? 'Exit full screen' : 'Full screen'}>
+                                {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                             </button>
-                        )}
-                        <BookOpen className="h-4 w-4 text-primary flex-shrink-0" />
-                        <span className="text-xs font-medium text-primary">Study Notes</span>
-                        <span className="text-[10px] text-muted-foreground">-</span>
-                        <span className="text-[10px] text-muted-foreground">
-                            {currentSlide + 1} of {content?.narrativeSections?.length || 1}
-                        </span>
+                        </div>
+                        <h2 className="text-lg font-bold text-foreground mt-1.5 truncate">{content.title || task.data.title || 'Study Material'}</h2>
+                        <Progress value={progressPct} className="h-1 mt-2.5 bg-amber-100 dark:bg-amber-950/40 [&>div]:bg-amber-500 dark:[&>div]:bg-amber-600" />
                     </div>
-                </div>
-                <CardTitle className="text-lg font-semibold truncate mt-1">
-                    {content.title || task.data.title || "Study Material"}
-                </CardTitle>
-                <Progress value={((currentSlide + 1) / (content?.narrativeSections?.length || 1)) * 100} className="h-1 mt-3" />
-            </CardHeader>
-            
-            {/* AI Explanation Panel */}
-            {aiExplanation && (
-                <AIExplanation text={aiExplanation} onClose={() => setAiExplanation(null)} />
-            )}
-            
-            <CardContent className="flex-1 p-0 overflow-hidden relative bg-background">
-                <ScrollArea className="h-full">
-                   <div 
-                        ref={narrativeRef}
-                        onMouseUp={handleMouseUp}
-                        className="prose prose-sm md:prose-base max-w-none dark:prose-invert p-6 md:p-8 pb-28 prose-headings:text-foreground prose-p:text-foreground/90 prose-strong:text-foreground select-text cursor-text"
-                   >
-                        <ReactMarkdown>
-                            {currentText}
-                        </ReactMarkdown>
-                   </div>
-                </ScrollArea>
-                
-                {/* Floating Action Bar */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/95 to-transparent pt-16 flex items-center justify-between">
-                    <div className="flex-shrink-0">
-                        {currentSlide > 0 && (
-                            <Button 
-                                onClick={handleBack}
-                                variant="ghost"
-                                size="sm"
-                                className="text-muted-foreground hover:text-foreground"
-                            >
-                                <ChevronLeft className="h-4 w-4 mr-1" />
-                                Back
+
+                    {/* ---- CONTENT ---- */}
+                    <div className="flex-1 overflow-hidden relative">
+                        <ScrollArea className="h-full">
+                            <div ref={narrativeRef} onMouseUp={handleMouseUp} className="p-5 sm:p-6 lg:p-8 pb-32 select-text cursor-text">
+                                <ReactMarkdown components={mdComponents}>{currentText}</ReactMarkdown>
+                            </div>
+                        </ScrollArea>
+
+                        {/* ---- BOTTOM ACTION BAR ---- */}
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card via-card/98 to-transparent pt-12 pb-4 px-4 flex items-center justify-between">
+                            <div>
+                                {canGoBack ? (
+                                    <button onClick={handleBack} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors">
+                                        <ChevronLeft className="h-4 w-4" /> Back
+                                    </button>
+                                ) : <div />}
+                            </div>
+                            <Button onClick={handleNext} size="default" className="shadow-md bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white px-6 py-2.5 rounded-xl transition-all font-medium">
+                                {isLastSlide ? (content?.exhibit ? 'View Exhibit' : 'Start Assessment') : 'Continue'}
+                                <ChevronRight className="ml-1.5 h-4 w-4" />
                             </Button>
-                        )}
+                        </div>
                     </div>
-                    <Button 
-                        onClick={handleNext} 
-                        size="default" 
-                        className="shadow-md bg-primary hover:bg-primary/90 text-primary-foreground px-6 rounded-lg transition-all"
-                    >
-                        {isLastSlide ? (content?.exhibit ? "View Exhibit" : "Start Assessment") : "Continue"} 
-                        <ChevronRight className="ml-1.5 h-4 w-4" />
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-        </>
+                </Card>
+            </div>
+        </div>
     );
 }

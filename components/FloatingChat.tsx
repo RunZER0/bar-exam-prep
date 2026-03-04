@@ -42,7 +42,22 @@ export default function FloatingChat() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  
+
+  // Listen for external "open chat with prefill" events (e.g. from MasteryCarousel Ask AI)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.prefill) {
+        setInput(detail.prefill);
+        setIsOpen(true);
+        // Focus the input after opening
+        setTimeout(() => inputRef.current?.focus(), 150);
+      }
+    };
+    window.addEventListener('ynai:openChat', handler);
+    return () => window.removeEventListener('ynai:openChat', handler);
+  }, []);
+
   // Drag state for the floating button
   const [bubblePos, setBubblePos] = useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);

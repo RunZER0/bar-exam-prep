@@ -34,6 +34,8 @@ interface DailyQueue {
         pacing: string;
         totalSkills?: number;
         masteredSkills?: number;
+        totalBacklog?: number;
+        cappedAt?: number;
     };
 }
 
@@ -275,9 +277,16 @@ export default function MasteryPage() {
                                             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                                 Today&apos;s Tasks
                                             </h2>
-                                            <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                                                {queueData.queue.length} remaining
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                                                    {queueData.queue.length} tasks
+                                                </span>
+                                                {(queueData.meta.totalBacklog ?? 0) > queueData.queue.length && (
+                                                    <span className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded-full">
+                                                        +{(queueData.meta.totalBacklog ?? 0) - queueData.queue.length} in backlog
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                         
                                         {queueData.queue.map((task, idx) => (

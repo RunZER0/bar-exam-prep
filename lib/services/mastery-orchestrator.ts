@@ -13,11 +13,13 @@ const getOpenAI = () => {
 };
 
 /**
- * Orchestrator philosophy: NO artificial caps.
- * The queue is shaped by what the student NEEDS, not by arbitrary limits.
- * The engine serves all relevant syllabus nodes + micro-skill practice items
- * for the current study window, weighted by urgency and mastery state.
+ * Orchestrator philosophy: Focus over flood.
+ * Show a manageable daily queue (max ~12 items) drawn from the current
+ * study window, prioritised by urgency and mastery state.
+ * The full backlog count is exposed so the UI can surface it without
+ * overwhelming the student with 50+ tasks in a single day.
  */
+const DAILY_QUEUE_CAP = 12;
 
 /**
  * KSL 2026/2027 Academic Calendar
@@ -108,7 +110,7 @@ export class MasteryOrchestrator {
                 ) && !masteredNodeIds.has(node.id)
             );
             
-            // Sort: high-yield + drafting first, then by week — NO CAP
+            // Sort: high-yield + drafting first, then by week
             const criticalNodes = targetedNodes.filter(n => n.isHighYield || n.isDraftingNode);
             const standardNodes = targetedNodes.filter(n => !n.isHighYield && !n.isDraftingNode);
             
@@ -122,10 +124,9 @@ export class MasteryOrchestrator {
                 !masteredNodeIds.has(node.id)
             );
             
-            // NO CAP — serve all relevant nodes for the study window
             queue = weeklyNodes;
             
-            // Backfill with any unmastered earlier nodes (no artificial floor either)
+            // Backfill with any unmastered earlier nodes
             const backlog = syllabus.filter(n => 
                 n.weekNumber < absoluteWeek - 1 && 
                 !masteredNodeIds.has(n.id) &&
@@ -204,6 +205,10 @@ export class MasteryOrchestrator {
           }
         }
 
+        // 4b. Hold total backlog count, then cap the queue for today
+        const totalBacklogCount = queue.length;
+        queue = queue.slice(0, DAILY_QUEUE_CAP);
+
         // 5. Build response with node progress phase info + micro-skill items
         const progressMap = new Map(progress.map(p => [p.nodeId, p]));
 
@@ -241,7 +246,9 @@ export class MasteryOrchestrator {
                 completionPct: syllabus.length > 0 
                     ? Math.round((masteredNodeIds.size / syllabus.length) * 100) 
                     : 0,
-                pacing: isPathA ? 'Accelerated' : 'Standard'
+                pacing: isPathA ? 'Accelerated' : 'Standard',
+                totalBacklog: totalBacklogCount,
+                cappedAt: DAILY_QUEUE_CAP
             }
         };
     }

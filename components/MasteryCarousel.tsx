@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CheckCircle2, Lock, ChevronRight, AlertTriangle, BookOpen, Loader2, ArrowRight } from 'lucide-react';
+import { CheckCircle2, ChevronRight, AlertTriangle, BookOpen, ArrowRight } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import EngagingLoader from '@/components/EngagingLoader';
 import { cn } from '@/lib/utils';
@@ -31,13 +31,46 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
     const [stackLevel, setStackLevel] = useState(1);     // For Assessment
     const [mcqAnswer, setMcqAnswer] = useState<number | null>(null);
     const [mcqPassed, setMcqPassed] = useState(false);
+
+    // Session persistence key
+    const cacheKey = `mastery_session_${task.data.id}`;
+
+    // Save progress to sessionStorage
+    const saveProgress = (updates?: { v?: string; s?: number; l?: number }) => {
+        try {
+            const state = {
+                view: updates?.v || view,
+                currentSlide: updates?.s ?? currentSlide,
+                stackLevel: updates?.l ?? stackLevel,
+                content: content,
+                timestamp: Date.now(),
+            };
+            sessionStorage.setItem(cacheKey, JSON.stringify(state));
+        } catch { /* quota exceeded - ignore */ }
+    };
     
-    // Fetch content
+    // Fetch content (with session cache)
     useEffect(() => {
         const fetchContent = async () => {
+            // Check for cached session first
+            try {
+                const cached = sessionStorage.getItem(cacheKey);
+                if (cached) {
+                    const state = JSON.parse(cached);
+                    // Use cache if less than 2 hours old
+                    if (state.content && Date.now() - state.timestamp < 2 * 60 * 60 * 1000) {
+                        setContent(state.content);
+                        setView(state.view || 'NARRATIVE');
+                        setCurrentSlide(state.currentSlide || 0);
+                        setStackLevel(state.stackLevel || 1);
+                        setLoading(false);
+                        return;
+                    }
+                }
+            } catch { /* parsing error - fetch fresh */ }
+
             const token = await getIdToken();
             try {
-                // Construct query params
                 const params = new URLSearchParams({
                     skillId: task.data.id,
                     type: task.type
@@ -51,6 +84,14 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                 
                 const data = await res.json();
                 setContent(data);
+
+                // Cache the fresh content
+                try {
+                    sessionStorage.setItem(cacheKey, JSON.stringify({
+                        view: 'NARRATIVE', currentSlide: 0, stackLevel: 1,
+                        content: data, timestamp: Date.now(),
+                    }));
+                } catch { /* ignore */ }
             } catch (e) {
                 console.error("Failed to load content", e);
             } finally {
@@ -58,26 +99,30 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
             }
         };
         fetchContent();
-    }, [task, getIdToken]);
+    }, [task, getIdToken, cacheKey]);
 
     const handleNext = () => {
         // NARRATIVE PHASE
         if (view === 'NARRATIVE') {
             if (currentSlide < (content?.narrativeSections?.length || 0) - 1) {
-                setCurrentSlide(curr => curr + 1);
+                const next = currentSlide + 1;
+                setCurrentSlide(next);
+                saveProgress({ s: next });
             } else {
                 // End of Narrative
-                // Check if we have an Exhibit to show
                 if (content?.exhibit) {
                     setView('EXHIBIT');
+                    saveProgress({ v: 'EXHIBIT' });
                 } else {
                     setView('ASSESSMENT');
+                    saveProgress({ v: 'ASSESSMENT' });
                 }
             }
         }
         // EXHIBIT PHASE
         else if (view === 'EXHIBIT') {
              setView('ASSESSMENT');
+             saveProgress({ v: 'ASSESSMENT' });
         }
     };
 
@@ -87,10 +132,10 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
     
     if (!content) {
         return (
-            <div className="p-8 text-center text-red-500 border border-red-200 rounded-lg bg-red-50">
-                <AlertTriangle className="h-10 w-10 mx-auto mb-2" />
-                <h3 className="font-bold">Mission Aborted</h3>
-                <p>Intelligence Packet Corrupted.</p>
+            <div className="p-8 text-center border border-border rounded-xl bg-card">
+                <AlertTriangle className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+                <h3 className="font-semibold text-sm">Unable to load content</h3>
+                <p className="text-xs text-muted-foreground mt-1">Please try again or select a different topic.</p>
             </div>
         );
     }
@@ -109,13 +154,13 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                                 <CardTitle className="text-amber-900 text-xl font-serif">
                                     {content.exhibit.title}
                                 </CardTitle>
-                                <p className="text-xs text-amber-700 uppercase tracking-widest font-semibold mt-1">
-                                    Official Precedent
+                                <p className="text-xs text-amber-700 uppercase tracking-wider font-medium mt-1">
+                                    Source Material
                                 </p>
                             </div>
                         </div>
-                        <Badge variant="outline" className="bg-white text-amber-800 border-amber-300 shadow-sm">
-                            Read Only Mode
+                        <Badge variant="outline" className="bg-white text-amber-800 border-amber-300 shadow-sm text-[10px]">
+                            Reference
                         </Badge>
                     </CardHeader>
                     
@@ -131,15 +176,14 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                     
                     <CardFooter className="p-4 border-t bg-amber-50/80 backdrop-blur flex justify-between items-center">
                         <div className="flex items-center gap-2 text-sm text-amber-800">
-                            <AlertTriangle className="h-4 w-4" />
-                            <span className="italic font-medium">Study this structure carefully. You cannot return.</span>
+                            <span className="text-xs">Review this material before the assessment</span>
                         </div>
                         <Button 
                             onClick={handleNext} 
-                            className="bg-amber-900 hover:bg-amber-800 text-white shadow-md transition-all hover:scale-105"
-                            size="lg"
+                            className="bg-amber-900 hover:bg-amber-800 text-white shadow-md"
+                            size="default"
                         >
-                            I Have Studied The Exhibit <ArrowRight className="ml-2 h-4 w-4" />
+                            Continue to Assessment <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                     </CardFooter>
                 </Card>
@@ -156,22 +200,26 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
         if (!assessment) {
             return (
                 <div className="animate-in zoom-in duration-300">
-                    <Card className="w-full max-w-2xl mx-auto text-center py-16 border-green-200 bg-green-50/30">
-                        <CardContent className="space-y-8">
+                    <Card className="w-full max-w-2xl mx-auto text-center py-12 border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/20 dark:bg-emerald-950/10">
+                        <CardContent className="space-y-6">
                             <div className="relative">
-                                <div className="absolute inset-0 bg-green-200 rounded-full blur-xl opacity-50 animate-pulse"></div>
-                                <CheckCircle2 className="h-24 w-24 text-green-600 mx-auto relative z-10" />
+                                <div className="absolute inset-0 bg-emerald-200 rounded-full blur-xl opacity-40 animate-pulse"></div>
+                                <CheckCircle2 className="h-16 w-16 text-emerald-600 mx-auto relative z-10" />
                             </div>
                             <div>
-                                <h2 className="text-3xl font-bold text-green-900">Module Verified</h2>
-                                <p className="text-green-700 mt-2 text-lg">Mastery Protocol Concluded Successfully.</p>
+                                <h2 className="text-2xl font-bold">Topic Complete</h2>
+                                <p className="text-muted-foreground mt-1">Well done - you've mastered this section.</p>
                             </div>
                             <Button 
-                                onClick={() => onComplete({ passed: true, score: 100 })} 
+                                onClick={() => {
+                                    // Clear session cache on completion
+                                    try { sessionStorage.removeItem(cacheKey); } catch {}
+                                    onComplete({ passed: true, score: 100 });
+                                }} 
                                 size="lg"
-                                className="bg-green-600 hover:bg-green-700 text-white shadow-lg text-lg px-8 py-6 rounded-xl"
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-8 py-5 rounded-xl"
                             >
-                                Return to Command Center
+                                Back to Mastery Hub
                             </Button>
                         </CardContent>
                     </Card>
@@ -181,19 +229,15 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
 
         // Render Active Assessment Question
         return (
-             <Card className="w-full max-w-3xl mx-auto mt-4 border-t-4 border-t-blue-600 shadow-2xl animate-in slide-in-from-right duration-300">
-                <CardHeader className="bg-slate-50 border-b pb-6">
+             <Card className="w-full max-w-3xl mx-auto mt-4 border-t-2 border-t-primary shadow-lg animate-in slide-in-from-right duration-300">
+                <CardHeader className="bg-card border-b pb-5">
                     <div className="flex justify-between items-center mb-2">
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                            Level {stackLevel} Clearance
+                        <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/10">
+                            Question {stackLevel}
                         </Badge>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Lock className="h-3 w-3" />
-                            Gateway Active
-                        </div>
                     </div>
-                    <CardTitle className="text-xl">
-                        {assessment.title || "Assessment Protocol"}
+                    <CardTitle className="text-lg">
+                        {assessment.title || "Assessment"}
                     </CardTitle>
                 </CardHeader>
                 
@@ -224,7 +268,9 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                                             setTimeout(() => {
                                                 setMcqPassed(false);
                                                 setMcqAnswer(null);
-                                                setStackLevel(l => l + 1);
+                                                const nextLevel = stackLevel + 1;
+                                                setStackLevel(nextLevel);
+                                                saveProgress({ l: nextLevel });
                                             }, 1200);
                                         }
                                     }}
@@ -241,18 +287,17 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                     
                     {/* Fallback for other types for now */}
                     {assessment.type !== 'MCQ' && (
-                        <div className="p-6 border-2 border-dashed rounded-lg bg-slate-50 text-center">
-                             <p className="text-muted-foreground mb-4">Interactive module for {assessment.type} coming in next update.</p>
-                             <Button onClick={() => setStackLevel(l => l + 1)} variant="secondary">
-                                 Bypass (Simulation Mode)
+                        <div className="p-6 border-2 border-dashed rounded-lg bg-muted/30 text-center">
+                             <p className="text-muted-foreground mb-4 text-sm">{assessment.type} questions coming soon.</p>
+                             <Button onClick={() => setStackLevel(l => l + 1)} variant="secondary" size="sm">
+                                 Skip
                              </Button>
                         </div>
                     )}
                 </CardContent>
-                <CardFooter className="bg-slate-50 border-t p-4 text-center justify-center">
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Lock className="h-3 w-3" />
-                         Next level locked until correct response provided.
+                <CardFooter className="bg-muted/30 border-t p-3 text-center justify-center">
+                    <p className="text-[11px] text-muted-foreground">
+                         Select the correct answer to continue
                     </p>
                 </CardFooter>
             </Card>
@@ -264,29 +309,29 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
     const isLastSlide = content?.narrativeSections ? currentSlide === content.narrativeSections.length - 1 : false;
 
     return (
-        <Card className="max-w-4xl mx-auto h-[80vh] flex flex-col shadow-xl border-slate-200 dark:border-slate-800">
-            <CardHeader className="bg-slate-50/80 dark:bg-slate-900/50 border-b pb-4 backdrop-blur supports-[backdrop-filter]:bg-slate-50/50">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <Badge variant="outline" className="mb-2 border-primary/20 text-primary bg-primary/5">
-                            Senior Partner Briefing
-                        </Badge>
-                        <CardTitle className="text-2xl font-serif text-slate-900 dark:text-white">
-                            {content.title || task.data.title || "Subject Matter Mastery"}
+        <Card className="max-w-4xl mx-auto h-[80vh] flex flex-col shadow-md border-border/60">
+            <CardHeader className="bg-card border-b pb-3 pt-4">
+                <div className="flex justify-between items-center">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                            <BookOpen className="h-4 w-4 text-primary flex-shrink-0" />
+                            <span className="text-xs font-medium text-primary">Study Notes</span>
+                            <span className="text-[10px] text-muted-foreground">-</span>
+                            <span className="text-[10px] text-muted-foreground">
+                                {currentSlide + 1} of {content?.narrativeSections?.length || 1}
+                            </span>
+                        </div>
+                        <CardTitle className="text-lg font-semibold truncate">
+                            {content.title || task.data.title || "Study Material"}
                         </CardTitle>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                        <div className="text-xs font-mono text-muted-foreground border px-2 py-1 rounded bg-white dark:bg-slate-950">
-                            SLIDE {currentSlide + 1} / {content?.narrativeSections?.length || 1}
-                        </div>
-                    </div>
                 </div>
-                <Progress value={((currentSlide + 1) / (content?.narrativeSections?.length || 1)) * 100} className="h-1 mt-4" />
+                <Progress value={((currentSlide + 1) / (content?.narrativeSections?.length || 1)) * 100} className="h-1 mt-3" />
             </CardHeader>
             
-            <CardContent className="flex-1 p-0 overflow-hidden relative bg-white dark:bg-zinc-950">
+            <CardContent className="flex-1 p-0 overflow-hidden relative bg-background">
                 <ScrollArea className="h-full">
-                   <div className="prose prose-slate prose-lg max-w-none dark:prose-invert p-8 md:p-12 pb-32">
+                   <div className="prose prose-sm md:prose-base max-w-none dark:prose-invert p-6 md:p-8 pb-28 prose-headings:text-foreground prose-p:text-foreground/90 prose-strong:text-foreground">
                         <ReactMarkdown>
                             {currentText}
                         </ReactMarkdown>
@@ -294,14 +339,14 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                 </ScrollArea>
                 
                 {/* Floating Action Bar */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white via-white/90 to-transparent dark:from-black dark:via-black/90 pt-20 flex justify-end">
+                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/95 to-transparent pt-16 flex justify-end">
                      <Button 
                         onClick={handleNext} 
-                        size="lg" 
-                        className="shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-8 rounded-full transition-all hover:scale-105"
+                        size="default" 
+                        className="shadow-md bg-primary hover:bg-primary/90 text-primary-foreground px-6 rounded-lg transition-all"
                     >
-                        {isLastSlide ? (content?.exhibit ? "Proceed to Exhibit" : "Begin Assessment") : "Continue"} 
-                        <ChevronRight className="ml-2 h-5 w-5" />
+                        {isLastSlide ? (content?.exhibit ? "View Exhibit" : "Start Assessment") : "Continue"} 
+                        <ChevronRight className="ml-1.5 h-4 w-4" />
                     </Button>
                 </div>
             </CardContent>

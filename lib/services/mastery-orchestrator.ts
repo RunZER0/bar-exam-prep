@@ -86,7 +86,7 @@ export class MasteryOrchestrator {
             return {
                 date: new Date().toISOString().split('T')[0],
                 queue: [],
-                meta: { termFocus: 'ERROR: Syllabus not seeded', witnessCount: 0, pacing: 'BLOCKED' }
+                meta: { termFocus: 'Getting Started', witnessCount: 0, pacing: 'Setup Required', totalSkills: 0, masteredSkills: 0 }
             };
         }
 
@@ -232,10 +232,10 @@ export class MasteryOrchestrator {
             practiceItems: microSkillItems,
             meta: {
                 termFocus: isPathA 
-                    ? `April Resit: Targeting ${failedUnits.join(', ')}` 
-                    : `Term ${term}, Week ${weekInTerm}: ${queue.length} nodes + ${microSkillItems.length} practice items`,
-                totalNodes: syllabus.length,
-                masteredNodes: masteredNodeIds.size,
+                    ? `Resit Focus - ${failedUnits.join(', ')}` 
+                    : `Term ${term}, Week ${weekInTerm}`,
+                totalSkills: syllabus.length,
+                masteredSkills: masteredNodeIds.size,
                 practiceItemCount: microSkillItems.length,
                 caseLawItemCount: microSkillItems.filter(i => i.data.isCaseLaw).length,
                 completionPct: syllabus.length > 0 

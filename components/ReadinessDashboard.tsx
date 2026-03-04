@@ -15,7 +15,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetHeader, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 
@@ -189,75 +189,44 @@ export default function ReadinessDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Overall Readiness Score */}
+    <div className="space-y-4">
+      {/* Overall Readiness */}
       <Card>
-        <CardHeader>
-          <CardTitle>Exam Readiness</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-8">
-            {/* Main Score */}
-            <div className="text-center">
-              <div className="relative w-32 h-32">
-                <svg className="w-32 h-32 transform -rotate-90">
-                  <circle
-                    cx="64"
-                    cy="64"
-                    r="56"
-                    stroke="currentColor"
-                    strokeWidth="12"
-                    fill="none"
-                    className="text-muted"
-                  />
-                  <circle
-                    cx="64"
-                    cy="64"
-                    r="56"
-                    stroke="currentColor"
-                    strokeWidth="12"
-                    fill="none"
-                    strokeDasharray={`${readiness.overall.score * 3.52} 352`}
-                    className={getScoreColor(readiness.overall.score)}
-                  />
+        <CardContent className="pt-5 pb-4">
+          <div className="flex items-center gap-6">
+            {/* Score Ring */}
+            <div className="text-center flex-shrink-0">
+              <div className="relative w-20 h-20">
+                <svg className="w-20 h-20 transform -rotate-90">
+                  <circle cx="40" cy="40" r="32" stroke="currentColor" strokeWidth="8" fill="none" className="text-muted" />
+                  <circle cx="40" cy="40" r="32" stroke="currentColor" strokeWidth="8" fill="none"
+                    strokeDasharray={`${readiness.overall.score * 2.01} 201`}
+                    strokeLinecap="round"
+                    className={getScoreColor(readiness.overall.score)} />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-bold">{readiness.overall.score}%</span>
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-lg font-bold">{readiness.overall.score}%</span>
+                  <span className="text-[10px] text-muted-foreground">
                     {getTrendIcon(readiness.overall.trend)} {readiness.overall.trendDelta > 0 ? '+' : ''}{readiness.overall.trendDelta}
                   </span>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                95% CI: {readiness.overall.confidenceInterval[0]}-{readiness.overall.confidenceInterval[1]}%
-              </p>
             </div>
 
             {/* Format Breakdown */}
-            <div className="flex-1 space-y-3">
-              <FormatBar 
-                label="Written" 
-                score={readiness.formats.written.score} 
-                trend={readiness.formats.written.trend}
-              />
-              <FormatBar 
-                label="Oral" 
-                score={readiness.formats.oral.score} 
-                trend={readiness.formats.oral.trend}
-              />
-              <FormatBar 
-                label="Drafting" 
-                score={readiness.formats.drafting.score} 
-                trend={readiness.formats.drafting.trend}
-              />
+            <div className="flex-1 space-y-2.5">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Exam Readiness</h3>
+              <FormatBar label="Written" score={readiness.formats.written.score} trend={readiness.formats.written.trend} />
+              <FormatBar label="Oral" score={readiness.formats.oral.score} trend={readiness.formats.oral.trend} />
+              <FormatBar label="Drafting" score={readiness.formats.drafting.score} trend={readiness.formats.drafting.trend} />
             </div>
 
             {/* Exam Countdown */}
-            {readiness.examDate && (
-              <div className="text-center px-4 border-l">
-                <div className="text-4xl font-bold text-primary">{readiness.daysUntilExam}</div>
-                <div className="text-sm text-muted-foreground">days until exam</div>
-                <div className={`mt-2 px-2 py-1 rounded text-xs font-medium ${getPhaseColor(readiness.examPhase)}`}>
+            {readiness.examDate && readiness.daysUntilExam != null && (
+              <div className="text-center flex-shrink-0 pl-4 border-l border-border/50">
+                <div className="text-2xl font-bold text-primary">{readiness.daysUntilExam}</div>
+                <div className="text-[10px] text-muted-foreground">days left</div>
+                <div className={`mt-1.5 px-2 py-0.5 rounded text-[10px] font-medium ${getPhaseColor(readiness.examPhase)}`}>
                   {getPhaseLabel(readiness.examPhase)}
                 </div>
               </div>
@@ -266,18 +235,16 @@ export default function ReadinessDashboard() {
         </CardContent>
       </Card>
 
-      {/* Unit Breakdown */}
+      {/* Subject Breakdown */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Unit Readiness</CardTitle>
-            <p className="text-xs text-muted-foreground">Click a subject to see details</p>
+        <CardContent className="pt-5 pb-3">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Subjects</h3>
+            <span className="text-[10px] text-muted-foreground">Tap for details</span>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 stagger-children">
+          <div className="space-y-1">
             {readiness.units
-              .sort((a, b) => a.score - b.score) // Lowest first (needs attention)
+              .sort((a, b) => a.score - b.score)
               .map(unit => (
                 <UnitRow
                   key={unit.unitId}
@@ -382,36 +349,6 @@ export default function ReadinessDashboard() {
         </SheetContent>
       </Sheet>
 
-      {/* At-Risk Skills Alert */}
-      {readiness.units.some(u => u.skillsAtRisk > 0) && (
-        <Card className="border-amber-200 dark:border-amber-800">
-          <CardHeader>
-            <CardTitle className="text-amber-600 dark:text-amber-400">
-              Skills Needing Attention
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {readiness.units
-                .filter(u => u.topIssue)
-                .map(unit => (
-                  <div key={unit.unitId} className="flex items-center gap-3 text-sm">
-                    <span className="font-medium">{unit.unitName}:</span>
-                    <span className="text-muted-foreground">{unit.topIssue}</span>
-                    <Button 
-                      variant="link" 
-                      size="sm" 
-                      className="ml-auto text-primary"
-                      onClick={() => router.push(`/study/${unit.unitId}?focus=${encodeURIComponent(unit.topIssue || '')}`)}
-                    >
-                      Practice Now →
-                    </Button>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
@@ -458,61 +395,42 @@ function UnitRow({
 }) {
   return (
     <div 
-      className={`group p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-muted hover:scale-[1.01] hover:shadow-sm active:scale-[0.99] ${
+      className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-muted/60 ${
         isSelected ? 'bg-primary/10' : ''
       }`}
       onClick={onClick}
     >
-      <div className="flex items-center gap-4">
-        {/* Score Circle */}
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold ${getScoreBg(unit.score)}`}>
-          {unit.score}%
-        </div>
-
-        {/* Unit Info */}
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{unit.unitName}</span>
-            <span className="text-xs text-muted-foreground">
-              {getTrendIcon(unit.trend)}
-            </span>
-            {unit.examWeight && (
-              <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                {(unit.examWeight * 100).toFixed(0)}% of exam
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-            <span>{unit.skillsVerified}/{unit.skillsTotal} verified</span>
-            {unit.skillsAtRisk > 0 && (
-              <span className="text-amber-600">⚠ {unit.skillsAtRisk} at risk</span>
-            )}
-          </div>
-        </div>
-
-        {/* Gate Progress */}
-        <div className="w-24">
-          <div className="text-xs text-center mb-1">Gate Progress</div>
-          <div className="w-full bg-muted rounded-full h-2">
-            <div 
-              className="h-2 rounded-full bg-green-500"
-              style={{ width: `${unit.gateProgress}%` }}
-            />
-          </div>
-        </div>
-
-        {/* View Details Icon */}
-        <span className="text-muted-foreground transition-transform group-hover:translate-x-1">
-          →
-        </span>
+      {/* Score Badge */}
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${getScoreBg(unit.score)}`}>
+        {unit.score}%
       </div>
 
-      {/* Top Issue */}
-      {unit.topIssue && (
-        <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 pl-16">
-          Focus: {unit.topIssue}
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium text-sm truncate">{unit.unitName}</span>
+          <span className="text-[10px] text-muted-foreground">{getTrendIcon(unit.trend)}</span>
         </div>
-      )}
+        <div className="text-[11px] text-muted-foreground mt-0.5">
+          {unit.skillsVerified}/{unit.skillsTotal} topics
+          {unit.skillsAtRisk > 0 && (
+            <span className="text-amber-600 ml-2">- {unit.skillsAtRisk} need work</span>
+          )}
+        </div>
+      </div>
+
+      {/* Gate Progress Mini */}
+      <div className="w-16 flex-shrink-0">
+        <div className="w-full bg-muted rounded-full h-1.5">
+          <div 
+            className="h-1.5 rounded-full bg-green-500 transition-all duration-500"
+            style={{ width: `${unit.gateProgress}%` }}
+          />
+        </div>
+        <div className="text-[10px] text-center text-muted-foreground mt-0.5">{unit.gateProgress}%</div>
+      </div>
+
+      <span className="text-muted-foreground/40 group-hover:text-muted-foreground transition-colors text-sm">›</span>
     </div>
   );
 }

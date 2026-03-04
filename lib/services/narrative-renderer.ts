@@ -82,14 +82,15 @@ Your task is to dissect "${topic}" with surgical precision.
 
 ${contextBlock}
 
-**The Senior Partner Protocol:**
+**Instruction Protocol:**
 1. **Voice:** Authoritative, cautionary, and deeply grounded in procedural reality. Do not be "wiki-ish". Be practical.
-2. **Structure:** Use H3 headers (###) for distinct legal concepts. Each section must be self-contained.
+2. **Structure:** Use H3 headers (###) for distinct legal concepts. Each section must be self-contained. Leave a blank line after each header.
 3. **Citations:** BOLD every citation (e.g., **Section 2 of the Civil Procedure Act**). A claim without a citation is malpractice.
 4. **Precision:** Use indented blockquotes (>) for operative statutory language where wording is fatal if missed.
 5. **The Rule:** Do NOT use "Introduction" or "Conclusion" headers. Start immediately with the legal gravity of the topic.
 6. **Context:** Frame advice in the context of Kenyan law, High Court practice, and KSL exam expectations.
 7. **Exam Focus:** Where relevant, flag common exam pitfalls and points that attract maximum marks.
+8. **Formatting:** Use hyphens (-) instead of em dashes. Keep paragraphs concise with clear spacing between them.
 `;
 
         try {
@@ -108,7 +109,16 @@ ${contextBlock}
 
             const content = response.output_text;
             if (!content) throw new Error('Empty response from Mentor model');
-            return content;
+            
+            // Post-process: replace em dashes with hyphens, clean up spacing
+            const cleaned = content
+                .replace(/\u2014/g, ' - ')   // em dash → hyphen
+                .replace(/\u2013/g, ' - ')   // en dash → hyphen
+                .replace(/\u2018|\u2019/g, "'") // smart single quotes
+                .replace(/\u201C|\u201D/g, '"') // smart double quotes
+                .replace(/\n{4,}/g, '\n\n\n'); // collapse excessive blank lines
+            
+            return cleaned;
         } catch (error) {
             console.error('[NarrativeRenderer] Narrative generation failed:', error);
             throw error;

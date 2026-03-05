@@ -104,9 +104,73 @@ async function fetchLocalAuthorities(searchTerm: string): Promise<NotesResponse[
 
   } catch (error) {
     console.error('Local authority lookup failed:', error);
-    // Silent fallback to empty array so the page doesn't crash
-    return [];
   }
+
+  // Fallback: Query Supabase Kenya Law index
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY;
+  if (supabaseUrl && supabaseKey) {
+    try {
+      console.log(`[LocalAuthority] Querying Supabase for: "${trimmed}"`);
+      const headers = {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        Accept: 'application/json',
+      };
+
+      const searchWords = trimmed.split(/\s+/).filter(w => w.length > 3).slice(0, 4);
+      const pattern = `*${searchWords.join('*')}*`;
+
+      const results: NotesResponse['authorities'] = [];
+
+      const [casesRes, statutesRes] = await Promise.all([
+        fetch(
+          `${supabaseUrl}/rest/v1/cases?select=id,title,citation,court_code,url,year&or=(title.ilike.${pattern},parties.ilike.${pattern})&order=year.desc.nullslast&limit=5`,
+          { headers, signal: AbortSignal.timeout(8000) }
+        ),
+        fetch(
+          `${supabaseUrl}/rest/v1/statutes?select=id,name,chapter,url,full_text&or=(name.ilike.${pattern},chapter.ilike.${pattern})&limit=3`,
+          { headers, signal: AbortSignal.timeout(8000) }
+        ),
+      ]);
+
+      if (statutesRes.ok) {
+        const statutes = await statutesRes.json();
+        for (const s of statutes) {
+          results.push({
+            id: String(s.id),
+            type: 'STATUTE',
+            title: s.name || s.chapter || 'Statute',
+            citation: s.chapter || undefined,
+            url: s.url,
+            snippet: s.full_text ? s.full_text.slice(0, 500) + '...' : undefined,
+          });
+        }
+      }
+
+      if (casesRes.ok) {
+        const cases = await casesRes.json();
+        for (const c of cases) {
+          results.push({
+            id: String(c.id),
+            type: 'CASE',
+            title: c.title || c.citation || 'Case',
+            citation: c.citation || undefined,
+            url: c.url,
+          });
+        }
+      }
+
+      if (results.length > 0) {
+        console.log(`[LocalAuthority] Supabase returned ${results.length} authorities for "${trimmed}"`);
+        return results;
+      }
+    } catch (e) {
+      console.warn('[LocalAuthority] Supabase fallback failed:', e);
+    }
+  }
+
+  return [];
 }
 
 export async function GET(req: NextRequest) {

@@ -24,13 +24,13 @@ export class NarrativeNoteRenderer {
 
     /**
      * Fetch real statute/case context from the authority_records table.
-     * Falls back to topic-derived context if DB has no matching records.
+     * Falls back to Supabase Kenya Law index, then empty (AI uses training knowledge).
      */
     static async fetchAuthorityContext(topic: string): Promise<string[]> {
+        const trimmed = topic.trim().slice(0, 150);
+
+        // 1. Try local authority_records first
         try {
-            const trimmed = topic.trim().slice(0, 150);
-            
-            // Full-text search + ILIKE fallback
             const results = await db
                 .select({
                     title: authorityRecords.title,
@@ -59,10 +59,63 @@ export class NarrativeNoteRenderer {
                 });
             }
         } catch (e) {
-            console.warn('[NarrativeRenderer] Authority fetch failed, proceeding without DB context:', e);
+            console.warn('[NarrativeRenderer] Local authority fetch failed:', e);
         }
 
-        // If no DB results, return empty — the AI will use its training knowledge
+        // 2. Fallback: Query Supabase Kenya Law index (cases + statutes)
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_ANON_KEY;
+        if (supabaseUrl && supabaseKey) {
+            try {
+                console.log(`[NarrativeRenderer] Querying Supabase for: ${trimmed}`);
+                const headers = {
+                    apikey: supabaseKey,
+                    Authorization: `Bearer ${supabaseKey}`,
+                    Accept: 'application/json',
+                };
+
+                // Extract meaningful search terms (remove common words)
+                const searchTerms = trimmed.split(/\s+/).filter(w => w.length > 3).slice(0, 4);
+                const searchPattern = `*${searchTerms.join('*')}*`;
+
+                const [casesRes, statutesRes] = await Promise.all([
+                    fetch(
+                        `${supabaseUrl}/rest/v1/cases?select=title,citation,court_code,url,year&or=(title.ilike.${searchPattern},parties.ilike.${searchPattern})&order=year.desc.nullslast&limit=5`,
+                        { headers, signal: AbortSignal.timeout(8000) }
+                    ),
+                    fetch(
+                        `${supabaseUrl}/rest/v1/statutes?select=name,chapter,url,full_text&or=(name.ilike.${searchPattern},chapter.ilike.${searchPattern})&limit=3`,
+                        { headers, signal: AbortSignal.timeout(8000) }
+                    ),
+                ]);
+
+                const context: string[] = [];
+
+                if (statutesRes.ok) {
+                    const statutes = await statutesRes.json();
+                    for (const s of statutes) {
+                        const snippet = s.full_text ? `\n${s.full_text.slice(0, 800)}` : '';
+                        context.push(`**${s.name}** (${s.chapter || 'Statute'})${snippet}`);
+                    }
+                }
+
+                if (casesRes.ok) {
+                    const cases = await casesRes.json();
+                    for (const c of cases) {
+                        context.push(`**${c.title}** ${c.citation || ''} (${c.court_code}, ${c.year}) — ${c.url}`);
+                    }
+                }
+
+                if (context.length > 0) {
+                    console.log(`[NarrativeRenderer] Supabase returned ${context.length} authorities`);
+                    return context;
+                }
+            } catch (e) {
+                console.warn('[NarrativeRenderer] Supabase fallback failed:', e);
+            }
+        }
+
+        // 3. No results from any source — AI will use training knowledge + web_search
         return [];
     }
 

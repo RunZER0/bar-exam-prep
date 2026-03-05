@@ -166,7 +166,7 @@ async function querySupabaseAuthorities(
       const orStatuteFilter = `(name.ilike.*${term}*,chapter.ilike.*${term}*)`;
 
       const [casesRes, statutesRes] = await Promise.all([
-        fetch(`${SUPABASE_URL}/rest/v1/cases?select=title,citation,url,court_code,judgment_date,full_text&or=${orCaseFilter}&order=judgment_date.desc.nullslast&limit=5`, { headers, signal: AbortSignal.timeout(SUPABASE_TIMEOUT_MS) }),
+        fetch(`${SUPABASE_URL}/rest/v1/cases?select=title,citation,url,court_code,judgment_date,year&or=${orCaseFilter}&order=judgment_date.desc.nullslast&limit=5`, { headers, signal: AbortSignal.timeout(SUPABASE_TIMEOUT_MS) }),
         fetch(`${SUPABASE_URL}/rest/v1/statutes?select=name,chapter,url,full_text&or=${orStatuteFilter}&limit=5`, { headers, signal: AbortSignal.timeout(SUPABASE_TIMEOUT_MS) }),
       ]);
 
@@ -180,7 +180,8 @@ async function querySupabaseAuthorities(
             sourceType: 'CASE',
             suggestedCitation: row.citation,
             citation: row.citation,
-            prefetchedText: row.full_text,
+            court: row.court_code,
+            decisionDate: row.judgment_date,
           });
         }
       }

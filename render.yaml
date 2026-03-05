@@ -37,3 +37,7 @@ services:
         sync: false
       - key: FIREBASE_ADMIN_PRIVATE_KEY
         sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false

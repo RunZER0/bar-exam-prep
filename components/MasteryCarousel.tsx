@@ -638,65 +638,68 @@ type NoteStyle = 'classic' | 'magazine' | 'slide' | 'highlight' | 'minimal';
 function NoteStyleWrapper({ style, children }: { style: NoteStyle; children: React.ReactNode }) {
     switch (style) {
         case 'classic':
-            // Traditional textbook: indented hierarchy, section dividers, serif-like headings
+            // Traditional textbook: two-column layout on larger content, section dividers
             return (
-                <div className="space-y-4
-                    [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-amber-900 dark:[&_h3]:text-amber-200 [&_h3]:border-b [&_h3]:border-amber-200/40 dark:[&_h3]:border-amber-800/30 [&_h3]:pb-2 [&_h3]:mb-4
-                    [&_h4]:text-base [&_h4]:font-semibold [&_h4]:text-stone-700 dark:[&_h4]:text-stone-300 [&_h4]:mt-4 [&_h4]:mb-2
+                <div className="space-y-5
+                    [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-amber-900 dark:[&_h3]:text-amber-200 [&_h3]:border-b [&_h3]:border-amber-200/40 dark:[&_h3]:border-amber-800/30 [&_h3]:pb-2 [&_h3]:mb-4 [&_h3]:col-span-full
+                    [&_h4]:text-base [&_h4]:font-semibold [&_h4]:text-stone-700 dark:[&_h4]:text-stone-300 [&_h4]:mt-4 [&_h4]:mb-2 [&_h4]:col-span-full
                     [&_p]:leading-[1.85] [&_p]:text-foreground/85 [&_p]:text-[15px]
                     [&_ul]:pl-6 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ol]:pl-6 [&_ol]:space-y-1.5
                     [&_li]:text-[15px] [&_li]:leading-[1.8]
-                    [&_blockquote]:border-l-4 [&_blockquote]:border-amber-300 dark:[&_blockquote]:border-amber-700 [&_blockquote]:pl-4 [&_blockquote]:py-2 [&_blockquote]:bg-amber-50/30 dark:[&_blockquote]:bg-amber-950/10 [&_blockquote]:rounded-r-lg [&_blockquote]:italic
+                    [&_blockquote]:col-span-full [&_blockquote]:border-l-4 [&_blockquote]:border-amber-300 dark:[&_blockquote]:border-amber-700 [&_blockquote]:pl-4 [&_blockquote]:py-2 [&_blockquote]:bg-amber-50/30 dark:[&_blockquote]:bg-amber-950/10 [&_blockquote]:rounded-r-lg [&_blockquote]:italic
                 ">
-                    {children}
+                    <div className="sm:columns-2 sm:gap-8 space-y-4 [&>*]:break-inside-avoid">
+                        {children}
+                    </div>
                 </div>
             );
 
         case 'magazine':
-            // Editorial column — drop cap, left accent bar, narrower measure, pull-quote styling
+            // Editorial layout — hero heading, two-column body, pull-quote callouts in cards
             return (
-                <div className="max-w-2xl mx-auto relative pl-5 border-l-[3px] border-amber-400 dark:border-amber-600
-                    [&_h3]:text-xl [&_h3]:font-extrabold [&_h3]:tracking-tight [&_h3]:text-amber-900 dark:[&_h3]:text-amber-200 [&_h3]:mt-6 [&_h3]:mb-3 [&_h3]:uppercase [&_h3]:text-sm [&_h3]:tracking-[0.15em]
-                    [&_p]:text-[15px] [&_p]:leading-[1.9] [&_p]:text-foreground/80 [&_p]:mb-3
-                    [&_p:first-of-type]:first-letter:text-5xl [&_p:first-of-type]:first-letter:font-serif [&_p:first-of-type]:first-letter:font-bold [&_p:first-of-type]:first-letter:text-amber-700 dark:[&_p:first-of-type]:first-letter:text-amber-400 [&_p:first-of-type]:first-letter:float-left [&_p:first-of-type]:first-letter:mr-3 [&_p:first-of-type]:first-letter:mt-1 [&_p:first-of-type]:first-letter:leading-none
-                    [&_ul]:list-none [&_ul]:pl-0 [&_ul]:space-y-2 [&_li]:pl-4 [&_li]:border-l-2 [&_li]:border-amber-300/50 dark:[&_li]:border-amber-700/50 [&_li]:text-[14px] [&_li]:leading-[1.8]
-                    [&_blockquote]:my-5 [&_blockquote]:mx-0 [&_blockquote]:px-6 [&_blockquote]:py-4 [&_blockquote]:bg-amber-50/50 dark:[&_blockquote]:bg-amber-950/20 [&_blockquote]:border-l-4 [&_blockquote]:border-amber-500 [&_blockquote]:rounded-r-xl [&_blockquote]:text-base [&_blockquote]:font-medium [&_blockquote]:italic [&_blockquote]:text-amber-800 dark:[&_blockquote]:text-amber-300
-                ">
-                    {children}
-                </div>
-            );
-
-        case 'slide':
-            // Gamma.app deck — centered card, big heading, spacious bullets, presentation feel
-            return (
-                <div className="flex items-center justify-center min-h-[55vh]">
-                    <div className="max-w-xl w-full text-center px-8 py-10 rounded-3xl bg-gradient-to-br from-white via-amber-50/30 to-orange-50/20 dark:from-zinc-900 dark:via-amber-950/10 dark:to-zinc-900 shadow-lg border border-amber-100/40 dark:border-amber-900/20
-                        [&_h3]:text-2xl [&_h3]:font-bold [&_h3]:text-center [&_h3]:text-amber-900 dark:[&_h3]:text-amber-200 [&_h3]:mb-8
-                        [&_h4]:text-lg [&_h4]:font-semibold [&_h4]:text-center [&_h4]:text-stone-700 dark:[&_h4]:text-stone-300 [&_h4]:mb-4
-                        [&_p]:text-base [&_p]:leading-[2] [&_p]:text-center [&_p]:text-foreground/80 [&_p]:mb-4
-                        [&_ul]:text-left [&_ul]:inline-block [&_ul]:space-y-3 [&_ul]:my-4 [&_ul]:list-none [&_ul]:pl-0
-                        [&_ol]:text-left [&_ol]:inline-block [&_ol]:space-y-3 [&_ol]:my-4
-                        [&_li]:flex [&_li]:items-start [&_li]:gap-2 [&_li]:text-[15px] [&_li]:leading-[1.8]
-                        [&_li::before]:content-['▸'] [&_li::before]:text-amber-500 [&_li::before]:font-bold
-                        [&_blockquote]:text-left [&_blockquote]:bg-amber-50/60 dark:[&_blockquote]:bg-amber-950/15 [&_blockquote]:rounded-2xl [&_blockquote]:px-6 [&_blockquote]:py-4 [&_blockquote]:border-none [&_blockquote]:shadow-sm [&_blockquote]:my-6 [&_blockquote]:italic [&_blockquote]:text-amber-800 dark:[&_blockquote]:text-amber-300
+                <div className="space-y-5">
+                    <div className="
+                        [&_h3]:text-2xl [&_h3]:font-extrabold [&_h3]:tracking-tight [&_h3]:text-amber-900 dark:[&_h3]:text-amber-200 [&_h3]:mb-6 [&_h3]:text-center [&_h3]:leading-tight
+                        [&_h4]:text-sm [&_h4]:font-bold [&_h4]:uppercase [&_h4]:tracking-[0.15em] [&_h4]:text-amber-700 dark:[&_h4]:text-amber-400 [&_h4]:mt-6 [&_h4]:mb-2 [&_h4]:col-span-full
+                        [&_p]:text-[15px] [&_p]:leading-[1.9] [&_p]:text-foreground/80 [&_p]:mb-3
+                        [&_p:first-of-type]:first-letter:text-5xl [&_p:first-of-type]:first-letter:font-serif [&_p:first-of-type]:first-letter:font-bold [&_p:first-of-type]:first-letter:text-amber-700 dark:[&_p:first-of-type]:first-letter:text-amber-400 [&_p:first-of-type]:first-letter:float-left [&_p:first-of-type]:first-letter:mr-3 [&_p:first-of-type]:first-letter:mt-1 [&_p:first-of-type]:first-letter:leading-none
+                        [&_ul]:list-none [&_ul]:pl-0 [&_ul]:grid [&_ul]:sm:grid-cols-2 [&_ul]:gap-2
+                        [&_li]:text-[14px] [&_li]:leading-[1.7] [&_li]:px-4 [&_li]:py-3 [&_li]:rounded-xl [&_li]:bg-amber-50/40 dark:[&_li]:bg-amber-950/15 [&_li]:border [&_li]:border-amber-200/30 dark:[&_li]:border-amber-800/20
+                        [&_blockquote]:my-5 [&_blockquote]:mx-auto [&_blockquote]:max-w-md [&_blockquote]:px-6 [&_blockquote]:py-5 [&_blockquote]:bg-gradient-to-br [&_blockquote]:from-amber-50/80 [&_blockquote]:to-orange-50/40 dark:[&_blockquote]:from-amber-950/25 dark:[&_blockquote]:to-orange-950/10 [&_blockquote]:rounded-2xl [&_blockquote]:border [&_blockquote]:border-amber-200/40 dark:[&_blockquote]:border-amber-800/20 [&_blockquote]:shadow-sm [&_blockquote]:text-base [&_blockquote]:font-medium [&_blockquote]:italic [&_blockquote]:text-amber-800 dark:[&_blockquote]:text-amber-300 [&_blockquote]:text-center
                     ">
                         {children}
                     </div>
                 </div>
             );
 
-        case 'highlight':
-            // Insight cards — tinted container, icon header, numbered key points styling
+        case 'slide':
+            // Gamma.app deck — hero title card top, content in 2-3 card grid, presentation feel
             return (
-                <div className="rounded-2xl bg-gradient-to-br from-emerald-50/50 to-teal-50/30 dark:from-emerald-950/15 dark:to-teal-950/10 border border-emerald-200/30 dark:border-emerald-800/20 p-6 sm:p-8
-                    [&_h3]:flex [&_h3]:items-center [&_h3]:gap-2 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-emerald-900 dark:[&_h3]:text-emerald-200 [&_h3]:mb-4
-                    [&_h4]:text-sm [&_h4]:font-bold [&_h4]:uppercase [&_h4]:tracking-wider [&_h4]:text-emerald-700 dark:[&_h4]:text-emerald-400 [&_h4]:mt-5 [&_h4]:mb-2
-                    [&_p]:text-foreground/85 [&_p]:text-[15px] [&_p]:leading-[1.85] [&_p]:mb-3
-                    [&_ul]:space-y-2 [&_ul]:list-none [&_ul]:pl-0 [&_ol]:space-y-2 [&_ol]:pl-0
-                    [&_li]:flex [&_li]:items-start [&_li]:gap-2.5 [&_li]:text-[14px] [&_li]:leading-[1.8] [&_li]:bg-emerald-50/40 dark:[&_li]:bg-emerald-950/10 [&_li]:rounded-xl [&_li]:px-4 [&_li]:py-2.5 [&_li]:border [&_li]:border-emerald-100/40 dark:[&_li]:border-emerald-800/20
-                    [&_blockquote]:bg-white/60 dark:[&_blockquote]:bg-black/15 [&_blockquote]:rounded-xl [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:border [&_blockquote]:border-emerald-200/40 dark:[&_blockquote]:border-emerald-700/20 [&_blockquote]:my-4 [&_blockquote]:italic [&_blockquote]:text-emerald-800 dark:[&_blockquote]:text-emerald-300
+                <div className="space-y-6
+                    [&_h3]:text-2xl [&_h3]:font-bold [&_h3]:text-center [&_h3]:text-amber-900 dark:[&_h3]:text-amber-200 [&_h3]:mb-2 [&_h3]:px-6 [&_h3]:py-5 [&_h3]:rounded-2xl [&_h3]:bg-gradient-to-r [&_h3]:from-amber-50/60 [&_h3]:via-white/40 [&_h3]:to-orange-50/50 dark:[&_h3]:from-amber-950/20 dark:[&_h3]:via-zinc-900/40 dark:[&_h3]:to-amber-950/15 [&_h3]:border [&_h3]:border-amber-100/50 dark:[&_h3]:border-amber-900/20 [&_h3]:shadow-sm
+                    [&_h4]:text-sm [&_h4]:font-bold [&_h4]:uppercase [&_h4]:tracking-widest [&_h4]:text-amber-700 dark:[&_h4]:text-amber-400 [&_h4]:mt-2 [&_h4]:mb-2
+                    [&_p]:text-[15px] [&_p]:leading-[1.9] [&_p]:text-foreground/80 [&_p]:mb-3
+                    [&_ul]:list-none [&_ul]:pl-0 [&_ul]:grid [&_ul]:sm:grid-cols-2 [&_ul]:lg:grid-cols-3 [&_ul]:gap-3 [&_ul]:my-4
+                    [&_ol]:list-none [&_ol]:pl-0 [&_ol]:grid [&_ol]:sm:grid-cols-2 [&_ol]:gap-3 [&_ol]:my-4
+                    [&_li]:text-[14px] [&_li]:leading-[1.7] [&_li]:px-4 [&_li]:py-3.5 [&_li]:rounded-xl [&_li]:bg-white/60 dark:[&_li]:bg-zinc-800/40 [&_li]:border [&_li]:border-amber-100/40 dark:[&_li]:border-amber-900/20 [&_li]:shadow-sm [&_li]:transition-shadow [&_li]:hover:shadow-md
+                    [&_blockquote]:text-center [&_blockquote]:bg-gradient-to-r [&_blockquote]:from-amber-50/60 [&_blockquote]:to-orange-50/40 dark:[&_blockquote]:from-amber-950/15 dark:[&_blockquote]:to-orange-950/10 [&_blockquote]:rounded-2xl [&_blockquote]:px-6 [&_blockquote]:py-5 [&_blockquote]:border [&_blockquote]:border-amber-200/30 dark:[&_blockquote]:border-amber-800/20 [&_blockquote]:shadow-sm [&_blockquote]:my-5 [&_blockquote]:italic [&_blockquote]:text-amber-800 dark:[&_blockquote]:text-amber-300 [&_blockquote]:font-medium
                 ">
-                    <div className="flex items-center gap-2 mb-4 text-emerald-700 dark:text-emerald-400">
+                    {children}
+                </div>
+            );
+
+        case 'highlight':
+            // Insight cards — each section in a tinted card, key takeaways in accent boxes
+            return (
+                <div className="space-y-4
+                    [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-teal-900 dark:[&_h3]:text-teal-200 [&_h3]:mb-3 [&_h3]:flex [&_h3]:items-center [&_h3]:gap-2 [&_h3]:px-5 [&_h3]:py-3.5 [&_h3]:rounded-xl [&_h3]:bg-gradient-to-r [&_h3]:from-teal-50/70 [&_h3]:to-emerald-50/40 dark:[&_h3]:from-teal-950/25 dark:[&_h3]:to-emerald-950/15 [&_h3]:border [&_h3]:border-teal-200/30 dark:[&_h3]:border-teal-800/20
+                    [&_h4]:text-sm [&_h4]:font-bold [&_h4]:uppercase [&_h4]:tracking-wider [&_h4]:text-teal-700 dark:[&_h4]:text-teal-400 [&_h4]:mt-5 [&_h4]:mb-2
+                    [&_p]:text-foreground/85 [&_p]:text-[15px] [&_p]:leading-[1.85] [&_p]:mb-3 [&_p]:px-1
+                    [&_ul]:space-y-2 [&_ul]:list-none [&_ul]:pl-0 [&_ol]:space-y-2 [&_ol]:pl-0
+                    [&_li]:flex [&_li]:items-start [&_li]:gap-2.5 [&_li]:text-[14px] [&_li]:leading-[1.8] [&_li]:bg-white/50 dark:[&_li]:bg-zinc-800/30 [&_li]:rounded-xl [&_li]:px-4 [&_li]:py-3 [&_li]:border [&_li]:border-teal-100/40 dark:[&_li]:border-teal-800/20 [&_li]:shadow-sm
+                    [&_blockquote]:bg-gradient-to-br [&_blockquote]:from-amber-50/70 [&_blockquote]:to-yellow-50/40 dark:[&_blockquote]:from-amber-950/20 dark:[&_blockquote]:to-yellow-950/10 [&_blockquote]:rounded-xl [&_blockquote]:px-5 [&_blockquote]:py-4 [&_blockquote]:border-l-4 [&_blockquote]:border-amber-400 dark:[&_blockquote]:border-amber-600 [&_blockquote]:my-4 [&_blockquote]:italic [&_blockquote]:text-amber-800 dark:[&_blockquote]:text-amber-300 [&_blockquote]:shadow-sm
+                ">
+                    <div className="flex items-center gap-2 mb-3 text-teal-700 dark:text-teal-400 px-1">
                         <Lightbulb className="h-4 w-4" />
                         <span className="text-xs font-bold uppercase tracking-widest">Key Concepts</span>
                     </div>
@@ -705,15 +708,15 @@ function NoteStyleWrapper({ style, children }: { style: NoteStyle; children: Rea
             );
 
         case 'minimal':
-            // Clean reader — narrow column, generous line-height, light headings, quiet palette
+            // Clean reader — narrow column, generous whitespace, content divided by subtle lines
             return (
-                <div className="max-w-lg mx-auto
+                <div className="max-w-lg mx-auto space-y-5
                     [&_h3]:text-xl [&_h3]:font-light [&_h3]:tracking-tight [&_h3]:text-foreground [&_h3]:border-b [&_h3]:border-border/30 [&_h3]:pb-3 [&_h3]:mb-6
                     [&_h4]:text-sm [&_h4]:font-medium [&_h4]:text-muted-foreground [&_h4]:uppercase [&_h4]:tracking-widest [&_h4]:mt-6 [&_h4]:mb-3
                     [&_p]:text-[15px] [&_p]:leading-[2.1] [&_p]:text-foreground/75 [&_p]:mb-4
-                    [&_ul]:list-none [&_ul]:pl-0 [&_ul]:space-y-3 [&_ol]:list-none [&_ol]:pl-0 [&_ol]:space-y-3
-                    [&_li]:text-foreground/75 [&_li]:leading-[2] [&_li]:text-[15px] [&_li]:pl-4 [&_li]:border-l [&_li]:border-border/40
-                    [&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground/30 [&_blockquote]:pl-5 [&_blockquote]:py-1 [&_blockquote]:text-muted-foreground [&_blockquote]:text-[14px] [&_blockquote]:leading-[2]
+                    [&_ul]:list-none [&_ul]:pl-0 [&_ul]:space-y-0 [&_ul]:divide-y [&_ul]:divide-border/20 [&_ol]:list-none [&_ol]:pl-0 [&_ol]:space-y-0 [&_ol]:divide-y [&_ol]:divide-border/20
+                    [&_li]:text-foreground/75 [&_li]:leading-[2] [&_li]:text-[15px] [&_li]:py-2.5 [&_li]:px-3
+                    [&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground/20 [&_blockquote]:pl-5 [&_blockquote]:py-3 [&_blockquote]:text-muted-foreground [&_blockquote]:text-[14px] [&_blockquote]:leading-[2] [&_blockquote]:bg-muted/20 [&_blockquote]:rounded-r-lg
                 ">
                     {children}
                 </div>
@@ -1310,7 +1313,7 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                                         </button>
                                     ) : <div />}
                                 </div>
-                                <Button onClick={handleNext} size="default" className="shadow-md bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white px-6 py-2.5 rounded-xl transition-all font-medium">
+                                <Button onClick={handleNext} size="default" className="shadow-sm bg-stone-800 hover:bg-stone-700 dark:bg-stone-200 dark:hover:bg-stone-300 text-white dark:text-stone-900 px-6 py-2.5 rounded-xl transition-all font-medium">
                                     {isLastSlide ? (content?.exhibit ? 'View Exhibit' : 'Start Assessment') : 'Continue'}
                                     <ChevronRight className="ml-1.5 h-4 w-4" />
                                 </Button>

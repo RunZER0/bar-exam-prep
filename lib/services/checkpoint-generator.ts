@@ -58,10 +58,10 @@ export class CheckpointGenerator {
 
         const typeDistribution = this.distributeTypes(count);
 
-        const prompt = `You are a Kenya School of Law (KSL) study coach. Generate ${count} quick checkpoint question(s) for the topic: "${topic}".
+        const prompt = `You are a Kenya School of Law (KSL) bar exam coach. Generate ${count} challenging checkpoint question(s) for the topic: "${topic}".
 ${context?.unitCode ? `Course: ${context.unitCode}` : ''}
 
-These are NOT full exam questions — they are lightweight "attention checks" placed between study note slides to keep the student engaged and force active recall.
+These are knowledge checks placed between study slides to test REAL understanding. They should challenge the student — not just regurgitate definitions but test APPLICATION, ANALYSIS, and TRICKY DISTINCTIONS that bar examiners love to test.
 
 Generate exactly this distribution: ${typeDistribution.join(', ')}
 
@@ -70,16 +70,16 @@ RESPOND WITH VALID JSON ONLY:
   "checkpoints": [
     {
       "type": "MCQ",
-      "question": "Quick question testing a key concept just covered",
-      "options": ["A", "B", "C", "D"],
-      "correctIndex": 0,
+      "question": "A challenging scenario-based question that requires reasoning, not just recall",
+      "options": ["A plausible but wrong answer", "The correct answer with a subtle distinction", "A common student misconception", "An answer that is partially right but misses a key element"],
+      "correctIndex": 1,
       "hint": "Optional short hint",
-      "explanation": "Brief explanation (1-2 sentences)"
+      "explanation": "Brief explanation of WHY the correct answer is right and why the distractors are wrong (2-3 sentences)"
     },
     {
       "type": "SHORT",
-      "question": "In one sentence, explain...",
-      "sampleAnswer": "The expected answer",
+      "question": "A question requiring the student to distinguish, compare, or apply a principle to a scenario...",
+      "sampleAnswer": "The expected answer showing reasoning",
       "keywords": ["key", "terms", "that", "should", "appear"],
       "hint": "Optional hint",
       "explanation": "Brief explanation"
@@ -95,13 +95,13 @@ RESPOND WITH VALID JSON ONLY:
   ]
 }
 
-RULES:
-- Questions must be concise (1-2 sentences max)
-- MCQ should have exactly 4 options
-- SHORT answer should expect 1-2 sentence responses
-- ORDERING should have 3-5 items
-- All grounded in Kenyan law
-- Keep it light — these are checkpoints, not full exams`;
+QUESTION DESIGN RULES:
+- MCQ: Every distractor must be PLAUSIBLE. Include common misconceptions, partial truths, and answers that would be correct in a DIFFERENT context. Use scenario-based questions (e.g. "If a company fails to register a charge within 30 days, the charge becomes:"). Avoid "Which of the following is true" generic formats.
+- SHORT: Ask the student to DISTINGUISH between similar concepts, APPLY a rule to a fact pattern, or EXPLAIN WHY a particular outcome follows from the law. Never ask "Define X" or "What is X".
+- ORDERING: Use real procedural sequences where the order matters legally (filing steps, court processes, registration procedures).
+- All questions must be grounded in Kenyan law
+- Questions should test understanding at the level of a bar exam, not a first-year tutorial
+- Make wrong MCQ options genuinely tempting — the student should need to think carefully`;
 
         try {
             const openai = getOpenAI();
@@ -111,7 +111,7 @@ RULES:
                 model: ASSESSMENT_MODEL,
                 input: prompt,
                 text: { format: { type: 'json_object' } },
-                temperature: 0.6,
+                temperature: 0.7,
             });
 
             const content = response.output_text;

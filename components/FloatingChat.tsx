@@ -393,7 +393,7 @@ export default function FloatingChat() {
         className={`
           fixed z-50
           w-14 h-14 rounded-full
-          bg-emerald-500 hover:bg-emerald-600
+          bg-stone-700 hover:bg-stone-600 dark:bg-stone-300 dark:hover:bg-stone-400
           text-white shadow-lg hover:shadow-xl
           flex items-center justify-center
           transition-opacity duration-300 ease-out
@@ -623,7 +623,7 @@ export default function FloatingChat() {
             <button
               type="submit"
               disabled={(!input.trim() && attachments.length === 0) || isLoading || isRecording}
-              className="p-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
+              className="p-2.5 bg-stone-700 hover:bg-stone-600 dark:bg-stone-300 dark:hover:bg-stone-400 disabled:opacity-50 disabled:cursor-not-allowed text-white dark:text-stone-900 rounded-xl transition-colors"
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

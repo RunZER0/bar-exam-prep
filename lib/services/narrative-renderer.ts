@@ -75,22 +75,48 @@ export class NarrativeNoteRenderer {
                 };
 
                 // Extract meaningful search terms (remove common words)
-                const searchTerms = trimmed.split(/\s+/).filter(w => w.length > 3).slice(0, 4);
-                const searchPattern = `*${searchTerms.join('*')}*`;
+                const stopWords = new Set(['the', 'and', 'for', 'with', 'under', 'from', 'this', 'that', 'which', 'their', 'have', 'been', 'will', 'into', 'upon', 'such', 'than', 'other', 'between']);
+                const searchTerms = trimmed.split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w.toLowerCase())).slice(0, 5);
+                
+                // Try multiple search strategies for better coverage
+                const queries: Promise<Response>[] = [];
+                const headers2 = headers;
 
-                const [casesRes, statutesRes] = await Promise.all([
+                // Strategy 1: Combined search pattern (original)
+                const searchPattern = `*${searchTerms.join('*')}*`;
+                queries.push(
                     fetch(
                         `${supabaseUrl}/rest/v1/cases?select=title,citation,court_code,url,year&or=(title.ilike.${searchPattern},parties.ilike.${searchPattern})&order=year.desc.nullslast&limit=5`,
-                        { headers, signal: AbortSignal.timeout(8000) }
-                    ),
+                        { headers: headers2, signal: AbortSignal.timeout(8000) }
+                    )
+                );
+
+                // Strategy 2: Search each significant term individually for broader results
+                if (searchTerms.length >= 2) {
+                    const topTerm = searchTerms[0];
+                    queries.push(
+                        fetch(
+                            `${supabaseUrl}/rest/v1/cases?select=title,citation,court_code,url,year&or=(title.ilike.*${encodeURIComponent(topTerm)}*,parties.ilike.*${encodeURIComponent(topTerm)}*)&order=year.desc.nullslast&limit=5`,
+                            { headers: headers2, signal: AbortSignal.timeout(8000) }
+                        )
+                    );
+                }
+
+                // Statute search
+                queries.push(
                     fetch(
                         `${supabaseUrl}/rest/v1/statutes?select=name,chapter,url,full_text&or=(name.ilike.${searchPattern},chapter.ilike.${searchPattern})&limit=3`,
-                        { headers, signal: AbortSignal.timeout(8000) }
-                    ),
-                ]);
+                        { headers: headers2, signal: AbortSignal.timeout(8000) }
+                    )
+                );
+
+                const responses = await Promise.all(queries);
 
                 const context: string[] = [];
+                const seenUrls = new Set<string>();
 
+                // Process statute response (last in the array)
+                const statutesRes = responses[responses.length - 1];
                 if (statutesRes.ok) {
                     const statutes = await statutesRes.json();
                     for (const s of statutes) {
@@ -99,10 +125,17 @@ export class NarrativeNoteRenderer {
                     }
                 }
 
-                if (casesRes.ok) {
-                    const cases = await casesRes.json();
-                    for (const c of cases) {
-                        context.push(`**${c.title}** ${c.citation || ''} (${c.court_code}, ${c.year}) — ${c.url}`);
+                // Process all case responses (everything except the last)
+                for (let i = 0; i < responses.length - 1; i++) {
+                    const casesRes = responses[i];
+                    if (casesRes.ok) {
+                        const cases = await casesRes.json();
+                        for (const c of cases) {
+                            const key = c.url || c.title;
+                            if (seenUrls.has(key)) continue;
+                            seenUrls.add(key);
+                            context.push(`**${c.title}** ${c.citation || ''} (${c.court_code}, ${c.year}) - ${c.url}`);
+                        }
                     }
                 }
 
@@ -126,8 +159,8 @@ export class NarrativeNoteRenderer {
             : await NarrativeNoteRenderer.fetchAuthorityContext(topic);
 
         const contextBlock = context.length > 0
-            ? `**Source Material (from verified authority records):**\n${context.join('\n\n')}`
-            : `**Note:** No pre-loaded authority records found for this topic. Use your deep knowledge of Kenyan law to provide authoritative instruction, citing specific statutes and rules by name.`;
+            ? `**Source Material (from verified Kenya Law records — ONLY cite these cases and statutes):**\n${context.join('\n\n')}`
+            : `**IMPORTANT:** No verified authority records were found for this topic in our Kenya Law database. Do NOT invent or fabricate case names. Only cite statutes you are confident about (by specific section number). If you are unsure whether a case exists, do not cite it.`;
 
         const prompt = `
 You are a 30-year Kenyan Senior Counsel and former High Court Judge. You are instructing a pupil preparing for the Kenya School of Law Bar Examinations on the topic: "${topic}".
@@ -144,9 +177,12 @@ ${contextBlock}
    WRONG: "The court has addressed this issue. **See Mistry v Republic [2020] eKLR.**"
    RIGHT: "As the Court of Appeal held in Mistry v Republic [2020] eKLR, the question of whether a charge crystallises upon appointment of a receiver depends on the terms of the debenture itself."
 
-2. **Cite case law.** For every major legal principle, cite at least one relevant Kenyan case. Use the format: Case Name [Year] eKLR, or Case Name (Year) KLR Volume Page. Explain what the court held, do not just name-drop.
+2. **Case law citation rules:**
+   - If Source Material above includes specific cases, cite ONLY those cases. Do not add cases that are not in the Source Material.
+   - If no Source Material is provided, do NOT cite any cases by name. Instead, describe the legal principle without attribution, e.g. "Kenyan courts have consistently held that..." rather than inventing a case name.
+   - NEVER fabricate a case name. If you are not 100% certain a case exists and is correctly named, do not cite it.
 
-3. **Cite statutes precisely.** Always pin the specific section and subsection, e.g. "section 45(1)(a)" not just "the Act". Where the exact wording of a provision is critical for the exam, quote it verbatim in a blockquote (>).
+3. **Cite statutes precisely.** Always pin the specific section and subsection, e.g. "section 45(1)(a)" not just "the Act". Where the exact wording of a provision is critical for the exam, quote it verbatim in a blockquote (>). Only cite specific quoted sections inline — do not make entire statute names clickable.
 
 4. **Structure:** Use H3 headers (###) for distinct legal concepts. Each section should be self-contained. No "Introduction" or "Conclusion" headers - dive straight in.
 

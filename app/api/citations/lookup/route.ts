@@ -15,14 +15,24 @@ function extractSectionNumber(text: string): string | null {
 }
 
 /** Strip year / Cap / No from statute name so we get a clean search term.
- *  "Companies Act, Cap. 486" → "Companies Act"                           */
+ *  "Companies Act, Cap. 486" → "Companies Act"
+ *  "Section 45(1) of the Companies Act, 2015" → "Companies Act"  */
 function cleanStatuteName(text: string): string {
     return text
-        .replace(/^(?:section|s\.)\s+[\d()]+\s+of\s+(?:the\s+)?/i, '')
+        .replace(/^(?:section|s\.)\s+[\d()a-z]+\s+of\s+(?:the\s+)?/i, '')
         .replace(/,?\s*[-–—]\s*.*/i, '')                               // trailing Part/Chapter info
         .replace(/,?\s*(?:Cap\.?\s*\d+[A-Z]?|No\.?\s*\d+(?:\s+of\s+\d{4})?|\d{4})$/i, '')
         .replace(/^the\s+/i, '')
+        .replace(/\s*\(.*?\)\s*/g, ' ')                               // strip parenthetical references
+        .replace(/\s+/g, ' ')
         .trim();
+}
+
+/** Extract core words for a broader fallback search.
+ *  "Employment and Labour Relations Court Act" → ["Employment", "Labour", "Court", "Act"] */
+function extractCoreWords(name: string): string[] {
+    const stopWords = new Set(['the', 'of', 'and', 'in', 'to', 'for', 'by', 'on', 'an', 'a', 'no']);
+    return name.split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w.toLowerCase()));
 }
 
 /** Try to locate the referenced section inside the full statute text
@@ -129,16 +139,45 @@ export async function POST(req: NextRequest) {
             const cleanName = cleanStatuteName(name || fullMatch || '');
             if (!cleanName) return NextResponse.json({ found: false });
 
-            const url =
+            // Strategy 1: Direct ilike match on cleaned name
+            let url =
                 `${SUPABASE_URL}/rest/v1/statutes` +
                 `?name.ilike=*${encodeURIComponent(cleanName)}*` +
                 `&select=name,chapter,url,full_text` +
                 `&limit=3`;
 
-            const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
-            if (!res.ok) return NextResponse.json({ found: false });
+            let res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
+            let statutes: any[] = res.ok ? await res.json() : [];
 
-            const statutes: any[] = await res.json();
+            // Strategy 2: If no match, try with just core words (broader search)
+            if (statutes.length === 0) {
+                const coreWords = extractCoreWords(cleanName);
+                if (coreWords.length >= 2) {
+                    // Use the most significant word (usually "Act", "Rules", etc. is too generic - pick the first non-generic)
+                    const significantWords = coreWords.filter(w => !['Act', 'Rules', 'Regulations', 'Order', 'Bill'].includes(w));
+                    const searchWord = significantWords[0] || coreWords[0];
+                    url = `${SUPABASE_URL}/rest/v1/statutes` +
+                        `?name.ilike=*${encodeURIComponent(searchWord)}*` +
+                        `&select=name,chapter,url,full_text` +
+                        `&limit=5`;
+                    res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
+                    const broader: any[] = res.ok ? await res.json() : [];
+                    
+                    // Score by how many core words match
+                    if (broader.length > 0) {
+                        const scored = broader.map(s => {
+                            let score = 0;
+                            const nameLower = (s.name || '').toLowerCase();
+                            for (const w of coreWords) {
+                                if (nameLower.includes(w.toLowerCase())) score++;
+                            }
+                            return { ...s, score };
+                        }).sort((a, b) => b.score - a.score);
+                        statutes = scored.filter(s => s.score > 0);
+                    }
+                }
+            }
+
             if (statutes.length === 0) return NextResponse.json({ found: false });
 
             const best = statutes[0];

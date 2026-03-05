@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
     CheckCircle2, ChevronRight, ChevronLeft, AlertTriangle,
     BookOpen, ArrowRight, Copy, Sparkles, X, Loader2,
-    RefreshCw, Maximize2, Minimize2, Scale
+    RefreshCw, Maximize2, Minimize2, Scale, ExternalLink
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import EngagingLoader from '@/components/EngagingLoader';
@@ -99,9 +99,10 @@ function CitationLink({ text, onClick, type }: { text: string; onClick: () => vo
                     ? "italic text-teal-700 dark:text-teal-400 decoration-teal-400/40 dark:decoration-teal-500/30 hover:text-teal-900 dark:hover:text-teal-300 hover:decoration-teal-600"
                     : "text-amber-700 dark:text-amber-400 decoration-amber-400/50 dark:decoration-amber-500/40 hover:text-amber-900 dark:hover:text-amber-300 hover:decoration-amber-600"
             )}
-            title={isCase ? `View case: ${text}` : `View statute: ${text}`}
+            title={isCase ? `View on Kenya Law: ${text}` : `View statute: ${text}`}
         >
             {text}
+            {isCase && <ExternalLink className="inline-block h-3 w-3 ml-0.5 mb-0.5 opacity-60" />}
         </button>
     );
 }
@@ -131,13 +132,41 @@ function StatutePanel({ citation, onClose, getIdToken }: { citation: ParsedCitat
     const [content, setContent] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(false);
+    const [sourceInfo, setSourceInfo] = useState<{ name?: string; chapter?: string; url?: string; isVerbatim: boolean } | null>(null);
 
     useEffect(() => {
         if (!citation) return;
         let cancelled = false;
-        setLoading(true); setContent(null); setError(false);
+        setLoading(true); setContent(null); setError(false); setSourceInfo(null);
         (async () => {
             try {
+                /* ---- Phase 1: Supabase verbatim lookup (statutes / sections) ---- */
+                if (citation.type !== 'case') {
+                    try {
+                        const lookupRes = await fetch('/api/citations/lookup', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ type: 'statute', name: citation.statute, fullMatch: citation.fullMatch }),
+                        });
+                        const lookupData = await lookupRes.json();
+                        if (lookupData.found) {
+                            if (lookupData.excerpt || lookupData.fullText) {
+                                if (!cancelled) {
+                                    setContent(lookupData.excerpt || lookupData.fullText);
+                                    setSourceInfo({ name: lookupData.name, chapter: lookupData.chapter, url: lookupData.url, isVerbatim: true });
+                                    setLoading(false);
+                                }
+                                return;
+                            }
+                            // Statute found but no full_text — store URL for footer link, fall through to AI
+                            if (lookupData.url && !cancelled) {
+                                setSourceInfo({ name: lookupData.name, chapter: lookupData.chapter, url: lookupData.url, isVerbatim: false });
+                            }
+                        }
+                    } catch { /* continue to AI fallback */ }
+                }
+
+                /* ---- Phase 2: AI fallback ---- */
                 const token = await getIdToken();
                 const res = await fetch('/api/ai/chat', {
                     method: 'POST',
@@ -158,6 +187,7 @@ function StatutePanel({ citation, onClose, getIdToken }: { citation: ParsedCitat
     }, [citation, getIdToken]);
 
     if (!citation) return null;
+    const isVerbatim = sourceInfo?.isVerbatim ?? false;
     return (
         <div className="fixed inset-0 z-50 flex animate-in fade-in duration-200">
             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
@@ -171,16 +201,27 @@ function StatutePanel({ citation, onClose, getIdToken }: { citation: ParsedCitat
                         <Scale className={cn("h-4 w-4 flex-shrink-0", citation.type === 'case' ? "text-teal-700 dark:text-teal-400" : "text-amber-700 dark:text-amber-400")} />
                         <div className="min-w-0">
                             <p className={cn("text-[10px] uppercase tracking-widest font-medium mb-0.5", citation.type === 'case' ? "text-teal-600/60 dark:text-teal-400/50" : "text-amber-600/60 dark:text-amber-400/50")}>
-                                {citation.type === 'case' ? 'Case Law' : 'Statute'}
+                                {citation.type === 'case' ? 'Case Law' : isVerbatim ? 'Verbatim Statute' : 'Statute'}
                             </p>
-                            <h3 className={cn("text-sm font-bold truncate", citation.type === 'case' ? "text-teal-900 dark:text-teal-300 italic" : "text-amber-900 dark:text-amber-300")}>{citation.statute}</h3>
-                            {citation.section && <p className="text-[11px] text-muted-foreground/70 mt-0.5">{citation.section}</p>}
+                            <h3 className={cn("text-sm font-bold truncate", citation.type === 'case' ? "text-teal-900 dark:text-teal-300 italic" : "text-amber-900 dark:text-amber-300")}>
+                                {sourceInfo?.name || citation.statute}
+                            </h3>
+                            {sourceInfo?.chapter && <p className="text-[11px] text-muted-foreground/70 mt-0.5">Cap. {sourceInfo.chapter}</p>}
+                            {!sourceInfo?.chapter && citation.section && <p className="text-[11px] text-muted-foreground/70 mt-0.5">{citation.section}</p>}
                         </div>
                     </div>
                     <button onClick={onClose} className={cn("p-1.5 rounded-lg transition-colors flex-shrink-0", citation.type === 'case' ? "hover:bg-teal-200/50 dark:hover:bg-teal-800/30 text-teal-700 dark:text-teal-400" : "hover:bg-amber-200/50 dark:hover:bg-amber-800/30 text-amber-700 dark:text-amber-400")}>
                         <X className="h-4 w-4" />
                     </button>
                 </div>
+                {/* Verbatim badge */}
+                {isVerbatim && (
+                    <div className="px-5 pt-3">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-700/40">
+                            <CheckCircle2 className="h-3 w-3" /> Verbatim from Kenya Law
+                        </span>
+                    </div>
+                )}
                 {/* Body */}
                 <ScrollArea className="flex-1">
                     <div className="p-5 sm:p-6">
@@ -196,15 +237,28 @@ function StatutePanel({ citation, onClose, getIdToken }: { citation: ParsedCitat
                                 <p className="text-sm">Could not retrieve the statute. Try again later.</p>
                             </div>
                         )}
-                        {content && (
+                        {content && isVerbatim && (
+                            <div className="text-[13px] leading-[1.85] whitespace-pre-wrap font-serif text-foreground/90 border border-amber-200/30 dark:border-amber-800/20 bg-amber-50/20 dark:bg-amber-950/10 rounded-lg p-4 sm:p-5">
+                                {content}
+                            </div>
+                        )}
+                        {content && !isVerbatim && (
                             <div className="statute-content prose prose-sm max-w-none dark:prose-invert prose-headings:text-amber-900 dark:prose-headings:text-amber-300 prose-strong:text-amber-800 dark:prose-strong:text-amber-400">
                                 <ReactMarkdown>{content}</ReactMarkdown>
                             </div>
                         )}
                     </div>
                 </ScrollArea>
-                <div className="px-4 py-2.5 border-t bg-muted/30 text-center">
-                    <p className="text-[10px] text-muted-foreground">Source: Kenya Law Reports &middot; Always verify with the official gazette</p>
+                {/* Footer with Kenya Law link */}
+                <div className="px-4 py-2.5 border-t bg-muted/30">
+                    {sourceInfo?.url ? (
+                        <a href={sourceInfo.url} target="_blank" rel="noopener noreferrer"
+                           className="flex items-center justify-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 hover:underline transition-colors">
+                            <ExternalLink className="h-3 w-3" /> View full text on Kenya Law
+                        </a>
+                    ) : (
+                        <p className="text-[10px] text-muted-foreground text-center">Source: Kenya Law Reports &middot; Always verify with the official gazette</p>
+                    )}
                 </div>
             </div>
         </div>
@@ -320,8 +374,9 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
     const [aiLoading, setAiLoading] = useState(false);
     const narrativeRef = useRef<HTMLDivElement>(null);
 
-    // Statute panel
+    // Statute panel & case lookup
     const [activeCitation, setActiveCitation] = useState<ParsedCitation | null>(null);
+    const [caseLookupLoading, setCaseLookupLoading] = useState(false);
 
     // Session cache
     const cacheKey = `mastery_session_${task.data.id}`;
@@ -402,7 +457,30 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
     }, []);
 
     /* ---- Citation Click ---- */
-    const handleCitationClick = useCallback((c: ParsedCitation) => { setActiveCitation(c); }, []);
+    const handleCitationClick = useCallback(async (c: ParsedCitation) => {
+        if (c.type === 'case') {
+            // Look up Kenya Law URL and open directly in new tab
+            setCaseLookupLoading(true);
+            try {
+                const res = await fetch('/api/citations/lookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'case', name: c.statute, fullMatch: c.fullMatch }),
+                });
+                const data = await res.json();
+                if (data.found && data.url) {
+                    window.open(data.url, '_blank', 'noopener,noreferrer');
+                    setCaseLookupLoading(false);
+                    return;
+                }
+            } catch { /* fallback to side panel */ }
+            setCaseLookupLoading(false);
+            // Fallback: open side panel with AI summary if no URL found
+            setActiveCitation(c);
+        } else {
+            setActiveCitation(c);
+        }
+    }, []);
 
     /* ---- Fullscreen ---- */
     const toggleMaximize = useCallback(() => setIsMaximized(p => !p), []);
@@ -646,6 +724,14 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
 
             {/* Statute Side Panel */}
             <StatutePanel citation={activeCitation} onClose={() => setActiveCitation(null)} getIdToken={getIdToken} />
+
+            {/* Case lookup toast */}
+            {caseLookupLoading && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-teal-900 dark:bg-teal-950 text-teal-100 px-5 py-3 rounded-full shadow-lg flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-4 duration-200 border border-teal-700/50">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm font-medium">Opening Kenya Law&hellip;</span>
+                </div>
+            )}
 
             {/* Study Notes Card */}
             <div className={cn('flex flex-col animate-in fade-in duration-400', cardHeight)}>

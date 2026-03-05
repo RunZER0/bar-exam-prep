@@ -227,36 +227,37 @@ export default function Sidebar() {
         />
       )}
 
-      {/* Sidebar - always fixed, desktop always visible, mobile slide-in */}
+      {/* Sidebar - always fixed, desktop always visible (icons always shown), mobile slide-in */}
       <aside
         className={`
           fixed top-0 left-0 z-40 h-screen bg-background border-r border-border/50 flex flex-col
           transition-all duration-300 ease-in-out
-          ${immersive && !peekOpen ? '-translate-x-full' : 'md:translate-x-0'}
-          ${mobileOpen ? 'translate-x-0' : (!immersive ? '' : '') + ' ' + (!mobileOpen && !immersive ? '-translate-x-full' : '')}
-          ${collapsed ? 'w-[72px]' : 'w-64'}
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          ${immersive && !peekOpen ? 'w-[72px]' : collapsed ? 'w-[72px]' : 'w-64'}
         `}
         onMouseLeave={() => { if (immersive) setPeekOpen(false); }}
       >
         {nav}
         
-        {/* Collapse toggle - desktop only */}
-        <button
-          onClick={toggleCollapse}
-          className="hidden md:flex absolute -right-3 top-20 h-6 w-6 items-center justify-center rounded-full bg-card border border-border hover:bg-accent transition-colors"
-        >
-          {collapsed ? (
-            <ChevronRight className="h-3 w-3" />
-          ) : (
-            <ChevronLeft className="h-3 w-3" />
-          )}
-        </button>
+        {/* Collapse toggle - desktop only, hidden when immersive (auto-collapsed) */}
+        {!immersive && (
+          <button
+            onClick={toggleCollapse}
+            className="hidden md:flex absolute -right-3 top-20 h-6 w-6 items-center justify-center rounded-full bg-card border border-border hover:bg-accent transition-colors"
+          >
+            {collapsed ? (
+              <ChevronRight className="h-3 w-3" />
+            ) : (
+              <ChevronLeft className="h-3 w-3" />
+            )}
+          </button>
+        )}
       </aside>
 
-      {/* Immersive hover-reveal zone: invisible strip on left edge */}
+      {/* Immersive expand zone: hovering near left edge expands to full labels */}
       {immersive && !peekOpen && (
         <div
-          className="fixed top-0 left-0 z-30 h-screen w-4 hidden md:block"
+          className="fixed top-0 left-[72px] z-30 h-screen w-4 hidden md:block"
           onMouseEnter={() => setPeekOpen(true)}
         />
       )}

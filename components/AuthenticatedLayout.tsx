@@ -21,7 +21,7 @@ export default function AuthenticatedLayout({
   const { user, loading, getIdToken } = useAuth();
   const { collapsed, immersive } = useSidebar();
 
-  const mainMargin = immersive ? 'ml-0' : collapsed ? 'ml-0 md:ml-[72px]' : 'ml-0 md:ml-64';
+  const mainMargin = immersive ? 'ml-0 md:ml-[72px]' : collapsed ? 'ml-0 md:ml-[72px]' : 'ml-0 md:ml-64';
   const preloadInitialized = useRef(false);
 
   // Initialize autonomous preloading when user is authenticated

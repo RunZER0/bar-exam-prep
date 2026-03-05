@@ -46,7 +46,8 @@ Write a SHORT, warm, personal greeting (1-2 sentences max). Be playful and relax
 
 ${preferences?.likedCategories?.length ? `They seem to enjoy: ${preferences.likedCategories.join(', ')}.` : ''}
 
-DO NOT use emojis. DO NOT say "Welcome to Legal Banter". Just be natural and warm. Keep it under 30 words.`;
+DO NOT use emojis. DO NOT say "Welcome to Legal Banter". Just be natural and warm. Keep it under 30 words.
+NEVER use em dashes. Use regular hyphens (-) only.`;
 
       const response = await callAIFast(prompt, 200);
       return NextResponse.json({ response });
@@ -73,7 +74,8 @@ DO NOT use emojis. DO NOT say "Welcome to Legal Banter". Just be natural and war
 
 ${basePrompt}${prefContext}${avoidContext}
 
-Be genuinely entertaining and factual. When mentioning real cases, ensure they actually happened.`;
+Be genuinely entertaining and factual. When mentioning real cases, ensure they actually happened.
+NEVER use em dashes. Use regular hyphens (-) only.`;
 
       const response = await callAIFast(prompt, 600);
       return NextResponse.json({ response });
@@ -94,7 +96,8 @@ Rules:
 
 Student said: "${userMsg}"
 
-Respond with a witty comeback:`;
+Respond with a witty comeback.
+NEVER use em dashes. Use regular hyphens (-) only.`;
 
       const response = await callAIFast(prompt, 300);
       return NextResponse.json({ response });

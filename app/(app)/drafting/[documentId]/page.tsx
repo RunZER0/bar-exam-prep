@@ -12,6 +12,7 @@ import {
   ArrowLeft, FileText, PenLine, GraduationCap, Send, Loader2,
   Check, ChevronRight, ChevronLeft, Timer, TimerOff, RotateCcw,
   AlertCircle, CheckCircle2, ClipboardCheck, Sparkles, BookOpenCheck,
+  Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter, AlignRight, Indent, Outdent, List, ListOrdered, Lightbulb,
 } from 'lucide-react';
 
 type PageMode = null | 'learn' | 'practice';
@@ -490,6 +491,10 @@ function PracticeModePanel({
   const [grade, setGrade] = useState<GradeResult | null>(null);
   const [activeAnn, setActiveAnn] = useState<number | null>(null);
   const ivRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [guidanceOpen, setGuidanceOpen] = useState(false);
+  const [guidance, setGuidance] = useState<string | null>(null);
+  const [loadingGuidance, setLoadingGuidance] = useState(false);
+  const draftRef = useRef<HTMLDivElement>(null);
   const MINS = 45;
 
   useEffect(() => {
@@ -517,6 +522,12 @@ function PracticeModePanel({
         'Provide specific facts: names, dates, amounts, locations in Kenya.',
         'Self-contained with all information needed. 3-5 key issues. Under 250 words.',
         'Begin directly with the facts.',
+        '',
+        'FORMATTING RULES:',
+        '- Output PLAIN TEXT only. Do NOT use any markdown (no **, no ##, no >, no ---, no bullet chars).',
+        '- Use regular hyphens (-) instead of em dashes. Never use the character \u2014.',
+        '- Separate paragraphs with blank lines.',
+        '- Number key issues as "1)" "2)" etc.',
       ].join('\n');
 
       const res = await fetch('/api/ai/chat', {
@@ -529,7 +540,15 @@ function PracticeModePanel({
         }),
       });
       const data = await res.json();
-      setScenario(data.response.replace(/^SCENARIO:\s*/i, ''));
+      // Strip any leftover markdown formatting from AI
+      let cleanScenario = data.response
+        .replace(/^SCENARIO:\s*/i, '')
+        .replace(/\*\*/g, '')
+        .replace(/^#{1,6}\s+/gm, '')
+        .replace(/^>\s?/gm, '')
+        .replace(/^---+$/gm, '')
+        .replace(/\u2014/g, '-');
+      setScenario(cleanScenario);
       if (choice === 'timed') {
         setTimeLeft(MINS * 60);
         setTimerOn(true);
@@ -613,6 +632,37 @@ function PracticeModePanel({
   const newScenario = () => {
     setTiming(null); setScenario(null); setDraft('');
     setSubmitted(false); setGrade(null); setActiveAnn(null);
+    setGuidance(null); setGuidanceOpen(false);
+  };
+
+  /* ── Formatting commands for contentEditable ── */
+  const execCmd = (cmd: string, val?: string) => {
+    document.execCommand(cmd, false, val);
+    draftRef.current?.focus();
+  };
+
+  /* ── Load guidance for untimed mode ── */
+  const loadGuidance = async () => {
+    if (guidance) { setGuidanceOpen(prev => !prev); return; }
+    setLoadingGuidance(true);
+    try {
+      const token = await getIdToken();
+      const prompt = [
+        'Give brief drafting hints for a "' + doc.name + '" under Kenyan law.',
+        'Provide 5-7 short bullet-point reminders (key elements to include, common mistakes, structure tips).',
+        'Keep each bullet under 20 words. No markdown formatting - just plain text with dashes.',
+        'Do not use em dashes. Use regular hyphens only.',
+      ].join('\n');
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ message: prompt, competencyType: 'drafting', context: { documentType: doc.name, mode: 'guidance-hints' } }),
+      });
+      const data = await res.json();
+      setGuidance(data.response?.replace(/\*\*/g, '').replace(/\u2014/g, '-') || 'No guidance available.');
+      setGuidanceOpen(true);
+    } catch { setGuidance('Unable to load guidance.'); setGuidanceOpen(true); }
+    finally { setLoadingGuidance(false); }
   };
 
   /* timing selection */
@@ -803,17 +853,58 @@ function PracticeModePanel({
       </div>
 
       <div className="flex-1 flex overflow-hidden">
+        {/* Scenario panel */}
         <div className="w-72 md:w-80 shrink-0 border-r border-border/20 p-5 overflow-y-auto bg-card/10">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Scenario</h3>
-          <div className="text-sm leading-relaxed whitespace-pre-wrap">{scenario}</div>
+          <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/85">{scenario}</div>
+
+          {/* Guidance - untimed only */}
+          {timing === 'untimed' && (
+            <div className="mt-6 pt-4 border-t border-border/15">
+              <button
+                onClick={loadGuidance}
+                disabled={loadingGuidance}
+                className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+              >
+                {loadingGuidance ? <Loader2 className="h-3 w-3 animate-spin" /> : <Lightbulb className="h-3 w-3" />}
+                {guidanceOpen ? 'Hide Hints' : 'Show Drafting Hints'}
+              </button>
+              {guidanceOpen && guidance && (
+                <div className="mt-3 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap animate-content-enter">
+                  {guidance}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
+        {/* Editor area with formatting toolbar */}
         <div className="flex-1 flex flex-col">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder={'Begin drafting your ' + doc.name.toLowerCase() + ' here...\n\nInclude all required elements: heading, parties, body, closing, and any required legal formalities.'}
-            className="flex-1 w-full px-8 py-6 text-sm leading-relaxed bg-background resize-none focus:outline-none font-mono"
+          {/* Formatting toolbar */}
+          <div className="shrink-0 border-b border-border/15 bg-card/20 px-4 py-1.5 flex items-center gap-0.5 overflow-x-auto">
+            <ToolBtn icon={Bold} title="Bold" onClick={() => execCmd('bold')} />
+            <ToolBtn icon={Italic} title="Italic" onClick={() => execCmd('italic')} />
+            <ToolBtn icon={UnderlineIcon} title="Underline" onClick={() => execCmd('underline')} />
+            <div className="w-px h-4 bg-border/30 mx-1" />
+            <ToolBtn icon={AlignLeft} title="Align Left" onClick={() => execCmd('justifyLeft')} />
+            <ToolBtn icon={AlignCenter} title="Align Center" onClick={() => execCmd('justifyCenter')} />
+            <ToolBtn icon={AlignRight} title="Align Right" onClick={() => execCmd('justifyRight')} />
+            <div className="w-px h-4 bg-border/30 mx-1" />
+            <ToolBtn icon={Indent} title="Indent" onClick={() => execCmd('indent')} />
+            <ToolBtn icon={Outdent} title="Outdent" onClick={() => execCmd('outdent')} />
+            <div className="w-px h-4 bg-border/30 mx-1" />
+            <ToolBtn icon={List} title="Bullet List" onClick={() => execCmd('insertUnorderedList')} />
+            <ToolBtn icon={ListOrdered} title="Numbered List" onClick={() => execCmd('insertOrderedList')} />
+          </div>
+
+          {/* Content-editable draft area */}
+          <div
+            ref={draftRef}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={() => setDraft(draftRef.current?.innerText || '')}
+            data-placeholder={'Begin drafting your ' + doc.name.toLowerCase() + ' here...\n\nInclude all required elements: heading, parties, body, closing, and any required legal formalities.'}
+            className="flex-1 w-full px-8 py-6 text-sm leading-relaxed bg-background focus:outline-none font-mono overflow-y-auto empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/40"
             autoFocus
           />
         </div>
@@ -885,4 +976,18 @@ function AnnotatedDraft({
   }
 
   return <>{segs}</>;
+}
+
+/* ====== FORMATTING TOOLBAR BUTTON ====== */
+function ToolBtn({ icon: Icon, title, onClick }: { icon: typeof Bold; title: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className="p-1.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
+    >
+      <Icon className="h-3.5 w-3.5" />
+    </button>
+  );
 }

@@ -2,17 +2,17 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import {
   Coffee,
   ChevronRight,
   Star,
   MessageCircle,
   Send,
-  X,
   Loader2,
   Shuffle,
   Sparkles,
+  ArrowLeft,
+  X,
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════
@@ -32,9 +32,9 @@ type CategoryId = (typeof CATEGORIES)[number]['id'];
    PREFERENCES (localStorage)
    ═══════════════════════════════════════ */
 interface BanterPrefs {
-  ratings: Record<string, number>; // contentHash → 1-5
-  highRated: string[];             // recent high-rated content snippets
-  likedCategories: string[];       // categories with avg rating > 3.5
+  ratings: Record<string, number>;
+  highRated: string[];
+  likedCategories: string[];
   totalRated: number;
 }
 
@@ -68,13 +68,33 @@ interface ContentItem {
 }
 
 /* ═══════════════════════════════════════
+   ROAST NUDGE MESSAGES
+   ═══════════════════════════════════════ */
+const ROAST_NUDGES = [
+  "Think you're funnier than the AI? Try the Roast Zone up top.",
+  "There's a Roast Zone where you can trade legal burns with the AI. Dare to try?",
+  "Feeling brave? The Roast Zone is where you and the AI trade legal roasts.",
+  "You know there's a Roast Zone, right? It's like moot court, but for insults.",
+  "If you can handle the banter, try the Roast Zone - it's a legal roast battle.",
+];
+
+const BANTER_NUDGES = [
+  "Missing the jokes? Head back to Legal Banter for more.",
+  "Ready for another joke? The banter section has fresh content waiting.",
+  "Time for a change of pace? Go back and discover more legal gems.",
+];
+
+/* ═══════════════════════════════════════
    MAIN PAGE
    ═══════════════════════════════════════ */
 export default function BanterPage() {
   const { user, getIdToken } = useAuth();
   const firstName = user?.displayName?.split(' ')[0] || 'Counsel';
 
-  // States
+  // View mode: 'banter' or 'roast'
+  const [view, setView] = useState<'banter' | 'roast'>('banter');
+
+  // Banter states
   const [greeting, setGreeting] = useState<string | null>(null);
   const [greetingLoading, setGreetingLoading] = useState(true);
   const [currentItem, setCurrentItem] = useState<ContentItem | null>(null);
@@ -84,13 +104,17 @@ export default function BanterPage() {
   const [fadeIn, setFadeIn] = useState(false);
   const [history, setHistory] = useState<ContentItem[]>([]);
   const [prefs, setPrefs] = useState<BanterPrefs>(loadPrefs);
+  const [showNudge, setShowNudge] = useState(false);
+  const [nudgeText, setNudgeText] = useState('');
+  const nudgeCountRef = useRef(0);
 
   // Roast chat
-  const [roastOpen, setRoastOpen] = useState(false);
   const [roastMessages, setRoastMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([]);
   const [roastInput, setRoastInput] = useState('');
   const [roastLoading, setRoastLoading] = useState(false);
   const roastEndRef = useRef<HTMLDivElement>(null);
+  const roastNudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showRoastReturnNudge, setShowRoastReturnNudge] = useState(false);
 
   const prefetchRef = useRef<ContentItem | null>(null);
 
@@ -103,13 +127,12 @@ export default function BanterPage() {
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error('fetch failed');
-    return (await res.json()).response as string;
+    return ((await res.json()).response as string).replace(/\u2014/g, '-');
   }, [getIdToken]);
 
   /* ── Pick next category ── */
   const pickCategory = useCallback((): CategoryId => {
     if (activeCat) return activeCat;
-    // Weighted random — liked categories get higher weight
     const weights = CATEGORIES.map(c => {
       const isLiked = prefs.likedCategories.includes(c.id);
       return { id: c.id, w: isLiked ? 3 : 1 };
@@ -180,7 +203,6 @@ export default function BanterPage() {
         setGreeting(greetingText);
         showItem(firstContent);
         setGreetingLoading(false);
-        // Prefetch next
         prefetchNext();
       } catch (err) {
         console.error('Banter init failed:', err);
@@ -195,34 +217,52 @@ export default function BanterPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /* ── Show roast nudge periodically between jokes ── */
+  const maybeShowRoastNudge = useCallback(() => {
+    nudgeCountRef.current++;
+    // Show nudge every 3rd-5th item, but not on the first few
+    if (nudgeCountRef.current >= 3 && nudgeCountRef.current % (3 + Math.floor(Math.random() * 3)) === 0) {
+      setNudgeText(ROAST_NUDGES[Math.floor(Math.random() * ROAST_NUDGES.length)]);
+      setShowNudge(true);
+      setTimeout(() => setShowNudge(false), 6000);
+    }
+  }, []);
+
+  /* ── Start timer for return nudge when in roast mode ── */
+  useEffect(() => {
+    if (view === 'roast') {
+      roastNudgeTimerRef.current = setTimeout(() => {
+        setShowRoastReturnNudge(true);
+      }, 90000); // After ~90s in roast zone
+    } else {
+      setShowRoastReturnNudge(false);
+      if (roastNudgeTimerRef.current) clearTimeout(roastNudgeTimerRef.current);
+    }
+    return () => { if (roastNudgeTimerRef.current) clearTimeout(roastNudgeTimerRef.current); };
+  }, [view]);
+
   /* ── Next content handler ── */
   const handleNext = async () => {
     if (contentLoading) return;
-    // Save current to history
-    if (currentItem) {
-      setHistory(prev => [...prev.slice(-20), currentItem]);
-    }
+    if (currentItem) setHistory(prev => [...prev.slice(-20), currentItem]);
 
-    // Use prefetched if available
+    maybeShowRoastNudge();
+
     if (prefetchRef.current) {
       const prefetched = prefetchRef.current;
       prefetchRef.current = null;
       setNextItem(null);
       showItem(prefetched);
-      // Start prefetching next
       prefetchNext();
       return;
     }
 
-    // Load fresh
     setContentLoading(true);
     try {
       const item = await loadContent();
       showItem(item);
       prefetchNext();
-    } catch {
-      // Keep current item if load fails
-    } finally {
+    } catch {} finally {
       setContentLoading(false);
     }
   };
@@ -249,13 +289,9 @@ export default function BanterPage() {
     const newPrefs = { ...prefs };
     newPrefs.ratings[hash] = rating;
     newPrefs.totalRated++;
-
-    // Track high-rated content
     if (rating >= 4) {
       newPrefs.highRated = [currentItem.content.slice(0, 150), ...newPrefs.highRated].slice(0, 10);
     }
-
-    // Update liked categories
     const catRatings: Record<string, number[]> = {};
     for (const item of [...history, currentItem]) {
       const h = hashContent(item.content);
@@ -268,7 +304,6 @@ export default function BanterPage() {
     newPrefs.likedCategories = Object.entries(catRatings)
       .filter(([, ratings]) => ratings.length >= 2 && ratings.reduce((a, b) => a + b, 0) / ratings.length >= 3.5)
       .map(([cat]) => cat);
-
     setPrefs(newPrefs);
     savePrefs(newPrefs);
     setCurrentItem(prev => prev ? { ...prev, rating } : null);
@@ -292,14 +327,23 @@ export default function BanterPage() {
     }
   };
 
-  /* ── Get category info ── */
+  /* ── Switch views with animation ── */
+  const switchToRoast = () => {
+    setFadeIn(false);
+    setTimeout(() => setView('roast'), 200);
+  };
+  const switchToBanter = () => {
+    setShowRoastReturnNudge(false);
+    setView('banter');
+    setTimeout(() => setFadeIn(true), 100);
+  };
+
   const catInfo = currentItem ? CATEGORIES.find(c => c.id === currentItem.category) : null;
 
   /* ═══════════════════════════════════════
      RENDER
      ═══════════════════════════════════════ */
 
-  // Initial loading state — relaxed, not heavy
   if (greetingLoading && !greeting) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-3.5rem)] bg-background">
@@ -311,71 +355,119 @@ export default function BanterPage() {
     );
   }
 
-  return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-background">
-
-      {/* ── Roast ribbon (collapsible) ── */}
-      <div className="shrink-0">
-        {/* Toggle bar */}
-        <button
-          onClick={() => setRoastOpen(prev => !prev)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-card/30 border-b border-border/10 text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <MessageCircle className="h-3 w-3" />
-          {roastOpen ? 'Close Roast Zone' : 'Open Roast Zone — trade legal burns'}
-        </button>
-
-        {/* Roast chat panel */}
-        {roastOpen && (
-          <div className="border-b border-border/10 bg-card/40 animate-fade-in">
-            <div className="max-w-2xl mx-auto px-4 py-3">
-              {/* Messages */}
-              <div className="max-h-40 overflow-y-auto space-y-2 mb-3">
-                {roastMessages.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-2">
-                    Say something — let&apos;s see if you can out-roast a legal AI.
-                  </p>
-                )}
-                {roastMessages.map((msg, i) => (
-                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] px-3 py-1.5 rounded-xl text-xs leading-relaxed ${
-                      msg.role === 'user'
-                        ? 'bg-primary/10 text-foreground rounded-br-sm'
-                        : 'bg-muted/60 text-foreground rounded-bl-sm'
-                    }`}>
-                      {msg.text}
-                    </div>
-                  </div>
-                ))}
-                {roastLoading && (
-                  <div className="flex justify-start">
-                    <div className="px-3 py-1.5 rounded-xl bg-muted/60 rounded-bl-sm">
-                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                    </div>
-                  </div>
-                )}
-                <div ref={roastEndRef} />
+  /* ── ROAST VIEW (full-page, displaces banter) ── */
+  if (view === 'roast') {
+    return (
+      <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-background animate-content-enter">
+        {/* Roast header */}
+        <div className="shrink-0 border-b border-border/15 bg-card/30 px-4 py-3">
+          <div className="max-w-2xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button onClick={switchToBanter} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <div>
+                <p className="text-sm font-semibold flex items-center gap-1.5">
+                  <MessageCircle className="h-3.5 w-3.5 text-primary" /> Roast Zone
+                </p>
+                <p className="text-[11px] text-muted-foreground">Trade legal burns with the AI - keep it clever</p>
               </div>
-              {/* Input */}
+            </div>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-4 py-6">
+          <div className="max-w-2xl mx-auto space-y-3">
+            {roastMessages.length === 0 && (
+              <div className="text-center py-12 space-y-3 animate-fade-in">
+                <MessageCircle className="h-10 w-10 mx-auto text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">
+                  Say something - let&apos;s see if you can out-roast a legal AI.
+                </p>
+                <p className="text-[11px] text-muted-foreground/50">
+                  Think lawyer jokes, law school life, or courtroom comedy.
+                </p>
+              </div>
+            )}
+            {roastMessages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+                <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                  msg.role === 'user'
+                    ? 'bg-primary/10 text-foreground rounded-br-sm'
+                    : 'bg-muted/50 text-foreground rounded-bl-sm'
+                }`}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+            {roastLoading && (
+              <div className="flex justify-start animate-fade-in">
+                <div className="px-4 py-2.5 rounded-2xl bg-muted/50 rounded-bl-sm">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              </div>
+            )}
+            <div ref={roastEndRef} />
+          </div>
+        </div>
+
+        {/* Return nudge */}
+        {showRoastReturnNudge && (
+          <div className="shrink-0 px-4 py-2 bg-primary/5 border-t border-primary/10 animate-fade-in">
+            <div className="max-w-2xl mx-auto flex items-center justify-between">
+              <p className="text-xs text-primary/70">
+                {BANTER_NUDGES[Math.floor(Math.random() * BANTER_NUDGES.length)]}
+              </p>
               <div className="flex gap-2">
-                <input
-                  value={roastInput}
-                  onChange={e => setRoastInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && sendRoast()}
-                  placeholder="Your best legal roast..."
-                  className="flex-1 px-3 py-1.5 rounded-lg bg-background/80 border border-border/20 text-xs outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground/50"
-                />
-                <button
-                  onClick={sendRoast}
-                  disabled={roastLoading || !roastInput.trim()}
-                  className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-40"
-                >
-                  <Send className="h-3.5 w-3.5" />
+                <button onClick={switchToBanter} className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors">
+                  Go back
+                </button>
+                <button onClick={() => setShowRoastReturnNudge(false)} className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+                  Stay here
                 </button>
               </div>
             </div>
           </div>
         )}
+
+        {/* Input */}
+        <div className="shrink-0 border-t border-border/15 bg-card/20 px-4 py-3">
+          <div className="max-w-2xl mx-auto flex gap-2">
+            <input
+              value={roastInput}
+              onChange={e => setRoastInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && sendRoast()}
+              placeholder="Your best legal roast..."
+              className="flex-1 px-4 py-2 rounded-xl bg-background/80 border border-border/20 text-sm outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground/50"
+              autoFocus
+            />
+            <button
+              onClick={sendRoast}
+              disabled={roastLoading || !roastInput.trim()}
+              className="px-3 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-40"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── BANTER VIEW (main) ── */
+  return (
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-background">
+
+      {/* ── Roast ribbon (top bar - click to switch to roast view) ── */}
+      <div className="shrink-0">
+        <button
+          onClick={switchToRoast}
+          className="w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-card/30 border-b border-border/10 text-xs text-muted-foreground hover:text-foreground hover:bg-card/50 transition-colors"
+        >
+          <MessageCircle className="h-3 w-3" />
+          Enter Roast Zone - trade legal burns with the AI
+        </button>
       </div>
 
       {/* ── Main content area ── */}
@@ -387,6 +479,35 @@ export default function BanterPage() {
             <p className="text-sm text-foreground/70 italic">{greeting}</p>
           </div>
 
+          {/* Roast nudge popup */}
+          {showNudge && (
+            <div className="animate-fade-in">
+              <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-primary/5 border border-primary/10">
+                <MessageCircle className="h-3.5 w-3.5 text-primary/60 mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-xs text-primary/70 leading-relaxed">{nudgeText}</p>
+                  <div className="flex gap-3 mt-2">
+                    <button
+                      onClick={() => { setShowNudge(false); switchToRoast(); }}
+                      className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
+                    >
+                      Try it
+                    </button>
+                    <button
+                      onClick={() => setShowNudge(false)}
+                      className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Maybe later
+                    </button>
+                  </div>
+                </div>
+                <button onClick={() => setShowNudge(false)} className="p-0.5 text-muted-foreground/40 hover:text-muted-foreground">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Content card */}
           {currentItem && (
             <div
@@ -394,16 +515,15 @@ export default function BanterPage() {
                 fadeIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
               }`}
             >
-              {/* Category badge */}
               {catInfo && (
                 <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium mb-4 ${catInfo.color}`}>
                   <span>{catInfo.icon}</span> {catInfo.label}
                 </div>
               )}
 
-              {/* Content */}
-              <div className="text-sm leading-relaxed text-foreground/85">
-                <MarkdownRenderer content={currentItem.content} size="sm" />
+              {/* Content - plain text, no markdown */}
+              <div className="text-sm leading-relaxed text-foreground/85 whitespace-pre-wrap">
+                {currentItem.content}
               </div>
 
               {/* Rating */}
@@ -435,7 +555,7 @@ export default function BanterPage() {
             </div>
           )}
 
-          {/* Loading state for content */}
+          {/* Loading state */}
           {contentLoading && !currentItem && (
             <div className="rounded-2xl bg-card/40 p-6 animate-pulse">
               <div className="space-y-3">

@@ -3,227 +3,463 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { 
-  History, Search, FileText, BookOpen, Coffee, MessageCircleQuestion,
-  Trash2, ExternalLink, Clock, MessageSquare, MoreVertical, Archive
+import {
+  History, FileText, BookOpen, Coffee, MessageCircleQuestion,
+  Search, Clock, MessageSquare, Trash2,
+  Flame, Brain, Award, Calendar, TrendingUp, Target,
+  ChevronRight, Loader2,
 } from 'lucide-react';
 
-type ChatSession = {
+/* ═══════════════════════════════════════
+   TYPES
+   ═══════════════════════════════════════ */
+interface Activity {
   id: string;
+  type: 'chat' | 'study' | 'milestone';
   title: string;
-  competencyType: string;
-  context: string | null;
-  messageCount: number;
-  lastMessageAt: string;
-  createdAt: string;
-  isArchived: boolean;
+  category: string;
+  date: string;
+  meta: Record<string, any>;
+}
+
+interface StreakDay {
+  date: string;
+  minutes: number;
+  questions: number;
+  sessions: number;
+}
+
+interface Stats {
+  totalChats: number;
+  totalStudy: number;
+  totalMinutes: number;
+  totalQuestions: number;
+  currentStreak: number;
+  totalActivities: number;
+}
+
+/* ═══════════════════════════════════════
+   CATEGORY CONFIG
+   ═══════════════════════════════════════ */
+const TYPE_CONFIG: Record<string, { icon: typeof FileText; color: string; bg: string; label: string }> = {
+  drafting:       { icon: FileText,               color: 'text-blue-600',   bg: 'bg-blue-500/10',    label: 'Drafting' },
+  research:       { icon: Search,                 color: 'text-green-600',  bg: 'bg-green-500/10',   label: 'Research' },
+  banter:         { icon: Coffee,                 color: 'text-amber-600',  bg: 'bg-amber-500/10',   label: 'Banter' },
+  clarification:  { icon: MessageCircleQuestion,  color: 'text-violet-600', bg: 'bg-violet-500/10',  label: 'Clarification' },
+  oral:           { icon: BookOpen,               color: 'text-red-600',    bg: 'bg-red-500/10',     label: 'Oral' },
+  written:        { icon: FileText,               color: 'text-blue-600',   bg: 'bg-blue-500/10',    label: 'Written' },
+  study:          { icon: Brain,                  color: 'text-indigo-600', bg: 'bg-indigo-500/10',  label: 'Study' },
+  milestone:      { icon: Award,                  color: 'text-emerald-600',bg: 'bg-emerald-500/10', label: 'Milestone' },
 };
 
-const COMPETENCY_ICONS: Record<string, { icon: typeof FileText; color: string; bg: string }> = {
-  drafting: { icon: FileText, color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-500/10 dark:bg-gray-800' },
-  research: { icon: Search, color: 'text-green-600', bg: 'bg-green-500/10' },
-  banter: { icon: Coffee, color: 'text-amber-600', bg: 'bg-amber-500/10' },
-  clarification: { icon: MessageCircleQuestion, color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-500/10 dark:bg-gray-800' },
-  oral: { icon: BookOpen, color: 'text-red-600', bg: 'bg-red-500/10' },
-};
+const FILTERS = [
+  { id: 'all',     label: 'All' },
+  { id: 'chat',    label: 'Chats' },
+  { id: 'study',   label: 'Study' },
+  { id: 'milestone', label: 'Milestones' },
+];
 
+/* ═══════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════ */
+function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString('en-KE', { month: 'short', day: 'numeric', year: days > 365 ? 'numeric' : undefined });
+}
+
+function formatFullDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString('en-KE', {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+  });
+}
+
+function groupByDate(activities: Activity[]): Record<string, Activity[]> {
+  const groups: Record<string, Activity[]> = {};
+  for (const a of activities) {
+    const d = new Date(a.date);
+    const key = d.toISOString().split('T')[0];
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(a);
+  }
+  return groups;
+}
+
+function dateLabel(dateKey: string): string {
+  const d = new Date(dateKey + 'T00:00:00');
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const diff = Math.round((now.getTime() - d.getTime()) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  if (diff < 7) return d.toLocaleDateString('en-KE', { weekday: 'long' });
+  return d.toLocaleDateString('en-KE', { month: 'long', day: 'numeric', year: diff > 365 ? 'numeric' : undefined });
+}
+
+/* ═══════════════════════════════════════
+   STREAK HEATMAP COMPONENT
+   ═══════════════════════════════════════ */
+function StreakHeatmap({ streaks }: { streaks: StreakDay[] }) {
+  if (!streaks.length) return null;
+
+  const maxMins = Math.max(...streaks.map(s => s.minutes), 1);
+
+  const days: { date: string; minutes: number; active: boolean }[] = [];
+  const today = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().split('T')[0];
+    const streak = streaks.find(s => s.date === key);
+    days.push({
+      date: key,
+      minutes: streak?.minutes || 0,
+      active: (streak?.minutes || 0) > 0,
+    });
+  }
+
+  return (
+    <div className="flex gap-[3px] items-end">
+      {days.map(day => {
+        const intensity = day.minutes / maxMins;
+        const height = day.active ? Math.max(8, Math.round(intensity * 28)) : 4;
+        return (
+          <div
+            key={day.date}
+            title={`${formatFullDate(day.date)} - ${day.minutes} min`}
+            className="rounded-sm transition-all hover:opacity-80"
+            style={{
+              width: 6,
+              height,
+              backgroundColor: day.active
+                ? `rgba(16, 185, 129, ${0.3 + intensity * 0.7})`
+                : 'rgba(128,128,128,0.1)',
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
+   MAIN PAGE
+   ═══════════════════════════════════════ */
 export default function HistoryPage() {
   const router = useRouter();
   const { getIdToken } = useAuth();
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [streaks, setStreaks] = useState<StreakDay[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<string>('all');
 
   useEffect(() => {
-    loadSessions();
+    loadHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadSessions = async () => {
+  const loadHistory = async () => {
     try {
       const token = await getIdToken();
-      const response = await fetch('/api/chat/sessions', {
-        headers: { 'Authorization': `Bearer ${token}` },
+      const res = await fetch('/api/history', {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (response.ok) {
-        const data = await response.json();
-        setSessions(data.sessions || []);
+      if (res.ok) {
+        const data = await res.json();
+        setActivities(data.activities || []);
+        setStreaks(data.streaks || []);
+        setStats(data.stats || null);
       }
-    } catch (error) {
-      console.error('Error loading sessions:', error);
+    } catch (err) {
+      console.error('Failed to load history:', err);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const deleteSession = async (sessionId: string) => {
-    if (!confirm('Are you sure you want to delete this conversation?')) return;
-    
+  const deleteChat = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     try {
       const token = await getIdToken();
-      await fetch(`/api/chat/sessions/${sessionId}`, {
+      await fetch(`/api/chat/sessions/${id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setSessions(prev => prev.filter(s => s.id !== sessionId));
-    } catch (error) {
-      console.error('Error deleting session:', error);
+      setActivities(prev => prev.filter(a => a.id !== id));
+    } catch (err) {
+      console.error('Delete failed:', err);
     }
   };
 
-  const filteredSessions = sessions.filter(session => {
-    const matchesSearch = session.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      session.context?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filter === 'all' || session.competencyType === filter;
-    return matchesSearch && matchesFilter;
+  const filtered = activities.filter(a => {
+    const matchesFilter = filter === 'all' || a.type === filter;
+    const matchesSearch = !searchQuery ||
+      a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.category.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
   });
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return `${days} days ago`;
-    return date.toLocaleDateString('en-KE', { month: 'short', day: 'numeric' });
-  };
+  const grouped = groupByDate(filtered);
+  const dateKeys = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-3.5rem)] bg-background">
+        <div className="text-center space-y-3">
+          <Loader2 className="h-6 w-6 mx-auto animate-spin text-primary/50" />
+          <p className="text-sm text-muted-foreground">Loading your history...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-primary/10">
-            <History className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Chat History</h1>
-            <p className="text-sm text-muted-foreground">
-              {sessions.length} conversation{sessions.length !== 1 ? 's' : ''} saved
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-[calc(100vh-3.5rem)] bg-background">
+      <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
 
-      {/* Search and filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search conversations..."
-            className="pl-9"
-          />
-        </div>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar">
-          {['all', 'drafting', 'research', 'banter', 'clarification'].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                filter === f
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
-            >
-              {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Sessions list */}
-      {isLoading ? (
-        <div className="grid gap-3">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-20 rounded-xl bg-card border animate-pulse" />
-          ))}
-        </div>
-      ) : filteredSessions.length === 0 ? (
-        <Card className="text-center py-12">
-          <CardContent>
-            <History className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No conversations yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Start a chat in any section and it will appear here
-            </p>
-            <div className="flex justify-center gap-2">
-              <Button variant="outline" onClick={() => router.push('/research')}>
-                Start Research
-              </Button>
-              <Button onClick={() => router.push('/drafting')}>
-                Start Drafting
-              </Button>
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-primary/10">
+              <History className="h-5 w-5 text-primary" />
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-3">
-          {filteredSessions.map((session) => {
-            const typeInfo = COMPETENCY_ICONS[session.competencyType] || COMPETENCY_ICONS.research;
-            const TypeIcon = typeInfo.icon;
-            
-            return (
-              <Card 
-                key={session.id}
-                className="group hover:border-primary/30 transition-colors cursor-pointer"
-                onClick={() => router.push(`/history/${session.id}`)}
-              >
-                <CardContent className="flex items-center gap-4 p-4">
-                  <div className={`p-2.5 rounded-xl ${typeInfo.bg}`}>
-                    <TypeIcon className={`w-5 h-5 ${typeInfo.color}`} />
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium truncate">{session.title}</h3>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <MessageSquare className="w-3 h-3" />
-                        {session.messageCount} messages
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatDate(session.lastMessageAt)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteSession(session.id);
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/history/${session.id}`);
-                      }}
-                    >
-                      <ExternalLink className="w-4 h-4 text-muted-foreground" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+            Activity History
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Everything you have done in one place
+          </p>
         </div>
-      )}
+
+        {/* Stats cards */}
+        {stats && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <StatCard
+              icon={Flame}
+              label="Current Streak"
+              value={`${stats.currentStreak} day${stats.currentStreak !== 1 ? 's' : ''}`}
+              color="text-orange-500"
+              bg="bg-orange-500/10"
+            />
+            <StatCard
+              icon={Clock}
+              label="Total Study Time"
+              value={stats.totalMinutes >= 60 ? `${Math.round(stats.totalMinutes / 60)}h ${stats.totalMinutes % 60}m` : `${stats.totalMinutes}m`}
+              color="text-blue-500"
+              bg="bg-blue-500/10"
+            />
+            <StatCard
+              icon={MessageSquare}
+              label="Conversations"
+              value={String(stats.totalChats)}
+              color="text-violet-500"
+              bg="bg-violet-500/10"
+            />
+            <StatCard
+              icon={Target}
+              label="Questions Tackled"
+              value={String(stats.totalQuestions)}
+              color="text-emerald-500"
+              bg="bg-emerald-500/10"
+            />
+          </div>
+        )}
+
+        {/* Streak Heatmap */}
+        {streaks.length > 0 && (
+          <div className="rounded-xl bg-card/50 border border-border/20 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Last 30 Days</h3>
+              <span className="text-[11px] text-muted-foreground">
+                {streaks.filter(s => s.minutes > 0).length} active days
+              </span>
+            </div>
+            <StreakHeatmap streaks={streaks} />
+          </div>
+        )}
+
+        {/* Search + Filters */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search activities..."
+              className="w-full pl-9 pr-3 py-2 rounded-xl bg-card/50 border border-border/20 text-sm outline-none focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/50"
+            />
+          </div>
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+            {FILTERS.map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                  filter === f.id
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-muted/40'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Activity timeline */}
+        {dateKeys.length === 0 ? (
+          <div className="text-center py-16 space-y-3">
+            <History className="h-12 w-12 mx-auto text-muted-foreground/20" />
+            <h3 className="text-lg font-medium text-muted-foreground">No activity yet</h3>
+            <p className="text-sm text-muted-foreground/70 max-w-sm mx-auto">
+              Start studying, drafting, or chatting and your history will appear here
+            </p>
+            <div className="flex justify-center gap-2 pt-2">
+              <button
+                onClick={() => router.push('/study')}
+                className="px-4 py-2 rounded-xl bg-primary/10 text-primary text-sm font-medium hover:bg-primary/15 transition-colors"
+              >
+                Start Studying
+              </button>
+              <button
+                onClick={() => router.push('/drafting')}
+                className="px-4 py-2 rounded-xl bg-muted/40 text-foreground text-sm font-medium hover:bg-muted/60 transition-colors"
+              >
+                Start Drafting
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {dateKeys.map(dateKey => (
+              <div key={dateKey}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground/50" />
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    {dateLabel(dateKey)}
+                  </h3>
+                  <div className="flex-1 h-px bg-border/15" />
+                  <span className="text-[10px] text-muted-foreground/40">
+                    {grouped[dateKey].length} activit{grouped[dateKey].length === 1 ? 'y' : 'ies'}
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 ml-2 pl-4 border-l-2 border-border/10">
+                  {grouped[dateKey].map(activity => {
+                    const config = TYPE_CONFIG[activity.category] || TYPE_CONFIG[activity.type] || TYPE_CONFIG.research;
+                    const Icon = config.icon;
+
+                    return (
+                      <div
+                        key={activity.id}
+                        onClick={() => {
+                          if (activity.type === 'chat') router.push(`/history/${activity.id}`);
+                        }}
+                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
+                          activity.type === 'chat' ? 'cursor-pointer hover:bg-card/60' : 'bg-card/20'
+                        }`}
+                      >
+                        <div className="relative -ml-[25px] mr-1">
+                          <div className={`w-2 h-2 rounded-full ${config.bg} ring-2 ring-background`} />
+                        </div>
+
+                        <div className={`p-2 rounded-lg ${config.bg} shrink-0`}>
+                          <Icon className={`h-4 w-4 ${config.color}`} />
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{activity.title}</p>
+                          <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-0.5">
+                            <span className="capitalize">{config.label}</span>
+                            {activity.type === 'chat' && activity.meta.messageCount > 0 && (
+                              <span className="flex items-center gap-1">
+                                <MessageSquare className="h-2.5 w-2.5" />
+                                {activity.meta.messageCount} msgs
+                              </span>
+                            )}
+                            {activity.type === 'study' && activity.meta.minutes > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-2.5 w-2.5" />
+                                {activity.meta.minutes}m
+                              </span>
+                            )}
+                            {activity.type === 'study' && activity.meta.score != null && (
+                              <span className="flex items-center gap-1">
+                                <TrendingUp className="h-2.5 w-2.5" />
+                                {Math.round(Number(activity.meta.score) * 100)}%
+                              </span>
+                            )}
+                            {activity.type === 'milestone' && (
+                              <span className="flex items-center gap-1">
+                                <Award className="h-2.5 w-2.5" />
+                                {activity.meta.phase}
+                              </span>
+                            )}
+                            <span>{formatDate(activity.date)}</span>
+                          </div>
+                        </div>
+
+                        {activity.type === 'chat' && (
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => deleteChat(activity.id, e)}
+                              className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
+   STAT CARD COMPONENT
+   ═══════════════════════════════════════ */
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  color,
+  bg,
+}: {
+  icon: typeof Flame;
+  label: string;
+  value: string;
+  color: string;
+  bg: string;
+}) {
+  return (
+    <div className="rounded-xl bg-card/50 border border-border/15 p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <div className={`p-1.5 rounded-lg ${bg}`}>
+          <Icon className={`h-3.5 w-3.5 ${color}`} />
+        </div>
+      </div>
+      <p className="text-lg font-bold">{value}</p>
+      <p className="text-[11px] text-muted-foreground">{label}</p>
     </div>
   );
 }

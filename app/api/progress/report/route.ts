@@ -322,7 +322,7 @@ export const GET = withAuth(async (req: NextRequest, user) => {
 
       // Metadata
       generatedAt: now.toISOString(),
-      userName: user.name || 'Student',
+      userName: user.displayName || 'Student',
     });
   } catch (error) {
     console.error('Error generating progress report:', error);

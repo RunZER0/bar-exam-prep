@@ -299,6 +299,7 @@ function SelectionToolbar({ position, selectedText, onCopy, onSimplify, onAskAI,
 
 /* ================================================================
    CHECKPOINT SLIDE  —  inline questions between narrative slides
+   Subtle card aesthetic: slightly tinted bg, thin border, blended with background
    ================================================================ */
 interface CheckpointProps {
     checkpoint: any;
@@ -315,6 +316,9 @@ function CheckpointSlide({ checkpoint, onComplete }: CheckpointProps) {
     const [orderCorrect, setOrderCorrect] = useState(false);
     const [showHint, setShowHint] = useState(false);
     const [showExplanation, setShowExplanation] = useState(false);
+    const [dragIdx, setDragIdx] = useState<number | null>(null);
+    // Rich text toolbar state for SHORT answers
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         if (checkpoint?.type === 'ORDERING' && checkpoint.items) {
@@ -350,6 +354,35 @@ function CheckpointSlide({ checkpoint, onComplete }: CheckpointProps) {
         setTimeout(onComplete, 3000);
     };
 
+    // Rich text formatting helpers
+    const insertFormatting = (prefix: string, suffix: string) => {
+        const ta = textareaRef.current;
+        if (!ta || shortSubmitted) return;
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const selected = shortAnswer.substring(start, end);
+        const before = shortAnswer.substring(0, start);
+        const after = shortAnswer.substring(end);
+        const newVal = before + prefix + selected + suffix + after;
+        setShortAnswer(newVal);
+        setTimeout(() => {
+            ta.focus();
+            ta.setSelectionRange(start + prefix.length, end + prefix.length);
+        }, 0);
+    };
+
+    const insertBullet = () => {
+        const ta = textareaRef.current;
+        if (!ta || shortSubmitted) return;
+        const pos = ta.selectionStart;
+        const before = shortAnswer.substring(0, pos);
+        const after = shortAnswer.substring(pos);
+        const bullet = (before.length === 0 || before.endsWith('\n')) ? '• ' : '\n• ';
+        setShortAnswer(before + bullet + after);
+        setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + bullet.length, pos + bullet.length); }, 0);
+    };
+
+    // Ordering: drag-and-drop style via click + visual feedback
     const moveOrderItem = (from: number, dir: -1 | 1) => {
         if (orderSubmitted) return;
         const to = from + dir;
@@ -361,10 +394,10 @@ function CheckpointSlide({ checkpoint, onComplete }: CheckpointProps) {
 
     const handleOrderSubmit = () => {
         setOrderSubmitted(true);
-        const correct = checkpoint.correctOrder
+        const isCorrect = checkpoint.correctOrder
             ? checkpoint.correctOrder.every((origIdx: number, pos: number) => orderItems[pos] === checkpoint.items[origIdx])
             : false;
-        setOrderCorrect(correct);
+        setOrderCorrect(isCorrect);
         setShowExplanation(true);
         setTimeout(onComplete, 3000);
     };
@@ -376,13 +409,14 @@ function CheckpointSlide({ checkpoint, onComplete }: CheckpointProps) {
 
     return (
         <div className="animate-in scale-in duration-300 max-w-2xl mx-auto">
-            <div className="rounded-2xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-emerald-50/40 via-white to-teal-50/30 dark:from-emerald-950/15 dark:via-card dark:to-teal-950/10 p-6 sm:p-8">
-                {/* Badge */}
+            {/* Subtle card: slightly different bg density, thin outline, well-blended */}
+            <div className="rounded-2xl border border-border/40 bg-muted/20 dark:bg-muted/10 p-6 sm:p-8">
+                {/* Badge row */}
                 <div className="flex items-center gap-2 mb-5">
-                    <div className="p-1.5 rounded-lg bg-primary/10">
-                        <TypeIcon className="h-4 w-4 text-primary" />
+                    <div className="p-1.5 rounded-lg bg-primary/8 dark:bg-primary/10">
+                        <TypeIcon className="h-4 w-4 text-primary/80" />
                     </div>
-                    <span className="text-xs font-bold uppercase tracking-widest text-primary/70">{typeLabel}</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">{typeLabel}</span>
                     {checkpoint.hint && (
                         <button onClick={() => setShowHint(!showHint)} className="ml-auto text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
                             <Lightbulb className="h-3 w-3" /> Hint
@@ -392,17 +426,17 @@ function CheckpointSlide({ checkpoint, onComplete }: CheckpointProps) {
 
                 {/* Hint */}
                 {showHint && checkpoint.hint && (
-                    <div className="mb-4 p-3 rounded-lg bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/40 dark:border-amber-800/30 text-sm text-amber-800 dark:text-amber-300">
-                        <Lightbulb className="inline h-3.5 w-3.5 mr-1.5" />{checkpoint.hint}
+                    <div className="mb-4 p-3 rounded-lg bg-amber-500/5 dark:bg-amber-500/8 border border-amber-200/30 dark:border-amber-800/20 text-sm text-amber-800 dark:text-amber-300">
+                        <Lightbulb className="inline h-3.5 w-3.5 mr-1.5 opacity-70" />{checkpoint.hint}
                     </div>
                 )}
 
-                {/* Question */}
-                <p className="text-[15px] font-medium leading-relaxed text-foreground mb-5">{checkpoint.question}</p>
+                {/* Question text — clean, readable font */}
+                <p className="text-[15px] font-medium leading-relaxed text-foreground/90 mb-5">{checkpoint.question}</p>
 
-                {/* MCQ */}
+                {/* ===== MCQ ===== */}
                 {checkpoint.type === 'MCQ' && (
-                    <div className="space-y-2.5">
+                    <div className="space-y-2">
                         {(checkpoint.options || []).map((opt: string, idx: number) => {
                             const selected = mcqAnswer === idx;
                             const isCorrect = idx === checkpoint.correctIndex;
@@ -412,48 +446,73 @@ function CheckpointSlide({ checkpoint, onComplete }: CheckpointProps) {
                                 <button key={idx} onClick={() => handleMCQ(idx)} disabled={mcqCorrect}
                                     className={cn(
                                         'w-full text-left flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 text-sm',
-                                        !selected && !showRight && 'border-border/30 hover:border-primary/40 hover:bg-primary/5',
-                                        showRight && 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30',
-                                        showWrong && 'border-red-300 bg-red-50/50 dark:bg-red-950/20',
-                                        selected && !showRight && !showWrong && 'border-primary/40 bg-primary/5',
+                                        !selected && !showRight && 'border-border/30 bg-background/50 hover:border-primary/30 hover:bg-primary/[0.03]',
+                                        showRight && 'border-emerald-300/60 bg-emerald-500/5 dark:bg-emerald-500/8',
+                                        showWrong && 'border-red-300/50 bg-red-500/5 dark:bg-red-500/8',
+                                        selected && !showRight && !showWrong && 'border-primary/30 bg-primary/[0.03]',
                                     )}>
                                     <span className={cn(
                                         'flex-shrink-0 w-6 h-6 rounded-full border flex items-center justify-center text-xs font-bold',
                                         showRight && 'bg-emerald-500 border-emerald-500 text-white',
                                         showWrong && 'bg-red-400 border-red-400 text-white',
-                                        !showRight && !showWrong && 'border-border/60 text-muted-foreground',
+                                        !showRight && !showWrong && 'border-border/50 text-muted-foreground',
                                     )}>{showRight ? '✓' : showWrong ? '✗' : String.fromCharCode(65 + idx)}</span>
-                                    <span className="text-foreground/90">{opt}</span>
+                                    <span className="text-foreground/85">{opt}</span>
                                 </button>
                             );
                         })}
                     </div>
                 )}
 
-                {/* SHORT ANSWER */}
+                {/* ===== SHORT ANSWER — rich text entry ===== */}
                 {checkpoint.type === 'SHORT' && (
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
+                        {/* Formatting toolbar */}
+                        {!shortSubmitted && (
+                            <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-t-xl border border-b-0 border-border/30 bg-muted/30">
+                                <button onClick={() => insertFormatting('**', '**')} className="px-2 py-1 rounded-md text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Bold">
+                                    B
+                                </button>
+                                <button onClick={() => insertFormatting('*', '*')} className="px-2 py-1 rounded-md text-xs italic text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Italic">
+                                    I
+                                </button>
+                                <button onClick={() => insertFormatting('_', '_')} className="px-2 py-1 rounded-md text-xs underline text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Underline">
+                                    U
+                                </button>
+                                <div className="w-px h-4 bg-border/50 mx-1" />
+                                <button onClick={insertBullet} className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Bullet point">
+                                    • List
+                                </button>
+                            </div>
+                        )}
                         <div className="relative">
                             <textarea
+                                ref={textareaRef}
                                 value={shortAnswer}
                                 onChange={(e) => setShortAnswer(e.target.value)}
                                 disabled={shortSubmitted}
                                 placeholder="Type your answer here..."
-                                rows={3}
-                                className="w-full p-3.5 rounded-xl border border-border/50 bg-background text-sm resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-70"
+                                rows={4}
+                                className={cn(
+                                    'w-full p-4 border border-border/30 bg-background/60 text-sm leading-relaxed resize-none transition-all',
+                                    'focus:ring-2 focus:ring-primary/15 focus:border-primary/40 focus:bg-background',
+                                    'disabled:opacity-70 placeholder:text-muted-foreground/40',
+                                    !shortSubmitted ? 'rounded-b-xl' : 'rounded-xl',
+                                    'font-[\'Inter\',system-ui,sans-serif]'
+                                )}
                             />
                             {!shortSubmitted && (
-                                <button onClick={handleShortSubmit} disabled={!shortAnswer.trim()} className="absolute bottom-3 right-3 p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors">
+                                <button onClick={handleShortSubmit} disabled={!shortAnswer.trim()} className="absolute bottom-3 right-3 p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 transition-all">
                                     <Send className="h-3.5 w-3.5" />
                                 </button>
                             )}
                         </div>
                         {shortSubmitted && (
                             <div className={cn(
-                                'p-3 rounded-lg border text-sm',
-                                shortScore === 'good' && 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200/40 text-emerald-800 dark:text-emerald-300',
-                                shortScore === 'partial' && 'bg-amber-50 dark:bg-amber-950/20 border-amber-200/40 text-amber-800 dark:text-amber-300',
-                                shortScore === 'miss' && 'bg-orange-50 dark:bg-orange-950/20 border-orange-200/40 text-orange-800 dark:text-orange-300',
+                                'p-3 rounded-xl border text-sm',
+                                shortScore === 'good' && 'bg-emerald-500/5 border-emerald-200/30 dark:border-emerald-800/20 text-emerald-800 dark:text-emerald-300',
+                                shortScore === 'partial' && 'bg-amber-500/5 border-amber-200/30 dark:border-amber-800/20 text-amber-800 dark:text-amber-300',
+                                shortScore === 'miss' && 'bg-orange-500/5 border-orange-200/30 dark:border-orange-800/20 text-orange-800 dark:text-orange-300',
                             )}>
                                 {shortScore === 'good' && '✓ Well done!'}
                                 {shortScore === 'partial' && '◐ Close — review the key points below.'}
@@ -464,36 +523,87 @@ function CheckpointSlide({ checkpoint, onComplete }: CheckpointProps) {
                     </div>
                 )}
 
-                {/* ORDERING */}
+                {/* ===== ORDERING — clean drag-style interface ===== */}
                 {checkpoint.type === 'ORDERING' && (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                         {orderItems.map((item, idx) => {
-                            let itemClass = 'border-border/30';
+                            let itemBorder = 'border-border/30 bg-background/50';
                             if (orderSubmitted) {
-                                const correctPos = checkpoint.correctOrder ? checkpoint.items[checkpoint.correctOrder[idx]] : null;
-                                itemClass = item === correctPos ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20' : 'border-red-300 bg-red-50/30 dark:bg-red-950/15';
+                                const correctItem = checkpoint.correctOrder ? checkpoint.items[checkpoint.correctOrder[idx]] : null;
+                                itemBorder = item === correctItem
+                                    ? 'border-emerald-300/50 bg-emerald-500/5 dark:bg-emerald-500/8'
+                                    : 'border-red-300/40 bg-red-500/5 dark:bg-red-500/8';
+                            }
+                            if (dragIdx === idx && !orderSubmitted) {
+                                itemBorder = 'border-primary/40 bg-primary/[0.03] ring-1 ring-primary/15';
                             }
                             return (
-                                <div key={idx} className={cn('flex items-center gap-2 p-3 rounded-xl border transition-all', itemClass)}>
-                                    <span className="text-xs font-bold text-muted-foreground w-5 text-center">{idx + 1}</span>
-                                    <span className="flex-1 text-sm text-foreground/90">{item}</span>
+                                <div
+                                    key={idx}
+                                    onClick={() => !orderSubmitted && setDragIdx(dragIdx === idx ? null : idx)}
+                                    className={cn(
+                                        'flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200 cursor-pointer select-none',
+                                        itemBorder,
+                                        !orderSubmitted && 'hover:border-primary/25'
+                                    )}
+                                >
+                                    {/* Step number pill */}
+                                    <span className={cn(
+                                        'flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold',
+                                        orderSubmitted
+                                            ? (item === (checkpoint.correctOrder ? checkpoint.items[checkpoint.correctOrder[idx]] : null)
+                                                ? 'bg-emerald-500 text-white' : 'bg-red-400 text-white')
+                                            : 'bg-muted text-muted-foreground'
+                                    )}>
+                                        {orderSubmitted
+                                            ? (item === (checkpoint.correctOrder ? checkpoint.items[checkpoint.correctOrder[idx]] : null) ? '✓' : idx + 1)
+                                            : idx + 1
+                                        }
+                                    </span>
+                                    <span className="flex-1 text-sm text-foreground/85 leading-relaxed">{item}</span>
+                                    {/* Move buttons */}
                                     {!orderSubmitted && (
-                                        <div className="flex flex-col gap-0.5">
-                                            <button onClick={() => moveOrderItem(idx, -1)} disabled={idx === 0} className="p-1 rounded hover:bg-muted disabled:opacity-30 text-muted-foreground"><ChevronLeft className="h-3 w-3 rotate-90" /></button>
-                                            <button onClick={() => moveOrderItem(idx, 1)} disabled={idx === orderItems.length - 1} className="p-1 rounded hover:bg-muted disabled:opacity-30 text-muted-foreground"><ChevronRight className="h-3 w-3 rotate-90" /></button>
+                                        <div className="flex flex-col gap-0.5 flex-shrink-0">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); moveOrderItem(idx, -1); }}
+                                                disabled={idx === 0}
+                                                className="p-1 rounded hover:bg-muted disabled:opacity-20 text-muted-foreground transition-colors"
+                                            >
+                                                <ChevronLeft className="h-3.5 w-3.5 rotate-90" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); moveOrderItem(idx, 1); }}
+                                                disabled={idx === orderItems.length - 1}
+                                                className="p-1 rounded hover:bg-muted disabled:opacity-20 text-muted-foreground transition-colors"
+                                            >
+                                                <ChevronRight className="h-3.5 w-3.5 rotate-90" />
+                                            </button>
                                         </div>
                                     )}
                                 </div>
                             );
                         })}
                         {!orderSubmitted && (
-                            <Button onClick={handleOrderSubmit} size="sm" className="mt-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
-                                Check Order <CheckCircle2 className="ml-1.5 h-3.5 w-3.5" />
-                            </Button>
+                            <button onClick={handleOrderSubmit} className="mt-3 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Check Order
+                            </button>
                         )}
                         {orderSubmitted && (
-                            <div className={cn('p-3 rounded-lg border text-sm mt-2', orderCorrect ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200/40 text-emerald-800 dark:text-emerald-300' : 'bg-orange-50 dark:bg-orange-950/20 border-orange-200/40 text-orange-800 dark:text-orange-300')}>
-                                {orderCorrect ? '✓ Perfect order!' : '○ Not quite — see the correct order below.'}
+                            <div className={cn(
+                                'p-3 rounded-xl border text-sm mt-2',
+                                orderCorrect
+                                    ? 'bg-emerald-500/5 border-emerald-200/30 dark:border-emerald-800/20 text-emerald-800 dark:text-emerald-300'
+                                    : 'bg-orange-500/5 border-orange-200/30 dark:border-orange-800/20 text-orange-800 dark:text-orange-300'
+                            )}>
+                                {orderCorrect ? '✓ Perfect order!' : '○ Not quite — the correct sequence is shown above.'}
+                                {!orderCorrect && checkpoint.correctOrder && (
+                                    <div className="mt-2 text-xs space-y-0.5 opacity-80">
+                                        <p className="font-medium">Correct order:</p>
+                                        {checkpoint.correctOrder.map((origIdx: number, pos: number) => (
+                                            <p key={pos}>{pos + 1}. {checkpoint.items[origIdx]}</p>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -501,8 +611,8 @@ function CheckpointSlide({ checkpoint, onComplete }: CheckpointProps) {
 
                 {/* Explanation */}
                 {showExplanation && checkpoint.explanation && (
-                    <div className="mt-5 p-4 rounded-xl bg-primary/5 border border-primary/15 text-sm text-foreground/80 animate-in fade-in duration-300">
-                        <p className="font-semibold text-primary text-xs mb-1.5">Explanation</p>
+                    <div className="mt-5 p-4 rounded-xl bg-primary/[0.03] border border-primary/10 text-sm text-foreground/80 animate-in fade-in duration-300">
+                        <p className="font-semibold text-primary/80 text-xs mb-1.5">Explanation</p>
                         <p className="leading-relaxed">{checkpoint.explanation}</p>
                     </div>
                 )}
@@ -681,6 +791,11 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
     const [stackLevel, setStackLevel] = useState(1);
     const [mcqAnswer, setMcqAnswer] = useState<number | null>(null);
     const [mcqPassed, setMcqPassed] = useState(false);
+
+    // Written/short answer assessment state
+    const [assessmentAnswer, setAssessmentAnswer] = useState('');
+    const [assessmentSubmitted, setAssessmentSubmitted] = useState(false);
+    const assessmentTextRef = useRef<HTMLTextAreaElement>(null);
 
     // Fullscreen
     const [isMaximized, setIsMaximized] = useState(false);
@@ -990,17 +1105,17 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                                                         if (isCorrect) { setMcqPassed(true); setTimeout(() => { setMcqPassed(false); setMcqAnswer(null); const nl = stackLevel + 1; setStackLevel(nl); saveProgress({ l: nl }); }, 1800); }
                                                     }} disabled={mcqPassed}
                                                         className={cn(
-                                                            'w-full text-left flex items-start gap-3 p-4 rounded-xl border-2 transition-all duration-200',
-                                                            !isSelected && !showCorrect && 'border-border/40 bg-card hover:border-amber-300/60 hover:bg-amber-50/30 dark:hover:bg-amber-950/10',
-                                                            showCorrect && 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 ring-1 ring-emerald-400',
-                                                            showWrong && 'border-red-300 bg-red-50/50 dark:bg-red-950/20',
-                                                            isSelected && !showWrong && !showCorrect && 'border-primary/40 bg-primary/5',
+                                                            'w-full text-left flex items-start gap-3 p-4 rounded-xl border transition-all duration-200',
+                                                            !isSelected && !showCorrect && 'border-border/30 bg-background/50 hover:border-primary/30 hover:bg-primary/[0.03]',
+                                                            showCorrect && 'border-emerald-300/50 bg-emerald-500/5 dark:bg-emerald-500/8 ring-1 ring-emerald-300/30',
+                                                            showWrong && 'border-red-300/40 bg-red-500/5 dark:bg-red-500/8',
+                                                            isSelected && !showWrong && !showCorrect && 'border-primary/30 bg-primary/[0.03]',
                                                         )}>
                                                         <span className={cn(
-                                                            'flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs font-bold mt-0.5',
+                                                            'flex-shrink-0 w-7 h-7 rounded-full border flex items-center justify-center text-xs font-bold mt-0.5',
                                                             showCorrect && 'bg-emerald-500 border-emerald-500 text-white',
                                                             showWrong && 'bg-red-400 border-red-400 text-white',
-                                                            !showCorrect && !showWrong && 'text-muted-foreground border-border/60',
+                                                            !showCorrect && !showWrong && 'text-muted-foreground border-border/50',
                                                         )}>{showCorrect ? '✓' : showWrong ? '✗' : String.fromCharCode(65 + idx)}</span>
                                                         <span className="text-sm leading-relaxed text-foreground/90 whitespace-normal pt-0.5">{opt}</span>
                                                     </button>
@@ -1015,15 +1130,105 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                                         </div>
                                     )}
                                     {assessment.type !== 'MCQ' && (
-                                        <div className="p-6 border border-dashed rounded-xl bg-muted/30 text-center">
-                                            <p className="text-muted-foreground mb-3 text-sm">{assessment.type} questions coming soon.</p>
-                                            <Button onClick={() => { const nl = stackLevel + 1; setStackLevel(nl); saveProgress({ l: nl }); }} variant="secondary" size="sm">Skip</Button>
+                                        <div className="space-y-3">
+                                            {/* Formatting toolbar */}
+                                            {!assessmentSubmitted && (
+                                                <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-t-xl border border-b-0 border-border/30 bg-muted/30">
+                                                    <button onClick={() => {
+                                                        const ta = assessmentTextRef.current;
+                                                        if (!ta) return;
+                                                        const s = ta.selectionStart, e = ta.selectionEnd;
+                                                        const sel = assessmentAnswer.substring(s, e);
+                                                        setAssessmentAnswer(assessmentAnswer.substring(0, s) + '**' + sel + '**' + assessmentAnswer.substring(e));
+                                                    }} className="px-2 py-1 rounded-md text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Bold">
+                                                        B
+                                                    </button>
+                                                    <button onClick={() => {
+                                                        const ta = assessmentTextRef.current;
+                                                        if (!ta) return;
+                                                        const s = ta.selectionStart, e = ta.selectionEnd;
+                                                        const sel = assessmentAnswer.substring(s, e);
+                                                        setAssessmentAnswer(assessmentAnswer.substring(0, s) + '*' + sel + '*' + assessmentAnswer.substring(e));
+                                                    }} className="px-2 py-1 rounded-md text-xs italic text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Italic">
+                                                        I
+                                                    </button>
+                                                    <div className="w-px h-4 bg-border/50 mx-1" />
+                                                    <button onClick={() => {
+                                                        const ta = assessmentTextRef.current;
+                                                        if (!ta) return;
+                                                        const pos = ta.selectionStart;
+                                                        const before = assessmentAnswer.substring(0, pos);
+                                                        const after = assessmentAnswer.substring(pos);
+                                                        const bullet = (before.length === 0 || before.endsWith('\n')) ? '• ' : '\n• ';
+                                                        setAssessmentAnswer(before + bullet + after);
+                                                    }} className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Bullet">
+                                                        • List
+                                                    </button>
+                                                    <button onClick={() => {
+                                                        const ta = assessmentTextRef.current;
+                                                        if (!ta) return;
+                                                        const pos = ta.selectionStart;
+                                                        const before = assessmentAnswer.substring(0, pos);
+                                                        const after = assessmentAnswer.substring(pos);
+                                                        const num = (before.match(/\n/g) || []).length + 1;
+                                                        const prefix = (before.length === 0 || before.endsWith('\n')) ? `${num}. ` : `\n${num}. `;
+                                                        setAssessmentAnswer(before + prefix + after);
+                                                    }} className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Numbered list">
+                                                        1. List
+                                                    </button>
+                                                </div>
+                                            )}
+                                            <div className="relative">
+                                                <textarea
+                                                    ref={assessmentTextRef}
+                                                    value={assessmentAnswer}
+                                                    onChange={(e) => setAssessmentAnswer(e.target.value)}
+                                                    disabled={assessmentSubmitted}
+                                                    placeholder={assessment.type === 'SHORT' ? 'Type your answer...' : 'Write your response here. Be thorough and cite relevant provisions where applicable...'}
+                                                    rows={assessment.type === 'SHORT' ? 4 : 8}
+                                                    className={cn(
+                                                        'w-full p-4 border border-border/30 bg-background/60 text-sm leading-relaxed resize-none transition-all',
+                                                        'focus:ring-2 focus:ring-primary/15 focus:border-primary/40 focus:bg-background',
+                                                        'disabled:opacity-70 placeholder:text-muted-foreground/40',
+                                                        !assessmentSubmitted ? 'rounded-b-xl' : 'rounded-xl',
+                                                        "font-['Inter',system-ui,sans-serif]"
+                                                    )}
+                                                />
+                                                {!assessmentSubmitted && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setAssessmentSubmitted(true);
+                                                            setTimeout(() => {
+                                                                setAssessmentSubmitted(false);
+                                                                setAssessmentAnswer('');
+                                                                const nl = stackLevel + 1;
+                                                                setStackLevel(nl);
+                                                                saveProgress({ l: nl });
+                                                            }, 2000);
+                                                        }}
+                                                        disabled={!assessmentAnswer.trim()}
+                                                        className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-30 transition-all"
+                                                    >
+                                                        <Send className="h-3 w-3" /> Submit
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {assessmentSubmitted && (
+                                                <div className="p-3 rounded-xl border border-emerald-200/30 dark:border-emerald-800/20 bg-emerald-500/5 text-sm text-emerald-800 dark:text-emerald-300 animate-in fade-in duration-300">
+                                                    <CheckCircle2 className="inline h-3.5 w-3.5 mr-1.5" />
+                                                    Answer recorded — moving to next question...
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
                             </ScrollArea>
                         </div>
-                        <div className="px-5 py-3 border-t bg-muted/20 text-center"><p className="text-[11px] text-muted-foreground">Select the correct answer to continue</p></div>
+                        <div className="px-5 py-3 border-t bg-muted/20 text-center">
+                            <p className="text-[11px] text-muted-foreground">
+                                {assessment.type === 'MCQ' ? 'Select the correct answer to continue' : 'Write your response and submit'}
+                            </p>
+                        </div>
                     </Card>
                 </div>
             </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Zap, BookOpen, PlayCircle, CheckCircle2, BarChart3, Target, ArrowLeft, GraduationCap, ChevronRight, ChevronDown, Smile, Meh, Frown, ArrowRight, RotateCcw, Sparkles } from 'lucide-react';
+import { Zap, BookOpen, PlayCircle, CheckCircle2, BarChart3, ArrowLeft, GraduationCap, ChevronRight, ChevronDown, Smile, Meh, Frown, ArrowRight, RotateCcw, Sparkles, Compass, FileText, Lightbulb, ClipboardCheck, PenTool } from 'lucide-react';
 import MasteryCarousel from '@/components/MasteryCarousel';
 import ReadinessDashboard from '@/components/ReadinessDashboard';
 import EmbeddedPracticePanel, { type PracticeTask } from '@/components/EmbeddedPracticePanel';
@@ -40,7 +40,7 @@ interface DailyQueue {
     };
 }
 
-type TabId = 'plan' | 'readiness' | 'practice';
+type TabId = 'plan' | 'readiness' | 'recommendations';
 
 /** Get today's date in EAT (UTC+3) for cache comparison */
 function getEATToday(): string {
@@ -52,7 +52,7 @@ function getEATToday(): string {
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
     { id: 'plan', label: "Today's Plan", icon: Zap },
     { id: 'readiness', label: 'Readiness', icon: BarChart3 },
-    { id: 'practice', label: 'Practice', icon: Target },
+    { id: 'recommendations', label: 'Explore', icon: Compass },
 ];
 
 export default function MasteryPage() {
@@ -372,8 +372,8 @@ export default function MasteryPage() {
                                         <p className="text-xs text-muted-foreground max-w-xs mx-auto">
                                             Great work! Check your{' '}
                                             <button onClick={() => setActiveTab('readiness')} className="text-primary font-medium hover:underline">progress</button>
-                                            {' '}or start{' '}
-                                            <button onClick={() => setActiveTab('practice')} className="text-primary font-medium hover:underline">free practice</button>.
+                                            {' '}or explore{' '}
+                                            <button onClick={() => setActiveTab('recommendations')} className="text-primary font-medium hover:underline">recommendations</button>.
                                         </p>
                                     </div>
                                 ) : (
@@ -518,9 +518,9 @@ export default function MasteryPage() {
                                         <BookOpen className="h-4 w-4 text-primary/60" />
                                         <span className="text-xs font-medium">Study Notes</span>
                                     </Link>
-                                    <button onClick={() => setActiveTab('practice')} className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border/40 bg-card hover:border-primary/30 hover:bg-primary/5 transition-all text-sm text-muted-foreground hover:text-foreground">
-                                        <Target className="h-4 w-4 text-primary/60" />
-                                        <span className="text-xs font-medium">Practice</span>
+                                    <button onClick={() => setActiveTab('recommendations')} className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border/40 bg-card hover:border-primary/30 hover:bg-primary/5 transition-all text-sm text-muted-foreground hover:text-foreground">
+                                        <Compass className="h-4 w-4 text-primary/60" />
+                                        <span className="text-xs font-medium">Explore</span>
                                     </button>
                                 </div>
                             </>
@@ -533,178 +533,117 @@ export default function MasteryPage() {
                     <ReadinessDashboard />
                 )}
 
-                {/* ====== TAB: PRACTICE ====== */}
-                {activeTab === 'practice' && (
-                    <PracticePickerView
-                        queueData={queueData}
-                        onStartPractice={handleStartPractice}
-                    />
+                {/* ====== TAB: RECOMMENDATIONS ====== */}
+                {activeTab === 'recommendations' && (
+                    <RecommendationsView queueData={queueData} />
                 )}
             </div>
         </div>
     );
 }
 
-// ------- PRACTICE PICKER SUB-COMPONENT -------
-function PracticePickerView({ 
-    queueData, 
-    onStartPractice 
-}: { 
-    queueData: DailyQueue | null;
-    onStartPractice: (task: PracticeTask) => void;
-}) {
-    const { getIdToken } = useAuth();
-    const [skills, setSkills] = useState<Array<{
-        skillId: string;
-        skillName: string;
-        unitId: string;
-        unitName: string;
-        pMastery: number;
-    }>>([]);
-    const [loadingSkills, setLoadingSkills] = useState(true);
-    const [selectedFormat, setSelectedFormat] = useState<'written' | 'mcq' | 'short_answer'>('written');
+// ------- RECOMMENDATIONS SUB-COMPONENT -------
+function RecommendationsView({ queueData }: { queueData: DailyQueue | null }) {
+    const masteryPct = queueData?.meta?.totalSkills
+        ? Math.round(((queueData.meta.masteredSkills || 0) / queueData.meta.totalSkills) * 100)
+        : 0;
 
-    useEffect(() => {
-        const fetchSkills = async () => {
-            try {
-                const token = await getIdToken();
-                const res = await fetch('/api/mastery/readiness?skills=true&allUnits=true', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.allSkills) {
-                        setSkills(data.allSkills);
-                    } else if (data.units) {
-                        const flatSkills = data.units.flatMap((u: { unitId: string; unitName: string; skills?: Array<{ skillId: string; skillName: string; pMastery: number }> }) =>
-                            (u.skills || []).map((s: { skillId: string; skillName: string; pMastery: number }) => ({
-                                ...s,
-                                unitId: u.unitId,
-                                unitName: u.unitName,
-                            }))
-                        );
-                        setSkills(flatSkills);
-                    }
-                }
-            } catch (e) {
-                console.error("Failed to load skills for practice picker", e);
-            } finally {
-                setLoadingSkills(false);
-            }
-        };
-        fetchSkills();
-    }, [getIdToken]);
-
-    const practiceItems = queueData?.practiceItems || [];
+    // Build contextual recommendations based on current mastery state
+    const recommendations: {
+        title: string;
+        description: string;
+        href: string;
+        icon: React.ElementType;
+        accent: string;
+        tag?: string;
+    }[] = [
+        {
+            title: 'Practice Legal Drafting',
+            description: 'Draft affidavits, pleadings, and legal opinions with AI feedback on structure and citation.',
+            href: '/drafting',
+            icon: PenTool,
+            accent: 'text-violet-600 dark:text-violet-400 bg-violet-500/8 border-violet-200/40 dark:border-violet-800/30',
+            tag: masteryPct < 30 ? 'Start early' : 'Sharpen skills',
+        },
+        {
+            title: 'Take Quizzes',
+            description: 'Rapid-fire MCQs and trivia across all 9 units. Great for revision and spotting weak areas.',
+            href: '/quizzes',
+            icon: Lightbulb,
+            accent: 'text-amber-600 dark:text-amber-400 bg-amber-500/8 border-amber-200/40 dark:border-amber-800/30',
+            tag: 'Quick practice',
+        },
+        {
+            title: 'Exam Simulations',
+            description: 'Full timed exam papers under real conditions. Build stamina and time management.',
+            href: '/exams',
+            icon: ClipboardCheck,
+            accent: 'text-rose-600 dark:text-rose-400 bg-rose-500/8 border-rose-200/40 dark:border-rose-800/30',
+            tag: masteryPct >= 50 ? 'Ready for this' : 'When you\'re ready',
+        },
+        {
+            title: 'Deep Study Notes',
+            description: 'Browse comprehensive notes by topic. Read at your own pace with citation links.',
+            href: '/study',
+            icon: BookOpen,
+            accent: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/8 border-emerald-200/40 dark:border-emerald-800/30',
+            tag: 'Self-paced',
+        },
+    ];
 
     return (
-        <div className="space-y-6 stagger-children">
+        <div className="space-y-5 stagger-children">
             {/* Header */}
             <div>
-                <h2 className="text-lg font-semibold">Free Practice</h2>
+                <h2 className="text-lg font-semibold">Explore &amp; Practice</h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                    Pick any skill to practice. Items are AI-generated and graded against real rubrics.
+                    The Mastery Hub guides your learning — use these sections for targeted practice.
                 </p>
             </div>
 
-            {/* Format selector */}
-            <div className="flex gap-2">
-                {([
-                    { value: 'written' as const, label: 'Written', icon: '✍️' },
-                    { value: 'mcq' as const, label: 'MCQ', icon: '📋' },
-                    { value: 'short_answer' as const, label: 'Short Answer', icon: '💬' },
-                ]).map(fmt => (
-                    <button
-                        key={fmt.value}
-                        onClick={() => setSelectedFormat(fmt.value)}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                            selectedFormat === fmt.value
-                                ? 'bg-primary text-primary-foreground shadow-sm'
-                                : 'bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground'
-                        }`}
-                    >
-                        <span>{fmt.icon}</span>
-                        {fmt.label}
-                    </button>
-                ))}
+            {/* Recommendation Cards — subtle, blended with background */}
+            <div className="space-y-2.5">
+                {recommendations.map((rec) => {
+                    const Icon = rec.icon;
+                    return (
+                        <Link
+                            key={rec.href}
+                            href={rec.href}
+                            className={`group flex items-start gap-3.5 p-4 rounded-xl border transition-all duration-200 hover:shadow-sm ${rec.accent}`}
+                        >
+                            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-current/[0.08]">
+                                <Icon className="h-[18px] w-[18px]" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                    <h3 className="font-medium text-sm text-foreground">{rec.title}</h3>
+                                    {rec.tag && (
+                                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                            {rec.tag}
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-xs text-muted-foreground leading-relaxed">{rec.description}</p>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-foreground/50 mt-1 flex-shrink-0 transition-colors" />
+                        </Link>
+                    );
+                })}
             </div>
 
-            {/* AI Recommended */}
-            {practiceItems.length > 0 && (
-                <div className="space-y-2">
-                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recommended by AI</h3>
-                    {practiceItems.map((item, idx) => (
-                        <button 
-                            key={idx} 
-                            onClick={() => onStartPractice(item)}
-                            className="w-full text-left glass-card p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                    <Zap className="h-4 w-4 text-primary" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-sm">{item.skillName}</div>
-                                    <div className="text-xs text-muted-foreground">{item.unitName} &middot; {item.itemType}</div>
-                                </div>
-                                <PlayCircle className="h-5 w-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                            </div>
-                        </button>
-                    ))}
-                </div>
-            )}
-
-            {/* All skills picker */}
-            {loadingSkills ? (
-                <EngagingLoader size="sm" message="Loading skills..." />
-            ) : skills.length > 0 ? (
-                <div className="space-y-3">
-                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">All Skills ({skills.length})</h3>
-                    <div className="grid gap-1.5 max-h-[60vh] overflow-y-auto pr-1 no-scrollbar">
-                        {skills
-                            .sort((a, b) => a.pMastery - b.pMastery)
-                            .map((skill) => (
-                                <button
-                                    key={skill.skillId}
-                                    onClick={() => onStartPractice({
-                                        id: skill.skillId,
-                                        skillId: skill.skillId,
-                                        skillName: skill.skillName,
-                                        unitId: skill.unitId,
-                                        unitName: skill.unitName,
-                                        itemType: selectedFormat,
-                                        mode: 'practice',
-                                    })}
-                                    className="w-full text-left flex items-center gap-3 p-3 rounded-xl border border-border/40 bg-card hover:border-primary/30 hover:shadow-sm transition-all group"
-                                >
-                                    {/* Mastery indicator */}
-                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 ring-2 ${
-                                        skill.pMastery >= 0.8
-                                            ? 'bg-emerald-50 text-emerald-600 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:ring-emerald-800'
-                                            : skill.pMastery >= 0.5
-                                            ? 'bg-amber-50 text-amber-600 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:ring-amber-800'
-                                            : 'bg-red-50 text-red-600 ring-red-200 dark:bg-red-950/30 dark:text-red-400 dark:ring-red-800'
-                                    }`}>
-                                        {Math.round(skill.pMastery * 100)}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="font-medium text-sm truncate">{skill.skillName}</div>
-                                        <div className="text-[11px] text-muted-foreground">{skill.unitName}</div>
-                                    </div>
-                                    <PlayCircle className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-colors flex-shrink-0" />
-                                </button>
-                            ))}
+            {/* Tip card */}
+            <div className="rounded-xl border border-border/30 bg-muted/30 p-4">
+                <div className="flex items-start gap-3">
+                    <Sparkles className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                    <div>
+                        <p className="text-xs font-medium text-foreground mb-1">How the Mastery Hub works</p>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                            Your daily plan is generated automatically based on the KSL syllabus, your mastery levels, and spaced repetition.
+                            Focus on your daily tasks first — then explore these sections for extra practice.
+                        </p>
                     </div>
                 </div>
-            ) : (
-                <div className="glass-card p-8 text-center">
-                    <Target className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-                    <h3 className="font-semibold mb-1">Start from Today&apos;s Plan</h3>
-                    <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                        Complete tasks from your daily queue to unlock skill-level practice.
-                    </p>
-                </div>
-            )}
+            </div>
         </div>
     );
 }

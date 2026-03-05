@@ -21,6 +21,9 @@ const getOpenAI = () => {
  */
 const DAILY_QUEUE_CAP = 12;
 
+/** Maximum number of distinct units to include per day (avoids topic whiplash) */
+const MAX_UNITS_PER_DAY = 3;
+
 /**
  * KSL 2026/2027 Academic Calendar
  * Term 1: Feb 3 – Apr 14 (11 weeks)
@@ -33,8 +36,30 @@ const KSL_TERMS = [
     { term: 3, start: new Date('2026-08-18'), end: new Date('2026-10-27') },
 ];
 
+/** Get current date in East Africa Time (UTC+3) */
+function getEATDate(): Date {
+    const now = new Date();
+    // Create date in EAT (UTC+3)
+    const eatOffset = 3 * 60; // minutes
+    const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+    const eatMinutes = utcMinutes + eatOffset;
+    const eatDate = new Date(now);
+    eatDate.setUTCHours(Math.floor(eatMinutes / 60) % 24, eatMinutes % 60, now.getUTCSeconds());
+    // Handle day rollover
+    if (eatMinutes >= 24 * 60) {
+        eatDate.setUTCDate(eatDate.getUTCDate() + 1);
+    }
+    return eatDate;
+}
+
+/** Get today's date string in EAT for cache keys and daily rotation */
+function getEATDateString(): string {
+    const d = getEATDate();
+    return d.toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
 function getCurrentTermAndWeek(): { term: number; weekInTerm: number; absoluteWeek: number } {
-    const today = new Date();
+    const today = getEATDate();
     
     for (const t of KSL_TERMS) {
         if (today >= t.start && today <= t.end) {
@@ -205,7 +230,26 @@ export class MasteryOrchestrator {
           }
         }
 
-        // 4b. Hold total backlog count, then cap the queue for today
+        // 4b. Limit to MAX_UNITS_PER_DAY distinct units to avoid topic whiplash
+        // Use date-based rotation so different units surface each day
+        const todayStr = getEATDateString();
+        const allUnitCodes = [...new Set(queue.map(n => n.unitCode))];
+        
+        if (allUnitCodes.length > MAX_UNITS_PER_DAY) {
+            // Deterministic daily seed from date string
+            const dateSeed = todayStr.split('-').reduce((s, p) => s + parseInt(p), 0);
+            // Rotate which units are selected each day
+            const sortedUnits = allUnitCodes.sort();
+            const startIdx = dateSeed % sortedUnits.length;
+            const todaysUnits = new Set<string>();
+            for (let i = 0; i < MAX_UNITS_PER_DAY; i++) {
+                todaysUnits.add(sortedUnits[(startIdx + i) % sortedUnits.length]);
+            }
+            queue = queue.filter(n => todaysUnits.has(n.unitCode));
+            console.log(`[MasteryOrchestrator] Daily unit focus (${todayStr}): ${[...todaysUnits].join(', ')} (${allUnitCodes.length} total available)`);
+        }
+
+        // 4c. Hold total backlog count, then cap the queue for today
         const totalBacklogCount = queue.length;
         queue = queue.slice(0, DAILY_QUEUE_CAP);
 
@@ -231,8 +275,11 @@ export class MasteryOrchestrator {
                 };
             });
 
+        // Get which units are in today's queue for display
+        const focusUnitCodes = [...new Set(queue.map(n => n.unitCode))];
+
         return {
-            date: new Date().toISOString().split('T')[0],
+            date: todayStr,
             queue: syllabusQueue,
             practiceItems: microSkillItems,
             meta: {
@@ -248,7 +295,8 @@ export class MasteryOrchestrator {
                     : 0,
                 pacing: isPathA ? 'Accelerated' : 'Standard',
                 totalBacklog: totalBacklogCount,
-                cappedAt: DAILY_QUEUE_CAP
+                cappedAt: DAILY_QUEUE_CAP,
+                focusUnits: focusUnitCodes,
             }
         };
     }

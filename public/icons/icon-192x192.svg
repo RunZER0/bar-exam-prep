@@ -1,16 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
-  <rect width="192" height="192" rx="24" fill="#16a34a"/>
-  <g transform="translate(96,86)">
-    <line x1="0" y1="-50" x2="0" y2="45" stroke="#fff" stroke-width="5"/>
-    <line x1="-45" y1="-36" x2="45" y2="-36" stroke="#fff" stroke-width="4"/>
-    <circle cx="0" cy="-50" r="5" fill="#fff"/>
-    <line x1="-45" y1="-36" x2="-52" y2="-10" stroke="#fff" stroke-width="2.5"/>
-    <line x1="-45" y1="-36" x2="-38" y2="-10" stroke="#fff" stroke-width="2.5"/>
-    <path d="M-58,-10 Q-45,-2 -32,-10" stroke="#fff" stroke-width="2.5" fill="none"/>
-    <line x1="45" y1="-36" x2="52" y2="-10" stroke="#fff" stroke-width="2.5"/>
-    <line x1="45" y1="-36" x2="38" y2="-10" stroke="#fff" stroke-width="2.5"/>
-    <path d="M32,-10 Q45,-2 58,-10" stroke="#fff" stroke-width="2.5" fill="none"/>
-    <rect x="-20" y="45" width="40" height="5" rx="2.5" fill="#fff"/>
-    <text x="0" y="72" text-anchor="middle" font-family="serif" font-weight="bold" font-size="16" fill="#fff">BAR PREP</text>
+  <rect width="192" height="192" rx="36" fill="#1a1a1a"/>
+  <g transform="translate(96,88)">
+    <!-- Graduation cap top -->
+    <polygon points="0,-42 -54,-20 0,-8 54,-20" fill="#ffffff" />
+    <!-- Cap center button -->
+    <circle cx="0" cy="-20" r="4.5" fill="#1a1a1a" />
+    <!-- Tassel string -->
+    <line x1="0" y1="-20" x2="-38" y2="-12" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+    <!-- Tassel end -->
+    <circle cx="-40" cy="-11" r="3.5" fill="#22c55e" />
+    <line x1="-40" y1="-7" x2="-40" y2="4" stroke="#22c55e" stroke-width="2" stroke-linecap="round" />
+    <!-- Cap base / band -->
+    <path d="M-38,-8 Q0,10 38,-8" stroke="#ffffff" stroke-width="3" fill="none" />
+    <!-- Small book -->
+    <rect x="-13" y="18" width="26" height="19" rx="2.5" fill="#ffffff" opacity="0.9" />
+    <line x1="0" y1="19" x2="0" y2="36" stroke="#1a1a1a" stroke-width="1.2" />
   </g>
 </svg>

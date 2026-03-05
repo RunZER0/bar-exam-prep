@@ -54,7 +54,7 @@ const ADMIN_EMAILS = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(',') || [];
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
-  const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar();
+  const { collapsed, setCollapsed, mobileOpen, setMobileOpen, immersive, peekOpen, setPeekOpen } = useSidebar();
 
   const toggleCollapse = () => {
     setCollapsed(!collapsed);
@@ -232,10 +232,11 @@ export default function Sidebar() {
         className={`
           fixed top-0 left-0 z-40 h-screen bg-background border-r border-border/50 flex flex-col
           transition-all duration-300 ease-in-out
-          md:translate-x-0
-          ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${immersive && !peekOpen ? '-translate-x-full' : 'md:translate-x-0'}
+          ${mobileOpen ? 'translate-x-0' : (!immersive ? '' : '') + ' ' + (!mobileOpen && !immersive ? '-translate-x-full' : '')}
           ${collapsed ? 'w-[72px]' : 'w-64'}
         `}
+        onMouseLeave={() => { if (immersive) setPeekOpen(false); }}
       >
         {nav}
         
@@ -251,6 +252,14 @@ export default function Sidebar() {
           )}
         </button>
       </aside>
+
+      {/* Immersive hover-reveal zone: invisible strip on left edge */}
+      {immersive && !peekOpen && (
+        <div
+          className="fixed top-0 left-0 z-30 h-screen w-4 hidden md:block"
+          onMouseEnter={() => setPeekOpen(true)}
+        />
+      )}
     </>
   );
 }

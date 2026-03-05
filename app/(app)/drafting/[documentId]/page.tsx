@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { getDocumentById } from '@/lib/constants/legal-content';
 import { Button } from '@/components/ui/button';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
@@ -10,11 +11,12 @@ import EngagingLoader from '@/components/EngagingLoader';
 import {
   ArrowLeft, FileText, PenLine, GraduationCap, Send, Loader2,
   Check, ChevronRight, ChevronLeft, Timer, TimerOff, RotateCcw,
-  AlertCircle, CheckCircle2, ClipboardCheck,
+  AlertCircle, CheckCircle2, ClipboardCheck, Sparkles, BookOpenCheck,
 } from 'lucide-react';
 
 type PageMode = null | 'learn' | 'practice';
 type TimingChoice = 'timed' | 'untimed';
+type LearnCompletion = null | 'aided' | 'unaided';
 
 interface LearnSection {
   id: string;
@@ -46,15 +48,38 @@ interface GradeResult {
   improvements: string[];
 }
 
+/* ── Auto-expanding textarea hook ── */
+function useAutoExpand(maxRows: number = 6) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const adjust = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const lineH = parseInt(getComputedStyle(el).lineHeight) || 20;
+    const max = lineH * maxRows;
+    el.style.height = Math.min(el.scrollHeight, max) + 'px';
+    el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden';
+  }, [maxRows]);
+  return { ref, adjust };
+}
+
 /* ====== MAIN PAGE ====== */
 
 export default function DraftingDocumentPage() {
   const params = useParams();
   const router = useRouter();
   const { getIdToken } = useAuth();
+  const { setImmersive } = useSidebar();
   const docId = params.documentId as string;
   const doc = getDocumentById(docId);
   const [mode, setMode] = useState<PageMode>(null);
+
+  // Enter immersive when a mode is active, exit on unmount or back
+  useEffect(() => {
+    if (mode) setImmersive(true);
+    else setImmersive(false);
+    return () => setImmersive(false);
+  }, [mode, setImmersive]);
 
   if (!doc) {
     return (
@@ -86,7 +111,7 @@ export default function DraftingDocumentPage() {
         <div className="grid sm:grid-cols-2 gap-4 max-w-2xl">
           <button
             onClick={() => setMode('learn')}
-            className="text-left p-6 rounded-2xl border border-border/60 hover:border-primary/40 transition-all group bg-card/50"
+            className="text-left p-6 rounded-2xl border border-border/40 hover:border-primary/30 transition-all group bg-card/50"
           >
             <div className="p-3 rounded-lg bg-primary/10 w-fit mb-3 group-hover:bg-primary/15 transition-colors">
               <GraduationCap className="h-6 w-6 text-primary" />
@@ -98,7 +123,7 @@ export default function DraftingDocumentPage() {
           </button>
           <button
             onClick={() => setMode('practice')}
-            className="text-left p-6 rounded-2xl border border-border/60 hover:border-primary/40 transition-all group bg-card/50"
+            className="text-left p-6 rounded-2xl border border-border/40 hover:border-primary/30 transition-all group bg-card/50"
           >
             <div className="p-3 rounded-lg bg-primary/10 w-fit mb-3 group-hover:bg-primary/15 transition-colors">
               <PenLine className="h-6 w-6 text-primary" />
@@ -114,7 +139,7 @@ export default function DraftingDocumentPage() {
   }
 
   if (mode === 'learn') {
-    return <LearnModePanel doc={doc} onBack={() => setMode(null)} getIdToken={getIdToken} />;
+    return <LearnModePanel doc={doc} onBack={() => setMode(null)} onPractice={() => setMode('practice')} getIdToken={getIdToken} />;
   }
   return <PracticeModePanel doc={doc} onBack={() => setMode(null)} getIdToken={getIdToken} />;
 }
@@ -124,10 +149,12 @@ export default function DraftingDocumentPage() {
 function LearnModePanel({
   doc,
   onBack,
+  onPractice,
   getIdToken,
 }: {
   doc: { id: string; name: string; description: string; category: string };
   onBack: () => void;
+  onPractice: () => void;
   getIdToken: () => Promise<string | null>;
 }) {
   const [sections, setSections] = useState<LearnSection[]>([]);
@@ -138,7 +165,9 @@ function LearnModePanel({
   const [cpOk, setCpOk] = useState<boolean | null>(null);
   const [evaling, setEvaling] = useState(false);
   const [done, setDone] = useState<Set<number>>(new Set());
+  const [lessonComplete, setLessonComplete] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const cpTextarea = useAutoExpand(6);
 
   useEffect(() => {
     let cancelled = false;
@@ -262,6 +291,40 @@ function LearnModePanel({
     return <EngagingLoader size="lg" message={'Preparing your guide to drafting a ' + doc.name + '...'} />;
   }
 
+  /* ── Lesson complete: prompt to draft full document ── */
+  if (lessonComplete) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] bg-background animate-content-enter">
+        <div className="max-w-lg mx-auto text-center px-6 py-16 space-y-6">
+          <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
+            <BookOpenCheck className="h-8 w-8 text-green-600" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-2">Lesson Complete!</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              You have learned how to draft a <strong>{doc.name}</strong> step by step.
+              Now put it all together — draft the full document from start to finish.
+            </p>
+          </div>
+          <div className="space-y-3 max-w-sm mx-auto">
+            <button
+              onClick={onPractice}
+              className="w-full p-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+            >
+              <PenLine className="h-4 w-4" /> Draft Now — Full Document
+            </button>
+            <button
+              onClick={onBack}
+              className="w-full p-3 rounded-xl text-sm text-muted-foreground hover:bg-muted transition-colors"
+            >
+              Back to Document Selection
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const sec = sections[idx];
   const isLast = idx === sections.length - 1;
   const hasCp = !!sec?.checkpoint;
@@ -269,7 +332,7 @@ function LearnModePanel({
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-background animate-content-enter">
-      <div className="border-b border-border/30 bg-card/40 px-4 py-3 shrink-0">
+      <div className="border-b border-border/20 bg-card/40 px-4 py-3 shrink-0">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
@@ -287,13 +350,13 @@ function LearnModePanel({
               <button
                 key={i}
                 onClick={() => nav(i)}
-                className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                  i === idx
+                className={'w-2.5 h-2.5 rounded-full transition-colors ' +
+                  (i === idx
                     ? 'bg-primary'
                     : done.has(i)
                     ? 'bg-green-500'
-                    : 'bg-muted-foreground/25'
-                }`}
+                    : 'bg-muted-foreground/20'
+                  )}
               />
             ))}
           </div>
@@ -301,16 +364,16 @@ function LearnModePanel({
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        <nav className="hidden md:flex w-56 shrink-0 border-r border-border/30 flex-col overflow-y-auto py-4 px-3 gap-0.5">
+        <nav className="hidden md:flex w-56 shrink-0 border-r border-border/20 flex-col overflow-y-auto py-4 px-3 gap-0.5">
           {sections.map((s, i) => (
             <button
               key={i}
               onClick={() => nav(i)}
-              className={`text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                i === idx
+              className={'text-left px-3 py-2 rounded-lg text-sm transition-colors ' +
+                (i === idx
                   ? 'bg-primary/10 text-primary font-medium'
                   : 'text-muted-foreground hover:bg-muted'
-              }`}
+                )}
             >
               <div className="flex items-center gap-2">
                 {done.has(i) ? (
@@ -336,7 +399,7 @@ function LearnModePanel({
                 </div>
 
                 {hasCp && (
-                  <div className="mt-8 rounded-xl bg-muted/40 p-5">
+                  <div className="mt-8 rounded-xl bg-muted/30 p-5">
                     <div className="flex items-center gap-2 mb-3">
                       <ClipboardCheck className="h-4 w-4 text-primary" />
                       <h3 className="text-sm font-semibold">Practice Checkpoint</h3>
@@ -348,11 +411,13 @@ function LearnModePanel({
                       </p>
                     )}
                     <textarea
+                      ref={cpTextarea.ref}
                       value={cpAns}
-                      onChange={(e) => setCpAns(e.target.value)}
-                      rows={4}
+                      onChange={(e) => { setCpAns(e.target.value); cpTextarea.adjust(); }}
+                      rows={2}
                       placeholder="Type your answer here..."
-                      className="w-full rounded-lg border border-border/50 bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      className="w-full rounded-lg bg-background/80 px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary/20 border-0 transition-all"
+                      style={{ overflow: 'hidden' }}
                     />
                     <div className="flex items-center gap-3 mt-3">
                       <Button size="sm" onClick={evalCp} disabled={!cpAns.trim() || evaling}>
@@ -373,19 +438,19 @@ function LearnModePanel({
                       )}
                     </div>
                     {cpFb && (
-                      <div className={'mt-3 rounded-lg p-3 text-sm ' + (cpOk ? 'bg-green-500/10' : 'bg-amber-500/10')}>
+                      <div className={'mt-3 rounded-lg p-3 text-sm ' + (cpOk ? 'bg-green-500/5' : 'bg-amber-500/5')}>
                         <MarkdownRenderer content={cpFb} size="sm" />
                       </div>
                     )}
                   </div>
                 )}
 
-                <div className="flex items-center justify-between mt-8 pt-6 border-t border-border/30">
+                <div className="flex items-center justify-between mt-8 pt-6 border-t border-border/20">
                   <Button variant="ghost" size="sm" onClick={() => nav(idx - 1)} disabled={idx === 0}>
                     <ChevronLeft className="h-4 w-4 mr-1" /> Previous
                   </Button>
                   {isLast ? (
-                    <Button size="sm" onClick={onBack} className="gap-1.5">
+                    <Button size="sm" onClick={() => setLessonComplete(true)} className="gap-1.5">
                       <Check className="h-4 w-4" /> Complete Lesson
                     </Button>
                   ) : (
@@ -565,7 +630,7 @@ function PracticeModePanel({
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Choose your mode</h2>
           <button
             onClick={() => start('timed')}
-            className="w-full text-left p-5 rounded-xl border border-border/50 hover:border-primary/40 transition-all bg-card/50"
+            className="w-full text-left p-5 rounded-xl border border-border/40 hover:border-primary/30 transition-all bg-card/50"
           >
             <div className="flex items-center gap-3">
               <Timer className="h-5 w-5 text-primary" />
@@ -577,7 +642,7 @@ function PracticeModePanel({
           </button>
           <button
             onClick={() => start('untimed')}
-            className="w-full text-left p-5 rounded-xl border border-border/50 hover:border-primary/40 transition-all bg-card/50"
+            className="w-full text-left p-5 rounded-xl border border-border/40 hover:border-primary/30 transition-all bg-card/50"
           >
             <div className="flex items-center gap-3">
               <TimerOff className="h-5 w-5 text-muted-foreground" />
@@ -598,7 +663,7 @@ function PracticeModePanel({
   if (submitted && grade && !grading) {
     return (
       <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-background animate-content-enter">
-        <div className="border-b border-border/30 bg-card/40 px-4 py-3 shrink-0">
+        <div className="border-b border-border/20 bg-card/40 px-4 py-3 shrink-0">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button onClick={newScenario} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
@@ -625,14 +690,14 @@ function PracticeModePanel({
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Your Draft — Redlined
               </h3>
-              <div className="rounded-xl border border-border/40 p-5 bg-card/60 text-sm leading-relaxed whitespace-pre-wrap font-mono">
+              <div className="rounded-xl border border-border/30 p-5 bg-card/40 text-sm leading-relaxed whitespace-pre-wrap font-mono">
                 <AnnotatedDraft text={draft} annotations={grade.annotations} activeIdx={activeAnn} onSelect={setActiveAnn} />
               </div>
             </div>
           </div>
 
           {/* grade sidebar */}
-          <div className="w-80 lg:w-96 shrink-0 border-l border-border/30 overflow-y-auto p-5 bg-card/30">
+          <div className="w-80 lg:w-96 shrink-0 border-l border-border/20 overflow-y-auto p-5 bg-card/20">
             <div className="text-center mb-6">
               <div className={'text-5xl font-bold ' + (grade.overallScore >= 70 ? 'text-green-600' : grade.overallScore >= 50 ? 'text-amber-600' : 'text-red-600')}>
                 {grade.grade}
@@ -686,7 +751,7 @@ function PracticeModePanel({
             )}
 
             {activeAnn !== null && grade.annotations[activeAnn] && (
-              <div className="mt-4 rounded-lg bg-muted/60 p-3">
+              <div className="mt-4 rounded-lg bg-muted/40 p-3">
                 <div className="flex items-center gap-1.5 mb-1">
                   <span className={'w-2 h-2 rounded-full ' + (
                     grade.annotations[activeAnn].severity === 'good' ? 'bg-green-500'
@@ -707,7 +772,7 @@ function PracticeModePanel({
   /* drafting workspace */
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-background animate-content-enter">
-      <div className="border-b border-border/30 bg-card/40 px-4 py-3 shrink-0">
+      <div className="border-b border-border/20 bg-card/40 px-4 py-3 shrink-0">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={newScenario} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
@@ -738,7 +803,7 @@ function PracticeModePanel({
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        <div className="w-72 md:w-80 shrink-0 border-r border-border/30 p-5 overflow-y-auto bg-card/20">
+        <div className="w-72 md:w-80 shrink-0 border-r border-border/20 p-5 overflow-y-auto bg-card/10">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Scenario</h3>
           <div className="text-sm leading-relaxed whitespace-pre-wrap">{scenario}</div>
         </div>
@@ -790,17 +855,24 @@ function AnnotatedDraft({
     }
     const isActive = activeIdx === ann.i;
     const col = ann.severity === 'good' ? 'green' : ann.severity === 'error' ? 'red' : 'amber';
-    const borderColor = col === 'green' ? '#4ade80' : col === 'red' ? '#f87171' : '#fbbf24';
-    const bgColor = isActive
-      ? (col === 'green' ? 'rgba(74,222,128,0.15)' : col === 'red' ? 'rgba(248,113,113,0.15)' : 'rgba(251,191,36,0.15)')
-      : (col === 'green' ? 'rgba(74,222,128,0.08)' : col === 'red' ? 'rgba(248,113,113,0.08)' : 'rgba(251,191,36,0.08)');
+
+    // Subtle glow instead of bright background
+    const glowColor = col === 'green' ? 'rgba(74,222,128,0.12)' : col === 'red' ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)';
+    const activeGlow = col === 'green' ? 'rgba(74,222,128,0.22)' : col === 'red' ? 'rgba(248,113,113,0.22)' : 'rgba(251,191,36,0.22)';
+    const borderColor = col === 'green' ? 'rgba(74,222,128,0.4)' : col === 'red' ? 'rgba(248,113,113,0.4)' : 'rgba(251,191,36,0.4)';
+    const activeBorder = col === 'green' ? 'rgba(74,222,128,0.7)' : col === 'red' ? 'rgba(248,113,113,0.7)' : 'rgba(251,191,36,0.7)';
 
     segs.push(
       <span
         key={'a-' + ann.i}
         onClick={() => onSelect(isActive ? null : ann.i)}
-        className={'cursor-pointer border-b-2 transition-colors' + (isActive ? ' ring-2 ring-primary/30 rounded' : '')}
-        style={{ borderBottomColor: borderColor, backgroundColor: bgColor }}
+        className="cursor-pointer transition-all duration-200 rounded-sm"
+        style={{
+          borderBottom: '1.5px solid ' + (isActive ? activeBorder : borderColor),
+          backgroundColor: isActive ? activeGlow : glowColor,
+          boxShadow: isActive ? '0 0 8px ' + activeGlow : 'none',
+          padding: '0 1px',
+        }}
       >
         {ann.text}
       </span>

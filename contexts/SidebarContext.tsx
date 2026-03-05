@@ -7,6 +7,12 @@ interface SidebarContextType {
   setCollapsed: (collapsed: boolean) => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  /** Immersive mode: sidebar fully hidden, re-appears on cursor hover near left edge */
+  immersive: boolean;
+  setImmersive: (v: boolean) => void;
+  /** When immersive is on, this tracks whether the hover-reveal is active */
+  peekOpen: boolean;
+  setPeekOpen: (v: boolean) => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -14,6 +20,8 @@ const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsedState] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [immersive, setImmersive] = useState(false);
+  const [peekOpen, setPeekOpen] = useState(false);
 
   // Load collapsed state from localStorage
   useEffect(() => {
@@ -29,7 +37,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <SidebarContext.Provider value={{ collapsed, setCollapsed, mobileOpen, setMobileOpen }}>
+    <SidebarContext.Provider value={{ collapsed, setCollapsed, mobileOpen, setMobileOpen, immersive, setImmersive, peekOpen, setPeekOpen }}>
       {children}
     </SidebarContext.Provider>
   );

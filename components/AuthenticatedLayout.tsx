@@ -19,7 +19,9 @@ export default function AuthenticatedLayout({
 }) {
   const router = useRouter();
   const { user, loading, getIdToken } = useAuth();
-  const { collapsed } = useSidebar();
+  const { collapsed, immersive } = useSidebar();
+
+  const mainMargin = immersive ? 'ml-0' : collapsed ? 'ml-0 md:ml-[72px]' : 'ml-0 md:ml-64';
   const preloadInitialized = useRef(false);
 
   // Initialize autonomous preloading when user is authenticated
@@ -68,7 +70,7 @@ export default function AuthenticatedLayout({
     <NotificationProvider>
       <div className="min-h-screen bg-background">
         <Sidebar />
-        <main className={`mt-14 md:mt-0 overflow-y-auto bg-background min-h-screen transition-all duration-300 ${collapsed ? 'ml-0 md:ml-[72px]' : 'ml-0 md:ml-64'}`}>
+        <main className={`mt-14 md:mt-0 overflow-y-auto bg-background min-h-screen transition-all duration-300 ${mainMargin}`}>
           <div className="min-h-full">
             {children}
           </div>

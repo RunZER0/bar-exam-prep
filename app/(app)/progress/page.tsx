@@ -16,6 +16,14 @@ import {
   AlertTriangle,
   Calendar,
   Award,
+  BarChart3,
+  Zap,
+  GraduationCap,
+  FileText,
+  Mic,
+  PenLine,
+  ChevronRight,
+  RefreshCw,
 } from 'lucide-react';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -91,25 +99,31 @@ export default function ProgressPage() {
   const { user, getIdToken } = useAuth();
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchReport = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/progress/report', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setData(await res.json());
+      }
+    } catch (e) {
+      console.error('Failed to load progress report:', e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchReport() {
-      try {
-        const token = await getIdToken();
-        const res = await fetch('/api/progress/report', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          setData(await res.json());
-        }
-      } catch (e) {
-        console.error('Failed to load progress report:', e);
-      } finally {
-        setLoading(false);
-      }
-    }
     if (user) fetchReport();
-  }, [user, getIdToken]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   if (loading) {
     return <EngagingLoader size="lg" message="Generating your progress report..." />;
@@ -118,7 +132,13 @@ export default function ProgressPage() {
   if (!data) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Unable to load your report. Please try again.</p>
+        <div className="text-center space-y-3">
+          <BarChart3 className="h-10 w-10 mx-auto text-muted-foreground/30" />
+          <p className="text-muted-foreground">Unable to load your report. Please try again.</p>
+          <button onClick={() => fetchReport()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm">
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -139,6 +159,11 @@ export default function ProgressPage() {
     max > 0 ? Math.max((value / max) * 100, 4) : 4;
 
   const maxMinutes = Math.max(...data.activityChart.map(d => d.minutes), 1);
+
+  // Mastery ring percentage
+  const masteryPct = data.overallMastery;
+  const circumference = 2 * Math.PI * 42;
+  const masteryOffset = circumference - (masteryPct / 100) * circumference;
 
   // ─── Narrative Summary ───
   const getNarrativeSummary = () => {
@@ -185,211 +210,266 @@ export default function ProgressPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background animate-content-enter">
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-background animate-content-enter">
       {/* Report Header */}
-      <div className="border-b border-border/40 bg-card/50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Progress Report</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {firstName} · {reportDate}
-              </p>
-            </div>
-            {data.studyTime.currentStreak > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-600 text-sm font-medium">
-                <Flame className="h-4 w-4" />
-                {data.studyTime.currentStreak} day streak
+      <div className="border-b border-border/20 bg-card/40 shrink-0">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5">
+                <BarChart3 className="w-5 h-5 text-primary" />
               </div>
-            )}
+              <div>
+                <h1 className="text-lg font-bold flex items-center gap-2">
+                  Progress Report
+                  {data.studyTime.currentStreak > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 text-xs font-medium">
+                      <Flame className="h-3 w-3" /> {data.studyTime.currentStreak}d
+                    </span>
+                  )}
+                </h1>
+                <p className="text-xs text-muted-foreground">{firstName} · {reportDate}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => fetchReport(true)}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={'h-3.5 w-3.5 ' + (refreshing ? 'animate-spin' : '')} />
+              Refresh
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-10">
-        {/* Narrative Summary */}
-        <section>
-          <div className="rounded-xl bg-muted/40 p-5 space-y-2">
-            {getNarrativeSummary().map((para, i) => (
-              <p key={i} className="text-sm text-foreground/80 leading-relaxed">{para}</p>
-            ))}
-          </div>
-        </section>
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-8">
 
-        {/* Key Metrics */}
-        <section>
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">At a Glance</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <MetricCard label="Overall Mastery" value={`${data.overallMastery}%`} icon={<Target className="h-4 w-4" />} color="text-primary" />
-            <MetricCard label="Study Time" value={formatMinutes(data.studyTime.totalMinutes)} sub="last 30 days" icon={<Clock className="h-4 w-4" />} />
-            <MetricCard label="Topics Covered" value={`${data.projection.topicsCovered}/${data.totalSkills}`} icon={<BookOpen className="h-4 w-4" />} />
-            <MetricCard label="Days to Exam" value={String(data.projection.daysUntilExam)} icon={<Calendar className="h-4 w-4" />} color="text-primary" />
-          </div>
-        </section>
-
-        {/* This Week vs Last Week */}
-        <section>
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">This Week vs Last Week</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <ComparisonCard label="Study Time" current={formatMinutes(data.studyTime.thisWeekMinutes)} previous={formatMinutes(data.studyTime.lastWeekMinutes)} change={data.studyTime.weekOverWeekChange} />
-            <ComparisonCard label="Quiz Accuracy" current={`${data.quiz.accuracy}%`} previous="—" change={null} />
-            <ComparisonCard label="Avg Session" current={formatMinutes(data.studyTime.avgSessionMinutes)} previous="—" change={null} />
-          </div>
-        </section>
-
-        {/* Activity Chart */}
-        <section>
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Study Activity — Last 30 Days</h2>
-          <div className="rounded-xl bg-card p-4">
-            <div className="flex items-end gap-[3px] h-32">
-              {data.activityChart.map((day, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative">
-                  <div
-                    className="w-full rounded-t bg-primary/70 hover:bg-primary transition-colors"
-                    style={{ height: `${getBarHeight(day.minutes, maxMinutes)}%` }}
+          {/* Hero metrics row: Mastery ring + key stats */}
+          <section className="rounded-2xl bg-card/60 p-5 sm:p-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              {/* SVG mastery ring */}
+              <div className="relative shrink-0">
+                <svg width="100" height="100" viewBox="0 0 100 100" className="transform -rotate-90">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted/30" />
+                  <circle
+                    cx="50" cy="50" r="42" fill="none" strokeWidth="6"
+                    stroke="url(#mastery-gradient)"
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={masteryOffset}
+                    className="transition-all duration-1000 ease-out"
                   />
-                  <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col items-center z-10">
-                    <div className="bg-popover border border-border/40 text-xs rounded-lg px-2.5 py-1.5 shadow-lg whitespace-nowrap">
-                      <div className="font-medium">{day.date}</div>
-                      <div>{day.minutes}m · {day.questions} Qs</div>
+                  <defs>
+                    <linearGradient id="mastery-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" />
+                      <stop offset="100%" stopColor="hsl(var(--primary) / 0.6)" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold">{masteryPct}%</span>
+                  <span className="text-[9px] text-muted-foreground uppercase tracking-wider">Mastery</span>
+                </div>
+              </div>
+
+              {/* Stats grid */}
+              <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
+                <MiniStat icon={<Clock className="h-3.5 w-3.5" />} label="Study Time" value={formatMinutes(data.studyTime.totalMinutes)} accent="text-blue-500" />
+                <MiniStat icon={<BookOpen className="h-3.5 w-3.5" />} label="Topics" value={`${data.projection.topicsCovered}/${data.totalSkills}`} accent="text-emerald-500" />
+                <MiniStat icon={<Zap className="h-3.5 w-3.5" />} label="Quiz Accuracy" value={`${data.quiz.accuracy}%`} accent="text-amber-500" />
+                <MiniStat icon={<Calendar className="h-3.5 w-3.5" />} label="Days to Exam" value={String(data.projection.daysUntilExam)} accent="text-rose-500" />
+              </div>
+            </div>
+          </section>
+
+          {/* Narrative Summary */}
+          <section className="animate-fade-in" style={{ animationDelay: '60ms', animationFillMode: 'both' }}>
+            <div className="rounded-2xl bg-gradient-to-br from-primary/[0.04] to-transparent p-5 space-y-2">
+              <div className="flex items-center gap-2 mb-3">
+                <GraduationCap className="h-4 w-4 text-primary" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">AI Coach Summary</span>
+              </div>
+              {getNarrativeSummary().map((para, i) => (
+                <p key={i} className="text-sm text-foreground/80 leading-relaxed">{para}</p>
+              ))}
+            </div>
+          </section>
+
+          {/* This Week vs Last Week */}
+          <section className="animate-fade-in" style={{ animationDelay: '120ms', animationFillMode: 'both' }}>
+            <SectionHeader icon={<TrendingUp className="h-3.5 w-3.5" />} title="Weekly Comparison" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <ComparisonCard label="Study Time" current={formatMinutes(data.studyTime.thisWeekMinutes)} previous={formatMinutes(data.studyTime.lastWeekMinutes)} change={data.studyTime.weekOverWeekChange} icon={<Clock className="h-4 w-4" />} />
+              <ComparisonCard label="Quiz Accuracy" current={`${data.quiz.accuracy}%`} previous="—" change={null} icon={<Target className="h-4 w-4" />} />
+              <ComparisonCard label="Avg Session" current={formatMinutes(data.studyTime.avgSessionMinutes)} previous="—" change={null} icon={<Zap className="h-4 w-4" />} />
+            </div>
+          </section>
+
+          {/* Activity Chart */}
+          <section className="animate-fade-in" style={{ animationDelay: '180ms', animationFillMode: 'both' }}>
+            <SectionHeader icon={<BarChart3 className="h-3.5 w-3.5" />} title="Study Activity — Last 30 Days" />
+            <div className="rounded-2xl bg-card/60 p-5">
+              <div className="flex items-end gap-[3px] h-36">
+                {data.activityChart.map((day, i) => {
+                  const height = getBarHeight(day.minutes, maxMinutes);
+                  const isToday = i === data.activityChart.length - 1;
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative">
+                      <div
+                        className={'w-full rounded-t transition-all duration-200 ' + (isToday ? 'bg-primary' : 'bg-primary/50 hover:bg-primary/80')}
+                        style={{ height: `${height}%` }}
+                      />
+                      {/* Hover tooltip */}
+                      <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none">
+                        <div className="bg-popover border border-border/20 text-xs rounded-xl px-3 py-2 shadow-lg whitespace-nowrap">
+                          <div className="font-semibold text-foreground">{day.date}</div>
+                          <div className="text-muted-foreground">{day.minutes}m studied · {day.questions} questions</div>
+                        </div>
+                        <div className="w-2 h-2 bg-popover border-b border-r border-border/20 transform rotate-45 -mt-1" />
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+              <div className="flex justify-between mt-3 text-[10px] text-muted-foreground px-1">
+                {data.activityChart.filter((_, i) => i % 7 === 0).map((day, i) => (
+                  <span key={i}>{day.date.slice(5)}</span>
+                ))}
+                <span>{data.activityChart[data.activityChart.length - 1]?.date.slice(5)}</span>
+              </div>
+            </div>
+          </section>
+
+          {/* Syllabus Projection */}
+          <section className="animate-fade-in" style={{ animationDelay: '240ms', animationFillMode: 'both' }}>
+            <SectionHeader icon={<Target className="h-3.5 w-3.5" />} title="Syllabus Completion" />
+            <div className="rounded-2xl bg-card/60 p-5">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm text-muted-foreground">{data.projection.topicsCovered} of {data.totalSkills} topics covered</span>
+                <span className="text-sm font-semibold text-primary">{data.totalSkills > 0 ? Math.round((data.projection.topicsCovered / data.totalSkills) * 100) : 0}%</span>
+              </div>
+              <div className="w-full bg-muted/50 rounded-full h-3 mb-5 overflow-hidden">
+                <div
+                  className="h-3 rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-1000 ease-out relative"
+                  style={{ width: `${data.totalSkills > 0 ? (data.projection.topicsCovered / data.totalSkills) * 100 : 0}%` }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <ProjectionStat label="Remaining" value={String(data.projection.topicsRemaining)} />
+                <ProjectionStat label="Avg / day" value={String(data.projection.avgTopicsPerDay)} />
+                <ProjectionStat label="Est. days left" value={data.projection.estimatedDaysToFinish != null ? String(data.projection.estimatedDaysToFinish) : '—'} />
+                <div className="rounded-xl bg-muted/30 p-3">
+                  <div className="text-[11px] text-muted-foreground mb-1">Status</div>
+                  <div className={`text-sm font-semibold flex items-center gap-1.5 ${data.projection.onTrack ? 'text-green-600' : 'text-amber-600'}`}>
+                    {data.projection.onTrack
+                      ? <><CheckCircle2 className="h-3.5 w-3.5" /> On track</>
+                      : <><AlertTriangle className="h-3.5 w-3.5" /> Behind</>}
                   </div>
                 </div>
-              ))}
-            </div>
-            <div className="flex justify-between mt-2 text-[10px] text-muted-foreground">
-              {data.activityChart.filter((_, i) => i % 7 === 0).map((day, i) => (
-                <span key={i}>{day.date.slice(5)}</span>
-              ))}
-              <span>{data.activityChart[data.activityChart.length - 1]?.date.slice(5)}</span>
-            </div>
-          </div>
-        </section>
-
-        {/* Syllabus Projection */}
-        <section>
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Syllabus Completion Projection</h2>
-          <div className="rounded-xl bg-card p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-muted-foreground">{data.projection.topicsCovered} of {data.totalSkills} topics covered</span>
-              <span className="text-sm font-medium">{data.totalSkills > 0 ? Math.round((data.projection.topicsCovered / data.totalSkills) * 100) : 0}%</span>
-            </div>
-            <div className="w-full bg-muted rounded-full h-3 mb-4">
-              <div className="h-3 rounded-full bg-primary transition-all duration-700" style={{ width: `${data.totalSkills > 0 ? (data.projection.topicsCovered / data.totalSkills) * 100 : 0}%` }} />
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-              <div>
-                <div className="text-muted-foreground text-xs">Topics remaining</div>
-                <div className="font-semibold">{data.projection.topicsRemaining}</div>
               </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Avg per day</div>
-                <div className="font-semibold">{data.projection.avgTopicsPerDay}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Est. days to finish</div>
-                <div className="font-semibold">{data.projection.estimatedDaysToFinish ?? '—'}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Status</div>
-                <div className={`font-semibold flex items-center gap-1 ${data.projection.onTrack ? 'text-green-600' : 'text-amber-600'}`}>
-                  {data.projection.onTrack
-                    ? <><CheckCircle2 className="h-3.5 w-3.5" /> On track</>
-                    : <><AlertTriangle className="h-3.5 w-3.5" /> Needs attention</>}
+              {!data.projection.onTrack && data.projection.estimatedDaysToFinish && (
+                <div className="mt-4 rounded-xl bg-amber-500/[0.06] border border-amber-500/10 p-3.5">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    <span className="font-semibold text-amber-600">Recommendation:</span> Study{' '}
+                    <strong>{Math.ceil(data.projection.topicsRemaining / Math.max(data.projection.daysUntilExam, 1))} topics per day</strong>
+                    {' '}({formatMinutes(Math.ceil((data.projection.topicsRemaining / Math.max(data.projection.daysUntilExam, 1)) * 20))} of focused study) to finish on time.
+                  </p>
                 </div>
-              </div>
+              )}
             </div>
-            {!data.projection.onTrack && data.projection.estimatedDaysToFinish && (
-              <p className="text-xs text-muted-foreground mt-3 bg-amber-500/5 rounded-lg p-3">
-                To finish on time, we recommend studying{' '}
-                <strong>{Math.ceil(data.projection.topicsRemaining / Math.max(data.projection.daysUntilExam, 1))} topics per day</strong>
-                {' '}— about {formatMinutes(Math.ceil((data.projection.topicsRemaining / Math.max(data.projection.daysUntilExam, 1)) * 20))} of focused study.
-              </p>
-            )}
-          </div>
-        </section>
-
-        {/* Subject Breakdown */}
-        <section>
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Subject-by-Subject Breakdown</h2>
-          <div className="space-y-1">
-            {data.unitReports.sort((a, b) => b.mastery - a.mastery).map(unit => (
-              <UnitReportRow key={unit.unitId} unit={unit} />
-            ))}
-          </div>
-        </section>
-
-        {/* Strengths & Weaknesses */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <section>
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Award className="h-3.5 w-3.5 text-green-500" /> Your Strongest Skills
-            </h2>
-            {data.strengths.length > 0 ? (
-              <div className="space-y-1">
-                {data.strengths.map((skill, i) => {
-                  const unitName = ATP_UNITS.find(u => u.id === skill.unitId)?.name || '';
-                  return (
-                    <div key={i} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium truncate">{skill.name}</div>
-                        <div className="text-[11px] text-muted-foreground">{unitName}</div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-sm font-semibold text-green-600">{skill.mastery}%</span>
-                        {skill.verified && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-4">Study more topics to identify your strengths.</p>
-            )}
           </section>
 
-          <section>
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-500" /> Areas That Need Work
-            </h2>
-            {data.weaknesses.length > 0 ? (
-              <div className="space-y-1">
-                {data.weaknesses.map((skill, i) => {
-                  const unitName = ATP_UNITS.find(u => u.id === skill.unitId)?.name || '';
-                  return (
-                    <div key={i} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium truncate">{skill.name}</div>
-                        <div className="text-[11px] text-muted-foreground">{unitName}</div>
-                      </div>
-                      <span className="text-sm font-semibold text-amber-600 shrink-0">{skill.mastery}%</span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-4">Keep studying to identify areas for improvement.</p>
-            )}
+          {/* Subject Breakdown */}
+          <section className="animate-fade-in" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
+            <SectionHeader icon={<BookOpen className="h-3.5 w-3.5" />} title="Subject-by-Subject Breakdown" />
+            <div className="rounded-2xl bg-card/60 overflow-hidden divide-y divide-border/10">
+              {data.unitReports.sort((a, b) => b.mastery - a.mastery).map((unit, i) => (
+                <UnitReportRow key={unit.unitId} unit={unit} rank={i + 1} />
+              ))}
+            </div>
           </section>
-        </div>
 
-        {/* Format Performance */}
-        {(data.formats.written.attempts > 0 || data.formats.oral.attempts > 0 || data.formats.drafting.attempts > 0) && (
-          <section>
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Performance by Exam Format</h2>
+          {/* Strengths & Weaknesses */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-fade-in" style={{ animationDelay: '360ms', animationFillMode: 'both' }}>
+            <section>
+              <SectionHeader icon={<Award className="h-3.5 w-3.5 text-green-500" />} title="Top Strengths" />
+              <div className="rounded-2xl bg-card/60 overflow-hidden">
+                {data.strengths.length > 0 ? (
+                  <div className="divide-y divide-border/10">
+                    {data.strengths.map((skill, i) => {
+                      const unitName = ATP_UNITS.find(u => u.id === skill.unitId)?.name || '';
+                      return (
+                        <div key={i} className="flex items-center justify-between py-3 px-4 hover:bg-muted/30 transition-colors">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium truncate">{skill.name}</div>
+                            <div className="text-[11px] text-muted-foreground">{unitName}</div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-sm font-semibold text-green-600">{skill.mastery}%</span>
+                            {skill.verified && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center">
+                    <Award className="h-8 w-8 mx-auto text-muted-foreground/20 mb-2" />
+                    <p className="text-xs text-muted-foreground">Study more to reveal your strengths</p>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section>
+              <SectionHeader icon={<AlertTriangle className="h-3.5 w-3.5 text-amber-500" />} title="Needs Attention" />
+              <div className="rounded-2xl bg-card/60 overflow-hidden">
+                {data.weaknesses.length > 0 ? (
+                  <div className="divide-y divide-border/10">
+                    {data.weaknesses.map((skill, i) => {
+                      const unitName = ATP_UNITS.find(u => u.id === skill.unitId)?.name || '';
+                      return (
+                        <div key={i} className="flex items-center justify-between py-3 px-4 hover:bg-muted/30 transition-colors">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium truncate">{skill.name}</div>
+                            <div className="text-[11px] text-muted-foreground">{unitName}</div>
+                          </div>
+                          <span className="text-sm font-semibold text-amber-600 shrink-0">{skill.mastery}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center">
+                    <AlertTriangle className="h-8 w-8 mx-auto text-muted-foreground/20 mb-2" />
+                    <p className="text-xs text-muted-foreground">Keep studying to identify weak areas</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+
+          {/* Format Performance */}
+          <section className="animate-fade-in" style={{ animationDelay: '420ms', animationFillMode: 'both' }}>
+            <SectionHeader icon={<FileText className="h-3.5 w-3.5" />} title="Performance by Exam Format" />
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <FormatCard label="Written" attempts={data.formats.written.attempts} score={data.formats.written.avgScore} />
-              <FormatCard label="Oral" attempts={data.formats.oral.attempts} score={data.formats.oral.avgScore} />
-              <FormatCard label="Drafting" attempts={data.formats.drafting.attempts} score={data.formats.drafting.avgScore} />
+              <FormatCard label="Written" icon={<FileText className="h-5 w-5" />} attempts={data.formats.written.attempts} score={data.formats.written.avgScore} color="from-blue-500/10 to-sky-500/5" />
+              <FormatCard label="Oral" icon={<Mic className="h-5 w-5" />} attempts={data.formats.oral.attempts} score={data.formats.oral.avgScore} color="from-purple-500/10 to-pink-500/5" />
+              <FormatCard label="Drafting" icon={<PenLine className="h-5 w-5" />} attempts={data.formats.drafting.attempts} score={data.formats.drafting.avgScore} color="from-emerald-500/10 to-green-500/5" />
             </div>
           </section>
-        )}
 
-        {/* Footer */}
-        <div className="text-center py-6">
-          <p className="text-xs text-muted-foreground">
-            Report generated on {reportDate}. Data reflects your activity on the Ynai platform.
-          </p>
+          {/* Footer */}
+          <div className="text-center py-6 border-t border-border/10">
+            <p className="text-[11px] text-muted-foreground">
+              Report generated on {reportDate}. Data reflects your activity on the Ynai platform.
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -400,50 +480,68 @@ export default function ProgressPage() {
 // SUB-COMPONENTS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-function MetricCard({ label, value, sub, icon, color }: {
-  label: string; value: string; sub?: string; icon: React.ReactNode; color?: string;
-}) {
+function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
-    <div className="rounded-xl bg-card p-4">
-      <div className="flex items-center gap-2 text-muted-foreground mb-2">
-        {icon}
-        <span className="text-xs font-medium">{label}</span>
-      </div>
-      <div className={`text-2xl font-bold ${color || 'text-foreground'}`}>{value}</div>
-      {sub && <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>}
+    <div className="flex items-center gap-2 mb-4">
+      <span className="text-muted-foreground">{icon}</span>
+      <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{title}</h2>
     </div>
   );
 }
 
-function ComparisonCard({ label, current, previous, change }: {
-  label: string; current: string; previous: string; change: number | null;
+function MiniStat({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent: string }) {
+  return (
+    <div className="rounded-xl bg-muted/30 p-3">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <span className={accent}>{icon}</span>
+        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</span>
+      </div>
+      <div className="text-lg font-bold">{value}</div>
+    </div>
+  );
+}
+
+function ProjectionStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-muted/30 p-3">
+      <div className="text-[11px] text-muted-foreground mb-1">{label}</div>
+      <div className="text-sm font-semibold">{value}</div>
+    </div>
+  );
+}
+
+function ComparisonCard({ label, current, previous, change, icon }: {
+  label: string; current: string; previous: string; change: number | null; icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl bg-card p-4">
-      <div className="text-xs text-muted-foreground mb-2">{label}</div>
+    <div className="rounded-2xl bg-card/60 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-muted-foreground">{icon}</span>
+        <span className="text-xs text-muted-foreground font-medium">{label}</span>
+      </div>
       <div className="text-xl font-bold">{current}</div>
       {change !== null ? (
-        <div className={`flex items-center gap-1 text-xs mt-1 ${
+        <div className={`flex items-center gap-1 text-xs mt-1.5 ${
           change > 0 ? 'text-green-600' : change < 0 ? 'text-amber-600' : 'text-muted-foreground'
         }`}>
           {change > 0 ? <TrendingUp className="h-3 w-3" /> : change < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
           {change > 0 ? `+${change}%` : change < 0 ? `${change}%` : 'Same'} vs last week
         </div>
       ) : (
-        <div className="text-[11px] text-muted-foreground mt-1">Previously: {previous}</div>
+        <div className="text-[11px] text-muted-foreground mt-1.5">Previously: {previous}</div>
       )}
     </div>
   );
 }
 
-function UnitReportRow({ unit }: { unit: ReportData['unitReports'][0] }) {
+function UnitReportRow({ unit, rank }: { unit: ReportData['unitReports'][0]; rank: number }) {
   const pct = unit.mastery;
   return (
-    <div className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/40 transition-colors">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
-        pct >= 70 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-        : pct >= 40 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
-        : 'bg-muted text-muted-foreground'
+    <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-muted/20 transition-colors">
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
+        pct >= 70 ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+        : pct >= 40 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+        : 'bg-muted/50 text-muted-foreground'
       }`}>
         {pct}%
       </div>
@@ -455,30 +553,46 @@ function UnitReportRow({ unit }: { unit: ReportData['unitReports'][0] }) {
             : <span className="italic">Not started</span>}
         </div>
       </div>
-      <div className="text-right shrink-0">
+      <div className="text-right shrink-0 mr-2">
         {unit.quizAccuracy !== null
-          ? <><div className="text-sm font-medium">{unit.quizAccuracy}%</div><div className="text-[10px] text-muted-foreground">{unit.quizAttempts} quiz Q&apos;s</div></>
+          ? <><div className="text-sm font-semibold">{unit.quizAccuracy}%</div><div className="text-[10px] text-muted-foreground">{unit.quizAttempts} quiz Q&apos;s</div></>
           : <div className="text-[11px] text-muted-foreground">No quizzes</div>}
       </div>
-      <div className="w-20 shrink-0">
-        <div className="w-full bg-muted rounded-full h-1.5">
-          <div className={`h-1.5 rounded-full transition-all duration-500 ${
-            pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-muted-foreground/30'
+      <div className="w-24 shrink-0">
+        <div className="w-full bg-muted/40 rounded-full h-2">
+          <div className={`h-2 rounded-full transition-all duration-700 ease-out ${
+            pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-muted-foreground/20'
           }`} style={{ width: `${pct}%` }} />
         </div>
       </div>
+      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0" />
     </div>
   );
 }
 
-function FormatCard({ label, attempts, score }: { label: string; attempts: number; score: number | null }) {
+function FormatCard({ label, icon, attempts, score, color }: {
+  label: string; icon: React.ReactNode; attempts: number; score: number | null; color: string;
+}) {
   const hasData = attempts > 0 && score !== null;
   return (
-    <div className="rounded-xl bg-card p-4">
-      <div className="text-xs text-muted-foreground mb-1">{label}</div>
-      {hasData
-        ? <><div className="text-xl font-bold">{score}%</div><div className="text-[11px] text-muted-foreground">{attempts} attempts</div></>
-        : <><div className="text-xl font-bold text-muted-foreground/40">—</div><div className="text-[11px] text-muted-foreground">No attempts yet</div></>}
+    <div className="rounded-2xl bg-card/60 p-5 transition-all hover:shadow-sm">
+      <div className={'rounded-lg p-3 mb-3 bg-gradient-to-r ' + color}>
+        <div className="flex items-center gap-2 text-foreground/70">
+          {icon}
+          <span className="text-sm font-semibold">{label}</span>
+        </div>
+      </div>
+      {hasData ? (
+        <div>
+          <div className="text-2xl font-bold">{score}%</div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">{attempts} attempt{attempts !== 1 ? 's' : ''}</div>
+        </div>
+      ) : (
+        <div>
+          <div className="text-2xl font-bold text-muted-foreground/25">—</div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">No attempts yet</div>
+        </div>
+      )}
     </div>
   );
 }

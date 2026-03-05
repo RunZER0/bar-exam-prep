@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Zap, BookOpen, PlayCircle, CheckCircle2, BarChart3, ArrowLeft, GraduationCap, ChevronRight, ChevronDown, Smile, Meh, Frown, ArrowRight, RotateCcw, Sparkles, Compass, FileText, Lightbulb, ClipboardCheck, PenTool } from 'lucide-react';
+import { Zap, BookOpen, PlayCircle, CheckCircle2, BarChart3, ArrowLeft, ChevronRight, ChevronDown, Smile, Meh, Frown, ArrowRight, RotateCcw, Sparkles, Compass, FileText, Lightbulb, ClipboardCheck, PenTool } from 'lucide-react';
 import MasteryCarousel from '@/components/MasteryCarousel';
 import ReadinessDashboard from '@/components/ReadinessDashboard';
 import EmbeddedPracticePanel, { type PracticeTask } from '@/components/EmbeddedPracticePanel';
@@ -175,11 +175,11 @@ export default function MasteryPage() {
     // ------- ACTIVE CAROUSEL VIEW -------
     if (activeTask) {
         return (
-            <div className="min-h-screen bg-background">
-                <div className="max-w-4xl mx-auto px-4 py-6">
+            <div className="min-h-screen bg-background animate-content-enter">
+                <div className="max-w-5xl mx-auto px-2 sm:px-4 py-3">
                     <button 
                         onClick={() => setActiveTask(null)}
-                        className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
+                        className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors"
                     >
                         <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
                         Back to Mastery Hub
@@ -274,14 +274,25 @@ export default function MasteryPage() {
     const strokeDashoffset = circumference - (masteryPercent / 100) * circumference;
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-background animate-content-enter">
             {/* Compact Header */}
             <div className="border-b border-border/40 bg-card/50">
                 <div className="max-w-4xl mx-auto px-4 py-5">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <GraduationCap className="h-4.5 w-4.5 text-primary" />
+                            <div className="w-9 h-9 rounded-lg bg-zinc-900 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
+                                <svg width="22" height="22" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <g transform="translate(96,88)">
+                                    <polygon points="0,-42 -54,-20 0,-8 54,-20" fill="#ffffff" />
+                                    <circle cx="0" cy="-20" r="4.5" fill="#1a1a1a" />
+                                    <line x1="0" y1="-20" x2="-38" y2="-12" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
+                                    <circle cx="-40" cy="-11" r="3.5" fill="#22c55e" />
+                                    <line x1="-40" y1="-7" x2="-40" y2="4" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" />
+                                    <path d="M-38,-8 Q0,10 38,-8" stroke="#ffffff" strokeWidth="3" fill="none" />
+                                    <rect x="-13" y="18" width="26" height="19" rx="2.5" fill="#ffffff" opacity="0.9" />
+                                    <line x1="0" y1="19" x2="0" y2="36" stroke="#1a1a1a" strokeWidth="1.2" />
+                                  </g>
+                                </svg>
                             </div>
                             <div>
                                 <h1 className="text-lg font-semibold text-foreground">Mastery Hub</h1>
@@ -390,7 +401,7 @@ export default function MasteryPage() {
                                                 )}
                                                 {(queueData.meta.totalBacklog ?? 0) > queueData.queue.length && (
                                                     <span className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded-full">
-                                                        +{(queueData.meta.totalBacklog ?? 0) - queueData.queue.length} in backlog
+                                                        +{(queueData.meta.totalBacklog ?? 0) - queueData.queue.length} uncovered from previous weeks
                                                     </span>
                                                 )}
                                             </div>
@@ -412,7 +423,8 @@ export default function MasteryPage() {
                                             <button
                                                 key={idx}
                                                 onClick={() => handleStartTask(task)}
-                                                className={`w-full text-left group rounded-lg border transition-all duration-150 hover:shadow-sm ${
+                                                style={{ animationDelay: `${idx * 80}ms` }}
+                                                className={`w-full text-left group rounded-lg border transition-all duration-150 hover:shadow-sm animate-slide-up-fade ${
                                                     idx === 0
                                                         ? 'border-primary/40 bg-primary/5 hover:border-primary/60 ring-1 ring-primary/10'
                                                         : task.type === 'WITNESS'
@@ -434,7 +446,8 @@ export default function MasteryPage() {
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-1.5 mb-0.5">
                                                             {idx === 0 && (
-                                                                <span className="text-[10px] font-bold text-primary">
+                                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary">
+                                                                    <span className="animate-bounce-hand inline-block">👉</span>
                                                                     Start here
                                                                 </span>
                                                             )}

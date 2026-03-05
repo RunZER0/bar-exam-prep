@@ -8,7 +8,7 @@ import Image from 'next/image';
 // Rotates every 4 seconds to keep the user entertained
 // ──────────────────────────────────────────────
 
-const FUN_FACTS: { text: string; category: 'fact' | 'quote' | 'trivia' }[] = [
+const FUN_FACTS: { text: string; category: 'fact' | 'quote' | 'trivia' | 'platform' | 'cognition' }[] = [
   // Famous case quotes
   { text: '"Justice delayed is justice denied." — William E. Gladstone', category: 'quote' },
   { text: '"The law is reason, free from passion." — Aristotle', category: 'quote' },
@@ -29,27 +29,48 @@ const FUN_FACTS: { text: string; category: 'fact' | 'quote' | 'trivia' }[] = [
   { text: 'In Kenya, land law is governed by the Constitution, the Land Act 2012, the Land Registration Act 2012, and the Community Land Act 2016.', category: 'fact' },
   { text: 'The IRAC method (Issue, Rule, Application, Conclusion) is the gold standard for legal analysis in Kenyan bar exams.', category: 'fact' },
   { text: 'Article 50 of the Kenya Constitution guarantees the right to a fair trial, including the right to legal representation.', category: 'fact' },
-  { text: 'The Kenya School of Law ATP has 9 core units covering everything from Civil Litigation to Professional Ethics.', category: 'fact' },
   { text: 'A tort is a civil wrong — unlike a crime, it gives rise to a private cause of action for damages.', category: 'fact' },
   { text: 'In Kenya, appeals from the High Court go to the Court of Appeal, and from there to the Supreme Court on matters of constitutional interpretation.', category: 'fact' },
 
   // Fun trivia
   { text: 'The word "advocate" comes from the Latin "advocatus" meaning "one called to aid."', category: 'trivia' },
   { text: 'Kenya\'s Supreme Court was established in 2011, making it one of the newest apex courts in the Commonwealth.', category: 'trivia' },
-  { text: 'The longest trial in history lasted 7 years — McMartin preschool case in the USA (1987-1990).', category: 'trivia' },
   { text: '"Res ipsa loquitur" — the thing speaks for itself. Used when negligence is so obvious it doesn\'t need proving.', category: 'trivia' },
   { text: 'The Magna Carta (1215) is considered the foundation of the rule of law — it limited the power of the English king.', category: 'trivia' },
   { text: 'Habeas corpus literally means "you shall have the body" — it protects against unlawful detention.', category: 'trivia' },
   { text: 'In Donoghue v Stevenson [1932], a snail in a bottle of ginger beer established the modern law of negligence and the neighbor principle.', category: 'trivia' },
-  { text: 'The average ATP student who practices 30 minutes daily outperforms 80% of peers who cram.', category: 'trivia' },
   { text: 'An affidavit is a written statement confirmed by oath — making a false one is the crime of perjury.', category: 'trivia' },
   { text: 'Equity was developed because common law was too rigid — the Chancellor\'s court provided "fairness" remedies like injunctions.', category: 'trivia' },
+
+  // Platform discovery — teach users about Ynai features
+  { text: 'Tip: Click on any statute citation in your study notes to read the exact verbatim text from Kenya Law.', category: 'platform' },
+  { text: 'Tip: Highlight any text in your study notes and choose "Simplify" to get a clearer explanation instantly.', category: 'platform' },
+  { text: 'Tip: Switch between Slide view and Reader view using the toggle in the study header — Reader mode shows everything on one page.', category: 'platform' },
+  { text: 'Tip: The Mastery Hub adapts daily — it tracks what you\'ve covered and surfaces topics that need attention.', category: 'platform' },
+  { text: 'Tip: Your study materials are generated fresh based on the KSL syllabus, Kenyan statutes, and real case law from Kenya Law.', category: 'platform' },
+  { text: 'Tip: Use the floating chat bubble to ask any legal question — it has context from your current study session.', category: 'platform' },
+  { text: 'Tip: Try the Legal Drafting section to practice writing affidavits, pleadings, and opinions with AI feedback.', category: 'platform' },
+  { text: 'Tip: Your Readiness tab shows a breakdown of your mastery level across all 9 ATP units.', category: 'platform' },
+  { text: 'Tip: Checkpoint questions appear between study slides — they test application, not just recall.', category: 'platform' },
+  { text: 'Ynai covers all 9 KSL ATP courses: Civil Litigation, Criminal Litigation, Property Law, Commercial Transactions, Family Law, Professional Ethics, Public Law, Tax, and Legal Writing.', category: 'platform' },
+
+  // Cognition & study science
+  { text: 'Studies show that testing yourself (active recall) is 3x more effective than re-reading your notes.', category: 'cognition' },
+  { text: 'Spaced repetition — reviewing material at increasing intervals — is proven to boost long-term retention by up to 200%.', category: 'cognition' },
+  { text: 'The "testing effect": students who take practice tests remember 50% more than those who only re-study.', category: 'cognition' },
+  { text: 'Taking short breaks every 25-30 minutes (Pomodoro) keeps your brain fresh and improves focus during study sessions.', category: 'cognition' },
+  { text: 'Writing summaries in your own words (elaborative interrogation) strengthens connections in memory.', category: 'cognition' },
+  { text: 'Research shows 30 minutes of focused daily practice outperforms 3-hour weekend cramming sessions.', category: 'cognition' },
+  { text: 'The "generation effect": information you work to generate or apply is remembered better than information you passively receive.', category: 'cognition' },
+  { text: 'Sleep consolidates memory — reviewing notes before bed can improve recall the next day by up to 20%.', category: 'cognition' },
 ];
 
-const CATEGORY_LABELS = {
+const CATEGORY_LABELS: Record<string, string> = {
   fact: '📚 Did You Know?',
   quote: '⚖️ Legal Wisdom',
   trivia: '💡 Fun Trivia',
+  platform: '🎯 Ynai Tip',
+  cognition: '🧠 Study Science',
 };
 
 interface EngagingLoaderProps {

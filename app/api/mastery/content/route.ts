@@ -8,13 +8,16 @@ import { CheckpointGenerator } from '@/lib/services/checkpoint-generator';
 
 /**
  * GET /api/mastery/content
- * Returns the "Deep Dive" content (Narrative) and Assessment Stack for a skill/node.
- * Supports: SYLLABUS (Syllabus Node), SKILL (MicroSkill), WITNESS (Remediation)
+ * Returns study content.  Supports progressive loading:
+ *   ?phase=narrative  → returns narrative slides immediately (fast)
+ *   ?phase=extras     → returns checkpoints + assessment stack (slow, called 2nd)
+ *   (no phase)        → legacy full response with everything
  */
 export async function GET(req: NextRequest) {
     try {
         const contentId = req.nextUrl.searchParams.get('skillId');
         const type = req.nextUrl.searchParams.get('type') || 'SYLLABUS'; 
+        const phase = req.nextUrl.searchParams.get('phase'); // 'narrative' | 'extras' | null
 
         if (!contentId) {
             return NextResponse.json({ error: 'Missing contentId' }, { status: 400 });
@@ -57,6 +60,27 @@ export async function GET(req: NextRequest) {
             topicName = skill.title;
         }
 
+        // Pick ONE visual style for the entire session (randomly chosen)
+        const NOTE_STYLES = ['classic', 'magazine', 'slide', 'highlight', 'minimal'] as const;
+        const sessionStyle = NOTE_STYLES[Math.floor(Math.random() * NOTE_STYLES.length)];
+
+        /* ========== PHASE: EXTRAS ONLY ========== */
+        if (phase === 'extras') {
+            // Generate checkpoints + assessment (called after narrative is displayed)
+            const sectionCount = parseInt(req.nextUrl.searchParams.get('sectionCount') || '4');
+            const [checkpoints, stack] = await Promise.all([
+                CheckpointGenerator.generate(topicName, sectionCount, { unitCode }).catch(e => {
+                    console.error('[mastery/content] Checkpoint generation failed:', e);
+                    return [];
+                }),
+                AssessmentGenerator.generateStack(topicName, { unitCode, isDrafting }).catch(e => {
+                    console.error('[mastery/content] Assessment generation failed:', e);
+                    return { topic: topicName, stack: [] };
+                }),
+            ]);
+            return NextResponse.json({ checkpoints, stack });
+        }
+
         // 2. Generate Narrative (Mentor pulls authority context from DB automatically)
         let narrative = "";
         try {
@@ -67,30 +91,44 @@ export async function GET(req: NextRequest) {
             narrative = `### Generation Error\n\nThe Mentor could not generate a narrative for **${topicName}** at this time.\n\n> Please try again or contact support.`;
         }
         
-        // 3. Generate Assessment Stack (now async with real AI)
-        let stack = null;
-        try {
-            stack = await AssessmentGenerator.generateStack(topicName, { unitCode, isDrafting });
-        } catch (e) {
-            console.error("[mastery/content] Assessment generation failed:", e);
-            stack = { topic: topicName, stack: [] };
-        }
-
-        // 4. Split Narrative for Carousel & interleave checkpoint questions
+        // 4. Split Narrative for Carousel
         let sections = narrative.split('###').filter(s => s.trim().length > 0).map(s => '### ' + s);
         if (sections.length === 0) sections = [narrative];
 
-        // 5. Generate inline checkpoint questions and build interleaved slides
-        let checkpoints: any[] = [];
-        try {
-            checkpoints = await CheckpointGenerator.generate(topicName, sections.length, { unitCode });
-        } catch (e) {
-            console.error('[mastery/content] Checkpoint generation failed:', e);
+        /* ========== PHASE: NARRATIVE ONLY (fast path) ========== */
+        if (phase === 'narrative') {
+            const slides = sections.map(s => ({
+                type: 'narrative' as const,
+                content: s,
+                style: sessionStyle,
+            }));
+            return NextResponse.json({
+                narrativeSections: sections,
+                slides,
+                isDrafting,
+                unitCode,
+                sessionStyle,
+                sectionCount: sections.length,
+                stack: null,       // not yet loaded
+                partial: true,     // signal to client: extras coming
+            });
         }
 
-        // Pick ONE visual style for the entire session (randomly chosen)
-        const NOTE_STYLES = ['classic', 'magazine', 'slide', 'highlight', 'minimal'] as const;
-        const sessionStyle = NOTE_STYLES[Math.floor(Math.random() * NOTE_STYLES.length)];
+        /* ========== LEGACY: FULL RESPONSE ========== */
+        // 3. Generate Assessment + Checkpoints in parallel
+        let stack = null;
+        let checkpoints: any[] = [];
+        try {
+            const [s, c] = await Promise.all([
+                AssessmentGenerator.generateStack(topicName, { unitCode, isDrafting }),
+                CheckpointGenerator.generate(topicName, sections.length, { unitCode }),
+            ]);
+            stack = s;
+            checkpoints = c;
+        } catch (e) {
+            console.error("[mastery/content] Generation failed:", e);
+            stack = { topic: topicName, stack: [] };
+        }
 
         type SlideItem = 
             | { type: 'narrative'; content: string; style: string }
@@ -105,7 +143,6 @@ export async function GET(req: NextRequest) {
                 content: sections[i],
                 style: sessionStyle,
             });
-            // Insert a checkpoint after every 2nd narrative slide (but not after the last)
             if ((i + 1) % 2 === 0 && i < sections.length - 1 && cpIdx < checkpoints.length) {
                 interleaved.push({ type: 'checkpoint', checkpoint: checkpoints[cpIdx] });
                 cpIdx++;
@@ -113,8 +150,8 @@ export async function GET(req: NextRequest) {
         }
 
         return NextResponse.json({
-            narrativeSections: sections,      // backwards compat
-            slides: interleaved,              // new interleaved format
+            narrativeSections: sections,
+            slides: interleaved,
             isDrafting,
             unitCode,
             stack,

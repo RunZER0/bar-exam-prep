@@ -10,7 +10,8 @@ import {
     CheckCircle2, ChevronRight, ChevronLeft, AlertTriangle,
     BookOpen, ArrowRight, Copy, Sparkles, X, Loader2,
     RefreshCw, Maximize2, Minimize2, Scale, ExternalLink,
-    HelpCircle, ArrowUpDown, MessageSquare, Lightbulb, Send
+    HelpCircle, ArrowUpDown, MessageSquare, Lightbulb, Send,
+    PanelLeft, Rows3
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import EngagingLoader from '@/components/EngagingLoader';
@@ -794,6 +795,7 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
     const [stackLevel, setStackLevel] = useState(1);
     const [mcqAnswer, setMcqAnswer] = useState<number | null>(null);
     const [mcqPassed, setMcqPassed] = useState(false);
+    const [readingMode, setReadingMode] = useState<'slides' | 'reader'>('slides');
 
     // Written/short answer assessment state
     const [assessmentAnswer, setAssessmentAnswer] = useState('');
@@ -929,7 +931,7 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
         return () => window.removeEventListener('keydown', handler);
     }, [isMaximized, activeCitation]);
 
-    /* ---- Fetch Content ---- */
+    /* ---- Fetch Content (progressive: narrative first, then extras) ---- */
     useEffect(() => {
         const load = async () => {
             try {
@@ -945,12 +947,53 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
             } catch { /* fresh */ }
             const token = await getIdToken();
             try {
-                const params = new URLSearchParams({ skillId: task.data.id, type: task.type });
+                // Phase 1: Get narrative slides FAST (no checkpoints/assessment yet)
+                const params = new URLSearchParams({ skillId: task.data.id, type: task.type, phase: 'narrative' });
                 const res = await fetch(`/api/mastery/content?${params}`, { headers: { Authorization: `Bearer ${token}` } });
                 if (!res.ok) throw new Error();
                 const data = await res.json();
                 setContent(data);
-                try { sessionStorage.setItem(cacheKey, JSON.stringify({ view: 'NARRATIVE', currentSlide: 0, stackLevel: 1, content: data, timestamp: Date.now() })); } catch {}
+                setLoading(false); // User can start reading NOW
+
+                // Phase 2: Fetch checkpoints + assessment in background
+                const extrasParams = new URLSearchParams({
+                    skillId: task.data.id,
+                    type: task.type,
+                    phase: 'extras',
+                    sectionCount: String(data.sectionCount || 4),
+                });
+                fetch(`/api/mastery/content?${extrasParams}`, { headers: { Authorization: `Bearer ${token}` } })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(extras => {
+                        if (!extras) return;
+                        setContent((prev: any) => {
+                            if (!prev) return prev;
+                            // Interleave checkpoints into the narrative slides
+                            const narrativeSlides = prev.slides || [];
+                            const checkpoints = extras.checkpoints || [];
+                            const interleaved: any[] = [];
+                            let cpIdx = 0;
+                            let narrativeCount = 0;
+                            for (const slide of narrativeSlides) {
+                                interleaved.push(slide);
+                                narrativeCount++;
+                                // Insert a checkpoint after every 2nd narrative
+                                if (narrativeCount % 2 === 0 && narrativeCount < narrativeSlides.length && cpIdx < checkpoints.length) {
+                                    interleaved.push({ type: 'checkpoint', checkpoint: checkpoints[cpIdx] });
+                                    cpIdx++;
+                                }
+                            }
+                            const merged = {
+                                ...prev,
+                                slides: interleaved,
+                                stack: extras.stack || prev.stack,
+                                partial: false,
+                            };
+                            try { sessionStorage.setItem(cacheKey, JSON.stringify({ view: 'NARRATIVE', currentSlide: 0, stackLevel: 1, content: merged, timestamp: Date.now() })); } catch {}
+                            return merged;
+                        });
+                    })
+                    .catch(e => console.warn('[MasteryCarousel] Extras fetch failed:', e));
             } catch (e) { console.error('Failed to load content', e); }
             finally { setLoading(false); }
         };
@@ -1004,9 +1047,9 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
         );
     }
 
-    // Shared container class
-    const wrap = isMaximized ? 'fixed inset-0 z-40 bg-background flex flex-col p-0' : 'w-full px-2 sm:px-3';
-    const cardHeight = isMaximized ? 'h-full' : 'h-[calc(100vh-100px)]';
+    // Shared container class — fill all available space
+    const wrap = isMaximized ? 'fixed inset-0 z-40 bg-background flex flex-col p-0' : 'w-full';
+    const cardHeight = isMaximized ? 'h-full' : 'h-[calc(100vh-80px)]';
 
     /* ============================================================
        VIEW: EXHIBIT
@@ -1240,6 +1283,9 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
 
     /* ============================================================
        VIEW: NARRATIVE  (Study Notes + Inline Checkpoints)
+       Supports two reading modes:
+         - slides: paginated carousel (one slide at a time)
+         - reader: all content on one scrollable page with side TOC
        ============================================================ */
     const currentSlideData = slides[currentSlide] || { type: 'narrative', content: 'Loading...', style: 'classic' };
     const isCheckpoint = currentSlideData.type === 'checkpoint';
@@ -1247,6 +1293,13 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
     const currentStyle: NoteStyle = currentSlideData.style || 'classic';
     const isLastSlide = currentSlide === totalSlides - 1;
     const progressPct = ((currentSlide + 1) / totalSlides) * 100;
+
+    // Extract section headings for the reader TOC
+    const narrativeSlides = slides.filter((s: any) => s.type === 'narrative');
+    const sectionHeadings = useMemo(() => narrativeSlides.map((s: any, i: number) => {
+        const match = (s.content || '').match(/^###\s+(.+)/m);
+        return { index: i, title: match ? match[1].trim() : `Section ${i + 1}` };
+    }), [narrativeSlides]);
 
     return (
         <div ref={containerRef} className={wrap}>
@@ -1265,75 +1318,159 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
             )}
 
             {/* Study Notes Card */}
-            <div className={cn('flex flex-col animate-in fade-in duration-400', cardHeight)}>
+            <div className={cn('flex flex-col transition-all duration-300 animate-content-enter', cardHeight)}>
                 <Card className="flex-1 flex flex-col shadow-lg border-border/50 overflow-hidden rounded-xl bg-card">
                     {/* ---- HEADER ---- */}
-                    <div className="px-4 py-3 border-b bg-gradient-to-r from-amber-50/60 via-orange-50/20 to-transparent dark:from-amber-950/20 dark:via-transparent">
+                    <div className="px-4 py-2.5 border-b bg-gradient-to-r from-amber-50/60 via-orange-50/20 to-transparent dark:from-amber-950/20 dark:via-transparent">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 min-w-0">
                                 <BookOpen className="h-4 w-4 text-amber-700 dark:text-amber-400 flex-shrink-0" />
                                 <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
-                                    {isCheckpoint ? 'Checkpoint' : 'Study Notes'}
+                                    {readingMode === 'reader' ? 'Reader' : isCheckpoint ? 'Checkpoint' : 'Study Notes'}
                                 </span>
-                                <span className="text-muted-foreground text-xs mx-0.5">&middot;</span>
-                                <span className="text-xs text-muted-foreground tabular-nums">{currentSlide + 1} of {totalSlides}</span>
-                            </div>
-                            <button onClick={toggleMaximize} className="p-1.5 rounded-md hover:bg-amber-100 dark:hover:bg-amber-900/30 text-muted-foreground hover:text-amber-700 dark:hover:text-amber-400 transition-colors" title={isMaximized ? 'Exit full screen' : 'Full screen'}>
-                                {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                            </button>
-                        </div>
-                        <h2 className="text-lg font-bold text-foreground mt-1.5 truncate">{content.title || task.data.title || 'Study Material'}</h2>
-                        <Progress value={progressPct} className="h-1 mt-2.5 bg-amber-100 dark:bg-amber-950/40 [&>div]:bg-amber-500 dark:[&>div]:bg-amber-600" />
-                    </div>
-
-                    {/* ---- CONTENT ---- */}
-                    <div className="flex-1 overflow-hidden relative">
-                        <ScrollArea className="h-full">
-                            <div ref={narrativeRef} onMouseUp={isCheckpoint ? undefined : handleMouseUp} className={cn("p-5 sm:p-6 lg:p-8 pb-32", !isCheckpoint && "select-text cursor-text")}>
-                                {isCheckpoint ? (
-                                    <CheckpointSlide
-                                        checkpoint={currentSlideData.checkpoint}
-                                        onComplete={handleNext}
-                                    />
-                                ) : (
-                                    <NoteStyleWrapper style={currentStyle}>
-                                        <ReactMarkdown components={mdComponents}>{currentText}</ReactMarkdown>
-                                    </NoteStyleWrapper>
+                                {readingMode === 'slides' && (
+                                    <>
+                                        <span className="text-muted-foreground text-xs mx-0.5">&middot;</span>
+                                        <span className="text-xs text-muted-foreground tabular-nums">{currentSlide + 1} of {totalSlides}</span>
+                                    </>
                                 )}
                             </div>
-                        </ScrollArea>
+                            <div className="flex items-center gap-1">
+                                {/* Reading Mode Toggle */}
+                                <div className="flex items-center bg-muted/60 rounded-lg p-0.5 mr-1">
+                                    <button
+                                        onClick={() => setReadingMode('slides')}
+                                        className={cn("p-1.5 rounded-md transition-colors", readingMode === 'slides' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                                        title="Slide view"
+                                    >
+                                        <Rows3 className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                        onClick={() => setReadingMode('reader')}
+                                        className={cn("p-1.5 rounded-md transition-colors", readingMode === 'reader' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                                        title="Reader view"
+                                    >
+                                        <PanelLeft className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                                <button onClick={toggleMaximize} className="p-1.5 rounded-md hover:bg-amber-100 dark:hover:bg-amber-900/30 text-muted-foreground hover:text-amber-700 dark:hover:text-amber-400 transition-colors" title={isMaximized ? 'Exit full screen' : 'Full screen'}>
+                                    {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                                </button>
+                            </div>
+                        </div>
+                        <h2 className="text-base font-bold text-foreground mt-1 truncate">{content.title || task.data.title || 'Study Material'}</h2>
+                        {readingMode === 'slides' && <Progress value={progressPct} className="h-1 mt-2 bg-amber-100 dark:bg-amber-950/40 [&>div]:bg-amber-500 dark:[&>div]:bg-amber-600" />}
+                    </div>
 
-                        {/* ---- BOTTOM ACTION BAR ---- */}
-                        {!isCheckpoint && (
-                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card via-card/98 to-transparent pt-12 pb-4 px-4 flex items-center justify-between">
-                                <div>
+                    {/* ---- READER MODE ---- */}
+                    {readingMode === 'reader' ? (
+                        <div className="flex-1 flex overflow-hidden">
+                            {/* Side TOC */}
+                            <div className="hidden sm:flex flex-col w-52 lg:w-60 border-r bg-muted/20 overflow-y-auto py-3 px-2 flex-shrink-0">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 mb-2">Sections</p>
+                                {sectionHeadings.map((sec, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => {
+                                            const el = document.getElementById(`reader-section-${i}`);
+                                            el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }}
+                                        className="text-left px-2.5 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors truncate leading-snug"
+                                    >
+                                        {sec.title}
+                                    </button>
+                                ))}
+                                <div className="mt-auto pt-4 px-2">
+                                    <Button
+                                        onClick={() => { setView('ASSESSMENT'); saveProgress({ v: 'ASSESSMENT' }); }}
+                                        size="sm"
+                                        className="w-full shadow-sm bg-stone-800 hover:bg-stone-700 dark:bg-stone-200 dark:hover:bg-stone-300 text-white dark:text-stone-900 text-xs"
+                                    >
+                                        {content?.exhibit ? 'View Exhibit' : 'Start Assessment'}
+                                        <ArrowRight className="ml-1.5 h-3 w-3" />
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* All content scrollable */}
+                            <div className="flex-1 overflow-hidden">
+                                <ScrollArea className="h-full">
+                                    <div ref={narrativeRef} onMouseUp={handleMouseUp} className="px-4 sm:px-6 py-4 pb-20 select-text cursor-text space-y-8">
+                                        {narrativeSlides.map((slide: any, i: number) => (
+                                            <div key={i} id={`reader-section-${i}`} className="scroll-mt-4">
+                                                <NoteStyleWrapper style={slide.style || currentStyle}>
+                                                    <ReactMarkdown components={mdComponents}>{slide.content}</ReactMarkdown>
+                                                </NoteStyleWrapper>
+                                                {i < narrativeSlides.length - 1 && (
+                                                    <hr className="mt-8 border-t border-border/30" />
+                                                )}
+                                            </div>
+                                        ))}
+                                        {/* Mobile: assessment button at bottom */}
+                                        <div className="sm:hidden pt-4 pb-6">
+                                            <Button
+                                                onClick={() => { setView('ASSESSMENT'); saveProgress({ v: 'ASSESSMENT' }); }}
+                                                size="default"
+                                                className="w-full shadow-sm bg-stone-800 hover:bg-stone-700 dark:bg-stone-200 dark:hover:bg-stone-300 text-white dark:text-stone-900"
+                                            >
+                                                {content?.exhibit ? 'View Exhibit' : 'Start Assessment'}
+                                                <ArrowRight className="ml-1.5 h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </ScrollArea>
+                            </div>
+                        </div>
+                    ) : (
+                        /* ---- SLIDE MODE ---- */
+                        <div className="flex-1 overflow-hidden relative">
+                            <ScrollArea className="h-full">
+                                <div ref={narrativeRef} onMouseUp={isCheckpoint ? undefined : handleMouseUp} className={cn("px-4 sm:px-6 py-4 pb-28", !isCheckpoint && "select-text cursor-text")}>
+                                    {isCheckpoint ? (
+                                        <CheckpointSlide
+                                            checkpoint={currentSlideData.checkpoint}
+                                            onComplete={handleNext}
+                                        />
+                                    ) : (
+                                        <NoteStyleWrapper style={currentStyle}>
+                                            <ReactMarkdown components={mdComponents}>{currentText}</ReactMarkdown>
+                                        </NoteStyleWrapper>
+                                    )}
+                                </div>
+                            </ScrollArea>
+
+                            {/* ---- BOTTOM ACTION BAR ---- */}
+                            {!isCheckpoint && (
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card via-card/98 to-transparent pt-12 pb-4 px-4 flex items-center justify-between">
+                                    <div>
+                                        {canGoBack ? (
+                                            <button onClick={handleBack} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors">
+                                                <ChevronLeft className="h-4 w-4" /> Back
+                                            </button>
+                                        ) : <div />}
+                                    </div>
+                                    <Button onClick={handleNext} size="default" className="shadow-sm bg-stone-800 hover:bg-stone-700 dark:bg-stone-200 dark:hover:bg-stone-300 text-white dark:text-stone-900 px-6 py-2.5 rounded-xl transition-all font-medium">
+                                        {isLastSlide ? (content?.exhibit ? 'View Exhibit' : 'Start Assessment') : 'Continue'}
+                                        <ChevronRight className="ml-1.5 h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
+
+                            {/* Checkpoint has its own navigation via onComplete */}
+                            {isCheckpoint && (
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card via-card/98 to-transparent pt-8 pb-4 px-4 flex items-center justify-between">
                                     {canGoBack ? (
                                         <button onClick={handleBack} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors">
                                             <ChevronLeft className="h-4 w-4" /> Back
                                         </button>
                                     ) : <div />}
-                                </div>
-                                <Button onClick={handleNext} size="default" className="shadow-sm bg-stone-800 hover:bg-stone-700 dark:bg-stone-200 dark:hover:bg-stone-300 text-white dark:text-stone-900 px-6 py-2.5 rounded-xl transition-all font-medium">
-                                    {isLastSlide ? (content?.exhibit ? 'View Exhibit' : 'Start Assessment') : 'Continue'}
-                                    <ChevronRight className="ml-1.5 h-4 w-4" />
-                                </Button>
-                            </div>
-                        )}
-
-                        {/* Checkpoint has its own navigation via onComplete */}
-                        {isCheckpoint && (
-                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card via-card/98 to-transparent pt-8 pb-4 px-4 flex items-center justify-between">
-                                {canGoBack ? (
-                                    <button onClick={handleBack} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors">
-                                        <ChevronLeft className="h-4 w-4" /> Back
+                                    <button onClick={handleNext} className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors px-3 py-2">
+                                        Skip &rarr;
                                     </button>
-                                ) : <div />}
-                                <button onClick={handleNext} className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors px-3 py-2">
-                                    Skip &rarr;
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </Card>
             </div>
         </div>

@@ -204,10 +204,10 @@ export default function DashboardPage() {
       {/* Header with intelligent greeting */}
       <div>
         <h1 className="text-2xl md:text-3xl font-bold">
-          {timeGreeting}, {firstName}
+          Keep going, {firstName} 💪
         </h1>
         <p className="text-muted-foreground mt-1">
-          {getMotivationalMessage()}
+          Here&apos;s your weekly study overview.
         </p>
       </div>
 

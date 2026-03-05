@@ -36,17 +36,26 @@ interface ReadinessData {
   };
   
   formats: {
-    written: { score: number; trend: 'improving' | 'stable' | 'declining' };
-    oral: { score: number; trend: 'improving' | 'stable' | 'declining' };
-    drafting: { score: number; trend: 'improving' | 'stable' | 'declining' };
+    written: { score: number | null; trend: 'improving' | 'stable' | 'declining'; hasData?: boolean };
+    oral: { score: number | null; trend: 'improving' | 'stable' | 'declining'; hasData?: boolean };
+    drafting: { score: number | null; trend: 'improving' | 'stable' | 'declining'; hasData?: boolean };
   };
   
   units: UnitReadiness[];
   
   examDate?: string;
   daysUntilExam?: number;
-  // Product spec: >= 60 = distant, 8-59 = approaching, 0-7 = critical
   examPhase?: 'distant' | 'approaching' | 'critical' | 'post_exam';
+  
+  evidenceSummary?: {
+    totalAttempts: number;
+    writtenAttempts: number;
+    oralAttempts: number;
+    draftingAttempts: number;
+    timedAttempts: number;
+    gatesPassed: number;
+    lastAttemptAt?: string;
+  };
 }
 
 interface UnitReadiness {
@@ -189,51 +198,87 @@ export default function ReadinessDashboard() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Overall Readiness */}
-      <Card>
-        <CardContent className="pt-5 pb-4">
-          <div className="flex items-center gap-6">
-            {/* Score Ring */}
-            <div className="text-center flex-shrink-0">
-              <div className="relative w-20 h-20">
-                <svg className="w-20 h-20 transform -rotate-90">
-                  <circle cx="40" cy="40" r="32" stroke="currentColor" strokeWidth="8" fill="none" className="text-muted" />
-                  <circle cx="40" cy="40" r="32" stroke="currentColor" strokeWidth="8" fill="none"
-                    strokeDasharray={`${readiness.overall.score * 2.01} 201`}
-                    strokeLinecap="round"
-                    className={getScoreColor(readiness.overall.score)} />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-lg font-bold">{readiness.overall.score}%</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {getTrendIcon(readiness.overall.trend)} {readiness.overall.trendDelta > 0 ? '+' : ''}{readiness.overall.trendDelta}
-                  </span>
+    <div className="space-y-5">
+      {/* Overall Readiness + Exam Countdown */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Overall Score */}
+        <Card className="md:col-span-2">
+          <CardContent className="pt-5 pb-4">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Overall Readiness</h3>
+            <div className="flex items-center gap-6">
+              {/* Score Ring */}
+              <div className="text-center flex-shrink-0">
+                <div className="relative w-24 h-24">
+                  <svg className="w-24 h-24 transform -rotate-90">
+                    <circle cx="48" cy="48" r="38" stroke="currentColor" strokeWidth="8" fill="none" className="text-muted" />
+                    <circle cx="48" cy="48" r="38" stroke="currentColor" strokeWidth="8" fill="none"
+                      strokeDasharray={`${readiness.overall.score * 2.39} 239`}
+                      strokeLinecap="round"
+                      className={getScoreColor(readiness.overall.score)} />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-bold">{readiness.overall.score}%</span>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* Format Breakdown */}
-            <div className="flex-1 space-y-2.5">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Exam Readiness</h3>
-              <FormatBar label="Written" score={readiness.formats.written.score} trend={readiness.formats.written.trend} />
-              <FormatBar label="Oral" score={readiness.formats.oral.score} trend={readiness.formats.oral.trend} />
-              <FormatBar label="Drafting" score={readiness.formats.drafting.score} trend={readiness.formats.drafting.trend} />
-            </div>
-
-            {/* Exam Countdown */}
-            {readiness.examDate && readiness.daysUntilExam != null && (
-              <div className="text-center flex-shrink-0 pl-4 border-l border-border/50">
-                <div className="text-2xl font-bold text-primary">{readiness.daysUntilExam}</div>
-                <div className="text-[10px] text-muted-foreground">days left</div>
-                <div className={`mt-1.5 px-2 py-0.5 rounded text-[10px] font-medium ${getPhaseColor(readiness.examPhase)}`}>
-                  {getPhaseLabel(readiness.examPhase)}
-                </div>
+              
+              {/* Summary Details */}
+              <div className="flex-1 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  {readiness.overall.score === 0
+                    ? 'Start studying to build your readiness score.'
+                    : readiness.overall.score < 40
+                    ? 'You\'re getting started. Keep practicing to build mastery.'
+                    : readiness.overall.score < 70
+                    ? 'Good progress. Focus on weaker subjects to improve.'
+                    : 'Strong foundation. Maintain consistency and verify your skills.'}
+                </p>
+                {readiness.evidenceSummary && readiness.evidenceSummary.totalAttempts > 0 && (
+                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                    <span>{readiness.evidenceSummary.totalAttempts} practice attempts</span>
+                    {readiness.evidenceSummary.gatesPassed > 0 && (
+                      <span>• {readiness.evidenceSummary.gatesPassed} skills verified</span>
+                    )}
+                  </div>
+                )}
+                {readiness.evidenceSummary && readiness.evidenceSummary.totalAttempts === 0 && (
+                  <p className="text-xs text-muted-foreground/60 italic">
+                    No practice data yet — scores are based on mastery tracking.
+                  </p>
+                )}
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Exam Countdown */}
+        {readiness.examDate && readiness.daysUntilExam != null && (
+          <Card>
+            <CardContent className="pt-5 pb-4 flex flex-col items-center justify-center h-full">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">ATP Exam</h3>
+              <div className="text-4xl font-bold text-primary">{readiness.daysUntilExam}</div>
+              <div className="text-sm text-muted-foreground mt-1">days remaining</div>
+              <div className={`mt-3 px-3 py-1 rounded-full text-xs font-medium ${getPhaseColor(readiness.examPhase)}`}>
+                {getPhaseLabel(readiness.examPhase)}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Format Breakdown — only show formats with real data */}
+      {(readiness.formats.written.hasData || readiness.formats.oral.hasData || readiness.formats.drafting.hasData) && (
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Performance by Format</h3>
+            <div className="space-y-3">
+              <FormatBar label="Written" score={readiness.formats.written.score} hasData={readiness.formats.written.hasData} />
+              <FormatBar label="Oral" score={readiness.formats.oral.score} hasData={readiness.formats.oral.hasData} />
+              <FormatBar label="Drafting" score={readiness.formats.drafting.score} hasData={readiness.formats.drafting.hasData} />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Subject Breakdown */}
       <Card>
@@ -359,20 +404,32 @@ export default function ReadinessDashboard() {
 
 function FormatBar({ 
   label, 
-  score, 
-  trend 
+  score,
+  hasData,
 }: { 
   label: string; 
-  score: number; 
-  trend: 'improving' | 'stable' | 'declining';
+  score: number | null;
+  hasData?: boolean;
 }) {
+  if (!hasData || score === null) {
+    return (
+      <div>
+        <div className="flex justify-between text-sm mb-1">
+          <span className="text-muted-foreground">{label}</span>
+          <span className="text-xs text-muted-foreground/60 italic">No attempts yet</span>
+        </div>
+        <div className="w-full bg-muted rounded-full h-2">
+          <div className="h-2 rounded-full bg-muted-foreground/10" style={{ width: '0%' }} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="flex justify-between text-sm mb-1">
         <span>{label}</span>
-        <span className="flex items-center gap-1">
-          {getTrendIcon(trend)} {score}%
-        </span>
+        <span className="font-medium">{score}%</span>
       </div>
       <div className="w-full bg-muted rounded-full h-2">
         <div 
@@ -409,12 +466,17 @@ function UnitRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="font-medium text-sm truncate">{unit.unitName}</span>
-          <span className="text-[10px] text-muted-foreground">{getTrendIcon(unit.trend)}</span>
         </div>
         <div className="text-[11px] text-muted-foreground mt-0.5">
-          {unit.skillsVerified}/{unit.skillsTotal} topics
-          {unit.skillsAtRisk > 0 && (
-            <span className="text-amber-600 ml-2">- {unit.skillsAtRisk} need work</span>
+          {unit.skillsTotal === 0 ? (
+            <span className="italic">Not started</span>
+          ) : (
+            <>
+              {unit.skillsVerified}/{unit.skillsTotal} topics verified
+              {unit.skillsAtRisk > 0 && (
+                <span className="text-amber-600 ml-2">• {unit.skillsAtRisk} need work</span>
+              )}
+            </>
           )}
         </div>
       </div>

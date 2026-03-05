@@ -109,9 +109,9 @@ export function NotificationBell({ collapsed }: { collapsed?: boolean }) {
                 )}
             </button>
 
-            {/* Dropdown Panel */}
+            {/* Dropdown Panel — opens UPWARD since bell is at bottom of sidebar */}
             {open && (
-                <div className="absolute left-0 top-full mt-2 w-80 max-h-[28rem] bg-card border border-border/60 rounded-2xl shadow-2xl z-50 flex flex-col animate-in fade-in scale-in duration-150 origin-top-left">
+                <div className="absolute left-0 bottom-full mb-2 w-80 max-h-[28rem] bg-card border border-border/60 rounded-2xl shadow-2xl z-50 flex flex-col animate-in fade-in scale-in duration-150 origin-bottom-left">
                     {/* Header */}
                     <div className="flex items-center justify-between px-4 py-3 border-b">
                         <h3 className="text-sm font-semibold text-foreground">Notifications</h3>

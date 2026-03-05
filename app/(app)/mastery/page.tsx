@@ -57,7 +57,7 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function MasteryPage() {
-    const { getIdToken } = useAuth();
+    const { getIdToken, user } = useAuth();
     const [queueData, setQueueData] = useState<DailyQueue | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<TabId>('plan');
@@ -72,19 +72,24 @@ export default function MasteryPage() {
     const [activeTask, setActiveTask] = useState<OrchestratedTask | null>(null);
     const [activePractice, setActivePractice] = useState<PracticeTask | null>(null);
     const { setCollapsed } = useSidebar();
-    const sidebarWasCollapsed = useRef(false);
+    const sidebarWasCollapsed = useRef<boolean | null>(null); // null = not yet initialized
+    const prevActiveTask = useRef<OrchestratedTask | null>(null);
 
-    // Auto-collapse sidebar when studying notes for immersive experience
+    // Auto-collapse sidebar when entering study notes, restore on exit
     useEffect(() => {
-        if (activeTask) {
-            // Remember current state so we can restore
-            const stored = localStorage.getItem('sidebar-collapsed');
-            sidebarWasCollapsed.current = stored === 'true';
+        const entering = activeTask && !prevActiveTask.current;
+        const leaving = !activeTask && prevActiveTask.current;
+        
+        if (entering) {
+            // Remember sidebar state BEFORE we collapse it
+            sidebarWasCollapsed.current = localStorage.getItem('sidebar-collapsed') === 'true';
             setCollapsed(true);
-        } else if (sidebarWasCollapsed.current === false) {
-            // Restore sidebar when returning to hub (only if it wasn't collapsed before)
+        } else if (leaving && sidebarWasCollapsed.current === false) {
+            // Only restore if sidebar was expanded before we collapsed it
             setCollapsed(false);
         }
+        
+        prevActiveTask.current = activeTask;
     }, [activeTask, setCollapsed]);
 
     // Fetch the queue — uses prefetch cache if available (instant), else fetches live
@@ -291,27 +296,33 @@ export default function MasteryPage() {
 
     return (
         <div className="min-h-screen bg-background animate-content-enter">
-            {/* Compact Header */}
+            {/* Header with greeting */}
             <div className="border-b border-border/40 bg-card/50">
                 <div className="max-w-6xl mx-auto px-4 py-5">
+                    {/* Personalized greeting */}
+                    <div className="mb-4">
+                        <h1 className="text-xl md:text-2xl font-bold text-foreground">
+                            {(() => {
+                                const hour = new Date().getHours();
+                                let timeGreeting = 'Good morning';
+                                if (hour >= 12 && hour < 17) timeGreeting = 'Good afternoon';
+                                else if (hour >= 17 && hour < 21) timeGreeting = 'Good evening';
+                                else if (hour >= 21 || hour < 5) timeGreeting = 'Burning the midnight oil';
+                                return timeGreeting;
+                            })()}, {user?.displayName?.split(' ')[0] || 'Counsel'}
+                        </h1>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                            Continue your bar exam preparation journey.
+                        </p>
+                    </div>
+
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-lg bg-zinc-900 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
-                                <svg width="22" height="22" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                  <g transform="translate(96,88)">
-                                    <polygon points="0,-42 -54,-20 0,-8 54,-20" fill="#ffffff" />
-                                    <circle cx="0" cy="-20" r="4.5" fill="#1a1a1a" />
-                                    <line x1="0" y1="-20" x2="-38" y2="-12" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
-                                    <circle cx="-40" cy="-11" r="3.5" fill="#22c55e" />
-                                    <line x1="-40" y1="-7" x2="-40" y2="4" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" />
-                                    <path d="M-38,-8 Q0,10 38,-8" stroke="#ffffff" strokeWidth="3" fill="none" />
-                                    <rect x="-13" y="18" width="26" height="19" rx="2.5" fill="#ffffff" opacity="0.9" />
-                                    <line x1="0" y1="19" x2="0" y2="36" stroke="#1a1a1a" strokeWidth="1.2" />
-                                  </g>
-                                </svg>
+                            <div className="w-9 h-9 rounded-lg bg-zinc-900 dark:bg-zinc-800 flex items-center justify-center">
+                                <span className="text-lg leading-none">🎓</span>
                             </div>
                             <div>
-                                <h1 className="text-lg font-semibold text-foreground">Mastery Hub</h1>
+                                <h2 className="text-lg font-semibold text-foreground">Mastery Hub</h2>
                                 <p className="text-xs text-muted-foreground">
                                     {queueData?.meta.termFocus || "Your personalized study plan"}
                                 </p>

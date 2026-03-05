@@ -26,9 +26,9 @@ interface ReadinessResponse {
   };
   
   formats: {
-    written: { score: number; trend: 'improving' | 'stable' | 'declining' };
-    oral: { score: number; trend: 'improving' | 'stable' | 'declining' };
-    drafting: { score: number; trend: 'improving' | 'stable' | 'declining' };
+    written: { score: number | null; trend: 'improving' | 'stable' | 'declining'; hasData: boolean };
+    oral: { score: number | null; trend: 'improving' | 'stable' | 'declining'; hasData: boolean };
+    drafting: { score: number | null; trend: 'improving' | 'stable' | 'declining'; hasData: boolean };
   };
   
   units: UnitReadiness[];
@@ -295,7 +295,7 @@ async function calculateReadiness(
         unitId: unit.id,
         unitName: unit.name,
         score,
-        trend: score > 60 ? 'improving' : score < 40 ? 'declining' : 'stable',
+        trend: 'stable', // Honest: we don't have historical comparison yet
         skillsTotal: totalSkills,
         skillsVerified: verifiedSkills,
         skillsAtRisk: atRiskSkills,
@@ -326,10 +326,14 @@ async function calculateReadiness(
     ? Math.round(units.reduce((sum, u) => sum + u.score * (u.examWeight || 0.1), 0) / totalWeight)
     : 0;
   
-  // Calculate format scores from real data
-  const writtenScore = stats?.written_avg ? Math.round(parseFloat(stats.written_avg) * 100) : overallScore;
-  const oralScore = stats?.oral_avg ? Math.round(parseFloat(stats.oral_avg) * 100) : overallScore;
-  const draftingScore = stats?.drafting_avg ? Math.round(parseFloat(stats.drafting_avg) * 100) : overallScore;
+  // Calculate format scores from real data — NO fallback to overallScore
+  const writtenAttempts = parseInt(stats?.written_attempts || '0');
+  const oralAttempts = parseInt(stats?.oral_attempts || '0');
+  const draftingAttempts = parseInt(stats?.drafting_attempts || '0');
+  
+  const writtenScore = (writtenAttempts > 0 && stats?.written_avg) ? Math.round(parseFloat(stats.written_avg) * 100) : null;
+  const oralScore = (oralAttempts > 0 && stats?.oral_avg) ? Math.round(parseFloat(stats.oral_avg) * 100) : null;
+  const draftingScore = (draftingAttempts > 0 && stats?.drafting_avg) ? Math.round(parseFloat(stats.drafting_avg) * 100) : null;
   
   // Calculate confidence interval (wider for fewer attempts)
   const totalAttempts = parseInt(stats?.total_attempts || '0');
@@ -353,14 +357,14 @@ async function calculateReadiness(
     overall: {
       score: overallScore,
       trend: overallTrend,
-      trendDelta: overallTrend === 'improving' ? 4 : overallTrend === 'declining' ? -3 : 0,
+      trendDelta: 0, // Honest: no historical baseline to compare against yet
       confidenceInterval,
       lastUpdated: new Date().toISOString(),
     },
     formats: {
-      written: { score: writtenScore, trend: overallTrend },
-      oral: { score: oralScore, trend: 'stable' },
-      drafting: { score: draftingScore, trend: draftingScore < 55 ? 'declining' : 'stable' },
+      written: { score: writtenScore, trend: 'stable', hasData: writtenAttempts > 0 },
+      oral: { score: oralScore, trend: 'stable', hasData: oralAttempts > 0 },
+      drafting: { score: draftingScore, trend: 'stable', hasData: draftingAttempts > 0 },
     },
     units,
     examDate: '2026-04-15',

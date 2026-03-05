@@ -4,9 +4,12 @@ config({ path: '.env' });
 
 import { v4 as uuidv4 } from 'uuid';
 import { eq, sql } from 'drizzle-orm';
-import * as schema from '@/lib/db/schema';
-import { db } from '@/lib/db';
-import { MasteryOrchestrator } from '@/lib/services/mastery-orchestrator';
+// @ts-ignore
+import * as schema from '../lib/db/schema';
+// @ts-ignore
+import { db } from '../lib/db';
+// @ts-ignore
+import { MasteryOrchestrator } from '../lib/services/mastery-orchestrator';
 
 async function verifyMilestone3() {
     console.log("🔍 Starting Milestone 3 Verification...");

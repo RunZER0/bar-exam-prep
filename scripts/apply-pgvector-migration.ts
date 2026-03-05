@@ -182,7 +182,7 @@ async function main() {
 
   for (const idx of indexes) {
     try {
-      await sql(idx.sql_text);
+      await sql(idx.sql_text as unknown as TemplateStringsArray);
       console.log(`✓ Index ${idx.name} created`);
     } catch (error: any) {
       console.error(`Index ${idx.name}: ${error.message}`);

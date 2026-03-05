@@ -50,8 +50,8 @@ async function main() {
 
   // Get cycles
   const cycles = await sql`SELECT * FROM exam_cycles ORDER BY candidate_type`;
-  const resitCycle = cycles.find((c: any) => c.candidate_type === 'RESIT');
-  const firstTimeCycle = cycles.find((c: any) => c.candidate_type === 'FIRST_TIME');
+  const resitCycle = cycles.find((c: any) => c.candidate_type === 'RESIT')!;
+  const firstTimeCycle = cycles.find((c: any) => c.candidate_type === 'FIRST_TIME')!;
 
   // =========================================
   // 1. POST /api/exam/profile (RESIT)

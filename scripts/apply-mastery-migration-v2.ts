@@ -264,7 +264,7 @@ async function applyMigration() {
 
     for (let i = 0; i < statements.length; i++) {
       try {
-        await sql(statements[i]);
+        await sql(statements[i] as unknown as TemplateStringsArray);
         console.log(`✓ Statement ${i + 1}/${statements.length} executed`);
       } catch (err: any) {
         console.log(`✗ Statement ${i + 1} error: ${err.message?.slice(0, 80)}`);

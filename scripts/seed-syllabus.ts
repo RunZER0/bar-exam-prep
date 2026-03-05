@@ -1,6 +1,7 @@
-
-import { db } from '@/lib/db';
-import { syllabusNodes } from '@/lib/db/schema';
+// @ts-ignore - path alias not available in scripts context
+import { db } from '../lib/db';
+// @ts-ignore - path alias not available in scripts context
+import { syllabusNodes } from '../lib/db/schema';
 import { sql } from 'drizzle-orm';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';

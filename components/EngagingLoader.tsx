@@ -86,8 +86,8 @@ export default function EngagingLoader({
       setTimeout(() => {
         setFactIndex(prev => (prev + 1) % shuffledFacts.length);
         setFadeIn(true);
-      }, 400); // fade-out duration
-    }, 5000); // rotate every 5 seconds
+      }, 600); // fade-out duration
+    }, 8000); // rotate every 8 seconds — slow enough to read & appreciate
     return () => clearInterval(interval);
   }, [showFacts, shuffledFacts.length]);
 

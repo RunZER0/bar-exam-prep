@@ -9,6 +9,8 @@ import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import FloatingChat from '@/components/FloatingChat';
 import EngagingLoader from '@/components/EngagingLoader';
 import { autonomousPreload } from '@/lib/services/autonomous-preload';
+import { NotificationProvider } from '@/contexts/NotificationContext';
+import { NotificationToast } from '@/components/NotificationBell';
 
 export default function AuthenticatedLayout({
   children,
@@ -63,15 +65,18 @@ export default function AuthenticatedLayout({
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-      <main className={`mt-14 md:mt-0 overflow-y-auto bg-background min-h-screen transition-all duration-300 ${collapsed ? 'ml-0 md:ml-[72px]' : 'ml-0 md:ml-64'}`}>
-        <div className="min-h-full">
-          {children}
-        </div>
-      </main>
-      <FloatingChat />
-      <PWAInstallPrompt />
-    </div>
+    <NotificationProvider>
+      <div className="min-h-screen bg-background">
+        <Sidebar />
+        <main className={`mt-14 md:mt-0 overflow-y-auto bg-background min-h-screen transition-all duration-300 ${collapsed ? 'ml-0 md:ml-[72px]' : 'ml-0 md:ml-64'}`}>
+          <div className="min-h-full">
+            {children}
+          </div>
+        </main>
+        <FloatingChat />
+        <PWAInstallPrompt />
+        <NotificationToast />
+      </div>
+    </NotificationProvider>
   );
 }

@@ -9,7 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
     CheckCircle2, ChevronRight, ChevronLeft, AlertTriangle,
     BookOpen, ArrowRight, Copy, Sparkles, X, Loader2,
-    RefreshCw, Maximize2, Minimize2, Scale, ExternalLink
+    RefreshCw, Maximize2, Minimize2, Scale, ExternalLink,
+    HelpCircle, ArrowUpDown, MessageSquare, Lightbulb, Send
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import EngagingLoader from '@/components/EngagingLoader';
@@ -297,6 +298,280 @@ function SelectionToolbar({ position, selectedText, onCopy, onSimplify, onAskAI,
 }
 
 /* ================================================================
+   CHECKPOINT SLIDE  —  inline questions between narrative slides
+   ================================================================ */
+interface CheckpointProps {
+    checkpoint: any;
+    onComplete: () => void;
+}
+function CheckpointSlide({ checkpoint, onComplete }: CheckpointProps) {
+    const [mcqAnswer, setMcqAnswer] = useState<number | null>(null);
+    const [mcqCorrect, setMcqCorrect] = useState(false);
+    const [shortAnswer, setShortAnswer] = useState('');
+    const [shortSubmitted, setShortSubmitted] = useState(false);
+    const [shortScore, setShortScore] = useState<'good' | 'partial' | 'miss' | null>(null);
+    const [orderItems, setOrderItems] = useState<string[]>([]);
+    const [orderSubmitted, setOrderSubmitted] = useState(false);
+    const [orderCorrect, setOrderCorrect] = useState(false);
+    const [showHint, setShowHint] = useState(false);
+    const [showExplanation, setShowExplanation] = useState(false);
+
+    useEffect(() => {
+        if (checkpoint?.type === 'ORDERING' && checkpoint.items) {
+            const shuffled = [...checkpoint.items];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            setOrderItems(shuffled);
+        }
+    }, [checkpoint]);
+
+    const handleMCQ = (idx: number) => {
+        if (mcqCorrect) return;
+        setMcqAnswer(idx);
+        if (idx === checkpoint.correctIndex) {
+            setMcqCorrect(true);
+            setShowExplanation(true);
+            setTimeout(onComplete, 2500);
+        }
+    };
+
+    const handleShortSubmit = () => {
+        if (!shortAnswer.trim()) return;
+        setShortSubmitted(true);
+        const lower = shortAnswer.toLowerCase();
+        const keywords = (checkpoint.keywords || []) as string[];
+        const matched = keywords.filter((k: string) => lower.includes(k.toLowerCase())).length;
+        if (matched >= Math.ceil(keywords.length * 0.6)) setShortScore('good');
+        else if (matched >= 1) setShortScore('partial');
+        else setShortScore('miss');
+        setShowExplanation(true);
+        setTimeout(onComplete, 3000);
+    };
+
+    const moveOrderItem = (from: number, dir: -1 | 1) => {
+        if (orderSubmitted) return;
+        const to = from + dir;
+        if (to < 0 || to >= orderItems.length) return;
+        const copy = [...orderItems];
+        [copy[from], copy[to]] = [copy[to], copy[from]];
+        setOrderItems(copy);
+    };
+
+    const handleOrderSubmit = () => {
+        setOrderSubmitted(true);
+        const correct = checkpoint.correctOrder
+            ? checkpoint.correctOrder.every((origIdx: number, pos: number) => orderItems[pos] === checkpoint.items[origIdx])
+            : false;
+        setOrderCorrect(correct);
+        setShowExplanation(true);
+        setTimeout(onComplete, 3000);
+    };
+
+    const typeLabel =
+        checkpoint.type === 'MCQ' ? 'Quick Check' :
+        checkpoint.type === 'SHORT' ? 'Think & Write' : 'Put in Order';
+    const TypeIcon = checkpoint.type === 'MCQ' ? HelpCircle : checkpoint.type === 'SHORT' ? MessageSquare : ArrowUpDown;
+
+    return (
+        <div className="animate-in scale-in duration-300 max-w-2xl mx-auto">
+            <div className="rounded-2xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-emerald-50/40 via-white to-teal-50/30 dark:from-emerald-950/15 dark:via-card dark:to-teal-950/10 p-6 sm:p-8">
+                {/* Badge */}
+                <div className="flex items-center gap-2 mb-5">
+                    <div className="p-1.5 rounded-lg bg-primary/10">
+                        <TypeIcon className="h-4 w-4 text-primary" />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-widest text-primary/70">{typeLabel}</span>
+                    {checkpoint.hint && (
+                        <button onClick={() => setShowHint(!showHint)} className="ml-auto text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                            <Lightbulb className="h-3 w-3" /> Hint
+                        </button>
+                    )}
+                </div>
+
+                {/* Hint */}
+                {showHint && checkpoint.hint && (
+                    <div className="mb-4 p-3 rounded-lg bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/40 dark:border-amber-800/30 text-sm text-amber-800 dark:text-amber-300">
+                        <Lightbulb className="inline h-3.5 w-3.5 mr-1.5" />{checkpoint.hint}
+                    </div>
+                )}
+
+                {/* Question */}
+                <p className="text-[15px] font-medium leading-relaxed text-foreground mb-5">{checkpoint.question}</p>
+
+                {/* MCQ */}
+                {checkpoint.type === 'MCQ' && (
+                    <div className="space-y-2.5">
+                        {(checkpoint.options || []).map((opt: string, idx: number) => {
+                            const selected = mcqAnswer === idx;
+                            const isCorrect = idx === checkpoint.correctIndex;
+                            const showRight = mcqCorrect && isCorrect;
+                            const showWrong = selected && !mcqCorrect && mcqAnswer !== null;
+                            return (
+                                <button key={idx} onClick={() => handleMCQ(idx)} disabled={mcqCorrect}
+                                    className={cn(
+                                        'w-full text-left flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 text-sm',
+                                        !selected && !showRight && 'border-border/30 hover:border-primary/40 hover:bg-primary/5',
+                                        showRight && 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30',
+                                        showWrong && 'border-red-300 bg-red-50/50 dark:bg-red-950/20',
+                                        selected && !showRight && !showWrong && 'border-primary/40 bg-primary/5',
+                                    )}>
+                                    <span className={cn(
+                                        'flex-shrink-0 w-6 h-6 rounded-full border flex items-center justify-center text-xs font-bold',
+                                        showRight && 'bg-emerald-500 border-emerald-500 text-white',
+                                        showWrong && 'bg-red-400 border-red-400 text-white',
+                                        !showRight && !showWrong && 'border-border/60 text-muted-foreground',
+                                    )}>{showRight ? '✓' : showWrong ? '✗' : String.fromCharCode(65 + idx)}</span>
+                                    <span className="text-foreground/90">{opt}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* SHORT ANSWER */}
+                {checkpoint.type === 'SHORT' && (
+                    <div className="space-y-3">
+                        <div className="relative">
+                            <textarea
+                                value={shortAnswer}
+                                onChange={(e) => setShortAnswer(e.target.value)}
+                                disabled={shortSubmitted}
+                                placeholder="Type your answer here..."
+                                rows={3}
+                                className="w-full p-3.5 rounded-xl border border-border/50 bg-background text-sm resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-70"
+                            />
+                            {!shortSubmitted && (
+                                <button onClick={handleShortSubmit} disabled={!shortAnswer.trim()} className="absolute bottom-3 right-3 p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors">
+                                    <Send className="h-3.5 w-3.5" />
+                                </button>
+                            )}
+                        </div>
+                        {shortSubmitted && (
+                            <div className={cn(
+                                'p-3 rounded-lg border text-sm',
+                                shortScore === 'good' && 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200/40 text-emerald-800 dark:text-emerald-300',
+                                shortScore === 'partial' && 'bg-amber-50 dark:bg-amber-950/20 border-amber-200/40 text-amber-800 dark:text-amber-300',
+                                shortScore === 'miss' && 'bg-orange-50 dark:bg-orange-950/20 border-orange-200/40 text-orange-800 dark:text-orange-300',
+                            )}>
+                                {shortScore === 'good' && '✓ Well done!'}
+                                {shortScore === 'partial' && '◐ Close — review the key points below.'}
+                                {shortScore === 'miss' && '○ Not quite — see the explanation below.'}
+                                {checkpoint.sampleAnswer && <p className="mt-2 text-xs opacity-80">Expected: {checkpoint.sampleAnswer}</p>}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ORDERING */}
+                {checkpoint.type === 'ORDERING' && (
+                    <div className="space-y-2">
+                        {orderItems.map((item, idx) => {
+                            let itemClass = 'border-border/30';
+                            if (orderSubmitted) {
+                                const correctPos = checkpoint.correctOrder ? checkpoint.items[checkpoint.correctOrder[idx]] : null;
+                                itemClass = item === correctPos ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20' : 'border-red-300 bg-red-50/30 dark:bg-red-950/15';
+                            }
+                            return (
+                                <div key={idx} className={cn('flex items-center gap-2 p-3 rounded-xl border transition-all', itemClass)}>
+                                    <span className="text-xs font-bold text-muted-foreground w-5 text-center">{idx + 1}</span>
+                                    <span className="flex-1 text-sm text-foreground/90">{item}</span>
+                                    {!orderSubmitted && (
+                                        <div className="flex flex-col gap-0.5">
+                                            <button onClick={() => moveOrderItem(idx, -1)} disabled={idx === 0} className="p-1 rounded hover:bg-muted disabled:opacity-30 text-muted-foreground"><ChevronLeft className="h-3 w-3 rotate-90" /></button>
+                                            <button onClick={() => moveOrderItem(idx, 1)} disabled={idx === orderItems.length - 1} className="p-1 rounded hover:bg-muted disabled:opacity-30 text-muted-foreground"><ChevronRight className="h-3 w-3 rotate-90" /></button>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                        {!orderSubmitted && (
+                            <Button onClick={handleOrderSubmit} size="sm" className="mt-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
+                                Check Order <CheckCircle2 className="ml-1.5 h-3.5 w-3.5" />
+                            </Button>
+                        )}
+                        {orderSubmitted && (
+                            <div className={cn('p-3 rounded-lg border text-sm mt-2', orderCorrect ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200/40 text-emerald-800 dark:text-emerald-300' : 'bg-orange-50 dark:bg-orange-950/20 border-orange-200/40 text-orange-800 dark:text-orange-300')}>
+                                {orderCorrect ? '✓ Perfect order!' : '○ Not quite — see the correct order below.'}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Explanation */}
+                {showExplanation && checkpoint.explanation && (
+                    <div className="mt-5 p-4 rounded-xl bg-primary/5 border border-primary/15 text-sm text-foreground/80 animate-in fade-in duration-300">
+                        <p className="font-semibold text-primary text-xs mb-1.5">Explanation</p>
+                        <p className="leading-relaxed">{checkpoint.explanation}</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/* ================================================================
+   NOTE STYLE WRAPPERS  —  5 visual styles for variety
+   ================================================================ */
+type NoteStyle = 'classic' | 'magazine' | 'slide' | 'highlight' | 'minimal';
+
+function NoteStyleWrapper({ style, children }: { style: NoteStyle; children: React.ReactNode }) {
+    switch (style) {
+        case 'classic':
+            // Default warm amber scholarly style
+            return <div className="space-y-1">{children}</div>;
+
+        case 'magazine':
+            // Two-tone with accent sidebar and larger first letter
+            return (
+                <div className="relative pl-4 border-l-[3px] border-amber-400 dark:border-amber-600">
+                    <div className="first-letter:text-4xl first-letter:font-serif first-letter:font-bold first-letter:text-amber-700 dark:first-letter:text-amber-400 first-letter:float-left first-letter:mr-2 first-letter:mt-1">
+                        {children}
+                    </div>
+                </div>
+            );
+
+        case 'slide':
+            // Gamma.app-inspired: centered, card-based, bigger text, no border, clean
+            return (
+                <div className="flex items-center justify-center min-h-[60vh]">
+                    <div className="max-w-xl w-full text-center px-8 py-10 rounded-3xl bg-gradient-to-br from-white via-amber-50/30 to-orange-50/20 dark:from-zinc-900 dark:via-amber-950/10 dark:to-zinc-900 shadow-lg border border-amber-100/40 dark:border-amber-900/20">
+                        <div className="[&_h3]:text-2xl [&_h3]:font-bold [&_h3]:text-center [&_h3]:text-amber-900 dark:[&_h3]:text-amber-200 [&_h3]:mb-6 [&_p]:text-base [&_p]:leading-[1.9] [&_p]:text-center [&_ul]:text-left [&_ol]:text-left [&_blockquote]:text-left">
+                            {children}
+                        </div>
+                    </div>
+                </div>
+            );
+
+        case 'highlight':
+            // Key insight style: content in a colored card with icon
+            return (
+                <div className="rounded-2xl bg-gradient-to-br from-emerald-50/50 to-teal-50/30 dark:from-emerald-950/15 dark:to-teal-950/10 border border-emerald-200/30 dark:border-emerald-800/20 p-6 sm:p-8">
+                    <div className="flex items-center gap-2 mb-4 text-emerald-700 dark:text-emerald-400">
+                        <Lightbulb className="h-4 w-4" />
+                        <span className="text-xs font-bold uppercase tracking-widest">Key Concepts</span>
+                    </div>
+                    <div className="[&_h3]:text-lg [&_h3]:text-emerald-900 dark:[&_h3]:text-emerald-200 [&_p]:text-foreground/85">
+                        {children}
+                    </div>
+                </div>
+            );
+
+        case 'minimal':
+            // Clean, wide spacing, very readable
+            return (
+                <div className="max-w-lg mx-auto [&_h3]:text-xl [&_h3]:font-light [&_h3]:tracking-tight [&_h3]:text-foreground [&_h3]:border-b [&_h3]:border-border/30 [&_h3]:pb-3 [&_h3]:mb-5 [&_p]:text-[15px] [&_p]:leading-[2] [&_p]:text-foreground/75 [&_li]:text-foreground/75 [&_li]:leading-[2] [&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground/30 [&_blockquote]:text-muted-foreground">
+                    {children}
+                </div>
+            );
+
+        default:
+            return <div>{children}</div>;
+    }
+}
+
+/* ================================================================
    CUSTOM MARKDOWN COMPONENTS  —  warm palette + citation detection
    ================================================================ */
 function processChildren(children: any, onCite: (c: ParsedCitation) => void): React.ReactNode {
@@ -521,10 +796,13 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
         load();
     }, [task, getIdToken, cacheKey]);
 
-    /* ---- Navigation ---- */
+    /* ---- Navigation (uses slides[] if available, falls back to narrativeSections[]) ---- */
+    const slides: any[] = content?.slides || (content?.narrativeSections || []).map((s: string) => ({ type: 'narrative', content: s, style: 'classic' }));
+    const totalSlides = slides.length || 1;
+
     const handleNext = useCallback(() => {
         if (view === 'NARRATIVE') {
-            if (currentSlide < (content?.narrativeSections?.length || 0) - 1) {
+            if (currentSlide < totalSlides - 1) {
                 const n = currentSlide + 1; setCurrentSlide(n); saveProgress({ s: n });
             } else {
                 const next = content?.exhibit ? 'EXHIBIT' : 'ASSESSMENT';
@@ -533,20 +811,20 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
         } else if (view === 'EXHIBIT') {
             setView('ASSESSMENT'); saveProgress({ v: 'ASSESSMENT' });
         }
-    }, [view, currentSlide, content, saveProgress]);
+    }, [view, currentSlide, totalSlides, content, saveProgress]);
 
     const handleBack = useCallback(() => {
         if (view === 'NARRATIVE' && currentSlide > 0) {
             const p = currentSlide - 1; setCurrentSlide(p); saveProgress({ s: p });
         } else if (view === 'EXHIBIT') {
             setView('NARRATIVE');
-            const last = (content?.narrativeSections?.length || 1) - 1;
+            const last = totalSlides - 1;
             setCurrentSlide(last); saveProgress({ v: 'NARRATIVE', s: last });
         } else if (view === 'ASSESSMENT' && stackLevel === 1) {
             if (content?.exhibit) { setView('EXHIBIT'); saveProgress({ v: 'EXHIBIT' }); }
-            else { setView('NARRATIVE'); const last = (content?.narrativeSections?.length || 1) - 1; setCurrentSlide(last); saveProgress({ v: 'NARRATIVE', s: last }); }
+            else { setView('NARRATIVE'); const last = totalSlides - 1; setCurrentSlide(last); saveProgress({ v: 'NARRATIVE', s: last }); }
         }
-    }, [view, currentSlide, content, stackLevel, saveProgress]);
+    }, [view, currentSlide, totalSlides, content, stackLevel, saveProgress]);
 
     const canGoBack = (view === 'NARRATIVE' && currentSlide > 0) || view === 'EXHIBIT' || (view === 'ASSESSMENT' && stackLevel === 1);
 
@@ -710,10 +988,12 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
     }
 
     /* ============================================================
-       VIEW: NARRATIVE  (Study Notes)
+       VIEW: NARRATIVE  (Study Notes + Inline Checkpoints)
        ============================================================ */
-    const currentText = (content?.narrativeSections || [])[currentSlide] || 'Loading...';
-    const totalSlides = content?.narrativeSections?.length || 1;
+    const currentSlideData = slides[currentSlide] || { type: 'narrative', content: 'Loading...', style: 'classic' };
+    const isCheckpoint = currentSlideData.type === 'checkpoint';
+    const currentText = isCheckpoint ? '' : (currentSlideData.content || '');
+    const currentStyle: NoteStyle = currentSlideData.style || 'classic';
     const isLastSlide = currentSlide === totalSlides - 1;
     const progressPct = ((currentSlide + 1) / totalSlides) * 100;
 
@@ -741,7 +1021,9 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 min-w-0">
                                 <BookOpen className="h-4 w-4 text-amber-700 dark:text-amber-400 flex-shrink-0" />
-                                <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">Study Notes</span>
+                                <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                                    {isCheckpoint ? 'Checkpoint' : 'Study Notes'}
+                                </span>
                                 <span className="text-muted-foreground text-xs mx-0.5">&middot;</span>
                                 <span className="text-xs text-muted-foreground tabular-nums">{currentSlide + 1} of {totalSlides}</span>
                             </div>
@@ -756,25 +1038,50 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                     {/* ---- CONTENT ---- */}
                     <div className="flex-1 overflow-hidden relative">
                         <ScrollArea className="h-full">
-                            <div ref={narrativeRef} onMouseUp={handleMouseUp} className="p-5 sm:p-6 lg:p-8 pb-32 select-text cursor-text">
-                                <ReactMarkdown components={mdComponents}>{currentText}</ReactMarkdown>
+                            <div ref={narrativeRef} onMouseUp={isCheckpoint ? undefined : handleMouseUp} className={cn("p-5 sm:p-6 lg:p-8 pb-32", !isCheckpoint && "select-text cursor-text")}>
+                                {isCheckpoint ? (
+                                    <CheckpointSlide
+                                        checkpoint={currentSlideData.checkpoint}
+                                        onComplete={handleNext}
+                                    />
+                                ) : (
+                                    <NoteStyleWrapper style={currentStyle}>
+                                        <ReactMarkdown components={mdComponents}>{currentText}</ReactMarkdown>
+                                    </NoteStyleWrapper>
+                                )}
                             </div>
                         </ScrollArea>
 
                         {/* ---- BOTTOM ACTION BAR ---- */}
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card via-card/98 to-transparent pt-12 pb-4 px-4 flex items-center justify-between">
-                            <div>
+                        {!isCheckpoint && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card via-card/98 to-transparent pt-12 pb-4 px-4 flex items-center justify-between">
+                                <div>
+                                    {canGoBack ? (
+                                        <button onClick={handleBack} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors">
+                                            <ChevronLeft className="h-4 w-4" /> Back
+                                        </button>
+                                    ) : <div />}
+                                </div>
+                                <Button onClick={handleNext} size="default" className="shadow-md bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white px-6 py-2.5 rounded-xl transition-all font-medium">
+                                    {isLastSlide ? (content?.exhibit ? 'View Exhibit' : 'Start Assessment') : 'Continue'}
+                                    <ChevronRight className="ml-1.5 h-4 w-4" />
+                                </Button>
+                            </div>
+                        )}
+
+                        {/* Checkpoint has its own navigation via onComplete */}
+                        {isCheckpoint && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card via-card/98 to-transparent pt-8 pb-4 px-4 flex items-center justify-between">
                                 {canGoBack ? (
                                     <button onClick={handleBack} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors">
                                         <ChevronLeft className="h-4 w-4" /> Back
                                     </button>
                                 ) : <div />}
+                                <button onClick={handleNext} className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors px-3 py-2">
+                                    Skip &rarr;
+                                </button>
                             </div>
-                            <Button onClick={handleNext} size="default" className="shadow-md bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white px-6 py-2.5 rounded-xl transition-all font-medium">
-                                {isLastSlide ? (content?.exhibit ? 'View Exhibit' : 'Start Assessment') : 'Continue'}
-                                <ChevronRight className="ml-1.5 h-4 w-4" />
-                            </Button>
-                        </div>
+                        )}
                     </div>
                 </Card>
             </div>

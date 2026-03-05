@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { NotificationBell } from '@/components/NotificationBell';
 import {
   LayoutDashboard,
   FileText,
@@ -158,7 +159,10 @@ export default function Sidebar() {
 
       {/* User footer */}
       <div className="border-t border-border/50 px-3 py-4 space-y-3">
-        {!collapsed && <ThemeToggle />}
+        <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
+          {!collapsed && <ThemeToggle />}
+          <NotificationBell collapsed={collapsed} />
+        </div>
         
         <div className={`flex items-center gap-2 ${collapsed ? 'justify-center' : ''}`}>
           {user?.photoURL ? (
@@ -207,9 +211,12 @@ export default function Sidebar() {
           />
           <span className="font-bold text-lg">Ynai</span>
         </div>
-        <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-xl hover:bg-accent">
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell collapsed />
+          <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-xl hover:bg-accent">
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile overlay */}

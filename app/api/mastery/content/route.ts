@@ -4,6 +4,7 @@ import { microSkills, witnesses, syllabusNodes } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { NarrativeNoteRenderer } from '@/lib/services/narrative-renderer';
 import { AssessmentGenerator } from '@/lib/services/assessment-generator';
+import { CheckpointGenerator } from '@/lib/services/checkpoint-generator';
 
 /**
  * GET /api/mastery/content
@@ -75,12 +76,43 @@ export async function GET(req: NextRequest) {
             stack = { topic: topicName, stack: [] };
         }
 
-        // 4. Split Narrative for Carousel
+        // 4. Split Narrative for Carousel & interleave checkpoint questions
         let sections = narrative.split('###').filter(s => s.trim().length > 0).map(s => '### ' + s);
         if (sections.length === 0) sections = [narrative];
 
+        // 5. Generate inline checkpoint questions and build interleaved slides
+        let checkpoints: any[] = [];
+        try {
+            checkpoints = await CheckpointGenerator.generate(topicName, sections.length, { unitCode });
+        } catch (e) {
+            console.error('[mastery/content] Checkpoint generation failed:', e);
+        }
+
+        // Assign visual styles to narrative slides (cycle through 5 styles)
+        const NOTE_STYLES = ['classic', 'magazine', 'slide', 'highlight', 'minimal'] as const;
+        type SlideItem = 
+            | { type: 'narrative'; content: string; style: string }
+            | { type: 'checkpoint'; checkpoint: any };
+
+        const interleaved: SlideItem[] = [];
+        let cpIdx = 0;
+
+        for (let i = 0; i < sections.length; i++) {
+            interleaved.push({
+                type: 'narrative',
+                content: sections[i],
+                style: NOTE_STYLES[i % NOTE_STYLES.length],
+            });
+            // Insert a checkpoint after every 2nd narrative slide (but not after the last)
+            if ((i + 1) % 2 === 0 && i < sections.length - 1 && cpIdx < checkpoints.length) {
+                interleaved.push({ type: 'checkpoint', checkpoint: checkpoints[cpIdx] });
+                cpIdx++;
+            }
+        }
+
         return NextResponse.json({
-            narrativeSections: sections,
+            narrativeSections: sections,      // backwards compat
+            slides: interleaved,              // new interleaved format
             isDrafting,
             unitCode,
             stack,

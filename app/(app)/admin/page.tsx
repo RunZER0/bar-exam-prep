@@ -780,6 +780,78 @@ export default function AdminPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-lg">🔔 Notification Testing</CardTitle>
+          <CardDescription>Test in-app notifications and Brevo email delivery</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between py-3 border-b">
+            <div>
+              <p className="font-medium">Single In-App Notification</p>
+              <p className="text-sm text-muted-foreground">Fires one random notification toast + bell entry</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={async () => {
+              try {
+                const res = await fetch('/api/notifications/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'single' }) });
+                const data = await res.json();
+                if (data.success && data.notifications) {
+                  data.notifications.forEach((n: any) => {
+                    setTimeout(() => {
+                      window.dispatchEvent(new CustomEvent('ynai:notify', { detail: n }));
+                    }, n.delay || 0);
+                  });
+                  setSuccess('Test notification sent!');
+                }
+              } catch { setError('Failed to send test notification'); }
+            }}>
+              <Zap className="h-4 w-4 mr-1" /> Test Single
+            </Button>
+          </div>
+          <div className="flex items-center justify-between py-3 border-b">
+            <div>
+              <p className="font-medium">Burst (3 Notifications)</p>
+              <p className="text-sm text-muted-foreground">Fires 3 notifications in quick succession</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={async () => {
+              try {
+                const res = await fetch('/api/notifications/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'burst' }) });
+                const data = await res.json();
+                if (data.success && data.notifications) {
+                  data.notifications.forEach((n: any) => {
+                    setTimeout(() => {
+                      window.dispatchEvent(new CustomEvent('ynai:notify', { detail: n }));
+                    }, n.delay || 0);
+                  });
+                  setSuccess('Burst notification sent!');
+                }
+              } catch { setError('Failed to send burst notification'); }
+            }}>
+              <Zap className="h-4 w-4 mr-1" /> Test Burst
+            </Button>
+          </div>
+          <div className="flex items-center justify-between py-3">
+            <div>
+              <p className="font-medium">Test Brevo Email</p>
+              <p className="text-sm text-muted-foreground">Send a test email to {user?.email || 'your address'}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={async () => {
+              try {
+                const res = await fetch('/api/notifications/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'email', email: user?.email }) });
+                const data = await res.json();
+                if (data.success) {
+                  setSuccess(data.message);
+                } else {
+                  setError(data.message || 'Email test failed');
+                }
+              } catch { setError('Failed to send test email'); }
+            }}>
+              <Zap className="h-4 w-4 mr-1" /> Test Email
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-lg text-red-500">Danger Zone</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">

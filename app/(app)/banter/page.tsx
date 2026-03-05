@@ -1,222 +1,199 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
-import { 
-  Coffee, Send, Sparkles, Scale, BookOpen, Gavel, 
-  MessageCircle, RefreshCw, Heart, Share2
-} from 'lucide-react';
+import EngagingLoader from '@/components/EngagingLoader';
+import { Coffee, RefreshCw, Loader2 } from 'lucide-react';
 
-const BANTER_PROMPTS = [
-  { icon: '⚖️', label: 'Legal Jokes', prompt: 'Tell me a funny legal joke or lawyer joke!' },
-  { icon: '📚', label: 'Fun Facts', prompt: 'Share a fascinating or bizarre legal fact from history!' },
-  { icon: '🎭', label: 'Famous Cases', prompt: 'Tell me about a weird or unusual court case that actually happened!' },
-  { icon: '💬', label: 'Legal Puns', prompt: 'Give me some clever legal puns!' },
-  { icon: '🌍', label: 'Law Around World', prompt: 'Tell me about a strange law from another country!' },
-  { icon: '🎬', label: 'Law in Pop Culture', prompt: 'Discuss how law is portrayed in movies or TV shows!' },
-];
+/* ── Category definitions ── */
+const CATEGORIES = [
+  { id: 'jokes', icon: '⚖️', label: 'Legal Jokes', prompt: 'Tell me 3 different short, funny legal jokes or lawyer jokes. Number them. Keep each under 60 words.' },
+  { id: 'facts', icon: '📚', label: 'Fun Facts', prompt: 'Share 3 fascinating or bizarre legal facts from history. Number them. Keep each under 80 words.' },
+  { id: 'cases', icon: '🎭', label: 'Famous Cases', prompt: 'Tell me about 2 weird or unusual court cases that actually happened. Give each a catchy title and keep under 100 words each.' },
+  { id: 'puns', icon: '💬', label: 'Legal Puns', prompt: 'Give me 5 clever one-liner legal puns. Number them.' },
+  { id: 'world', icon: '🌍', label: 'Law Around the World', prompt: 'Share 3 strange or surprising laws from different countries. Number them. Keep each under 60 words.' },
+  { id: 'popculture', icon: '🎬', label: 'Law in Pop Culture', prompt: 'Discuss 2 interesting ways law is portrayed in movies or TV shows. Keep each under 80 words.' },
+] as const;
 
-type Message = {
+type CategoryId = (typeof CATEGORIES)[number]['id'];
+
+interface ContentCard {
   id: string;
-  role: 'user' | 'assistant';
+  categoryId: CategoryId;
   content: string;
-};
+}
 
 export default function BanterPage() {
   const { getIdToken } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [cards, setCards] = useState<ContentCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshingCat, setRefreshingCat] = useState<CategoryId | null>(null);
+  const [activeCat, setActiveCat] = useState<CategoryId | 'all'>('all');
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const sendMessage = async (content: string) => {
-    if (!content.trim() || isLoading) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: content.trim(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
+  /* Load all categories on mount */
+  const loadAll = useCallback(async () => {
+    setLoading(true);
     try {
       const token = await getIdToken();
-      const response = await fetch('/api/ai/chat', {
+      const results = await Promise.allSettled(
+        CATEGORIES.map(async (cat) => {
+          const res = await fetch('/api/ai/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            body: JSON.stringify({
+              message: cat.prompt,
+              competencyType: 'banter',
+              context: 'legal_banter_relaxation',
+            }),
+          });
+          if (!res.ok) throw new Error('fetch failed');
+          const data = await res.json();
+          return { categoryId: cat.id, content: data.response } as ContentCard;
+        })
+      );
+
+      const newCards: ContentCard[] = [];
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled') {
+          newCards.push({ ...r.value, id: CATEGORIES[i].id + '-' + Date.now() });
+        }
+      });
+      setCards(newCards);
+    } catch (err) {
+      console.error('Failed to load banter content:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [getIdToken]);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  /* Refresh one category */
+  const refreshCategory = async (catId: CategoryId) => {
+    setRefreshingCat(catId);
+    try {
+      const cat = CATEGORIES.find(c => c.id === catId)!;
+      const token = await getIdToken();
+      const res = await fetch('/api/ai/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({
-          message: content,
+          message: cat.prompt + ' Make sure these are different from the previous ones.',
           competencyType: 'banter',
           context: 'legal_banter_relaxation',
         }),
       });
-
-      if (!response.ok) throw new Error('Failed to get response');
-
-      const data = await response.json();
-      
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.response,
-      };
-
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      console.error('Chat error:', error);
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Oops! Even lawyers need a break sometimes. Please try again!',
-      }]);
+      if (!res.ok) throw new Error('fetch failed');
+      const data = await res.json();
+      setCards(prev => {
+        const without = prev.filter(c => c.categoryId !== catId);
+        return [...without, { id: catId + '-' + Date.now(), categoryId: catId, content: data.response }];
+      });
+    } catch (err) {
+      console.error('Refresh failed:', err);
     } finally {
-      setIsLoading(false);
+      setRefreshingCat(null);
     }
   };
 
-  const handleQuickPrompt = (prompt: string) => {
-    sendMessage(prompt);
-  };
+  const visible = activeCat === 'all' ? cards : cards.filter(c => c.categoryId === activeCat);
+
+  if (loading) {
+    return <EngagingLoader size="lg" message="Loading some legal fun for you..." />;
+  }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] md:h-screen">
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-background animate-content-enter">
       {/* Header */}
-      <div className="border-b bg-card/50 backdrop-blur-sm px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-amber-500/10">
-            <Coffee className="w-6 h-6 text-amber-600" />
+      <div className="border-b border-border/30 bg-card/40 px-4 sm:px-6 py-4 shrink-0">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-500/10">
+              <Coffee className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold">Legal Banter</h1>
+              <p className="text-xs text-muted-foreground">Take a break — you deserve it</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold">Legal Banter</h1>
-            <p className="text-sm text-muted-foreground">Take a break with legal humor and fun facts</p>
-          </div>
+          <button
+            onClick={loadAll}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh All
+          </button>
         </div>
       </div>
 
-      {/* Chat area */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mb-4">
-              <Coffee className="w-8 h-8 text-amber-600" />
+      {/* Category filter tabs */}
+      <div className="border-b border-border/20 px-4 sm:px-6 shrink-0">
+        <div className="max-w-5xl mx-auto flex gap-1 overflow-x-auto no-scrollbar py-2">
+          <button
+            onClick={() => setActiveCat('all')}
+            className={'px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ' +
+              (activeCat === 'all' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted')}
+          >
+            All
+          </button>
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCat(cat.id)}
+              className={'px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1 ' +
+                (activeCat === cat.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted')}
+            >
+              <span>{cat.icon}</span> {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Content feed */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+          {visible.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              <p>No content loaded yet. Hit Refresh All to generate fresh content.</p>
             </div>
-            <h2 className="text-xl font-semibold mb-2">Time for a Break!</h2>
-            <p className="text-muted-foreground max-w-md mb-8">
-              All work and no play makes for a dull advocate. Explore legal humor, 
-              fun facts, and entertaining stories to lighten your study load.
-            </p>
-            
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full max-w-lg">
-              {BANTER_PROMPTS.map((item, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleQuickPrompt(item.prompt)}
-                  className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-card hover:bg-accent hover:border-primary/30 transition-all group"
-                >
-                  <span className="text-2xl group-hover:scale-110 transition-transform">{item.icon}</span>
-                  <span className="text-sm font-medium">{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <>
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
-              >
-                <div
-                  className={`max-w-[85%] md:max-w-[70%] ${
-                    message.role === 'user'
-                      ? 'chat-bubble-user'
-                      : 'chat-bubble-ai'
-                  }`}
-                >
-                  {message.role === 'assistant' ? (
-                    <MarkdownRenderer content={message.content} size="sm" />
-                  ) : (
-                    <div className="prose-ai text-sm">{message.content}</div>
-                  )}
-                </div>
-              </div>
-            ))}
-            
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="chat-bubble-ai">
-                  <div className="flex items-center gap-2">
-                    <div className="dot-pulse flex gap-1">
-                      <span className="w-2 h-2 bg-primary rounded-full"></span>
-                      <span className="w-2 h-2 bg-primary rounded-full"></span>
-                      <span className="w-2 h-2 bg-primary rounded-full"></span>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {visible.map(card => {
+                const cat = CATEGORIES.find(c => c.id === card.categoryId)!;
+                const isRefreshing = refreshingCat === card.categoryId;
+                return (
+                  <div
+                    key={card.id}
+                    className="rounded-xl bg-card/60 border border-border/30 p-5 transition-all hover:border-border/50"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{cat.icon}</span>
+                        <span className="text-sm font-semibold">{cat.label}</span>
+                      </div>
+                      <button
+                        onClick={() => refreshCategory(card.categoryId)}
+                        disabled={isRefreshing}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                        title="Get new content"
+                      >
+                        {isRefreshing ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                    <div className="text-sm leading-relaxed">
+                      <MarkdownRenderer content={card.content} size="sm" />
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </>
-        )}
-      </div>
-
-      {/* Quick prompts when in chat */}
-      {messages.length > 0 && (
-        <div className="px-4 pb-2">
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
-            {BANTER_PROMPTS.slice(0, 4).map((item, index) => (
-              <button
-                key={index}
-                onClick={() => handleQuickPrompt(item.prompt)}
-                disabled={isLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs bg-secondary hover:bg-accent transition-colors whitespace-nowrap disabled:opacity-50"
-              >
-                <span>{item.icon}</span>
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
-
-      {/* Input */}
-      <div className="border-t bg-card/50 backdrop-blur-sm p-4">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            sendMessage(input);
-          }}
-          className="flex gap-2 max-w-4xl mx-auto"
-        >
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask for jokes, fun facts, or anything entertaining..."
-            disabled={isLoading}
-            className="flex-1"
-          />
-          <Button type="submit" disabled={isLoading || !input.trim()}>
-            <Send className="w-4 h-4" />
-          </Button>
-        </form>
       </div>
     </div>
   );

@@ -226,6 +226,27 @@ export const LEGAL_DOCUMENT_TYPES = {
       { id: 'statutory-notice', name: 'Statutory Notice', description: 'Notice required by legislation before commencement of proceedings.' },
     ],
   },
+  judgments: {
+    category: 'Judgments & Court Orders',
+    documents: [
+      { id: 'judgment', name: 'Judgment', description: 'Final determination of a court on the merits of a case, including findings of fact and law.' },
+      { id: 'ruling', name: 'Ruling', description: 'Court decision on an interlocutory or procedural application.' },
+      { id: 'decree', name: 'Decree', description: 'Formal expression of an adjudication that conclusively determines the rights of the parties.' },
+      { id: 'court-order', name: 'Court Order', description: 'Directive issued by a court requiring a party to do or refrain from doing something.' },
+      { id: 'consent-order', name: 'Consent Order', description: 'Order made by court with agreement of all parties, often settling a dispute.' },
+      { id: 'injunction-order', name: 'Injunction Order', description: 'Court order restraining a party from performing a specified act or requiring performance.' },
+      { id: 'garnishee-order', name: 'Garnishee Order', description: 'Order directing a third party to pay money owed to a judgment debtor directly to the judgment creditor.' },
+    ],
+  },
+  adr: {
+    category: 'ADR & Arbitration Documents',
+    documents: [
+      { id: 'arbitration-agreement', name: 'Arbitration Agreement', description: 'Agreement between parties to resolve disputes through arbitration.' },
+      { id: 'statement-of-claim-arb', name: 'Statement of Claim (Arbitration)', description: 'Initiating document in arbitration proceedings setting out the claimant\'s case.' },
+      { id: 'arbitral-award', name: 'Arbitral Award', description: 'Final decision of an arbitral tribunal on the matters in dispute.' },
+      { id: 'mediation-agreement', name: 'Mediation Agreement', description: 'Agreement to mediate and terms governing the mediation process.' },
+    ],
+  },
 } as const;
 
 // -----------------------------------------------

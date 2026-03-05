@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { Zap, BookOpen, PlayCircle, CheckCircle2, BarChart3, ArrowLeft, ChevronRight, ChevronDown, Smile, Meh, Frown, ArrowRight, RotateCcw, Sparkles, Compass, FileText, Lightbulb, ClipboardCheck, PenTool } from 'lucide-react';
 import MasteryCarousel from '@/components/MasteryCarousel';
 import ReadinessDashboard from '@/components/ReadinessDashboard';
@@ -70,6 +71,21 @@ export default function MasteryPage() {
     // Active task state — can be MasteryCarousel (SYLLABUS) or EmbeddedPracticePanel (WITNESS / practice)
     const [activeTask, setActiveTask] = useState<OrchestratedTask | null>(null);
     const [activePractice, setActivePractice] = useState<PracticeTask | null>(null);
+    const { setCollapsed } = useSidebar();
+    const sidebarWasCollapsed = useRef(false);
+
+    // Auto-collapse sidebar when studying notes for immersive experience
+    useEffect(() => {
+        if (activeTask) {
+            // Remember current state so we can restore
+            const stored = localStorage.getItem('sidebar-collapsed');
+            sidebarWasCollapsed.current = stored === 'true';
+            setCollapsed(true);
+        } else if (sidebarWasCollapsed.current === false) {
+            // Restore sidebar when returning to hub (only if it wasn't collapsed before)
+            setCollapsed(false);
+        }
+    }, [activeTask, setCollapsed]);
 
     // Fetch the queue — uses prefetch cache if available (instant), else fetches live
     // Invalidates cache if the cached date doesn't match today (EAT)
@@ -176,7 +192,7 @@ export default function MasteryPage() {
     if (activeTask) {
         return (
             <div className="min-h-screen bg-background animate-content-enter">
-                <div className="max-w-5xl mx-auto px-2 sm:px-4 py-3">
+                <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3">
                     <button 
                         onClick={() => setActiveTask(null)}
                         className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors"
@@ -277,7 +293,7 @@ export default function MasteryPage() {
         <div className="min-h-screen bg-background animate-content-enter">
             {/* Compact Header */}
             <div className="border-b border-border/40 bg-card/50">
-                <div className="max-w-4xl mx-auto px-4 py-5">
+                <div className="max-w-6xl mx-auto px-4 py-5">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-lg bg-zinc-900 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
@@ -330,7 +346,7 @@ export default function MasteryPage() {
 
             {/* Tab Navigation */}
             <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-border/40">
-                <div className="max-w-4xl mx-auto px-4">
+                <div className="max-w-6xl mx-auto px-4">
                     <div className="flex gap-1">
                         {TABS.map(tab => {
                             const Icon = tab.icon;
@@ -358,7 +374,7 @@ export default function MasteryPage() {
             </div>
 
             {/* Main Content */}
-            <div className="max-w-4xl mx-auto px-4 py-5">
+            <div className="max-w-6xl mx-auto px-4 py-5">
                 {/* ====== TAB: TODAY'S PLAN ====== */}
                 {activeTab === 'plan' && (
                     <div className="space-y-5">

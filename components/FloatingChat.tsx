@@ -393,8 +393,8 @@ export default function FloatingChat() {
         className={`
           fixed z-50
           w-14 h-14 rounded-full
-          bg-stone-700 hover:bg-stone-600 dark:bg-stone-300 dark:hover:bg-stone-400
-          text-white shadow-lg hover:shadow-xl
+          bg-stone-500/50 hover:bg-stone-500/70 dark:bg-stone-400/40 dark:hover:bg-stone-400/60
+          text-white shadow-md hover:shadow-lg
           flex items-center justify-center
           transition-opacity duration-300 ease-out
           ${isDragging ? 'cursor-grabbing scale-110' : 'cursor-grab'}

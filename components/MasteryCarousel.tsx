@@ -1035,6 +1035,17 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
     // Markdown components (memoised per citation handler)
     const mdComponents = useMdComponents(handleCitationClick);
 
+    // Extract section headings for the reader TOC (must be before early returns to satisfy hook rules)
+    const sectionHeadings: { index: number; title: string }[] = useMemo(() => {
+        const s = content?.slides || (content?.narrativeSections || []).map((sec: string) => ({ type: 'narrative', content: sec, style: 'classic' }));
+        return s
+            .filter((sl: any) => sl.type === 'narrative')
+            .map((sl: any, i: number) => {
+                const match = (sl.content || '').match(/^###\s+(.+)/m);
+                return { index: i, title: match ? match[1].trim() : `Section ${i + 1}` };
+            });
+    }, [content]);
+
     /* ---- Loading / Error ---- */
     if (loading) return <EngagingLoader size="md" message="Preparing your study materials..." />;
     if (!content) {
@@ -1294,12 +1305,7 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
     const isLastSlide = currentSlide === totalSlides - 1;
     const progressPct = ((currentSlide + 1) / totalSlides) * 100;
 
-    // Extract section headings for the reader TOC
     const narrativeSlides = slides.filter((s: any) => s.type === 'narrative');
-    const sectionHeadings = useMemo(() => narrativeSlides.map((s: any, i: number) => {
-        const match = (s.content || '').match(/^###\s+(.+)/m);
-        return { index: i, title: match ? match[1].trim() : `Section ${i + 1}` };
-    }), [narrativeSlides]);
 
     return (
         <div ref={containerRef} className={wrap}>
@@ -1449,7 +1455,7 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                                             </button>
                                         ) : <div />}
                                     </div>
-                                    <Button onClick={handleNext} size="default" className="shadow-sm bg-stone-800 hover:bg-stone-700 dark:bg-stone-200 dark:hover:bg-stone-300 text-white dark:text-stone-900 px-6 py-2.5 rounded-xl transition-all font-medium">
+                                    <Button onClick={handleNext} size="default" className="shadow-sm bg-stone-500/70 hover:bg-stone-600 dark:bg-stone-400/60 dark:hover:bg-stone-300 text-white dark:text-stone-900 px-6 py-2.5 rounded-xl transition-all font-medium">
                                         {isLastSlide ? (content?.exhibit ? 'View Exhibit' : 'Start Assessment') : 'Continue'}
                                         <ChevronRight className="ml-1.5 h-4 w-4" />
                                     </Button>

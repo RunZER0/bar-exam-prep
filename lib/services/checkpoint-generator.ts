@@ -54,7 +54,7 @@ export class CheckpointGenerator {
         slideCount: number,
         context?: { unitCode?: string }
     ): Promise<CheckpointQuestion[]> {
-        const count = Math.min(Math.max(Math.floor(slideCount / 2), 1), 4);
+        const count = Math.min(Math.max(Math.floor(slideCount / 2), 2), 4);
 
         const typeDistribution = this.distributeTypes(count);
 

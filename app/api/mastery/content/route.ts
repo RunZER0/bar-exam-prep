@@ -88,8 +88,10 @@ export async function GET(req: NextRequest) {
             console.error('[mastery/content] Checkpoint generation failed:', e);
         }
 
-        // Assign visual styles to narrative slides (cycle through 5 styles)
+        // Pick ONE visual style for the entire session (randomly chosen)
         const NOTE_STYLES = ['classic', 'magazine', 'slide', 'highlight', 'minimal'] as const;
+        const sessionStyle = NOTE_STYLES[Math.floor(Math.random() * NOTE_STYLES.length)];
+
         type SlideItem = 
             | { type: 'narrative'; content: string; style: string }
             | { type: 'checkpoint'; checkpoint: any };
@@ -101,7 +103,7 @@ export async function GET(req: NextRequest) {
             interleaved.push({
                 type: 'narrative',
                 content: sections[i],
-                style: NOTE_STYLES[i % NOTE_STYLES.length],
+                style: sessionStyle,
             });
             // Insert a checkpoint after every 2nd narrative slide (but not after the last)
             if ((i + 1) % 2 === 0 && i < sections.length - 1 && cpIdx < checkpoints.length) {

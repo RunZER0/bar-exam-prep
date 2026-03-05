@@ -516,52 +516,95 @@ function CheckpointSlide({ checkpoint, onComplete }: CheckpointProps) {
    ================================================================ */
 type NoteStyle = 'classic' | 'magazine' | 'slide' | 'highlight' | 'minimal';
 
+/**
+ * NoteStyleWrapper — 5 distinct presentation styles.
+ * Each style changes BOTH aesthetics AND content organisation:
+ *   - classic   : Traditional textbook — left-aligned prose, indented lists, section borders
+ *   - magazine  : Editorial column — drop cap, pull-quote sidebar, narrower measure
+ *   - slide     : Gamma.app deck — centered card, large headings, spaced-out bullets
+ *   - highlight : Insight cards — each section in a tinted card, numbered key points, icon header
+ *   - minimal   : Clean reader — max-width narrow, generous line-height, serifed headings
+ */
 function NoteStyleWrapper({ style, children }: { style: NoteStyle; children: React.ReactNode }) {
     switch (style) {
         case 'classic':
-            // Default warm amber scholarly style
-            return <div className="space-y-1">{children}</div>;
+            // Traditional textbook: indented hierarchy, section dividers, serif-like headings
+            return (
+                <div className="space-y-4
+                    [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-amber-900 dark:[&_h3]:text-amber-200 [&_h3]:border-b [&_h3]:border-amber-200/40 dark:[&_h3]:border-amber-800/30 [&_h3]:pb-2 [&_h3]:mb-4
+                    [&_h4]:text-base [&_h4]:font-semibold [&_h4]:text-stone-700 dark:[&_h4]:text-stone-300 [&_h4]:mt-4 [&_h4]:mb-2
+                    [&_p]:leading-[1.85] [&_p]:text-foreground/85 [&_p]:text-[15px]
+                    [&_ul]:pl-6 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ol]:pl-6 [&_ol]:space-y-1.5
+                    [&_li]:text-[15px] [&_li]:leading-[1.8]
+                    [&_blockquote]:border-l-4 [&_blockquote]:border-amber-300 dark:[&_blockquote]:border-amber-700 [&_blockquote]:pl-4 [&_blockquote]:py-2 [&_blockquote]:bg-amber-50/30 dark:[&_blockquote]:bg-amber-950/10 [&_blockquote]:rounded-r-lg [&_blockquote]:italic
+                ">
+                    {children}
+                </div>
+            );
 
         case 'magazine':
-            // Two-tone with accent sidebar and larger first letter
+            // Editorial column — drop cap, left accent bar, narrower measure, pull-quote styling
             return (
-                <div className="relative pl-4 border-l-[3px] border-amber-400 dark:border-amber-600">
-                    <div className="first-letter:text-4xl first-letter:font-serif first-letter:font-bold first-letter:text-amber-700 dark:first-letter:text-amber-400 first-letter:float-left first-letter:mr-2 first-letter:mt-1">
-                        {children}
-                    </div>
+                <div className="max-w-2xl mx-auto relative pl-5 border-l-[3px] border-amber-400 dark:border-amber-600
+                    [&_h3]:text-xl [&_h3]:font-extrabold [&_h3]:tracking-tight [&_h3]:text-amber-900 dark:[&_h3]:text-amber-200 [&_h3]:mt-6 [&_h3]:mb-3 [&_h3]:uppercase [&_h3]:text-sm [&_h3]:tracking-[0.15em]
+                    [&_p]:text-[15px] [&_p]:leading-[1.9] [&_p]:text-foreground/80 [&_p]:mb-3
+                    [&_p:first-of-type]:first-letter:text-5xl [&_p:first-of-type]:first-letter:font-serif [&_p:first-of-type]:first-letter:font-bold [&_p:first-of-type]:first-letter:text-amber-700 dark:[&_p:first-of-type]:first-letter:text-amber-400 [&_p:first-of-type]:first-letter:float-left [&_p:first-of-type]:first-letter:mr-3 [&_p:first-of-type]:first-letter:mt-1 [&_p:first-of-type]:first-letter:leading-none
+                    [&_ul]:list-none [&_ul]:pl-0 [&_ul]:space-y-2 [&_li]:pl-4 [&_li]:border-l-2 [&_li]:border-amber-300/50 dark:[&_li]:border-amber-700/50 [&_li]:text-[14px] [&_li]:leading-[1.8]
+                    [&_blockquote]:my-5 [&_blockquote]:mx-0 [&_blockquote]:px-6 [&_blockquote]:py-4 [&_blockquote]:bg-amber-50/50 dark:[&_blockquote]:bg-amber-950/20 [&_blockquote]:border-l-4 [&_blockquote]:border-amber-500 [&_blockquote]:rounded-r-xl [&_blockquote]:text-base [&_blockquote]:font-medium [&_blockquote]:italic [&_blockquote]:text-amber-800 dark:[&_blockquote]:text-amber-300
+                ">
+                    {children}
                 </div>
             );
 
         case 'slide':
-            // Gamma.app-inspired: centered, card-based, bigger text, no border, clean
+            // Gamma.app deck — centered card, big heading, spacious bullets, presentation feel
             return (
-                <div className="flex items-center justify-center min-h-[60vh]">
-                    <div className="max-w-xl w-full text-center px-8 py-10 rounded-3xl bg-gradient-to-br from-white via-amber-50/30 to-orange-50/20 dark:from-zinc-900 dark:via-amber-950/10 dark:to-zinc-900 shadow-lg border border-amber-100/40 dark:border-amber-900/20">
-                        <div className="[&_h3]:text-2xl [&_h3]:font-bold [&_h3]:text-center [&_h3]:text-amber-900 dark:[&_h3]:text-amber-200 [&_h3]:mb-6 [&_p]:text-base [&_p]:leading-[1.9] [&_p]:text-center [&_ul]:text-left [&_ol]:text-left [&_blockquote]:text-left">
-                            {children}
-                        </div>
+                <div className="flex items-center justify-center min-h-[55vh]">
+                    <div className="max-w-xl w-full text-center px-8 py-10 rounded-3xl bg-gradient-to-br from-white via-amber-50/30 to-orange-50/20 dark:from-zinc-900 dark:via-amber-950/10 dark:to-zinc-900 shadow-lg border border-amber-100/40 dark:border-amber-900/20
+                        [&_h3]:text-2xl [&_h3]:font-bold [&_h3]:text-center [&_h3]:text-amber-900 dark:[&_h3]:text-amber-200 [&_h3]:mb-8
+                        [&_h4]:text-lg [&_h4]:font-semibold [&_h4]:text-center [&_h4]:text-stone-700 dark:[&_h4]:text-stone-300 [&_h4]:mb-4
+                        [&_p]:text-base [&_p]:leading-[2] [&_p]:text-center [&_p]:text-foreground/80 [&_p]:mb-4
+                        [&_ul]:text-left [&_ul]:inline-block [&_ul]:space-y-3 [&_ul]:my-4 [&_ul]:list-none [&_ul]:pl-0
+                        [&_ol]:text-left [&_ol]:inline-block [&_ol]:space-y-3 [&_ol]:my-4
+                        [&_li]:flex [&_li]:items-start [&_li]:gap-2 [&_li]:text-[15px] [&_li]:leading-[1.8]
+                        [&_li::before]:content-['▸'] [&_li::before]:text-amber-500 [&_li::before]:font-bold
+                        [&_blockquote]:text-left [&_blockquote]:bg-amber-50/60 dark:[&_blockquote]:bg-amber-950/15 [&_blockquote]:rounded-2xl [&_blockquote]:px-6 [&_blockquote]:py-4 [&_blockquote]:border-none [&_blockquote]:shadow-sm [&_blockquote]:my-6 [&_blockquote]:italic [&_blockquote]:text-amber-800 dark:[&_blockquote]:text-amber-300
+                    ">
+                        {children}
                     </div>
                 </div>
             );
 
         case 'highlight':
-            // Key insight style: content in a colored card with icon
+            // Insight cards — tinted container, icon header, numbered key points styling
             return (
-                <div className="rounded-2xl bg-gradient-to-br from-emerald-50/50 to-teal-50/30 dark:from-emerald-950/15 dark:to-teal-950/10 border border-emerald-200/30 dark:border-emerald-800/20 p-6 sm:p-8">
+                <div className="rounded-2xl bg-gradient-to-br from-emerald-50/50 to-teal-50/30 dark:from-emerald-950/15 dark:to-teal-950/10 border border-emerald-200/30 dark:border-emerald-800/20 p-6 sm:p-8
+                    [&_h3]:flex [&_h3]:items-center [&_h3]:gap-2 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-emerald-900 dark:[&_h3]:text-emerald-200 [&_h3]:mb-4
+                    [&_h4]:text-sm [&_h4]:font-bold [&_h4]:uppercase [&_h4]:tracking-wider [&_h4]:text-emerald-700 dark:[&_h4]:text-emerald-400 [&_h4]:mt-5 [&_h4]:mb-2
+                    [&_p]:text-foreground/85 [&_p]:text-[15px] [&_p]:leading-[1.85] [&_p]:mb-3
+                    [&_ul]:space-y-2 [&_ul]:list-none [&_ul]:pl-0 [&_ol]:space-y-2 [&_ol]:pl-0
+                    [&_li]:flex [&_li]:items-start [&_li]:gap-2.5 [&_li]:text-[14px] [&_li]:leading-[1.8] [&_li]:bg-emerald-50/40 dark:[&_li]:bg-emerald-950/10 [&_li]:rounded-xl [&_li]:px-4 [&_li]:py-2.5 [&_li]:border [&_li]:border-emerald-100/40 dark:[&_li]:border-emerald-800/20
+                    [&_blockquote]:bg-white/60 dark:[&_blockquote]:bg-black/15 [&_blockquote]:rounded-xl [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:border [&_blockquote]:border-emerald-200/40 dark:[&_blockquote]:border-emerald-700/20 [&_blockquote]:my-4 [&_blockquote]:italic [&_blockquote]:text-emerald-800 dark:[&_blockquote]:text-emerald-300
+                ">
                     <div className="flex items-center gap-2 mb-4 text-emerald-700 dark:text-emerald-400">
                         <Lightbulb className="h-4 w-4" />
                         <span className="text-xs font-bold uppercase tracking-widest">Key Concepts</span>
                     </div>
-                    <div className="[&_h3]:text-lg [&_h3]:text-emerald-900 dark:[&_h3]:text-emerald-200 [&_p]:text-foreground/85">
-                        {children}
-                    </div>
+                    {children}
                 </div>
             );
 
         case 'minimal':
-            // Clean, wide spacing, very readable
+            // Clean reader — narrow column, generous line-height, light headings, quiet palette
             return (
-                <div className="max-w-lg mx-auto [&_h3]:text-xl [&_h3]:font-light [&_h3]:tracking-tight [&_h3]:text-foreground [&_h3]:border-b [&_h3]:border-border/30 [&_h3]:pb-3 [&_h3]:mb-5 [&_p]:text-[15px] [&_p]:leading-[2] [&_p]:text-foreground/75 [&_li]:text-foreground/75 [&_li]:leading-[2] [&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground/30 [&_blockquote]:text-muted-foreground">
+                <div className="max-w-lg mx-auto
+                    [&_h3]:text-xl [&_h3]:font-light [&_h3]:tracking-tight [&_h3]:text-foreground [&_h3]:border-b [&_h3]:border-border/30 [&_h3]:pb-3 [&_h3]:mb-6
+                    [&_h4]:text-sm [&_h4]:font-medium [&_h4]:text-muted-foreground [&_h4]:uppercase [&_h4]:tracking-widest [&_h4]:mt-6 [&_h4]:mb-3
+                    [&_p]:text-[15px] [&_p]:leading-[2.1] [&_p]:text-foreground/75 [&_p]:mb-4
+                    [&_ul]:list-none [&_ul]:pl-0 [&_ul]:space-y-3 [&_ol]:list-none [&_ol]:pl-0 [&_ol]:space-y-3
+                    [&_li]:text-foreground/75 [&_li]:leading-[2] [&_li]:text-[15px] [&_li]:pl-4 [&_li]:border-l [&_li]:border-border/40
+                    [&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground/30 [&_blockquote]:pl-5 [&_blockquote]:py-1 [&_blockquote]:text-muted-foreground [&_blockquote]:text-[14px] [&_blockquote]:leading-[2]
+                ">
                     {children}
                 </div>
             );

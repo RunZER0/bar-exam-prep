@@ -1,239 +1,499 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
-import EngagingLoader from '@/components/EngagingLoader';
-import { Coffee, RefreshCw, Loader2, Sparkles } from 'lucide-react';
+import {
+  Coffee,
+  ChevronRight,
+  Star,
+  MessageCircle,
+  Send,
+  X,
+  Loader2,
+  Shuffle,
+  Sparkles,
+} from 'lucide-react';
 
-/* ── Category definitions ── */
+/* ═══════════════════════════════════════
+   CATEGORIES
+   ═══════════════════════════════════════ */
 const CATEGORIES = [
-  { id: 'jokes', icon: '⚖️', label: 'Legal Jokes', color: 'from-amber-500/10 to-orange-500/5', prompt: 'Tell me 3 different short, funny legal jokes or lawyer jokes. Number them. Keep each under 60 words. Make them genuinely funny and clever.' },
-  { id: 'facts', icon: '📚', label: 'Fun Facts', color: 'from-blue-500/10 to-cyan-500/5', prompt: 'Share 3 fascinating or bizarre legal facts from history — things most people would never guess. Number them. Keep each under 80 words.' },
-  { id: 'cases', icon: '🎭', label: 'Famous Cases', color: 'from-purple-500/10 to-pink-500/5', prompt: 'Tell me about 2 weird, unusual, or landmark court cases that actually happened. Give each a catchy title and keep under 120 words each. Include the year and jurisdiction.' },
-  { id: 'puns', icon: '💬', label: 'Legal Puns', color: 'from-emerald-500/10 to-green-500/5', prompt: 'Give me 5 clever one-liner legal puns that would make a lawyer groan. Number them. Be creative.' },
-  { id: 'world', icon: '🌍', label: 'Law Around the World', color: 'from-teal-500/10 to-sky-500/5', prompt: 'Share 3 strange, surprising, or funny laws from different countries around the world. Number them. Include the country and keep each under 60 words.' },
-  { id: 'popculture', icon: '🎬', label: 'Law in Pop Culture', color: 'from-rose-500/10 to-red-500/5', prompt: 'Discuss 2 interesting or inaccurate ways law is portrayed in popular movies or TV shows. Name the movie/show, keep each under 100 words.' },
+  { id: 'jokes',      icon: '⚖️', label: 'Jokes',      color: 'bg-amber-500/10 text-amber-600' },
+  { id: 'facts',      icon: '📚', label: 'Fun Facts',   color: 'bg-blue-500/10 text-blue-600' },
+  { id: 'cases',      icon: '🎭', label: 'Wild Cases',  color: 'bg-purple-500/10 text-purple-600' },
+  { id: 'puns',       icon: '💬', label: 'Puns',        color: 'bg-emerald-500/10 text-emerald-600' },
+  { id: 'world',      icon: '🌍', label: 'World Laws',  color: 'bg-teal-500/10 text-teal-600' },
+  { id: 'popculture', icon: '🎬', label: 'Pop Culture', color: 'bg-rose-500/10 text-rose-600' },
 ] as const;
-
 type CategoryId = (typeof CATEGORIES)[number]['id'];
 
-interface ContentCard {
-  id: string;
-  categoryId: CategoryId;
-  content: string;
-  loadedAt: number;
+/* ═══════════════════════════════════════
+   PREFERENCES (localStorage)
+   ═══════════════════════════════════════ */
+interface BanterPrefs {
+  ratings: Record<string, number>; // contentHash → 1-5
+  highRated: string[];             // recent high-rated content snippets
+  likedCategories: string[];       // categories with avg rating > 3.5
+  totalRated: number;
 }
 
-export default function BanterPage() {
-  const { getIdToken } = useAuth();
-  const [cards, setCards] = useState<ContentCard[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshingCat, setRefreshingCat] = useState<CategoryId | null>(null);
-  const [activeCat, setActiveCat] = useState<CategoryId | 'all'>('all');
+function loadPrefs(): BanterPrefs {
+  if (typeof window === 'undefined') return { ratings: {}, highRated: [], likedCategories: [], totalRated: 0 };
+  try {
+    const raw = localStorage.getItem('ynai-banter-prefs');
+    return raw ? JSON.parse(raw) : { ratings: {}, highRated: [], likedCategories: [], totalRated: 0 };
+  } catch { return { ratings: {}, highRated: [], likedCategories: [], totalRated: 0 }; }
+}
 
-  /* Load all categories on mount */
-  const loadAll = useCallback(async () => {
-    setLoading(true);
-    setCards([]);
-    try {
-      const token = await getIdToken();
-      // Load each category and show results as they come in (staggered)
-      const promises = CATEGORIES.map(async (cat, i) => {
-        // Small stagger to avoid all hitting at once
-        await new Promise(r => setTimeout(r, i * 100));
-        const res = await fetch('/api/ai/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-          body: JSON.stringify({
-            message: cat.prompt,
-            competencyType: 'banter',
-            context: 'legal_banter_relaxation',
-          }),
-        });
-        if (!res.ok) throw new Error('fetch failed');
-        const data = await res.json();
-        const card: ContentCard = {
-          id: cat.id + '-' + Date.now(),
-          categoryId: cat.id,
-          content: data.response,
-          loadedAt: Date.now(),
-        };
-        // Add card as soon as it arrives
-        setCards(prev => [...prev, card]);
-        return card;
-      });
-      await Promise.allSettled(promises);
-    } catch (err) {
-      console.error('Failed to load banter content:', err);
-    } finally {
-      setLoading(false);
-    }
+function savePrefs(prefs: BanterPrefs) {
+  try { localStorage.setItem('ynai-banter-prefs', JSON.stringify(prefs)); } catch {}
+}
+
+function hashContent(s: string): string {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return 'b' + Math.abs(h).toString(36);
+}
+
+/* ═══════════════════════════════════════
+   CONTENT ITEM
+   ═══════════════════════════════════════ */
+interface ContentItem {
+  id: string;
+  category: CategoryId;
+  content: string;
+  rating: number | null;
+  shown: boolean;
+}
+
+/* ═══════════════════════════════════════
+   MAIN PAGE
+   ═══════════════════════════════════════ */
+export default function BanterPage() {
+  const { user, getIdToken } = useAuth();
+  const firstName = user?.displayName?.split(' ')[0] || 'Counsel';
+
+  // States
+  const [greeting, setGreeting] = useState<string | null>(null);
+  const [greetingLoading, setGreetingLoading] = useState(true);
+  const [currentItem, setCurrentItem] = useState<ContentItem | null>(null);
+  const [nextItem, setNextItem] = useState<ContentItem | null>(null);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [activeCat, setActiveCat] = useState<CategoryId | null>(null);
+  const [fadeIn, setFadeIn] = useState(false);
+  const [history, setHistory] = useState<ContentItem[]>([]);
+  const [prefs, setPrefs] = useState<BanterPrefs>(loadPrefs);
+
+  // Roast chat
+  const [roastOpen, setRoastOpen] = useState(false);
+  const [roastMessages, setRoastMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([]);
+  const [roastInput, setRoastInput] = useState('');
+  const [roastLoading, setRoastLoading] = useState(false);
+  const roastEndRef = useRef<HTMLDivElement>(null);
+
+  const prefetchRef = useRef<ContentItem | null>(null);
+
+  /* ── API helper ── */
+  const banterFetch = useCallback(async (body: Record<string, unknown>) => {
+    const token = await getIdToken();
+    const res = await fetch('/api/ai/banter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error('fetch failed');
+    return (await res.json()).response as string;
   }, [getIdToken]);
 
-  useEffect(() => { loadAll(); }, [loadAll]);
+  /* ── Pick next category ── */
+  const pickCategory = useCallback((): CategoryId => {
+    if (activeCat) return activeCat;
+    // Weighted random — liked categories get higher weight
+    const weights = CATEGORIES.map(c => {
+      const isLiked = prefs.likedCategories.includes(c.id);
+      return { id: c.id, w: isLiked ? 3 : 1 };
+    });
+    const total = weights.reduce((s, w) => s + w.w, 0);
+    let r = Math.random() * total;
+    for (const w of weights) {
+      r -= w.w;
+      if (r <= 0) return w.id as CategoryId;
+    }
+    return weights[weights.length - 1].id as CategoryId;
+  }, [activeCat, prefs.likedCategories]);
 
-  /* Refresh one category */
-  const refreshCategory = async (catId: CategoryId) => {
-    setRefreshingCat(catId);
+  /* ── Load one content item ── */
+  const loadContent = useCallback(async (category?: CategoryId): Promise<ContentItem> => {
+    const cat = category || pickCategory();
+    const previousContent = history.length > 0 ? history[history.length - 1].content : undefined;
+    const response = await banterFetch({
+      type: 'content',
+      category: cat,
+      preferences: { highRated: prefs.highRated, likedCategories: prefs.likedCategories },
+      previousContent: previousContent?.slice(0, 200),
+    });
+    return {
+      id: cat + '-' + Date.now(),
+      category: cat,
+      content: response,
+      rating: null,
+      shown: false,
+    };
+  }, [banterFetch, pickCategory, history, prefs]);
+
+  /* ── Show item with animation ── */
+  const showItem = useCallback((item: ContentItem) => {
+    setFadeIn(false);
+    setTimeout(() => {
+      setCurrentItem({ ...item, shown: true });
+      setFadeIn(true);
+    }, 80);
+  }, []);
+
+  /* ── Prefetch next item in background ── */
+  const prefetchNext = useCallback(async () => {
     try {
-      const cat = CATEGORIES.find(c => c.id === catId)!;
-      const token = await getIdToken();
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({
-          message: cat.prompt + ' Make sure these are completely different from the previous ones — surprise me.',
-          competencyType: 'banter',
-          context: 'legal_banter_relaxation',
-        }),
-      });
-      if (!res.ok) throw new Error('fetch failed');
-      const data = await res.json();
-      setCards(prev => {
-        const without = prev.filter(c => c.categoryId !== catId);
-        return [...without, { id: catId + '-' + Date.now(), categoryId: catId, content: data.response, loadedAt: Date.now() }];
-      });
-    } catch (err) {
-      console.error('Refresh failed:', err);
+      const item = await loadContent();
+      prefetchRef.current = item;
+      setNextItem(item);
+    } catch {
+      prefetchRef.current = null;
+    }
+  }, [loadContent]);
+
+  /* ── Load greeting + first content ── */
+  useEffect(() => {
+    let cancelled = false;
+    async function init() {
+      setGreetingLoading(true);
+      try {
+        const [greetingText, firstContent] = await Promise.all([
+          banterFetch({
+            type: 'greeting',
+            userName: firstName,
+            preferences: { likedCategories: prefs.likedCategories },
+          }),
+          loadContent(),
+        ]);
+        if (cancelled) return;
+        setGreeting(greetingText);
+        showItem(firstContent);
+        setGreetingLoading(false);
+        // Prefetch next
+        prefetchNext();
+      } catch (err) {
+        console.error('Banter init failed:', err);
+        if (!cancelled) {
+          setGreeting(`Hey ${firstName}, ready for something fun?`);
+          setGreetingLoading(false);
+        }
+      }
+    }
+    init();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ── Next content handler ── */
+  const handleNext = async () => {
+    if (contentLoading) return;
+    // Save current to history
+    if (currentItem) {
+      setHistory(prev => [...prev.slice(-20), currentItem]);
+    }
+
+    // Use prefetched if available
+    if (prefetchRef.current) {
+      const prefetched = prefetchRef.current;
+      prefetchRef.current = null;
+      setNextItem(null);
+      showItem(prefetched);
+      // Start prefetching next
+      prefetchNext();
+      return;
+    }
+
+    // Load fresh
+    setContentLoading(true);
+    try {
+      const item = await loadContent();
+      showItem(item);
+      prefetchNext();
+    } catch {
+      // Keep current item if load fails
     } finally {
-      setRefreshingCat(null);
+      setContentLoading(false);
     }
   };
 
-  const visible = activeCat === 'all'
-    ? [...cards].sort((a, b) => {
-        const ai = CATEGORIES.findIndex(c => c.id === a.categoryId);
-        const bi = CATEGORIES.findIndex(c => c.id === b.categoryId);
-        return ai - bi;
-      })
-    : cards.filter(c => c.categoryId === activeCat);
+  /* ── Category change ── */
+  const handleCategoryChange = async (catId: CategoryId | null) => {
+    setActiveCat(catId);
+    if (currentItem) setHistory(prev => [...prev.slice(-20), currentItem]);
+    setContentLoading(true);
+    prefetchRef.current = null;
+    try {
+      const item = await loadContent(catId || undefined);
+      showItem(item);
+      prefetchNext();
+    } catch {} finally {
+      setContentLoading(false);
+    }
+  };
 
-  if (loading && cards.length === 0) {
-    return <EngagingLoader size="lg" message="Brewing some legal entertainment for you..." />;
+  /* ── Rate content ── */
+  const handleRate = (rating: number) => {
+    if (!currentItem) return;
+    const hash = hashContent(currentItem.content);
+    const newPrefs = { ...prefs };
+    newPrefs.ratings[hash] = rating;
+    newPrefs.totalRated++;
+
+    // Track high-rated content
+    if (rating >= 4) {
+      newPrefs.highRated = [currentItem.content.slice(0, 150), ...newPrefs.highRated].slice(0, 10);
+    }
+
+    // Update liked categories
+    const catRatings: Record<string, number[]> = {};
+    for (const item of [...history, currentItem]) {
+      const h = hashContent(item.content);
+      const r = newPrefs.ratings[h];
+      if (r) {
+        if (!catRatings[item.category]) catRatings[item.category] = [];
+        catRatings[item.category].push(r);
+      }
+    }
+    newPrefs.likedCategories = Object.entries(catRatings)
+      .filter(([, ratings]) => ratings.length >= 2 && ratings.reduce((a, b) => a + b, 0) / ratings.length >= 3.5)
+      .map(([cat]) => cat);
+
+    setPrefs(newPrefs);
+    savePrefs(newPrefs);
+    setCurrentItem(prev => prev ? { ...prev, rating } : null);
+  };
+
+  /* ── Roast chat ── */
+  const sendRoast = async () => {
+    if (!roastInput.trim() || roastLoading) return;
+    const msg = roastInput.trim();
+    setRoastInput('');
+    setRoastMessages(prev => [...prev, { role: 'user', text: msg }]);
+    setRoastLoading(true);
+    try {
+      const response = await banterFetch({ type: 'roast', message: msg, userName: firstName });
+      setRoastMessages(prev => [...prev, { role: 'ai', text: response }]);
+    } catch {
+      setRoastMessages(prev => [...prev, { role: 'ai', text: 'Objection! My wit circuits are overloaded. Try again.' }]);
+    } finally {
+      setRoastLoading(false);
+      setTimeout(() => roastEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    }
+  };
+
+  /* ── Get category info ── */
+  const catInfo = currentItem ? CATEGORIES.find(c => c.id === currentItem.category) : null;
+
+  /* ═══════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════ */
+
+  // Initial loading state — relaxed, not heavy
+  if (greetingLoading && !greeting) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-3.5rem)] bg-background">
+        <div className="text-center space-y-4 animate-fade-in">
+          <Coffee className="h-8 w-8 mx-auto text-amber-500/60 animate-pulse" />
+          <p className="text-sm text-muted-foreground">Setting the mood...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-background animate-content-enter">
-      {/* Header */}
-      <div className="border-b border-border/20 bg-card/40 px-4 sm:px-6 py-5 shrink-0">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500/15 to-orange-500/10">
-              <Coffee className="w-5 h-5 text-amber-600" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold flex items-center gap-2">
-                Legal Banter
-                <Sparkles className="h-4 w-4 text-amber-500" />
-              </h1>
-              <p className="text-xs text-muted-foreground">Take a break — you&apos;ve earned it</p>
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-background">
+
+      {/* ── Roast ribbon (collapsible) ── */}
+      <div className="shrink-0">
+        {/* Toggle bar */}
+        <button
+          onClick={() => setRoastOpen(prev => !prev)}
+          className="w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-card/30 border-b border-border/10 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <MessageCircle className="h-3 w-3" />
+          {roastOpen ? 'Close Roast Zone' : 'Open Roast Zone — trade legal burns'}
+        </button>
+
+        {/* Roast chat panel */}
+        {roastOpen && (
+          <div className="border-b border-border/10 bg-card/40 animate-fade-in">
+            <div className="max-w-2xl mx-auto px-4 py-3">
+              {/* Messages */}
+              <div className="max-h-40 overflow-y-auto space-y-2 mb-3">
+                {roastMessages.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    Say something — let&apos;s see if you can out-roast a legal AI.
+                  </p>
+                )}
+                {roastMessages.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] px-3 py-1.5 rounded-xl text-xs leading-relaxed ${
+                      msg.role === 'user'
+                        ? 'bg-primary/10 text-foreground rounded-br-sm'
+                        : 'bg-muted/60 text-foreground rounded-bl-sm'
+                    }`}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                {roastLoading && (
+                  <div className="flex justify-start">
+                    <div className="px-3 py-1.5 rounded-xl bg-muted/60 rounded-bl-sm">
+                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                    </div>
+                  </div>
+                )}
+                <div ref={roastEndRef} />
+              </div>
+              {/* Input */}
+              <div className="flex gap-2">
+                <input
+                  value={roastInput}
+                  onChange={e => setRoastInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && sendRoast()}
+                  placeholder="Your best legal roast..."
+                  className="flex-1 px-3 py-1.5 rounded-lg bg-background/80 border border-border/20 text-xs outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground/50"
+                />
+                <button
+                  onClick={sendRoast}
+                  disabled={roastLoading || !roastInput.trim()}
+                  className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-40"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </div>
-          <button
-            onClick={loadAll}
-            disabled={loading}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Refresh All
-          </button>
-        </div>
+        )}
       </div>
 
-      {/* Category filter tabs */}
-      <div className="border-b border-border/10 px-4 sm:px-6 shrink-0 bg-card/20">
-        <div className="max-w-6xl mx-auto flex gap-1 overflow-x-auto no-scrollbar py-2.5">
-          <button
-            onClick={() => setActiveCat('all')}
-            className={'px-3.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ' +
-              (activeCat === 'all' ? 'bg-primary/10 text-primary shadow-sm' : 'text-muted-foreground hover:bg-muted/60')}
-          >
-            All
-          </button>
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCat(cat.id)}
-              className={'px-3.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ' +
-                (activeCat === cat.id ? 'bg-primary/10 text-primary shadow-sm' : 'text-muted-foreground hover:bg-muted/60')}
+      {/* ── Main content area ── */}
+      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto px-4">
+        <div className="w-full max-w-lg py-8 space-y-6">
+
+          {/* Greeting */}
+          <div className="text-center animate-fade-in">
+            <p className="text-sm text-foreground/70 italic">{greeting}</p>
+          </div>
+
+          {/* Content card */}
+          {currentItem && (
+            <div
+              className={`rounded-2xl bg-card/60 p-6 transition-all duration-300 ${
+                fadeIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+              }`}
             >
-              <span>{cat.icon}</span> {cat.label}
+              {/* Category badge */}
+              {catInfo && (
+                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium mb-4 ${catInfo.color}`}>
+                  <span>{catInfo.icon}</span> {catInfo.label}
+                </div>
+              )}
+
+              {/* Content */}
+              <div className="text-sm leading-relaxed text-foreground/85">
+                <MarkdownRenderer content={currentItem.content} size="sm" />
+              </div>
+
+              {/* Rating */}
+              <div className="mt-5 pt-4 border-t border-border/10">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground">
+                    {currentItem.rating ? 'Thanks for the feedback!' : 'How was that?'}
+                  </span>
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <button
+                        key={star}
+                        onClick={() => handleRate(star)}
+                        className="p-0.5 transition-transform hover:scale-110"
+                        title={`Rate ${star}/5`}
+                      >
+                        <Star
+                          className={`h-4 w-4 transition-colors ${
+                            currentItem.rating && star <= currentItem.rating
+                              ? 'text-amber-400 fill-amber-400'
+                              : 'text-muted-foreground/30 hover:text-amber-400/60'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Loading state for content */}
+          {contentLoading && !currentItem && (
+            <div className="rounded-2xl bg-card/40 p-6 animate-pulse">
+              <div className="space-y-3">
+                <div className="h-3 bg-muted/60 rounded w-1/4" />
+                <div className="h-3 bg-muted/60 rounded w-full" />
+                <div className="h-3 bg-muted/60 rounded w-4/5" />
+                <div className="h-3 bg-muted/60 rounded w-3/5" />
+              </div>
+            </div>
+          )}
+
+          {/* Next button */}
+          <div className="flex justify-center">
+            <button
+              onClick={handleNext}
+              disabled={contentLoading}
+              className="group flex items-center gap-2 px-5 py-2.5 rounded-xl bg-card/60 hover:bg-card text-sm font-medium text-foreground/80 hover:text-foreground transition-all hover:shadow-sm disabled:opacity-50"
+            >
+              {contentLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : nextItem ? (
+                <Sparkles className="h-4 w-4 text-amber-500/70" />
+              ) : (
+                <Shuffle className="h-4 w-4" />
+              )}
+              {contentLoading ? 'Loading...' : nextItem ? 'Next one ready' : 'Hit me with another'}
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
             </button>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* Content feed */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-          {visible.length === 0 && !loading ? (
-            <div className="text-center py-20 text-muted-foreground">
-              <Coffee className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">No content yet. Hit Refresh All to generate fresh content.</p>
-            </div>
-          ) : (
-            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {visible.map((card, cardIdx) => {
-                const cat = CATEGORIES.find(c => c.id === card.categoryId)!;
-                const isRefreshing = refreshingCat === card.categoryId;
-                return (
-                  <div
-                    key={card.id}
-                    className="rounded-2xl bg-card/60 p-5 transition-all hover:shadow-md group animate-fade-in"
-                    style={{ animationDelay: cardIdx * 60 + 'ms', animationFillMode: 'both' }}
-                  >
-                    {/* Card header with gradient accent */}
-                    <div className={'rounded-lg px-3 py-2 mb-4 bg-gradient-to-r ' + cat.color}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">{cat.icon}</span>
-                          <span className="text-sm font-semibold">{cat.label}</span>
-                        </div>
-                        <button
-                          onClick={() => refreshCategory(card.categoryId)}
-                          disabled={isRefreshing}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background/50 transition-colors disabled:opacity-50"
-                          title="Get new content"
-                        >
-                          {isRefreshing ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <RefreshCw className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                    {/* Card content */}
-                    <div className="text-sm leading-relaxed text-foreground/85">
-                      <MarkdownRenderer content={card.content} size="sm" />
-                    </div>
-                  </div>
-                );
-              })}
+          {/* Category selector */}
+          <div className="flex flex-wrap justify-center gap-1.5">
+            <button
+              onClick={() => handleCategoryChange(null)}
+              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all ${
+                !activeCat ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/40'
+              }`}
+            >
+              Surprise me
+            </button>
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => handleCategoryChange(cat.id)}
+                className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all flex items-center gap-1 ${
+                  activeCat === cat.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/40'
+                }`}
+              >
+                <span className="text-xs">{cat.icon}</span> {cat.label}
+              </button>
+            ))}
+          </div>
 
-              {/* Loading placeholders for categories still loading */}
-              {loading && CATEGORIES
-                .filter(cat => !cards.some(c => c.categoryId === cat.id))
-                .filter(cat => activeCat === 'all' || activeCat === cat.id)
-                .map(cat => (
-                  <div key={'loading-' + cat.id} className="rounded-2xl bg-card/40 p-5 animate-pulse">
-                    <div className={'rounded-lg px-3 py-2 mb-4 bg-gradient-to-r ' + cat.color}>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{cat.icon}</span>
-                        <span className="text-sm font-semibold text-muted-foreground">{cat.label}</span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="h-3 bg-muted/60 rounded w-full" />
-                      <div className="h-3 bg-muted/60 rounded w-4/5" />
-                      <div className="h-3 bg-muted/60 rounded w-3/5" />
-                      <div className="h-3 bg-muted/60 rounded w-4/5" />
-                    </div>
-                  </div>
-                ))
-              }
-            </div>
+          {/* Subtle stats */}
+          {prefs.totalRated > 0 && (
+            <p className="text-center text-[10px] text-muted-foreground/40">
+              {prefs.totalRated} rated · {prefs.likedCategories.length > 0 ? `you seem to like ${prefs.likedCategories.map(c => CATEGORIES.find(cc => cc.id === c)?.label).filter(Boolean).join(', ')}` : 'still learning your taste'}
+            </p>
           )}
         </div>
       </div>

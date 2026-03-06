@@ -28,14 +28,18 @@ export async function GET(
     // Get user details for each message
     const messagesWithUsers = await Promise.all(
       messages.map(async (msg) => {
-        const [user] = await db
-          .select({
-            displayName: users.displayName,
-            photoURL: users.photoURL,
-          })
-          .from(users)
-          .where(eq(users.id, msg.userId))
-          .limit(1);
+        let user: { displayName: string | null; photoURL: string | null } | undefined;
+        if (msg.userId) {
+          const [found] = await db
+            .select({
+              displayName: users.displayName,
+              photoURL: users.photoURL,
+            })
+            .from(users)
+            .where(eq(users.id, msg.userId))
+            .limit(1);
+          user = found;
+        }
 
         return {
           id: msg.id,

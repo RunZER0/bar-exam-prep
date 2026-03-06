@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   History, FileText, BookOpen, Coffee, MessageCircleQuestion,
   Search, Clock, MessageSquare, Trash2,
-  Flame, Brain, Award, Calendar, TrendingUp, Target,
+  Brain, Award, Calendar, TrendingUp,
   ChevronRight, Loader2,
 } from 'lucide-react';
 
@@ -22,21 +22,7 @@ interface Activity {
   meta: Record<string, any>;
 }
 
-interface StreakDay {
-  date: string;
-  minutes: number;
-  questions: number;
-  sessions: number;
-}
 
-interface Stats {
-  totalChats: number;
-  totalStudy: number;
-  totalMinutes: number;
-  totalQuestions: number;
-  currentStreak: number;
-  totalActivities: number;
-}
 
 /* ═══════════════════════════════════════
    CATEGORY CONFIG
@@ -107,60 +93,12 @@ function dateLabel(dateKey: string): string {
 }
 
 /* ═══════════════════════════════════════
-   STREAK HEATMAP COMPONENT
-   ═══════════════════════════════════════ */
-function StreakHeatmap({ streaks }: { streaks: StreakDay[] }) {
-  if (!streaks.length) return null;
-
-  const maxMins = Math.max(...streaks.map(s => s.minutes), 1);
-
-  const days: { date: string; minutes: number; active: boolean }[] = [];
-  const today = new Date();
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().split('T')[0];
-    const streak = streaks.find(s => s.date === key);
-    days.push({
-      date: key,
-      minutes: streak?.minutes || 0,
-      active: (streak?.minutes || 0) > 0,
-    });
-  }
-
-  return (
-    <div className="flex gap-[3px] items-end">
-      {days.map(day => {
-        const intensity = day.minutes / maxMins;
-        const height = day.active ? Math.max(8, Math.round(intensity * 28)) : 4;
-        return (
-          <div
-            key={day.date}
-            title={`${formatFullDate(day.date)} - ${day.minutes} min`}
-            className="rounded-sm transition-all hover:opacity-80"
-            style={{
-              width: 6,
-              height,
-              backgroundColor: day.active
-                ? `rgba(16, 185, 129, ${0.3 + intensity * 0.7})`
-                : 'rgba(128,128,128,0.1)',
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════
    MAIN PAGE
    ═══════════════════════════════════════ */
 export default function HistoryPage() {
   const router = useRouter();
   const { getIdToken } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [streaks, setStreaks] = useState<StreakDay[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -179,8 +117,6 @@ export default function HistoryPage() {
       if (res.ok) {
         const data = await res.json();
         setActivities(data.activities || []);
-        setStreaks(data.streaks || []);
-        setStats(data.stats || null);
       }
     } catch (err) {
       console.error('Failed to load history:', err);
@@ -238,56 +174,9 @@ export default function HistoryPage() {
             Activity History
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Everything you have done in one place
+            Your complete activity log
           </p>
         </div>
-
-        {/* Stats cards */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatCard
-              icon={Flame}
-              label="Current Streak"
-              value={`${stats.currentStreak} day${stats.currentStreak !== 1 ? 's' : ''}`}
-              color="text-orange-500"
-              bg="bg-orange-500/10"
-            />
-            <StatCard
-              icon={Clock}
-              label="Total Study Time"
-              value={stats.totalMinutes >= 60 ? `${Math.round(stats.totalMinutes / 60)}h ${stats.totalMinutes % 60}m` : `${stats.totalMinutes}m`}
-              color="text-blue-500"
-              bg="bg-blue-500/10"
-            />
-            <StatCard
-              icon={MessageSquare}
-              label="Conversations"
-              value={String(stats.totalChats)}
-              color="text-violet-500"
-              bg="bg-violet-500/10"
-            />
-            <StatCard
-              icon={Target}
-              label="Questions Tackled"
-              value={String(stats.totalQuestions)}
-              color="text-emerald-500"
-              bg="bg-emerald-500/10"
-            />
-          </div>
-        )}
-
-        {/* Streak Heatmap */}
-        {streaks.length > 0 && (
-          <div className="rounded-xl bg-card/50 border border-border/20 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Last 30 Days</h3>
-              <span className="text-[11px] text-muted-foreground">
-                {streaks.filter(s => s.minutes > 0).length} active days
-              </span>
-            </div>
-            <StreakHeatmap streaks={streaks} />
-          </div>
-        )}
 
         {/* Search + Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
@@ -435,31 +324,4 @@ export default function HistoryPage() {
   );
 }
 
-/* ═══════════════════════════════════════
-   STAT CARD COMPONENT
-   ═══════════════════════════════════════ */
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-  bg,
-}: {
-  icon: typeof Flame;
-  label: string;
-  value: string;
-  color: string;
-  bg: string;
-}) {
-  return (
-    <div className="rounded-xl bg-card/50 border border-border/15 p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <div className={`p-1.5 rounded-lg ${bg}`}>
-          <Icon className={`h-3.5 w-3.5 ${color}`} />
-        </div>
-      </div>
-      <p className="text-lg font-bold">{value}</p>
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-    </div>
-  );
-}
+

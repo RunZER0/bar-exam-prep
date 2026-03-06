@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { getUnitById } from '@/lib/constants/legal-content';
 import { usePreloading } from '@/lib/services/preloading';
 import { Button } from '@/components/ui/button';
@@ -98,6 +99,7 @@ export default function ExamSessionPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { getIdToken } = useAuth();
+  useTimeTracker('exams');
   const { setAuthToken, getPreloadedExam, onExamStart, onExamComplete } = usePreloading();
 
   const unitId = params.unitId as string;

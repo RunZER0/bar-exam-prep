@@ -74,7 +74,19 @@ interface UserData {
   createdAt: string;
 }
 
-type AdminTab = 'dashboard' | 'users' | 'curriculum' | 'questions' | 'knowledge' | 'timelines' | 'settings';
+interface RoomRequest {
+  id: string;
+  requestedBy: string;
+  name: string;
+  description: string | null;
+  visibility: string;
+  status: string;
+  requesterName: string;
+  requesterEmail: string;
+  createdAt: string;
+}
+
+type AdminTab = 'dashboard' | 'users' | 'curriculum' | 'questions' | 'knowledge' | 'timelines' | 'community' | 'settings';
 
 // ============================================================
 // COMPONENT
@@ -88,6 +100,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [timelines, setTimelines] = useState<KslTimeline[]>([]);
+  const [roomRequests, setRoomRequests] = useState<RoomRequest[]>([]);
+  const [communityLoading, setCommunityLoading] = useState(false);
   const [ragEntries, setRagEntries] = useState<RagEntry[]>([]);
   const [users, setUsers] = useState<UserData[]>([]);
   const [error, setError] = useState('');
@@ -120,6 +134,12 @@ export default function AdminPage() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (activeTab === 'community' && roomRequests.length === 0) {
+      fetchCommunityRequests();
+    }
+  }, [activeTab]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -147,6 +167,7 @@ export default function AdminPage() {
     { id: 'questions', label: 'Questions', icon: FileText },
     { id: 'knowledge', label: 'Knowledge Base', icon: Database },
     { id: 'timelines', label: 'KSL Timelines', icon: Calendar },
+    { id: 'community', label: 'Community', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -874,6 +895,136 @@ export default function AdminPage() {
     </div>
   );
 
+  const fetchCommunityRequests = async () => {
+    setCommunityLoading(true);
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/admin/community?status=pending', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRoomRequests(data.requests || []);
+      }
+    } catch {
+      setError('Failed to load community requests');
+    } finally {
+      setCommunityLoading(false);
+    }
+  };
+
+  const handleRoomAction = async (requestId: string, action: 'approve' | 'reject') => {
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/admin/community', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, action }),
+      });
+      if (res.ok) {
+        setRoomRequests(prev => prev.filter(r => r.id !== requestId));
+        setSuccess(`Room request ${action}d successfully`);
+      } else {
+        const data = await res.json();
+        setError(data.error || `Failed to ${action} request`);
+      }
+    } catch {
+      setError(`Failed to ${action} request`);
+    }
+  };
+
+  const renderCommunity = () => {
+    if (communityLoading) {
+      return (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold">Community Management</h2>
+            <p className="text-sm text-muted-foreground">Approve or reject room creation requests from students</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchCommunityRequests}>
+            <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+          </Button>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Shield className="h-5 w-5 text-amber-500" />
+              Pending Room Requests ({roomRequests.length})
+            </CardTitle>
+            <CardDescription>Students can request custom study rooms. Review and approve or reject them here.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {roomRequests.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <CheckCircle2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">All caught up!</p>
+                <p className="text-sm">No pending room requests at the moment.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {roomRequests.map(req => (
+                  <div key={req.id} className="border rounded-xl p-4 hover:bg-muted/30 transition-colors">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-base">{req.name}</h3>
+                        {req.description && (
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{req.description}</p>
+                        )}
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {req.requesterName || req.requesterEmail}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                            req.visibility === 'public'
+                              ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                          }`}>
+                            {req.visibility}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {new Date(req.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
+                          onClick={() => handleRoomAction(req.id, 'reject')}
+                        >
+                          <X className="h-4 w-4 mr-1" /> Reject
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => handleRoomAction(req.id, 'approve')}
+                        >
+                          <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -886,6 +1037,8 @@ export default function AdminPage() {
         return renderKnowledgeBase();
       case 'settings':
         return renderSettings();
+      case 'community':
+        return renderCommunity();
       case 'curriculum':
       case 'questions':
         return (

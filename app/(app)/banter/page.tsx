@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import {
   Coffee,
   ChevronRight,
@@ -89,6 +90,7 @@ const BANTER_NUDGES = [
    ═══════════════════════════════════════ */
 export default function BanterPage() {
   const { user, getIdToken } = useAuth();
+  useTimeTracker('banter');
   const firstName = user?.displayName?.split(' ')[0] || 'Counsel';
 
   // View mode: 'banter' or 'roast'

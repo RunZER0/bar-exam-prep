@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
@@ -68,6 +69,7 @@ interface Recommendation {
 export default function StudyPage() {
   const router = useRouter();
   const { getIdToken } = useAuth();
+  useTimeTracker('study');
   const [mode, setMode] = useState<'guided' | 'manual'>('guided');
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);

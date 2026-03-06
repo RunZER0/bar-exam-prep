@@ -49,6 +49,9 @@ export const users = pgTable('users', {
   theme: themeEnum('theme').default('system').notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
+  communityUsername: text('community_username').unique(),
+  communityBio: text('community_bio'),
+  communityJoinedAt: timestamp('community_joined_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -405,8 +408,10 @@ export const roomMembers = pgTable('room_members', {
 export const roomMessages = pgTable('room_messages', {
   id: uuid('id').defaultRandom().primaryKey(),
   roomId: uuid('room_id').references(() => studyRooms.id).notNull(),
-  userId: uuid('user_id').references(() => users.id).notNull(),
+  userId: uuid('user_id').references(() => users.id),
+  isAgent: boolean('is_agent').default(false).notNull(),
   content: text('content').notNull(),
+  messageType: text('message_type').default('text').notNull(),
   parentId: uuid('parent_id'), // For replies/threads
   attachments: jsonb('attachments').$type<{ type: string; url: string; name: string }[]>(),
   reactions: jsonb('reactions').$type<Record<string, string[]>>(), // emoji -> userIds
@@ -416,14 +421,15 @@ export const roomMessages = pgTable('room_messages', {
   editedAt: timestamp('edited_at'),
 });
 
-// Room join requests (for private rooms)
+// Room creation requests (for admin approval)
 export const roomRequests = pgTable('room_requests', {
   id: uuid('id').defaultRandom().primaryKey(),
-  roomId: uuid('room_id').references(() => studyRooms.id).notNull(),
-  userId: uuid('user_id').references(() => users.id).notNull(),
-  message: text('message'),
+  requestedBy: uuid('requested_by').references(() => users.id).notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  visibility: text('visibility').default('public').notNull(),
   status: text('status').default('pending').notNull(), // pending, approved, rejected
-  reviewedById: uuid('reviewed_by_id').references(() => users.id),
+  reviewedBy: uuid('reviewed_by').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   reviewedAt: timestamp('reviewed_at'),
 });
@@ -447,6 +453,7 @@ export const communityEvents = pgTable('community_events', {
   startsAt: timestamp('starts_at').notNull(),
   endsAt: timestamp('ends_at').notNull(),
   createdById: uuid('created_by_id').references(() => users.id),
+  isAgentCreated: boolean('is_agent_created').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -617,7 +624,6 @@ export const studyRoomsRelations = relations(studyRooms, ({ one, many }) => ({
   }),
   members: many(roomMembers),
   messages: many(roomMessages),
-  requests: many(roomRequests),
 }));
 
 export const roomMembersRelations = relations(roomMembers, ({ one }) => ({

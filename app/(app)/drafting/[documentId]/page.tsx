@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { getDocumentById } from '@/lib/constants/legal-content';
 import { Button } from '@/components/ui/button';
@@ -70,6 +71,7 @@ export default function DraftingDocumentPage() {
   const params = useParams();
   const router = useRouter();
   const { getIdToken } = useAuth();
+  useTimeTracker('drafting');
   const { setImmersive } = useSidebar();
   const docId = params.documentId as string;
   const doc = getDocumentById(docId);

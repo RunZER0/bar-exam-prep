@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,6 +54,7 @@ const RESEARCH_SUGGESTIONS = [
 
 export default function ResearchPage() {
   const { getIdToken } = useAuth();
+  useTimeTracker('research');
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');

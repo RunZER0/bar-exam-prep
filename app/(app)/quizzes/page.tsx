@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 import { usePreloading } from '@/lib/services/preloading';
 import { Button } from '@/components/ui/button';
@@ -132,6 +133,7 @@ const QUIZ_MODES = [
 
 export default function QuizzesPage() {
   const { getIdToken } = useAuth();
+  useTimeTracker('quizzes');
   const { setAuthToken, getPreloaded, afterQuizCompletion } = usePreloading();
 
   const [section, setSection] = useState<Section>('menu');

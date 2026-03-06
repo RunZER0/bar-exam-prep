@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { 
   MessageCircleQuestion, Send, Image, Mic, MicOff, 
-  X, FileText, Paperclip, StopCircle, Sparkles
+  X, FileText, Paperclip, StopCircle, Sparkles, Loader2
 } from 'lucide-react';
 
 type Attachment = {
@@ -23,11 +22,13 @@ type Message = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  isStreaming?: boolean;
   attachments?: { type: string; name: string; url?: string }[];
 };
 
 export default function ClarifyPage() {
   const { getIdToken } = useAuth();
+  useTimeTracker('clarify');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -192,7 +193,7 @@ export default function ClarifyPage() {
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim() || 'Please help me understand this:',
+      content: input.trim() || 'Help me understand this:',
       attachments: userAttachments,
     };
 
@@ -203,13 +204,21 @@ export default function ClarifyPage() {
     setAttachments([]);
     setIsLoading(true);
 
+    // Create streaming AI message placeholder
+    const aiMsgId = (Date.now() + 1).toString();
+    setMessages(prev => [...prev, {
+      id: aiMsgId,
+      role: 'assistant',
+      content: '',
+      isStreaming: true,
+    }]);
+
     try {
       const token = await getIdToken();
       
-      // Prepare attachment data for context-aware AI
+      // Prepare attachment data
       const attachmentData = await Promise.all(currentAttachments.map(async (att) => {
         if (att.type === 'image') {
-          // Convert image to data URL for vision context
           return new Promise<any>((resolve) => {
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -229,20 +238,30 @@ export default function ClarifyPage() {
             transcription: att.transcription || `[Voice note: ${att.duration || 0}s]`,
           };
         }
-        return { type: att.type, fileName: att.file.name };
+        // For documents, read as text if possible
+        if (att.file.type === 'application/pdf' || att.file.name.endsWith('.pdf')) {
+          return { type: att.type, fileName: att.file.name, note: '[PDF document attached]' };
+        }
+        try {
+          const text = await att.file.text();
+          return { type: att.type, fileName: att.file.name, content: text.substring(0, 8000) };
+        } catch {
+          return { type: att.type, fileName: att.file.name };
+        }
       }));
       
       let enhancedMessage = currentInput;
       if (currentAttachments.length > 0) {
         const attachmentDescriptions = currentAttachments.map(a => {
-          if (a.type === 'image') return `[User attached an image: ${a.file.name}]`;
-          if (a.type === 'audio') return `[User attached a voice note: ${a.file.name}, duration: ${a.duration}s]`;
-          return `[User attached a document: ${a.file.name}]`;
+          if (a.type === 'image') return `[Image: ${a.file.name}]`;
+          if (a.type === 'audio') return `[Voice note: ${a.file.name}${a.transcription ? ` — "${a.transcription}"` : ''}]`;
+          return `[Document: ${a.file.name}]`;
         }).join(' ');
-        enhancedMessage = `${attachmentDescriptions}\n\n${currentInput || 'Please help me understand this.'}`;
+        enhancedMessage = `${attachmentDescriptions}\n\n${currentInput || 'Help me understand this.'}`;
       }
 
-      const response = await fetch('/api/ai/chat', {
+      // Use streaming endpoint
+      const response = await fetch('/api/ai/chat-stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -251,33 +270,56 @@ export default function ClarifyPage() {
         body: JSON.stringify({
           message: enhancedMessage,
           competencyType: 'clarification',
-          sessionId, // Context-aware session
+          sessionId,
           attachments: attachmentData.length > 0 ? attachmentData : undefined,
-          context: {
-            source: 'clarify-page',
-            hasAttachments: attachmentData.length > 0,
-          },
+          context: { source: 'clarify-page' },
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to get response');
+      if (!response.ok) throw new Error('Failed');
 
-      const data = await response.json();
-      
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.response,
-      };
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
 
-      setMessages(prev => [...prev, aiMessage]);
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const text = decoder.decode(value, { stream: true });
+          const lines = text.split('\n');
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.type === 'chunk') {
+                accumulated += data.content;
+                setMessages(prev => prev.map(m => 
+                  m.id === aiMsgId ? { ...m, content: accumulated } : m
+                ));
+              } else if (data.type === 'done') {
+                setMessages(prev => prev.map(m => 
+                  m.id === aiMsgId ? { ...m, content: accumulated || data.fullContent, isStreaming: false } : m
+                ));
+              }
+            } catch { /* skip malformed lines */ }
+          }
+        }
+      }
+
+      // Ensure streaming flag is removed
+      setMessages(prev => prev.map(m => 
+        m.id === aiMsgId ? { ...m, isStreaming: false } : m
+      ));
     } catch (error) {
       console.error('Chat error:', error);
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'I apologize, but I encountered an error processing your request. Please try again.',
-      }]);
+      setMessages(prev => prev.map(m => 
+        m.id === aiMsgId 
+          ? { ...m, content: 'Sorry, something went wrong. Could you try that again?', isStreaming: false }
+          : m
+      ));
     } finally {
       setIsLoading(false);
     }
@@ -376,7 +418,12 @@ export default function ClarifyPage() {
                       </div>
                     )}
                     {message.role === 'assistant' ? (
-                      <MarkdownRenderer content={message.content} size="sm" />
+                      <>
+                        <MarkdownRenderer content={message.content} size="sm" />
+                        {message.isStreaming && (
+                          <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
+                        )}
+                      </>
                     ) : (
                       <div className="prose-ai text-sm whitespace-pre-wrap">{message.content}</div>
                     )}
@@ -384,19 +431,6 @@ export default function ClarifyPage() {
                 </div>
               ))}
               
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-card border border-border/50 px-4 py-3 rounded-2xl rounded-bl-md">
-                    <div className="flex items-center gap-2">
-                      <div className="dot-pulse flex gap-1">
-                        <span className="w-2 h-2 bg-primary rounded-full"></span>
-                        <span className="w-2 h-2 bg-primary rounded-full"></span>
-                        <span className="w-2 h-2 bg-primary rounded-full"></span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
               <div ref={messagesEndRef} />
             </>
           )}
@@ -410,15 +444,13 @@ export default function ClarifyPage() {
             <div className="flex items-center justify-center gap-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
               <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
               <span className="text-sm font-medium text-red-500">Recording: {formatTime(recordingTime)}</span>
-              <Button
-                size="sm"
-                variant="destructive"
+              <button
                 onClick={stopRecording}
-                className="gap-1.5"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition-colors"
               >
                 <StopCircle className="w-4 h-4" />
                 Stop
-              </Button>
+              </button>
             </div>
           </div>
         </div>
@@ -467,47 +499,42 @@ export default function ClarifyPage() {
         
         <div className="flex gap-3 max-w-4xl mx-auto">
           <div className="flex gap-1.5">
-            <Button
+            <button
               type="button"
-              variant="outline"
-              size="icon"
-              className="shrink-0 h-11 w-11 rounded-xl border-border/50 hover:border-border"
+              className="shrink-0 h-11 w-11 rounded-xl border border-border/50 hover:border-border flex items-center justify-center hover:bg-muted/40 transition-colors"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="w-4 h-4" />
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
-              variant="outline"
-              size="icon"
-              className={`shrink-0 h-11 w-11 rounded-xl border-border/50 hover:border-border ${isRecording ? 'text-red-500 border-red-500/50' : ''}`}
+              className={`shrink-0 h-11 w-11 rounded-xl border border-border/50 hover:border-border flex items-center justify-center hover:bg-muted/40 transition-colors ${isRecording ? 'text-red-500 border-red-500/50' : ''}`}
               onClick={isRecording ? stopRecording : startRecording}
             >
               {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-            </Button>
+            </button>
           </div>
-          <Textarea
+          <textarea
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
             placeholder="What do you need help understanding?"
             disabled={isLoading}
-            className="flex-1 min-h-[44px] max-h-32 resize-none rounded-xl bg-background border-border/50 focus:border-primary/50"
+            className="flex-1 min-h-[44px] max-h-32 resize-none rounded-xl bg-background border border-border/50 focus:border-primary/50 px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary/20"
             rows={1}
-            onKeyDown={(e) => {
+            onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
               }
             }}
           />
-          <Button 
+          <button 
             onClick={sendMessage} 
             disabled={isLoading || (!input.trim() && attachments.length === 0)}
-            className="shrink-0 h-11 w-11 rounded-xl"
-            size="icon"
+            className="shrink-0 h-11 w-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 hover:bg-primary/90 transition-colors"
           >
             <Send className="w-4 h-4" />
-          </Button>
+          </button>
         </div>
       </div>
     </div>

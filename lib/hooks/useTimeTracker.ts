@@ -10,13 +10,16 @@ import { useAuth } from '@/contexts/AuthContext';
  * Reports every 60 seconds of active time (1 minute increments).
  * Pauses when tab is hidden/blurred.
  * Reports remaining time on unmount.
+ * Also records page visits (5+ min) to /api/page-visits for history.
  */
 export function useTimeTracker(section: string) {
   const { user } = useAuth();
   const elapsedRef = useRef(0);       // seconds accumulated since last report
+  const totalElapsedRef = useRef(0);   // total seconds on page (for visit tracking)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const visibleRef = useRef(true);
   const sectionRef = useRef(section);
+  const visitReportedRef = useRef(false);
   sectionRef.current = section;
 
   const reportTime = useCallback(async (minutes: number) => {
@@ -36,12 +39,39 @@ export function useTimeTracker(section: string) {
     }
   }, [user]);
 
+  const reportVisit = useCallback(async (totalSeconds: number) => {
+    if (!user || visitReportedRef.current) return;
+    const minutes = Math.floor(totalSeconds / 60);
+    if (minutes < 5) return;
+    visitReportedRef.current = true;
+    try {
+      const token = await user.getIdToken();
+      await fetch('/api/page-visits', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          section: sectionRef.current,
+          label: sectionRef.current.charAt(0).toUpperCase() + sectionRef.current.slice(1).replace(/-/g, ' '),
+          minutes,
+        }),
+      });
+    } catch {
+      // Silent fail
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
+    visitReportedRef.current = false;
+    totalElapsedRef.current = 0;
 
     const tick = () => {
       if (!visibleRef.current) return;
       elapsedRef.current += 1;
+      totalElapsedRef.current += 1;
       // Report every 60 seconds
       if (elapsedRef.current >= 60) {
         const mins = Math.floor(elapsedRef.current / 60);
@@ -74,6 +104,8 @@ export function useTimeTracker(section: string) {
         // Round up if 30+ seconds
         reportTime(1);
       }
+      // Report page visit on unmount
+      reportVisit(totalElapsedRef.current);
     };
-  }, [user, reportTime]);
+  }, [user, reportTime, reportVisit]);
 }

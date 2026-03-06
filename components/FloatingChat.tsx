@@ -23,12 +23,15 @@ interface Message {
   content: string;
   timestamp: Date;
   attachments?: { type: string; name: string }[];
+  isStreaming?: boolean;
 }
 
-// Pages where chat should be disabled to prevent cheating
+// Pages where chat should be disabled
 const RESTRICTED_PATHS = [
   '/exams/',
+  '/exams',
   '/quizzes',
+  '/clarify',
 ];
 
 export default function FloatingChat() {
@@ -290,20 +293,20 @@ export default function FloatingChat() {
       attachments: userAttachments.length > 0 ? userAttachments : undefined,
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const aiMsgId = crypto.randomUUID();
+    setMessages(prev => [
+      ...prev,
+      userMessage,
+      { id: aiMsgId, role: 'assistant', content: '', timestamp: new Date(), isStreaming: true },
+    ]);
     
     // Prepare attachment data for API
     const attachmentData = await Promise.all(attachments.map(async (att) => {
       if (att.type === 'image') {
-        // Convert image to data URL for vision context
         return new Promise<any>((resolve) => {
           const reader = new FileReader();
           reader.onloadend = () => {
-            resolve({
-              type: att.type,
-              fileName: att.file.name,
-              dataUrl: reader.result,
-            });
+            resolve({ type: att.type, fileName: att.file.name, dataUrl: reader.result });
           };
           reader.readAsDataURL(att.file);
         });
@@ -318,7 +321,7 @@ export default function FloatingChat() {
 
     try {
       const token = await getIdToken();
-      const response = await fetch('/api/ai/chat', {
+      const response = await fetch('/api/ai/chat-stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -326,8 +329,8 @@ export default function FloatingChat() {
         },
         body: JSON.stringify({
           message: currentInput || 'Please help with this:',
-          competencyType: 'clarification',
-          sessionId, // Context-aware session
+          competencyType: 'general',
+          sessionId,
           attachments: attachmentData.length > 0 ? attachmentData : undefined,
           context: {
             source: 'floating-chat',
@@ -337,24 +340,47 @@ export default function FloatingChat() {
         }),
       });
 
-      const data = await response.json();
+      if (!response.ok) throw new Error('Failed');
 
-      const assistantMessage: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: data.response || data.error || 'Sorry, I could not process your request.',
-        timestamp: new Date(),
-      };
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
 
-      setMessages(prev => [...prev, assistantMessage]);
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const text = decoder.decode(value, { stream: true });
+          const lines = text.split('\n');
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.type === 'chunk') {
+                accumulated += data.content;
+                setMessages(prev => prev.map(m =>
+                  m.id === aiMsgId ? { ...m, content: accumulated } : m
+                ));
+              } else if (data.type === 'done') {
+                setMessages(prev => prev.map(m =>
+                  m.id === aiMsgId ? { ...m, content: accumulated || data.fullContent, isStreaming: false } : m
+                ));
+              }
+            } catch { /* skip */ }
+          }
+        }
+      }
+
+      setMessages(prev => prev.map(m =>
+        m.id === aiMsgId ? { ...m, isStreaming: false } : m
+      ));
     } catch (error) {
       console.error('Chat error:', error);
-      setMessages(prev => [...prev, {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: 'Sorry, something went wrong. Please try again.',
-        timestamp: new Date(),
-      }]);
+      setMessages(prev => prev.map(m =>
+        m.id === aiMsgId
+          ? { ...m, content: 'Something went wrong. Give it another try?', isStreaming: false }
+          : m
+      ));
     } finally {
       setIsLoading(false);
     }
@@ -512,26 +538,18 @@ export default function FloatingChat() {
                       </div>
                     )}
                     {msg.role === 'assistant' ? (
-                      <MarkdownRenderer content={msg.content} size="sm" />
+                      <>
+                        <MarkdownRenderer content={msg.content} size="sm" />
+                        {msg.isStreaming && (
+                          <span className="inline-block w-1.5 h-4 bg-emerald-500/60 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
+                        )}
+                      </>
                     ) : (
                       <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                     )}
                   </div>
                 </div>
               ))}
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-muted px-4 py-2 rounded-2xl rounded-bl-md">
-                    <div className="flex items-center gap-2">
-                      <div className="dot-pulse flex gap-1">
-                        <span className="w-2 h-2 bg-primary rounded-full"></span>
-                        <span className="w-2 h-2 bg-primary rounded-full"></span>
-                        <span className="w-2 h-2 bg-primary rounded-full"></span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
               <div ref={messagesEndRef} />
             </>
           )}

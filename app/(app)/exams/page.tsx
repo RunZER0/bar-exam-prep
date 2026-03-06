@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePreloading } from '@/lib/services/preloading';
@@ -116,7 +114,7 @@ function AnimatedModal({ isOpen, onClose, children, size = 'md' }: AnimatedModal
       {/* Modal */}
       <div
         className={`
-          relative bg-card rounded-2xl border border-border shadow-2xl w-full ${sizeClasses[size]}
+          relative bg-background rounded-2xl shadow-2xl shadow-black/20 w-full ${sizeClasses[size]}
           overflow-hidden transition-all duration-300 ease-out origin-center
           ${isAnimating ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-4'}
         `}
@@ -207,172 +205,136 @@ export default function ExamsPage() {
   const examTypeInfo = EXAM_TYPES.find(t => t.id === selectedType);
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
+    <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-10">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Examinations</h1>
           <p className="text-muted-foreground mt-1">
-            Practice with timed exams in multiple choice or CLE standard format.
+            Test your mastery under timed conditions
           </p>
         </div>
-        <Button onClick={openModal} size="lg" className="gap-2">
+        <button
+          onClick={openModal}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+        >
           <Sparkles className="h-4 w-4" />
           Start New Exam
-        </Button>
+        </button>
       </div>
 
-      {/* Quick Stats */}
+      {/* Quick Stats — borderless gradient tiles */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-emerald-500/20">
-                <Target className="h-4 w-4 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">60</p>
-                <p className="text-xs text-muted-foreground">Max Marks</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-gray-500/10 to-gray-500/5 border-gray-500/20 dark:from-gray-800/20 dark:to-gray-800/10">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gray-500/20 dark:bg-gray-700">
-                <Timer className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">3h</p>
-                <p className="text-xs text-muted-foreground">CLE Time</p>
+        {[
+          { icon: Target, value: '60', label: 'Max Marks', gradient: 'from-emerald-500/8 to-transparent', iconBg: 'bg-emerald-500/15', iconColor: 'text-emerald-600' },
+          { icon: Timer, value: '3h', label: 'CLE Time', gradient: 'from-sky-500/8 to-transparent', iconBg: 'bg-sky-500/15', iconColor: 'text-sky-600' },
+          { icon: FileQuestion, value: '2', label: 'Exam Types', gradient: 'from-violet-500/8 to-transparent', iconBg: 'bg-violet-500/15', iconColor: 'text-violet-600' },
+          { icon: GraduationCap, value: '12', label: 'ATP Units', gradient: 'from-amber-500/8 to-transparent', iconBg: 'bg-amber-500/15', iconColor: 'text-amber-600' },
+        ].map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.label} className={`rounded-2xl bg-gradient-to-br ${stat.gradient} p-5`}>
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl ${stat.iconBg}`}>
+                  <Icon className={`h-4 w-4 ${stat.iconColor}`} />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-gray-500/10 to-gray-500/5 border-gray-500/20 dark:from-gray-800/20 dark:to-gray-800/10">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gray-500/20 dark:bg-gray-700">
-                <FileQuestion className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">2</p>
-                <p className="text-xs text-muted-foreground">Exam Types</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-500/20">
-                <GraduationCap className="h-4 w-4 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">12</p>
-                <p className="text-xs text-muted-foreground">ATP Units</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          );
+        })}
       </div>
 
-      {/* Exam Type Cards */}
+      {/* Exam Type Sections — gradient zones, no card borders */}
       <div className="grid md:grid-cols-2 gap-6">
         {EXAM_TYPES.map((type) => (
-          <Card
+          <button
             key={type.id}
-            className={`group cursor-pointer border-2 transition-all duration-300 hover:shadow-lg ${
-              type.color === 'emerald'
-                ? 'border-emerald-500/30 hover:border-emerald-500/50 hover:shadow-emerald-500/10'
-                : 'border-gray-500/30 hover:border-gray-500/50 hover:shadow-gray-500/10'
-            }`}
             onClick={() => {
               setSelectedType(type.id);
               setStep('paper');
               setModalOpen(true);
             }}
+            className={`group text-left rounded-2xl p-6 transition-all duration-300 ${
+              type.color === 'emerald'
+                ? 'bg-gradient-to-br from-emerald-500/8 via-emerald-500/4 to-transparent hover:from-emerald-500/14 hover:shadow-lg hover:shadow-emerald-500/5'
+                : 'bg-gradient-to-br from-stone-500/8 via-stone-400/4 to-transparent hover:from-stone-500/14 hover:shadow-lg hover:shadow-stone-500/5 dark:from-stone-400/8 dark:via-stone-400/4'
+            }`}
           >
-            <CardHeader>
-              <div className={`p-3 rounded-xl w-fit ${
-                type.color === 'emerald' ? 'bg-emerald-500/10' : 'bg-gray-500/10 dark:bg-gray-800'
-              }`}>
-                <type.icon className={`h-6 w-6 ${
-                  type.color === 'emerald' ? 'text-emerald-500' : 'text-gray-500'
-                }`} />
-              </div>
-              <CardTitle className="text-lg mt-3">{type.name}</CardTitle>
-              <CardDescription>{type.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {(['mini', 'semi', 'full'] as PaperSize[]).map((size) => {
-                  const cfg = PAPER_SIZES[type.id][size];
-                  return (
-                    <div key={size} className="flex items-center justify-between text-sm py-2 border-b border-border/50 last:border-0">
-                      <span className="font-medium">{cfg.label}</span>
-                      <span className="text-muted-foreground">
-                        {cfg.marks} marks · {cfg.time} min
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <Button variant="ghost" className="w-full mt-4 gap-2 group-hover:bg-muted">
-                Select Type
-                <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Button>
-            </CardContent>
-          </Card>
+            <div className={`p-3 rounded-xl w-fit mb-4 ${
+              type.color === 'emerald' ? 'bg-emerald-500/12' : 'bg-stone-500/12 dark:bg-stone-400/12'
+            }`}>
+              <type.icon className={`h-6 w-6 ${
+                type.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-600 dark:text-stone-400'
+              }`} />
+            </div>
+            <h3 className="text-lg font-semibold mb-1">{type.name}</h3>
+            <p className="text-sm text-muted-foreground mb-5">{type.description}</p>
+            <div className="space-y-2.5">
+              {(['mini', 'semi', 'full'] as PaperSize[]).map((size) => {
+                const cfg = PAPER_SIZES[type.id][size];
+                return (
+                  <div key={size} className="flex items-center justify-between text-sm py-1.5 border-b border-border/20 last:border-0">
+                    <span className="font-medium">{cfg.label}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {cfg.marks} marks · {cfg.time} min
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-5 flex items-center gap-1.5 text-sm font-medium text-primary opacity-60 group-hover:opacity-100 transition-opacity">
+              Select
+              <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </div>
+          </button>
         ))}
       </div>
 
-      {/* ATP Units Grid */}
+      {/* ATP Units Grid — minimal tiles */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Available Units</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {ATP_UNITS.map((unit) => {
             const Icon = ICON_MAP[unit.icon] || BookOpen;
             return (
-              <Card
+              <button
                 key={unit.id}
-                className="group cursor-pointer border hover:border-primary/30 transition-all duration-300 hover:shadow-md hover:shadow-primary/5"
+                className="group text-left rounded-xl p-4 bg-gradient-to-br from-muted/40 to-transparent hover:from-primary/6 hover:to-transparent transition-all duration-300"
                 onClick={() => {
                   setSelectedUnit(unit);
                   setStep('type');
                   setModalOpen(true);
                 }}
               >
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
-                      <Icon className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground font-medium">{(unit as any).code}</p>
-                      <p className="font-medium text-sm truncate">{unit.name}</p>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-primary/8 shrink-0">
+                    <Icon className="h-4 w-4 text-primary" />
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{(unit as any).code}</p>
+                    <p className="font-medium text-sm truncate">{unit.name}</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-60 transition-opacity shrink-0 mt-1" />
+                </div>
+              </button>
             );
           })}
         </div>
       </div>
 
-      {/* ============================================================ */}
-      {/* ANIMATED SELECTION MODAL */}
-      {/* ============================================================ */}
+      {/* SELECTION MODAL — soft glow, no harsh outlines */}
       <AnimatedModal isOpen={modalOpen} onClose={closeModal} size="lg">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
+        <div className="flex items-center justify-between p-6 border-b border-border/30">
           <div className="flex items-center gap-3">
             {step !== 'type' && (
               <button
                 onClick={goBack}
-                className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors"
+                className="p-2 -ml-2 rounded-lg hover:bg-muted/60 transition-colors"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
@@ -391,13 +353,13 @@ export default function ExamsPage() {
           </div>
           <button
             onClick={closeModal}
-            className="p-2 rounded-lg hover:bg-muted transition-colors"
+            className="p-2 rounded-lg hover:bg-muted/60 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Progress Bar */}
+        {/* Progress dots */}
         <div className="px-6 pt-4">
           <div className="flex gap-2">
             {[1, 2, 3, 4].map((s) => {
@@ -405,8 +367,8 @@ export default function ExamsPage() {
               return (
                 <div
                   key={s}
-                  className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
-                    s <= stepIndex ? 'bg-primary' : 'bg-muted'
+                  className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                    s <= stepIndex ? 'bg-primary' : 'bg-muted/60'
                   }`}
                 />
               );
@@ -420,31 +382,31 @@ export default function ExamsPage() {
           {step === 'type' && (
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
               <p className="text-sm text-muted-foreground">
-                Choose between multiple choice questions or CLE standard typed exams.
+                Choose your exam format to get started.
               </p>
               <div className="grid gap-3">
                 {EXAM_TYPES.map((type) => (
                   <button
                     key={type.id}
                     onClick={() => handleTypeSelect(type.id)}
-                    className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-200 flex items-center gap-4 ${
+                    className={`w-full p-5 rounded-2xl text-left transition-all duration-200 flex items-center gap-4 ${
                       type.color === 'emerald'
-                        ? 'border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-500/50'
-                        : 'border-gray-500/30 bg-gray-500/5 hover:border-gray-500/50 dark:bg-gray-800/20'
+                        ? 'bg-gradient-to-r from-emerald-500/8 to-transparent hover:from-emerald-500/15 hover:shadow-md hover:shadow-emerald-500/5'
+                        : 'bg-gradient-to-r from-stone-500/8 to-transparent hover:from-stone-500/15 hover:shadow-md hover:shadow-stone-500/5 dark:from-stone-400/8'
                     }`}
                   >
                     <div className={`p-3 rounded-xl ${
-                      type.color === 'emerald' ? 'bg-emerald-500/20' : 'bg-gray-500/20 dark:bg-gray-700'
+                      type.color === 'emerald' ? 'bg-emerald-500/15' : 'bg-stone-500/15 dark:bg-stone-400/15'
                     }`}>
                       <type.icon className={`h-5 w-5 ${
-                        type.color === 'emerald' ? 'text-emerald-600' : 'text-gray-600 dark:text-gray-400'
+                        type.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-600 dark:text-stone-400'
                       }`} />
                     </div>
                     <div className="flex-1">
                       <p className="font-semibold">{type.name}</p>
                       <p className="text-sm text-muted-foreground">{type.description}</p>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    <ChevronRight className="h-5 w-5 text-muted-foreground/40" />
                   </button>
                 ))}
               </div>
@@ -456,7 +418,7 @@ export default function ExamsPage() {
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                  selectedType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                  selectedType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-stone-500/10 text-stone-600 dark:bg-stone-400/10 dark:text-stone-400'
                 }`}>
                   {selectedType === 'abcd' ? 'Multiple Choice' : 'CLE Standard'}
                 </span>
@@ -465,20 +427,25 @@ export default function ExamsPage() {
               <div className="grid gap-3">
                 {(['mini', 'semi', 'full'] as PaperSize[]).map((size) => {
                   const cfg = PAPER_SIZES[selectedType][size];
+                  const gradients = {
+                    mini: 'from-amber-500/8 to-transparent hover:from-amber-500/14 hover:shadow-amber-500/5',
+                    semi: 'from-sky-500/8 to-transparent hover:from-sky-500/14 hover:shadow-sky-500/5',
+                    full: 'from-rose-500/8 to-transparent hover:from-rose-500/14 hover:shadow-rose-500/5',
+                  };
                   const iconColors = {
-                    mini: 'bg-amber-500/20 text-amber-600',
-                    semi: 'bg-gray-500/20 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
-                    full: 'bg-rose-500/20 text-rose-600',
+                    mini: 'bg-amber-500/15 text-amber-600',
+                    semi: 'bg-sky-500/15 text-sky-600',
+                    full: 'bg-rose-500/15 text-rose-600',
                   };
                   return (
                     <button
                       key={size}
                       onClick={() => handlePaperSelect(size)}
-                      className="w-full p-4 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted/30 text-left transition-all duration-200"
+                      className={`w-full p-4 rounded-2xl bg-gradient-to-r ${gradients[size]} text-left transition-all duration-200 hover:shadow-md`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                          <div className={`p-2.5 rounded-lg ${iconColors[size]}`}>
+                          <div className={`p-2.5 rounded-xl ${iconColors[size]}`}>
                             {size === 'mini' && <Zap className="h-5 w-5" />}
                             {size === 'semi' && <Target className="h-5 w-5" />}
                             {size === 'full' && <Award className="h-5 w-5" />}
@@ -491,8 +458,8 @@ export default function ExamsPage() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="flex items-center gap-1 text-sm font-medium">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
+                          <div className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
+                            <Clock className="h-4 w-4" />
                             {cfg.time} min
                           </div>
                         </div>
@@ -509,11 +476,11 @@ export default function ExamsPage() {
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                  selectedType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                  selectedType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-stone-500/10 text-stone-600 dark:bg-stone-400/10 dark:text-stone-400'
                 }`}>
                   {selectedType === 'abcd' ? 'ABCD' : 'CLE'}
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-muted">
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-muted/60">
                   {config?.label}
                 </span>
                 <span>Select ATP unit</span>
@@ -525,12 +492,12 @@ export default function ExamsPage() {
                     <button
                       key={unit.id}
                       onClick={() => handleUnitSelect(unit)}
-                      className="p-3 rounded-lg border hover:border-primary/50 hover:bg-muted/30 text-left transition-all"
+                      className="p-3 rounded-xl bg-gradient-to-r from-muted/30 to-transparent hover:from-primary/8 text-left transition-all duration-200"
                     >
                       <div className="flex items-center gap-2">
                         <Icon className="h-4 w-4 text-primary shrink-0" />
                         <div className="min-w-0">
-                          <p className="text-xs text-muted-foreground">{(unit as any).code}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{(unit as any).code}</p>
                           <p className="text-sm font-medium truncate">{unit.name}</p>
                         </div>
                       </div>
@@ -545,7 +512,7 @@ export default function ExamsPage() {
           {step === 'confirm' && selectedUnit && config && examTypeInfo && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="text-center py-4">
-                <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
+                <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center mb-4">
                   <CheckCircle className="h-8 w-8 text-primary" />
                 </div>
                 <h4 className="font-semibold text-lg">Ready to Start?</h4>
@@ -554,11 +521,11 @@ export default function ExamsPage() {
                 </p>
               </div>
 
-              <div className="bg-muted/50 rounded-xl p-4 space-y-3">
+              <div className="rounded-2xl bg-gradient-to-br from-muted/40 to-transparent p-5 space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Exam Type</span>
                   <span className={`font-medium px-2 py-0.5 rounded-full text-xs ${
-                    selectedType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                    selectedType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-stone-500/10 text-stone-600 dark:bg-stone-400/10 dark:text-stone-400'
                   }`}>
                     {examTypeInfo.name}
                   </span>
@@ -571,7 +538,7 @@ export default function ExamsPage() {
                   <span className="text-muted-foreground">Unit</span>
                   <span className="font-medium">{selectedUnit.name}</span>
                 </div>
-                <div className="border-t pt-3 mt-3">
+                <div className="border-t border-border/20 pt-3 mt-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Questions</span>
                     <span className="font-medium">{config.questions}</span>
@@ -591,13 +558,13 @@ export default function ExamsPage() {
               </div>
 
               <div className="flex gap-3">
-                <Button variant="outline" className="flex-1" onClick={goBack}>
+                <button onClick={goBack} className="flex-1 py-2.5 rounded-xl border border-border/30 hover:bg-muted/40 transition-colors font-medium text-sm">
                   Back
-                </Button>
-                <Button className="flex-1 gap-2" onClick={handleStartExam}>
+                </button>
+                <button onClick={handleStartExam} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium text-sm flex items-center justify-center gap-2">
                   Start Exam
                   <ArrowRight className="h-4 w-4" />
-                </Button>
+                </button>
               </div>
             </div>
           )}

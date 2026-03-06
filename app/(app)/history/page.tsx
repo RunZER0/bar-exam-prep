@@ -7,40 +7,57 @@ import {
   History, FileText, BookOpen, Coffee, MessageCircleQuestion,
   Search, Clock, MessageSquare, Trash2,
   Brain, Award, Calendar, TrendingUp,
-  ChevronRight, Loader2,
+  ChevronRight, Loader2, Mic, ClipboardCheck, Target,
+  Lightbulb, Users, LayoutDashboard,
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════
    TYPES
    ═══════════════════════════════════════ */
+interface PageVisit {
+  id: string;
+  section: string;
+  label: string;
+  minutes: number;
+  visitedAt: string;
+}
+
 interface Activity {
   id: string;
-  type: 'chat' | 'study' | 'milestone';
+  type: 'visit' | 'chat' | 'study' | 'milestone';
   title: string;
   category: string;
   date: string;
   meta: Record<string, any>;
 }
 
-
-
 /* ═══════════════════════════════════════
-   CATEGORY CONFIG
+   SECTION CONFIG — icons + colors
    ═══════════════════════════════════════ */
 const TYPE_CONFIG: Record<string, { icon: typeof FileText; color: string; bg: string; label: string }> = {
-  drafting:       { icon: FileText,               color: 'text-blue-600',   bg: 'bg-blue-500/10',    label: 'Drafting' },
-  research:       { icon: Search,                 color: 'text-green-600',  bg: 'bg-green-500/10',   label: 'Research' },
-  banter:         { icon: Coffee,                 color: 'text-amber-600',  bg: 'bg-amber-500/10',   label: 'Banter' },
-  clarification:  { icon: MessageCircleQuestion,  color: 'text-violet-600', bg: 'bg-violet-500/10',  label: 'Clarification' },
-  oral:           { icon: BookOpen,               color: 'text-red-600',    bg: 'bg-red-500/10',     label: 'Oral' },
-  written:        { icon: FileText,               color: 'text-blue-600',   bg: 'bg-blue-500/10',    label: 'Written' },
-  study:          { icon: Brain,                  color: 'text-indigo-600', bg: 'bg-indigo-500/10',  label: 'Study' },
-  milestone:      { icon: Award,                  color: 'text-emerald-600',bg: 'bg-emerald-500/10', label: 'Milestone' },
+  mastery:        { icon: Target,                 color: 'text-emerald-600', bg: 'bg-emerald-500/10', label: 'Mastery Hub' },
+  dashboard:      { icon: LayoutDashboard,        color: 'text-indigo-600',  bg: 'bg-indigo-500/10',  label: 'Dashboard' },
+  progress:       { icon: TrendingUp,             color: 'text-cyan-600',    bg: 'bg-cyan-500/10',    label: 'My Progress' },
+  drafting:       { icon: FileText,               color: 'text-blue-600',    bg: 'bg-blue-500/10',    label: 'Legal Drafting' },
+  study:          { icon: BookOpen,               color: 'text-purple-600',  bg: 'bg-purple-500/10',  label: 'Study' },
+  exams:          { icon: ClipboardCheck,          color: 'text-rose-600',    bg: 'bg-rose-500/10',    label: 'Examinations' },
+  'oral-exams':   { icon: Mic,                    color: 'text-orange-600',  bg: 'bg-orange-500/10',  label: 'Oral Exams' },
+  quizzes:        { icon: Lightbulb,              color: 'text-amber-600',   bg: 'bg-amber-500/10',   label: 'Quizzes' },
+  community:      { icon: Users,                  color: 'text-pink-600',    bg: 'bg-pink-500/10',    label: 'Community' },
+  research:       { icon: Search,                 color: 'text-green-600',   bg: 'bg-green-500/10',   label: 'Research' },
+  clarify:        { icon: MessageCircleQuestion,   color: 'text-violet-600',  bg: 'bg-violet-500/10',  label: 'Clarification' },
+  clarification:  { icon: MessageCircleQuestion,   color: 'text-violet-600',  bg: 'bg-violet-500/10',  label: 'Clarification' },
+  banter:         { icon: Coffee,                 color: 'text-amber-600',   bg: 'bg-amber-500/10',   label: 'Legal Banter' },
+  oral:           { icon: BookOpen,               color: 'text-red-600',     bg: 'bg-red-500/10',     label: 'Oral' },
+  written:        { icon: FileText,               color: 'text-blue-600',    bg: 'bg-blue-500/10',    label: 'Written' },
+  chat:           { icon: MessageSquare,          color: 'text-gray-600',    bg: 'bg-gray-500/10',    label: 'Chat' },
+  milestone:      { icon: Award,                  color: 'text-emerald-600', bg: 'bg-emerald-500/10', label: 'Milestone' },
 };
 
 const FILTERS = [
-  { id: 'all',     label: 'All' },
-  { id: 'chat',    label: 'Chats' },
+  { id: 'all',     label: 'All Activity' },
+  { id: 'visit',   label: 'Page Visits' },
+  { id: 'chat',    label: 'Conversations' },
   { id: 'study',   label: 'Study' },
   { id: 'milestone', label: 'Milestones' },
 ];
@@ -111,13 +128,33 @@ export default function HistoryPage() {
   const loadHistory = async () => {
     try {
       const token = await getIdToken();
-      const res = await fetch('/api/history', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setActivities(data.activities || []);
-      }
+      const headers = { Authorization: `Bearer ${token}` };
+
+      // Fetch both history and page visits in parallel
+      const [historyRes, visitsRes] = await Promise.all([
+        fetch('/api/history', { headers }),
+        fetch('/api/page-visits', { headers }),
+      ]);
+
+      const historyData = historyRes.ok ? await historyRes.json() : { activities: [] };
+      const visitsData = visitsRes.ok ? await visitsRes.json() : { visits: [] };
+
+      // Convert page visits to activity format
+      const visitActivities: Activity[] = (visitsData.visits || []).map((v: any) => ({
+        id: v.id,
+        type: 'visit' as const,
+        title: v.label || v.section,
+        category: v.section,
+        date: v.visitedAt,
+        meta: { minutes: v.minutes },
+      }));
+
+      // Merge and sort all activities
+      const allActivities = [...(historyData.activities || []), ...visitActivities]
+        .sort((a: Activity, b: Activity) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 200);
+
+      setActivities(allActivities);
     } catch (err) {
       console.error('Failed to load history:', err);
     } finally {
@@ -155,11 +192,18 @@ export default function HistoryPage() {
       <div className="flex items-center justify-center h-[calc(100vh-3.5rem)] bg-background">
         <div className="text-center space-y-3">
           <Loader2 className="h-6 w-6 mx-auto animate-spin text-primary/50" />
-          <p className="text-sm text-muted-foreground">Loading your history...</p>
+          <p className="text-sm text-muted-foreground">Loading your activity...</p>
         </div>
       </div>
     );
   }
+
+  // Summary stats
+  const visitCount = activities.filter(a => a.type === 'visit').length;
+  const totalMinutes = activities
+    .filter(a => a.type === 'visit')
+    .reduce((sum, a) => sum + (a.meta?.minutes || 0), 0);
+  const uniqueSections = new Set(activities.filter(a => a.type === 'visit').map(a => a.category)).size;
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-background">
@@ -171,12 +215,30 @@ export default function HistoryPage() {
             <div className="p-2 rounded-xl bg-primary/10">
               <History className="h-5 w-5 text-primary" />
             </div>
-            Activity History
+            Your Journey
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Your complete activity log
+            Everywhere you&apos;ve spent time learning — at least 5 minutes to count
           </p>
         </div>
+
+        {/* Quick Stats */}
+        {visitCount > 0 && (
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl bg-primary/5 border border-primary/10 p-4 text-center">
+              <p className="text-2xl font-bold text-primary">{visitCount}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Visits</p>
+            </div>
+            <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-4 text-center">
+              <p className="text-2xl font-bold text-emerald-600">{totalMinutes}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Minutes</p>
+            </div>
+            <div className="rounded-xl bg-violet-500/5 border border-violet-500/10 p-4 text-center">
+              <p className="text-2xl font-bold text-violet-600">{uniqueSections}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Areas</p>
+            </div>
+          </div>
+        )}
 
         {/* Search + Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
@@ -212,7 +274,7 @@ export default function HistoryPage() {
             <History className="h-12 w-12 mx-auto text-muted-foreground/20" />
             <h3 className="text-lg font-medium text-muted-foreground">No activity yet</h3>
             <p className="text-sm text-muted-foreground/70 max-w-sm mx-auto">
-              Start studying, drafting, or chatting and your history will appear here
+              Spend at least 5 minutes in any section and it will show up here automatically
             </p>
             <div className="flex justify-center gap-2 pt-2">
               <button
@@ -254,10 +316,9 @@ export default function HistoryPage() {
                         key={activity.id}
                         onClick={() => {
                           if (activity.type === 'chat') router.push(`/history/${activity.id}`);
+                          else if (activity.type === 'visit') router.push(`/${activity.category}`);
                         }}
-                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
-                          activity.type === 'chat' ? 'cursor-pointer hover:bg-card/60' : 'bg-card/20'
-                        }`}
+                        className="group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors cursor-pointer hover:bg-card/60"
                       >
                         <div className="relative -ml-[25px] mr-1">
                           <div className={`w-2 h-2 rounded-full ${config.bg} ring-2 ring-background`} />
@@ -271,6 +332,12 @@ export default function HistoryPage() {
                           <p className="text-sm font-medium truncate">{activity.title}</p>
                           <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-0.5">
                             <span className="capitalize">{config.label}</span>
+                            {activity.type === 'visit' && activity.meta.minutes > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-2.5 w-2.5" />
+                                {activity.meta.minutes} min
+                              </span>
+                            )}
                             {activity.type === 'chat' && activity.meta.messageCount > 0 && (
                               <span className="flex items-center gap-1">
                                 <MessageSquare className="h-2.5 w-2.5" />
@@ -310,6 +377,10 @@ export default function HistoryPage() {
                             </button>
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30" />
                           </div>
+                        )}
+
+                        {activity.type === 'visit' && (
+                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity" />
                         )}
                       </div>
                     );

@@ -1,18 +1,18 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { getUnitById } from '@/lib/constants/legal-content';
 import { usePreloading } from '@/lib/services/preloading';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import {
   ArrowLeft, ArrowRight, Clock, CheckCircle2, XCircle, Loader2, BarChart3,
   RotateCcw, BookOpen, Lightbulb, ChevronDown, ChevronUp, Trophy, Target,
   Brain, TrendingUp, AlertTriangle, Sparkles, GraduationCap, FileText, Zap,
+  PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 
 // ============================================================
@@ -100,6 +100,7 @@ export default function ExamSessionPage() {
   const router = useRouter();
   const { getIdToken } = useAuth();
   useTimeTracker('exams');
+  const { setImmersive } = useSidebar();
   const { setAuthToken, getPreloadedExam, onExamStart, onExamComplete } = usePreloading();
 
   const unitId = params.unitId as string;
@@ -118,6 +119,15 @@ export default function ExamSessionPage() {
   const [error, setError] = useState('');
   const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
   const [usedPreload, setUsedPreload] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(false);
+  const [slideDirection, setSlideDirection] = useState<'right' | 'left'>('right');
+  const autoSubmitRef = useRef(false);
+
+  // Enter immersive mode on mount, restore on unmount
+  useEffect(() => {
+    setImmersive(true);
+    return () => setImmersive(false);
+  }, [setImmersive]);
 
   // Generate exam questions - Try preloaded first, then generate
   useEffect(() => {
@@ -239,10 +249,11 @@ Rules:
     loadExam();
   }, [unit, examType, paperSize, config, unitId, getIdToken, setAuthToken, getPreloadedExam, onExamStart]);
 
-  // Countdown timer
+  // Countdown timer with auto-submit
   useEffect(() => {
     if (phase !== 'exam') return;
-    if (timeLeft <= 0) {
+    if (timeLeft <= 0 && !autoSubmitRef.current) {
+      autoSubmitRef.current = true;
       handleSubmit();
       return;
     }
@@ -262,6 +273,12 @@ Rules:
 
   const currentQ = questions[currentIndex];
   const answeredCount = Object.keys(answers).length;
+
+  const navigateTo = (idx: number) => {
+    if (idx === currentIndex) return;
+    setSlideDirection(idx > currentIndex ? 'right' : 'left');
+    setCurrentIndex(idx);
+  };
 
   const handleSubmit = useCallback(async () => {
     setPhase('submitting');
@@ -405,9 +422,9 @@ Respond with ONLY valid JSON:
   if (!unit) {
     return (
       <div className="p-6 md:p-10 max-w-4xl mx-auto">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/exams')}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back
-        </Button>
+        <button onClick={() => router.push('/exams')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
         <p className="text-center py-20 text-muted-foreground">Unit not found.</p>
       </div>
     );
@@ -434,9 +451,9 @@ Respond with ONLY valid JSON:
         {error && (
           <div className="text-center">
             <p className="text-sm text-destructive">{error}</p>
-            <Button variant="outline" size="sm" className="mt-2" onClick={() => router.push('/exams')}>
+            <button onClick={() => router.push('/exams')} className="mt-2 px-4 py-1.5 rounded-lg text-sm border border-border/30 hover:bg-muted/40 transition-colors">
               Go Back
-            </Button>
+            </button>
           </div>
         )}
       </div>
@@ -502,110 +519,87 @@ Respond with ONLY valid JSON:
             </div>
 
             <p className="mt-6 text-lg text-white/90 max-w-2xl mx-auto">
-              {result.percentage >= 70 ? '🎉 Excellent work!' : result.percentage >= 50 ? '💪 Good effort!' : '📚 Keep studying!'}
+              {result.percentage >= 70 ? 'Excellent work!' : result.percentage >= 50 ? 'Good effort — keep going!' : 'Keep studying, you\'ll get there!'}
             </p>
           </div>
         </div>
 
         <div className="max-w-4xl mx-auto px-6 -mt-6">
-          {/* Stats Cards */}
+          {/* Stats tiles */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <Card className="bg-card shadow-lg border-0">
-              <CardContent className="pt-6 text-center">
-                <Trophy className="h-6 w-6 mx-auto text-amber-500 mb-2" />
-                <p className="text-2xl font-bold">{result.score}</p>
-                <p className="text-xs text-muted-foreground">Marks Earned</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-card shadow-lg border-0">
-              <CardContent className="pt-6 text-center">
-                <Target className="h-6 w-6 mx-auto text-green-500 mb-2" />
-                <p className="text-2xl font-bold">{result.totalMarks}</p>
-                <p className="text-xs text-muted-foreground">Total Marks</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-card shadow-lg border-0">
-              <CardContent className="pt-6 text-center">
-                <CheckCircle2 className="h-6 w-6 mx-auto text-emerald-500 mb-2" />
-                <p className="text-2xl font-bold">{result.feedback.filter(f => f.correct).length}</p>
-                <p className="text-xs text-muted-foreground">Correct</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-card shadow-lg border-0">
-              <CardContent className="pt-6 text-center">
-                <Brain className="h-6 w-6 mx-auto text-gray-500" />
-                <p className="text-2xl font-bold">{result.challengingConcepts?.length || 0}</p>
-                <p className="text-xs text-muted-foreground">Areas to Study</p>
-              </CardContent>
-            </Card>
+            {[
+              { icon: Trophy, value: result.score, label: 'Marks Earned', color: 'text-amber-500' },
+              { icon: Target, value: result.totalMarks, label: 'Total Marks', color: 'text-green-500' },
+              { icon: CheckCircle2, value: result.feedback.filter(f => f.correct).length, label: 'Correct', color: 'text-emerald-500' },
+              { icon: Brain, value: result.challengingConcepts?.length || 0, label: 'Areas to Study', color: 'text-stone-500' },
+            ].map((s) => {
+              const Icon = s.icon;
+              return (
+                <div key={s.label} className="rounded-2xl bg-background shadow-lg p-5 text-center">
+                  <Icon className={`h-6 w-6 mx-auto ${s.color} mb-2`} />
+                  <p className="text-2xl font-bold">{s.value}</p>
+                  <p className="text-xs text-muted-foreground">{s.label}</p>
+                </div>
+              );
+            })}
           </div>
 
           {/* Overall Feedback */}
-          <Card className="mb-8 bg-card shadow-lg border-0">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                AI Feedback
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">{result.overallFeedback}</p>
-            </CardContent>
-          </Card>
+          <div className="mb-8 rounded-2xl bg-background shadow-lg p-6">
+            <h3 className="flex items-center gap-2 font-semibold mb-3">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Feedback
+            </h3>
+            <p className="text-muted-foreground">{result.overallFeedback}</p>
+          </div>
 
-          {/* Challenging Concepts - Tabs */}
+          {/* Challenging Concepts */}
           {result.challengingConcepts && result.challengingConcepts.length > 0 && (
-            <Card className="mb-8 bg-gradient-to-br from-amber-500/10 to-orange-500/5 border-amber-500/20 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-                  <Lightbulb className="h-5 w-5" />
-                  Concepts to Review
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4">
-                  {result.challengingConcepts.map((concept, i) => (
-                    <div key={i} className="p-4 rounded-xl bg-card border">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-semibold">{concept.topic}</h4>
-                          <p className="text-sm text-muted-foreground mt-1">{concept.description}</p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1 text-primary"
-                          onClick={() => router.push(`/study/${unitId}`)}
-                        >
-                          <BookOpen className="h-4 w-4" />
-                          Study
-                        </Button>
+            <div className="mb-8 rounded-2xl bg-gradient-to-br from-amber-500/8 to-transparent p-6">
+              <h3 className="flex items-center gap-2 font-semibold text-amber-700 dark:text-amber-400 mb-4">
+                <Lightbulb className="h-5 w-5" />
+                Concepts to Review
+              </h3>
+              <div className="grid gap-4">
+                {result.challengingConcepts.map((concept, i) => (
+                  <div key={i} className="p-4 rounded-xl bg-background/80">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-semibold">{concept.topic}</h4>
+                        <p className="text-sm text-muted-foreground mt-1">{concept.description}</p>
                       </div>
-                      {concept.studyResources && concept.studyResources.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {concept.studyResources.map((resource, j) => (
-                            <span key={j} className="text-xs px-2 py-1 rounded-full bg-muted">
-                              {resource}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      <button
+                        className="flex items-center gap-1 text-xs text-primary hover:underline"
+                        onClick={() => router.push(`/study/${unitId}`)}
+                      >
+                        <BookOpen className="h-3.5 w-3.5" />
+                        Study
+                      </button>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    {concept.studyResources && concept.studyResources.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {concept.studyResources.map((resource, j) => (
+                          <span key={j} className="text-xs px-2 py-1 rounded-full bg-muted">
+                            {resource}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
-          {/* Question Review */}
-          <Card className="shadow-lg border-0">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          {/* Question Review with Redlining for CLE */}
+          <div className="rounded-2xl bg-background shadow-lg overflow-hidden">
+            <div className="p-6 border-b border-border/20">
+              <h3 className="flex items-center gap-2 font-semibold">
                 <BarChart3 className="h-5 w-5" />
                 Question Review
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </h3>
+            </div>
+            <div className="p-6 space-y-4">
               {questions.map((q, i) => {
                 const fb = result.feedback.find((f) => f.questionId === q.id);
                 const isExpanded = expandedFeedback === q.id;
@@ -614,11 +608,12 @@ Respond with ONLY valid JSON:
                 return (
                   <div
                     key={q.id}
-                    className={`rounded-xl border-2 overflow-hidden transition-all ${
-                      fb?.correct ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5'
+                    className={`rounded-xl overflow-hidden transition-all ${
+                      fb?.correct
+                        ? 'bg-gradient-to-r from-emerald-500/6 to-transparent'
+                        : 'bg-gradient-to-r from-red-500/6 to-transparent'
                     }`}
                   >
-                    {/* Question Header */}
                     <button
                       onClick={() => setExpandedFeedback(isExpanded ? null : q.id)}
                       className="w-full p-4 flex items-start gap-3 text-left"
@@ -644,30 +639,35 @@ Respond with ONLY valid JSON:
                       </div>
                     </button>
 
-                    {/* Expanded Content */}
                     {isExpanded && (
-                      <div className="px-4 pb-4 pt-0 border-t space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                        {/* Student Answer */}
-                        <div className="bg-muted/50 rounded-lg p-3 mt-4">
-                          <p className="text-xs font-medium text-muted-foreground mb-1">Your Answer</p>
-                          <p className="text-sm">{answers[q.id] || <span className="italic text-muted-foreground">Not answered</span>}</p>
+                      <div className="px-4 pb-4 pt-0 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                        {/* Student Answer with RedLining for CLE */}
+                        <div className="bg-muted/30 rounded-xl p-4 mt-2">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">Your Answer</p>
+                          {isCLE ? (
+                            <div className="text-sm leading-relaxed whitespace-pre-wrap border-l-2 border-amber-500/40 pl-3">
+                              {answers[q.id] || <span className="italic text-muted-foreground">Not answered</span>}
+                            </div>
+                          ) : (
+                            <p className="text-sm">{answers[q.id] || <span className="italic text-muted-foreground">Not answered</span>}</p>
+                          )}
                         </div>
 
                         {/* Correct Answer (MCQ) */}
                         {!isCLE && fb?.correctAnswer && (
-                          <div className="bg-emerald-500/10 rounded-lg p-3">
+                          <div className="bg-emerald-500/8 rounded-xl p-4">
                             <p className="text-xs font-medium text-emerald-600 mb-1">Correct Answer</p>
                             <p className="text-sm font-medium">{fb.correctAnswer}</p>
                           </div>
                         )}
 
-                        {/* Rubric Breakdown (CLE) */}
+                        {/* Rubric Breakdown (CLE) — Redline scores */}
                         {isCLE && fb?.rubricBreakdown && (
                           <div className="grid grid-cols-2 gap-3">
                             {Object.entries(fb.rubricBreakdown).map(([key, rubric]) => {
                               const percentage = (rubric.score / rubric.maxScore) * 100;
                               return (
-                                <div key={key} className="bg-muted/30 rounded-lg p-3">
+                                <div key={key} className="bg-muted/20 rounded-xl p-3">
                                   <div className="flex items-center justify-between mb-2">
                                     <span className="text-xs font-medium capitalize">
                                       {key.replace(/([A-Z])/g, ' $1').trim()}
@@ -696,8 +696,8 @@ Respond with ONLY valid JSON:
                         )}
 
                         {/* Explanation */}
-                        <div className="bg-green-500/10 rounded-lg p-3">
-                          <p className="text-xs font-medium text-green-600 mb-1">Explanation</p>
+                        <div className="bg-emerald-500/6 rounded-xl p-4">
+                          <p className="text-xs font-medium text-emerald-600 mb-1">Explanation</p>
                           <p className="text-sm text-muted-foreground">{fb?.explanation}</p>
                         </div>
                       </div>
@@ -705,18 +705,24 @@ Respond with ONLY valid JSON:
                   </div>
                 );
               })}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Actions */}
           <div className="flex gap-4 mt-8">
-            <Button onClick={() => router.push('/exams')} size="lg" className="flex-1 gap-2">
+            <button
+              onClick={() => router.push('/exams')}
+              className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors"
+            >
               <RotateCcw className="h-4 w-4" />
               Take Another Exam
-            </Button>
-            <Button variant="outline" size="lg" onClick={() => router.push('/dashboard')}>
+            </button>
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="py-3 px-6 rounded-xl border border-border/30 hover:bg-muted/40 transition-colors font-medium"
+            >
               Dashboard
-            </Button>
+            </button>
           </div>
         </div>
       </div>
@@ -726,166 +732,304 @@ Respond with ONLY valid JSON:
   // ============================================================
   // RENDER: Exam in progress
   // ============================================================
+  
+  // Timer color logic
+  const timerUrgent = timeLeft < 300;
+  const timerWarn = timeLeft < 600 && !timerUrgent;
+  const timerPercent = (timeLeft / (config.time * 60)) * 100;
+
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen">
-      {/* Top Bar */}
-      <div className="border-b px-4 md:px-6 py-3 flex items-center justify-between shrink-0 bg-card">
+      {/* Top Bar - Aesthetic timer */}
+      <div className="px-4 md:px-6 py-3 flex items-center justify-between shrink-0 bg-background border-b border-border/20">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
             onClick={() => {
-              if (confirm('Are you sure? Your progress will be lost.')) {
+              if (confirm('Leave exam? Your progress will be lost.')) {
                 router.push('/exams');
               }
             }}
+            className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-          </Button>
+          </button>
           <div>
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold">{unit.name}</p>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                examType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                examType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-stone-500/10 text-stone-600 dark:bg-stone-400/10 dark:text-stone-400'
               }`}>
                 {examType === 'abcd' ? 'ABCD' : 'CLE'}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">{paperSize.charAt(0).toUpperCase() + paperSize.slice(1)} Paper · {config.marks} marks</p>
+            <p className="text-[10px] text-muted-foreground">{answeredCount}/{questions.length} answered</p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-xs text-muted-foreground hidden sm:block">
-            {answeredCount}/{questions.length} answered
-          </span>
-          <div className={`flex items-center gap-1.5 text-sm font-mono font-semibold px-3 py-1.5 rounded-lg ${
-            timeLeft < 300 ? 'bg-red-500/10 text-red-600' : 
-            timeLeft < 600 ? 'bg-amber-500/10 text-amber-600' : 
-            'bg-muted'
+
+        {/* Aesthetic timer with ring */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSidebarHidden(s => !s)}
+            className="p-2 rounded-lg hover:bg-muted/50 transition-colors text-muted-foreground hidden md:flex"
+            title={sidebarHidden ? 'Show sidebar' : 'Hide sidebar for full view'}
+          >
+            {sidebarHidden ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </button>
+          <div className={`relative flex items-center gap-2 px-4 py-2 rounded-2xl transition-all ${
+            timerUrgent ? 'bg-red-500/10' : timerWarn ? 'bg-amber-500/10' : 'bg-muted/40'
           }`}>
-            <Clock className="h-4 w-4" />
-            {formatTime(timeLeft)}
+            {/* Mini progress ring */}
+            <div className="relative h-7 w-7">
+              <svg className="h-7 w-7 -rotate-90" viewBox="0 0 28 28">
+                <circle cx="14" cy="14" r="12" fill="none" strokeWidth="2" className="stroke-muted/30" />
+                <circle
+                  cx="14" cy="14" r="12" fill="none" strokeWidth="2"
+                  strokeDasharray={`${2 * Math.PI * 12}`}
+                  strokeDashoffset={`${2 * Math.PI * 12 * (1 - timerPercent / 100)}`}
+                  strokeLinecap="round"
+                  className={`transition-all duration-1000 ${
+                    timerUrgent ? 'stroke-red-500' : timerWarn ? 'stroke-amber-500' : 'stroke-primary'
+                  }`}
+                />
+              </svg>
+              <Clock className={`absolute inset-0 m-auto h-3 w-3 ${
+                timerUrgent ? 'text-red-500' : timerWarn ? 'text-amber-500' : 'text-muted-foreground'
+              }`} />
+            </div>
+            <span className={`text-sm font-mono font-semibold tabular-nums ${
+              timerUrgent ? 'text-red-600 animate-pulse' : timerWarn ? 'text-amber-600' : ''
+            }`}>
+              {formatTime(timeLeft)}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Question Area */}
-      <div className="flex-1 overflow-y-auto p-6 md:p-10">
-        <div className="max-w-3xl mx-auto space-y-6">
-          {/* Progress Bar */}
-          <div className="flex gap-1">
+      {/* Main content */}
+      {examType === 'abcd' ? (
+        /* ===== ABCD CAROUSEL ===== */
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Dot navigation */}
+          <div className="px-6 py-3 flex items-center justify-center gap-1.5 shrink-0">
             {questions.map((q, i) => (
               <button
                 key={q.id}
-                onClick={() => setCurrentIndex(i)}
-                className={`h-2 flex-1 rounded-full transition-colors ${
+                onClick={() => navigateTo(i)}
+                className={`h-2 rounded-full transition-all duration-300 ${
                   i === currentIndex
-                    ? 'bg-primary'
+                    ? 'w-6 bg-primary'
                     : answers[q.id]
-                    ? 'bg-primary/40'
-                    : 'bg-muted'
+                    ? 'w-2 bg-primary/40'
+                    : 'w-2 bg-muted hover:bg-muted-foreground/30'
                 }`}
-                title={`Question ${i + 1}${answers[q.id] ? ' (answered)' : ''}`}
+                title={`Q${i + 1}${answers[q.id] ? ' (answered)' : ''}`}
               />
             ))}
           </div>
 
-          {/* Question Info */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium">
-                Question {currentIndex + 1} of {questions.length}
-              </span>
-              {currentQ?.topic && (
-                <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                  {currentQ.topic}
+          {/* Question carousel */}
+          <div className="flex-1 overflow-y-auto px-4 md:px-6">
+            <div key={currentIndex} className={`max-w-2xl mx-auto py-6 animate-in fade-in ${
+              slideDirection === 'right' ? 'slide-in-from-right-8' : 'slide-in-from-left-8'
+            } duration-300`}>
+              {/* Question meta */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Question {currentIndex + 1}
+                  </span>
+                  {currentQ?.topic && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                      {currentQ.topic}
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs font-medium text-primary">
+                  {currentQ?.marks} {currentQ?.marks === 1 ? 'mark' : 'marks'}
                 </span>
-              )}
-            </div>
-            <span className="text-sm font-medium text-primary">
-              {currentQ?.marks} {currentQ?.marks === 1 ? 'mark' : 'marks'}
-            </span>
-          </div>
+              </div>
 
-          {/* Question Text */}
-          <h2 className="text-lg md:text-xl font-semibold leading-relaxed">
-            {currentQ?.question}
-          </h2>
+              {/* Question text */}
+              <h2 className="text-lg md:text-xl font-semibold leading-relaxed mb-8">
+                {currentQ?.question}
+              </h2>
 
-          {/* MCQ Options */}
-          {examType === 'abcd' && currentQ?.options && (
-            <div className="space-y-3">
-              {currentQ.options.map((option, i) => {
-                const isSelected = answers[currentQ.id] === option;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => setAnswers((prev) => ({ ...prev, [currentQ.id]: option }))}
-                    className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                      isSelected
-                        ? 'border-primary bg-primary/5 shadow-sm'
-                        : 'border-transparent bg-muted/50 hover:bg-muted hover:border-muted-foreground/20'
-                    }`}
-                  >
-                    <span className={isSelected ? 'font-medium' : ''}>{option}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* CLE Text Area */}
-          {examType === 'cle' && (
-            <div className="space-y-2">
-              <Textarea
-                placeholder="Write your answer here using IRAC format where applicable…"
-                value={answers[currentQ?.id] || ''}
-                onChange={(e) => setAnswers((prev) => ({ ...prev, [currentQ.id]: e.target.value }))}
-                rows={12}
-                className="resize-none text-base leading-relaxed"
-              />
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Use IRAC: Issue, Rule, Application, Conclusion</span>
-                <span>{(answers[currentQ?.id] || '').length} characters</span>
+              {/* Options */}
+              <div className="space-y-3">
+                {currentQ?.options?.map((option, i) => {
+                  const isSelected = answers[currentQ.id] === option;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setAnswers((prev) => ({ ...prev, [currentQ.id]: option }))}
+                      className={`w-full text-left p-4 rounded-2xl transition-all duration-200 ${
+                        isSelected
+                          ? 'bg-primary/8 ring-2 ring-primary/30 shadow-sm'
+                          : 'bg-muted/30 hover:bg-muted/50'
+                      }`}
+                    >
+                      <span className={isSelected ? 'font-medium' : ''}>{option}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Navigation */}
-          <div className="flex items-center justify-between pt-4">
-            <Button
-              variant="outline"
+          {/* Bottom navigation */}
+          <div className="px-6 py-4 border-t border-border/20 flex items-center justify-between shrink-0">
+            <button
               disabled={currentIndex === 0}
-              onClick={() => setCurrentIndex((i) => i - 1)}
+              onClick={() => navigateTo(currentIndex - 1)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-border/30 hover:bg-muted/40 disabled:opacity-30 transition-colors text-sm font-medium"
             >
-              <ArrowLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4" />
               Previous
-            </Button>
+            </button>
 
             {currentIndex < questions.length - 1 ? (
-              <Button onClick={() => setCurrentIndex((i) => i + 1)}>
+              <button
+                onClick={() => navigateTo(currentIndex + 1)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium"
+              >
                 Next
-                <ArrowRight className="h-4 w-4 ml-1" />
-              </Button>
+                <ArrowRight className="h-4 w-4" />
+              </button>
             ) : (
-              <Button
+              <button
                 onClick={() => {
                   if (answeredCount < questions.length) {
-                    if (!confirm(`You've answered ${answeredCount}/${questions.length} questions. Submit anyway?`)) {
-                      return;
-                    }
+                    if (!confirm(`You've answered ${answeredCount}/${questions.length} questions. Submit anyway?`)) return;
                   }
                   handleSubmit();
                 }}
-                className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors text-sm font-medium"
               >
                 <FileText className="h-4 w-4" />
                 Submit Exam
-              </Button>
+              </button>
             )}
           </div>
         </div>
-      </div>
+      ) : (
+        /* ===== CLE DRAFTING FORMAT ===== */
+        <div className="flex-1 flex overflow-hidden">
+          {/* Question sidebar */}
+          <div className={`border-r border-border/20 bg-muted/10 flex flex-col transition-all duration-300 shrink-0 ${
+            sidebarHidden ? 'w-0 overflow-hidden' : 'w-72 md:w-80'
+          }`}>
+            <div className="p-4 border-b border-border/20">
+              <p className="text-xs font-medium text-muted-foreground">Questions</p>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+              {questions.map((q, i) => (
+                <button
+                  key={q.id}
+                  onClick={() => navigateTo(i)}
+                  className={`w-full text-left p-3 rounded-xl transition-all text-sm ${
+                    i === currentIndex
+                      ? 'bg-primary/8 ring-1 ring-primary/20'
+                      : answers[q.id]
+                      ? 'bg-emerald-500/5 hover:bg-emerald-500/10'
+                      : 'hover:bg-muted/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                      i === currentIndex ? 'bg-primary text-primary-foreground' :
+                      answers[q.id] ? 'bg-emerald-500/20 text-emerald-600' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
+                      {i + 1}
+                    </span>
+                    <span className="truncate">{q.question.slice(0, 60)}…</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 ml-8">
+                    <span className="text-[10px] text-muted-foreground">{q.marks} marks</span>
+                    {answers[q.id] && (
+                      <span className="text-[10px] text-emerald-600">{(answers[q.id] || '').length} chars</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Main writing area */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <div key={currentIndex} className="flex-1 flex flex-col overflow-hidden animate-in fade-in duration-200">
+              {/* Question display */}
+              <div className="p-6 border-b border-border/20 shrink-0">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Question {currentIndex + 1} of {questions.length}
+                  </span>
+                  <span className="text-xs font-medium text-primary">{currentQ?.marks} marks</span>
+                </div>
+                <h2 className="text-base md:text-lg font-semibold leading-relaxed">
+                  {currentQ?.question}
+                </h2>
+                {currentQ?.topic && (
+                  <span className="inline-block mt-2 text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                    {currentQ.topic}
+                  </span>
+                )}
+              </div>
+
+              {/* Writing area */}
+              <div className="flex-1 p-6 overflow-y-auto">
+                <textarea
+                  placeholder="Write your answer here using IRAC format where applicable…"
+                  value={answers[currentQ?.id] || ''}
+                  onChange={(e) => setAnswers((prev) => ({ ...prev, [currentQ.id]: e.target.value }))}
+                  className="w-full h-full min-h-[300px] resize-none bg-transparent text-base leading-relaxed outline-none placeholder:text-muted-foreground/40"
+                />
+              </div>
+
+              {/* Bottom bar */}
+              <div className="px-6 py-3 border-t border-border/20 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span>IRAC: Issue, Rule, Application, Conclusion</span>
+                  <span className="text-muted-foreground/40">|</span>
+                  <span>{(answers[currentQ?.id] || '').length} characters</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={currentIndex === 0}
+                    onClick={() => navigateTo(currentIndex - 1)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border/30 hover:bg-muted/40 disabled:opacity-30 transition-colors text-xs font-medium"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Prev
+                  </button>
+                  {currentIndex < questions.length - 1 ? (
+                    <button
+                      onClick={() => navigateTo(currentIndex + 1)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-xs font-medium"
+                    >
+                      Next
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        if (answeredCount < questions.length) {
+                          if (!confirm(`You've answered ${answeredCount}/${questions.length} questions. Submit anyway?`)) return;
+                        }
+                        handleSubmit();
+                      }}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors text-xs font-medium"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      Submit
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

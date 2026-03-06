@@ -132,9 +132,13 @@ interface RoomMessage {
   id: string;
   content: string;
   userId: string | null;
+  displayName: string;
+  photoURL: string | null;
   isAgent: boolean;
+  isCurrentUser: boolean;
   createdAt: string;
-  displayName?: string;
+  isPinned: boolean;
+  reactions: Record<string, string[]>;
 }
 
 /* ================================================================
@@ -370,8 +374,37 @@ export default function CommunityPage() {
   const openRoom = async (room: Room) => {
     if (!room.isJoined) await joinRoom(room.id);
     setActiveRoom(room);
-    // Load messages - no dedicated messages endpoint yet, placeholder
     setMessages([]);
+    // Load messages from API
+    try {
+      const res = await apiFetch(`/api/community/rooms/${room.id}/messages`);
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(data.messages || []);
+      }
+    } catch (err) {
+      console.error('Failed to load messages:', err);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!msgInput.trim() || !activeRoom || sendingMsg) return;
+    setSendingMsg(true);
+    try {
+      const res = await apiFetch(`/api/community/rooms/${activeRoom.id}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ content: msgInput.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(prev => [...prev, data.message]);
+        setMsgInput('');
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+      }
+    } catch (err) {
+      console.error('Failed to send message:', err);
+    }
+    finally { setSendingMsg(false); }
   };
 
   const submitRoomRequest = async () => {
@@ -606,29 +639,59 @@ export default function CommunityPage() {
         </div>
 
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-4 space-y-1">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-2 opacity-60">
               <MessageSquare className="h-10 w-10 text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">No messages yet. Start the conversation!</p>
             </div>
           )}
-          {messages.map(msg => (
-            <div key={msg.id} className={`flex gap-2 ${msg.isAgent ? 'flex-row' : 'flex-row'}`}>
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                msg.isAgent ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-              }`}>
-                {msg.isAgent ? <Sparkles className="h-3.5 w-3.5" /> : (msg.displayName?.[0] || '?')}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-semibold">{msg.isAgent ? 'YNAI Agent' : (msg.displayName || 'Anonymous')}</span>
-                  <span className="text-[10px] text-muted-foreground">{new Date(msg.createdAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}</span>
+          {messages.map((msg, idx) => {
+            const prev = messages[idx - 1];
+            const showHeader = !prev || prev.userId !== msg.userId || 
+              (new Date(msg.createdAt).getTime() - new Date(prev.createdAt).getTime() > 5 * 60 * 1000);
+            const isMe = msg.isCurrentUser;
+
+            return (
+              <div key={msg.id} className={`flex gap-2.5 ${showHeader ? 'mt-3 first:mt-0' : 'mt-0.5'} ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                {/* Avatar - only show on header messages */}
+                {showHeader ? (
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    msg.isAgent ? 'bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-primary/20' 
+                    : isMe ? 'bg-primary/15 text-primary' 
+                    : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {msg.isAgent ? <Sparkles className="h-3.5 w-3.5" /> : (msg.displayName?.[0]?.toUpperCase() || '?')}
+                  </div>
+                ) : (
+                  <div className="w-8 shrink-0" />
+                )}
+
+                {/* Message bubble */}
+                <div className={`max-w-[75%] min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
+                  {showHeader && (
+                    <div className={`flex items-baseline gap-2 mb-0.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                      <span className={`text-xs font-semibold ${msg.isAgent ? 'text-primary' : isMe ? 'text-primary/80' : 'text-foreground'}`}>
+                        {msg.isAgent ? 'YNAI Agent' : (msg.displayName || 'Anonymous')}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/60">
+                        {new Date(msg.createdAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  )}
+                  <div className={`px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                    msg.isAgent 
+                      ? 'bg-primary/5 border border-primary/10 text-foreground rounded-tl-md' 
+                      : isMe 
+                        ? 'bg-primary text-primary-foreground rounded-tr-md' 
+                        : 'bg-card border border-border/20 text-foreground rounded-tl-md'
+                  } ${!showHeader && !isMe ? 'rounded-tl-2xl' : ''} ${!showHeader && isMe ? 'rounded-tr-2xl' : ''}`}>
+                    {msg.content}
+                  </div>
                 </div>
-                <p className="text-sm whitespace-pre-wrap mt-0.5">{msg.content}</p>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <div ref={messagesEndRef} />
         </div>
 
@@ -638,15 +701,16 @@ export default function CommunityPage() {
             <input
               value={msgInput}
               onChange={e => setMsgInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); /* sendMessage() */ } }}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
               placeholder={`Message #${activeRoom.name.toLowerCase()}`}
               className="flex-1 px-3 py-2 rounded-xl bg-background border border-border/20 text-sm outline-none focus:ring-1 focus:ring-primary/20"
             />
             <button
+              onClick={sendMessage}
               disabled={!msgInput.trim() || sendingMsg}
-              className="px-3 py-2 rounded-xl bg-primary text-primary-foreground disabled:opacity-30"
+              className="px-3 py-2 rounded-xl bg-primary text-primary-foreground disabled:opacity-30 transition-opacity"
             >
-              <Send className="h-4 w-4" />
+              {sendingMsg ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </button>
           </div>
         </div>

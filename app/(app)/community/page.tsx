@@ -10,7 +10,8 @@ import {
   Plus, Lock, Globe, Loader2, Check, X, AlertCircle, Sparkles,
   BookOpen, Scale, FileText, ShieldCheck, Briefcase, Home as HomeIcon,
   Handshake, Building2, Gavel, UserCheck, UserX, Bell, ArrowRight,
-  Heart, Zap, Target, TrendingUp, Calendar,
+  Heart, Zap, Target, TrendingUp, Calendar, ThumbsUp, ThumbsDown,
+  MessageCircle, ArrowUp, Filter, CornerDownRight,
 } from 'lucide-react';
 
 /* ================================================================
@@ -81,6 +82,52 @@ interface Ranking {
   isCurrentUser: boolean;
 }
 
+interface Thread {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorPhoto: string | null;
+  title: string;
+  content: string;
+  category: string;
+  tags: string[];
+  upvotes: number;
+  downvotes: number;
+  replyCount: number;
+  isPinned: boolean;
+  isLocked: boolean;
+  isAgentPost: boolean;
+  userVote: 'up' | 'down' | null;
+  createdAt: string;
+}
+
+interface ThreadReply {
+  id: string;
+  threadId: string;
+  authorId: string;
+  authorName: string;
+  authorPhoto: string | null;
+  parentReplyId: string | null;
+  content: string;
+  upvotes: number;
+  downvotes: number;
+  isAgentReply: boolean;
+  userVote: 'up' | 'down' | null;
+  createdAt: string;
+}
+
+const THREAD_CATEGORIES = [
+  { id: 'all', label: 'All' },
+  { id: 'general', label: 'General' },
+  { id: 'memes', label: 'Memes' },
+  { id: 'study-tips', label: 'Study Tips' },
+  { id: 'case-discussion', label: 'Case Talk' },
+  { id: 'exam-anxiety', label: 'Exam Stress' },
+  { id: 'career', label: 'Career' },
+  { id: 'resources', label: 'Resources' },
+  { id: 'off-topic', label: 'Off-Topic' },
+] as const;
+
 interface RoomMessage {
   id: string;
   content: string;
@@ -107,12 +154,29 @@ const UNIT_CONFIG: Record<string, { icon: typeof Scale; color: string; bg: strin
 
 const TABS = [
   { id: 'rooms',     label: 'Rooms',      icon: Hash },
+  { id: 'threads',   label: 'Threads',    icon: MessageCircle },
   { id: 'friends',   label: 'Friends',    icon: UserPlus },
   { id: 'events',    label: 'Challenges', icon: Trophy },
   { id: 'rankings',  label: 'Rankings',   icon: Crown },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
+
+/* ================================================================
+   HELPERS
+   ================================================================ */
+function getTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
 
 /* ================================================================
    MAIN PAGE
@@ -156,6 +220,21 @@ export default function CommunityPage() {
   const [events, setEvents] = useState<CommunityEvent[]>([]);
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [weekInfo, setWeekInfo] = useState<any>(null);
+
+  // Threads
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [threadCategory, setThreadCategory] = useState('all');
+  const [threadSort, setThreadSort] = useState<'recent' | 'top' | 'hot'>('recent');
+  const [activeThread, setActiveThread] = useState<Thread | null>(null);
+  const [threadReplies, setThreadReplies] = useState<ThreadReply[]>([]);
+  const [showNewThread, setShowNewThread] = useState(false);
+  const [newThreadTitle, setNewThreadTitle] = useState('');
+  const [newThreadContent, setNewThreadContent] = useState('');
+  const [newThreadCategory, setNewThreadCategory] = useState('general');
+  const [submittingThread, setSubmittingThread] = useState(false);
+  const [replyInput, setReplyInput] = useState('');
+  const [submittingReply, setSubmittingReply] = useState(false);
+  const [loadingReplies, setLoadingReplies] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -231,6 +310,13 @@ export default function CommunityPage() {
     }
   }, [tab, usernameChecked, showUsernameSetup]);
 
+  // Reload threads when filter/sort changes
+  useEffect(() => {
+    if (tab === 'threads' && usernameChecked && !showUsernameSetup) {
+      loadTabData('threads');
+    }
+  }, [threadCategory, threadSort]);
+
   const loadTabData = async (t: TabId) => {
     setLoading(true);
     try {
@@ -245,6 +331,11 @@ export default function CommunityPage() {
           setSuggestions(d.suggestions || []);
           setPendingRequests(d.pendingRequests || []);
         }
+      } else if (t === 'threads') {
+        const params = new URLSearchParams({ sort: threadSort });
+        if (threadCategory !== 'all') params.set('category', threadCategory);
+        const res = await apiFetch(`/api/community/threads?${params}`);
+        if (res.ok) { const d = await res.json(); setThreads(d.threads || []); }
       } else if (t === 'events') {
         const res = await apiFetch('/api/community/events');
         if (res.ok) { const d = await res.json(); setEvents(d.events || []); }
@@ -335,6 +426,88 @@ export default function CommunityPage() {
       method: 'POST', body: JSON.stringify({ action: 'join', eventId }),
     });
     loadTabData('events');
+  };
+
+  /* ---- Thread actions ---- */
+  const createThread = async () => {
+    if (!newThreadTitle.trim() || !newThreadContent.trim()) return;
+    setSubmittingThread(true);
+    try {
+      const res = await apiFetch('/api/community/threads', {
+        method: 'POST',
+        body: JSON.stringify({ title: newThreadTitle, content: newThreadContent, category: newThreadCategory }),
+      });
+      if (res.ok) {
+        setShowNewThread(false);
+        setNewThreadTitle('');
+        setNewThreadContent('');
+        setNewThreadCategory('general');
+        loadTabData('threads');
+      }
+    } catch {}
+    finally { setSubmittingThread(false); }
+  };
+
+  const voteThread = async (threadId: string, vote: 'up' | 'down' | 'none') => {
+    await apiFetch('/api/community/threads', {
+      method: 'PATCH',
+      body: JSON.stringify({ threadId, vote }),
+    });
+    setThreads(prev => prev.map(t => {
+      if (t.id !== threadId) return t;
+      const oldVote = t.userVote;
+      let up = t.upvotes, down = t.downvotes;
+      if (oldVote === 'up') up--;
+      if (oldVote === 'down') down--;
+      if (vote === 'up') up++;
+      if (vote === 'down') down++;
+      return { ...t, upvotes: up, downvotes: down, userVote: vote === 'none' ? null : vote };
+    }));
+  };
+
+  const openThread = async (thread: Thread) => {
+    setActiveThread(thread);
+    setLoadingReplies(true);
+    try {
+      const res = await apiFetch(`/api/community/threads/replies?threadId=${thread.id}`);
+      if (res.ok) { const d = await res.json(); setThreadReplies(d.replies || []); }
+    } catch {}
+    finally { setLoadingReplies(false); }
+  };
+
+  const postReply = async () => {
+    if (!replyInput.trim() || !activeThread) return;
+    setSubmittingReply(true);
+    try {
+      const res = await apiFetch('/api/community/threads/replies', {
+        method: 'POST',
+        body: JSON.stringify({ threadId: activeThread.id, content: replyInput }),
+      });
+      if (res.ok) {
+        setReplyInput('');
+        const d = await res.json();
+        setThreadReplies(prev => [...prev, d.reply]);
+        setActiveThread(prev => prev ? { ...prev, replyCount: prev.replyCount + 1 } : null);
+      }
+    } catch {}
+    finally { setSubmittingReply(false); }
+  };
+
+  const voteReply = async (replyId: string, vote: 'up' | 'down' | 'none') => {
+    await apiFetch('/api/community/threads/replies', {
+      method: 'PATCH',
+      body: JSON.stringify({ replyId, vote }),
+    });
+    setThreadReplies(prev => prev.map(r => {
+      if (r.id !== replyId) return r;
+      const oldVote = r.userVote;
+      let up = r.upvotes, down = r.downvotes;
+      if (oldVote === 'up') up--;
+      if (oldVote === 'down') down--;
+      if (vote === 'up') up++;
+      if (vote === 'down') down++;
+      return { ...r, upvotes: up, downvotes: down, userVote: vote === 'none' ? null : vote };
+    }));
   };
 
   /* ================================================================
@@ -689,6 +862,293 @@ export default function CommunityPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ============ THREADS TAB ============ */}
+        {!loading && tab === 'threads' && !activeThread && (
+          <div className="space-y-4">
+            {/* Category pills row */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+              {THREAD_CATEGORIES.map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => setThreadCategory(cat.id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                    threadCategory === cat.id
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Sort + New Thread */}
+            <div className="flex items-center justify-between">
+              <div className="flex gap-1">
+                {(['recent', 'top', 'hot'] as const).map(s => (
+                  <button
+                    key={s}
+                    onClick={() => setThreadSort(s)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+                      threadSort === s ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {s === 'recent' ? '🕐 New' : s === 'top' ? '🔥 Top' : '⚡ Hot'}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowNewThread(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-xs font-medium hover:bg-primary/15 transition-colors"
+              >
+                <Plus className="h-3.5 w-3.5" /> New Post
+              </button>
+            </div>
+
+            {/* New thread form */}
+            {showNewThread && (
+              <div className="rounded-xl border border-primary/20 bg-card p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">Create a Post</h3>
+                  <button onClick={() => setShowNewThread(false)} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <input
+                  value={newThreadTitle}
+                  onChange={e => setNewThreadTitle(e.target.value)}
+                  placeholder="Title"
+                  className="w-full px-3 py-2 rounded-lg border border-border/30 bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  maxLength={200}
+                />
+                <textarea
+                  value={newThreadContent}
+                  onChange={e => setNewThreadContent(e.target.value)}
+                  placeholder="What's on your mind? Share a meme, a study tip, or vent about exams..."
+                  className="w-full px-3 py-2 rounded-lg border border-border/30 bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none h-24"
+                />
+                <div className="flex items-center gap-2">
+                  <select
+                    value={newThreadCategory}
+                    onChange={e => setNewThreadCategory(e.target.value)}
+                    className="px-2.5 py-1.5 rounded-lg border border-border/30 bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  >
+                    {THREAD_CATEGORIES.filter(c => c.id !== 'all').map(c => (
+                      <option key={c.id} value={c.id}>{c.label}</option>
+                    ))}
+                  </select>
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => { setShowNewThread(false); setNewThreadTitle(''); setNewThreadContent(''); }}
+                    className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={createThread}
+                    disabled={submittingThread || !newThreadTitle.trim() || !newThreadContent.trim()}
+                    className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-40"
+                  >
+                    {submittingThread ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Post'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Thread list */}
+            {threads.length === 0 ? (
+              <div className="text-center py-16 space-y-2">
+                <MessageCircle className="h-10 w-10 mx-auto text-muted-foreground/20" />
+                <p className="text-sm text-muted-foreground">No threads yet. Be the first to post!</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {threads.map(thread => {
+                  const score = thread.upvotes - thread.downvotes;
+                  const timeAgo = getTimeAgo(thread.createdAt);
+                  return (
+                    <div
+                      key={thread.id}
+                      className={`rounded-xl border bg-card/40 hover:bg-card/70 transition-all cursor-pointer ${
+                        thread.isPinned ? 'border-primary/20' : 'border-border/10'
+                      }`}
+                      onClick={() => openThread(thread)}
+                    >
+                      <div className="flex gap-3 p-3.5">
+                        {/* Vote column */}
+                        <div className="flex flex-col items-center gap-0.5 pt-0.5" onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={() => voteThread(thread.id, thread.userVote === 'up' ? 'none' : 'up')}
+                            className={`p-1 rounded-md transition-colors ${thread.userVote === 'up' ? 'text-primary bg-primary/10' : 'text-muted-foreground/40 hover:text-primary'}`}
+                          >
+                            <ArrowUp className="h-4 w-4" />
+                          </button>
+                          <span className={`text-xs font-bold ${score > 0 ? 'text-primary' : score < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                            {score}
+                          </span>
+                          <button
+                            onClick={() => voteThread(thread.id, thread.userVote === 'down' ? 'none' : 'down')}
+                            className={`p-1 rounded-md transition-colors ${thread.userVote === 'down' ? 'text-red-500 bg-red-500/10' : 'text-muted-foreground/40 hover:text-red-500'}`}
+                          >
+                            <ThumbsDown className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            {thread.isPinned && (
+                              <span className="text-[9px] font-semibold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded-full">📌 Pinned</span>
+                            )}
+                            {thread.isAgentPost && (
+                              <span className="text-[9px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">🤖 AI</span>
+                            )}
+                            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">{thread.category}</span>
+                          </div>
+                          <h3 className="text-sm font-semibold text-foreground leading-snug mb-1 line-clamp-2">{thread.title}</h3>
+                          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{thread.content}</p>
+                          <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
+                            <span className="font-medium">{thread.authorName || 'Anonymous'}</span>
+                            <span>·</span>
+                            <span>{timeAgo}</span>
+                            <span>·</span>
+                            <span className="flex items-center gap-1">
+                              <MessageCircle className="h-3 w-3" /> {thread.replyCount}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ============ THREAD DETAIL VIEW ============ */}
+        {!loading && tab === 'threads' && activeThread && (
+          <div className="space-y-4">
+            {/* Back button */}
+            <button
+              onClick={() => { setActiveThread(null); setThreadReplies([]); }}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" /> Back to threads
+            </button>
+
+            {/* Thread post */}
+            <div className="rounded-xl border border-border/20 bg-card p-4 space-y-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                {activeThread.isAgentPost && (
+                  <span className="text-[9px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">🤖 AI</span>
+                )}
+                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">{activeThread.category}</span>
+              </div>
+              <h2 className="text-base font-bold">{activeThread.title}</h2>
+              <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{activeThread.content}</p>
+              <div className="flex items-center gap-4 pt-2 border-t border-border/10 text-[11px] text-muted-foreground">
+                <span className="font-medium">{activeThread.authorName || 'Anonymous'}</span>
+                <span>{getTimeAgo(activeThread.createdAt)}</span>
+                <div className="flex items-center gap-1.5 ml-auto" onClick={e => e.stopPropagation()}>
+                  <button
+                    onClick={() => voteThread(activeThread.id, activeThread.userVote === 'up' ? 'none' : 'up')}
+                    className={`p-1 rounded-md ${activeThread.userVote === 'up' ? 'text-primary bg-primary/10' : 'text-muted-foreground/40 hover:text-primary'}`}
+                  >
+                    <ThumbsUp className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="text-xs font-bold">{activeThread.upvotes - activeThread.downvotes}</span>
+                  <button
+                    onClick={() => voteThread(activeThread.id, activeThread.userVote === 'down' ? 'none' : 'down')}
+                    className={`p-1 rounded-md ${activeThread.userVote === 'down' ? 'text-red-500 bg-red-500/10' : 'text-muted-foreground/40 hover:text-red-500'}`}
+                  >
+                    <ThumbsDown className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Reply input */}
+            {!activeThread.isLocked && (
+              <div className="flex gap-2">
+                <input
+                  value={replyInput}
+                  onChange={e => setReplyInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && postReply()}
+                  placeholder="Write a reply..."
+                  className="flex-1 px-3 py-2 rounded-xl border border-border/30 bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
+                />
+                <button
+                  onClick={postReply}
+                  disabled={submittingReply || !replyInput.trim()}
+                  className="px-3 py-2 rounded-xl bg-primary text-primary-foreground disabled:opacity-40"
+                >
+                  {submittingReply ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </button>
+              </div>
+            )}
+
+            {/* Replies */}
+            <div>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                {activeThread.replyCount} {activeThread.replyCount === 1 ? 'Reply' : 'Replies'}
+              </h3>
+
+              {loadingReplies ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary/40" />
+                </div>
+              ) : threadReplies.length === 0 ? (
+                <div className="text-center py-8 space-y-2">
+                  <MessageCircle className="h-8 w-8 mx-auto text-muted-foreground/20" />
+                  <p className="text-xs text-muted-foreground">No replies yet. Start the conversation!</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {threadReplies.map(reply => (
+                    <div
+                      key={reply.id}
+                      className={`rounded-xl border bg-card/30 p-3.5 ${
+                        reply.isAgentReply ? 'border-primary/15' : 'border-border/10'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0 mt-0.5">
+                          {reply.isAgentReply ? '🤖' : (reply.authorName?.[0] || '?')}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-medium">{reply.authorName || 'Anonymous'}</span>
+                            {reply.isAgentReply && (
+                              <span className="text-[9px] text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">AI</span>
+                            )}
+                            <span className="text-[10px] text-muted-foreground">{getTimeAgo(reply.createdAt)}</span>
+                          </div>
+                          <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{reply.content}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <button
+                              onClick={() => voteReply(reply.id, reply.userVote === 'up' ? 'none' : 'up')}
+                              className={`p-1 rounded-md text-xs flex items-center gap-0.5 ${reply.userVote === 'up' ? 'text-primary bg-primary/10' : 'text-muted-foreground/40 hover:text-primary'}`}
+                            >
+                              <ThumbsUp className="h-3 w-3" /> {reply.upvotes || ''}
+                            </button>
+                            <button
+                              onClick={() => voteReply(reply.id, reply.userVote === 'down' ? 'none' : 'down')}
+                              className={`p-1 rounded-md text-xs ${reply.userVote === 'down' ? 'text-red-500 bg-red-500/10' : 'text-muted-foreground/40 hover:text-red-500'}`}
+                            >
+                              <ThumbsDown className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

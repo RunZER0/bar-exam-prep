@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSidebar } from '@/contexts/SidebarContext';
-import { Zap, BookOpen, PlayCircle, CheckCircle2, BarChart3, ArrowLeft, ChevronRight, ChevronDown, Smile, Meh, Frown, ArrowRight, RotateCcw, Sparkles, Compass, FileText, Lightbulb, ClipboardCheck, PenTool } from 'lucide-react';
+import { Zap, BookOpen, PlayCircle, CheckCircle2, BarChart3, ArrowLeft, ChevronRight, ChevronDown, Smile, Meh, Frown, ArrowRight, RotateCcw, Sparkles, Compass, FileText, Lightbulb, ClipboardCheck, PenTool, Layers } from 'lucide-react';
 import MasteryCarousel from '@/components/MasteryCarousel';
 import ReadinessDashboard from '@/components/ReadinessDashboard';
 import EmbeddedPracticePanel, { type PracticeTask } from '@/components/EmbeddedPracticePanel';
@@ -41,7 +41,7 @@ interface DailyQueue {
     };
 }
 
-type TabId = 'plan' | 'readiness' | 'recommendations';
+type TabId = 'plan' | 'readiness' | 'backlog' | 'recommendations';
 
 /** Get today's date in EAT (UTC+3) for cache comparison */
 function getEATToday(): string {
@@ -52,6 +52,7 @@ function getEATToday(): string {
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
     { id: 'plan', label: "Today's Plan", icon: Zap },
+    { id: 'backlog', label: 'Backlog', icon: Layers },
     { id: 'readiness', label: 'Readiness', icon: BarChart3 },
     { id: 'recommendations', label: 'Explore', icon: Compass },
 ];
@@ -573,6 +574,11 @@ export default function MasteryPage() {
                     <ReadinessDashboard />
                 )}
 
+                {/* ====== TAB: BACKLOG ====== */}
+                {activeTab === 'backlog' && (
+                    <BacklogView queueData={queueData} onStartTask={handleStartTask} />
+                )}
+
                 {/* ====== TAB: RECOMMENDATIONS ====== */}
                 {activeTab === 'recommendations' && (
                     <RecommendationsView queueData={queueData} />
@@ -683,6 +689,124 @@ function RecommendationsView({ queueData }: { queueData: DailyQueue | null }) {
                         </p>
                     </div>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+// ------- BACKLOG SUB-COMPONENT -------
+function BacklogView({ queueData, onStartTask }: { queueData: DailyQueue | null; onStartTask: (task: OrchestratedTask) => void }) {
+    const [expandedUnit, setExpandedUnit] = useState<string | null>(null);
+
+    const allTasks = queueData?.queue || [];
+    const grouped = allTasks.reduce<Record<string, OrchestratedTask[]>>((acc, task) => {
+        const unit = task.data.unitName || task.data.unitId || 'Other';
+        if (!acc[unit]) acc[unit] = [];
+        acc[unit].push(task);
+        return acc;
+    }, {});
+
+    const totalBacklog = queueData?.meta?.totalBacklog ?? allTasks.length;
+    const mastered = queueData?.meta?.masteredSkills ?? 0;
+    const total = queueData?.meta?.totalSkills ?? 0;
+    const remaining = total - mastered;
+
+    return (
+        <div className="space-y-5">
+            {/* Summary cards */}
+            <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-xl border border-border/30 bg-card p-3.5 text-center">
+                    <p className="text-2xl font-bold text-foreground">{remaining}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Remaining</p>
+                </div>
+                <div className="rounded-xl border border-border/30 bg-card p-3.5 text-center">
+                    <p className="text-2xl font-bold text-emerald-500">{mastered}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Mastered</p>
+                </div>
+                <div className="rounded-xl border border-amber-500/20 bg-amber-50/30 dark:bg-amber-950/10 p-3.5 text-center">
+                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{totalBacklog}</p>
+                    <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70 uppercase tracking-wider mt-0.5">In Queue</p>
+                </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="rounded-xl border border-border/30 bg-card p-4">
+                <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-muted-foreground">Overall Mastery Progress</span>
+                    <span className="text-xs font-bold text-primary">{total > 0 ? Math.round((mastered / total) * 100) : 0}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                        className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-500 transition-all duration-1000"
+                        style={{ width: `${total > 0 ? (mastered / total) * 100 : 0}%` }}
+                    />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1.5">{mastered} of {total} topics mastered</p>
+            </div>
+
+            {/* Backlog by unit */}
+            <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    Backlog by Unit ({Object.keys(grouped).length} units)
+                </h3>
+
+                {Object.keys(grouped).length === 0 ? (
+                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-50/30 dark:bg-emerald-950/10 p-8 text-center">
+                        <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
+                        <h3 className="font-semibold text-sm mb-1">All caught up!</h3>
+                        <p className="text-xs text-muted-foreground">You have mastered all scheduled topics. Great work!</p>
+                    </div>
+                ) : (
+                    <div className="space-y-1.5">
+                        {Object.entries(grouped).map(([unitKey, tasks]) => {
+                            const isOpen = expandedUnit === unitKey;
+                            return (
+                                <div key={unitKey} className="rounded-xl border border-border/30 overflow-hidden">
+                                    <button
+                                        onClick={() => setExpandedUnit(isOpen ? null : unitKey)}
+                                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-card/60 transition-colors"
+                                    >
+                                        <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                                            <BookOpen className="h-3.5 w-3.5 text-primary" />
+                                        </div>
+                                        <span className="font-medium text-sm flex-1 text-left">{unitKey}</span>
+                                        <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{tasks.length} topics</span>
+                                        <ChevronDown className={`h-4 w-4 text-muted-foreground/40 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+                                    {isOpen && (
+                                        <div className="border-t border-border/20 bg-muted/20">
+                                            {tasks.map((task, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => onStartTask(task)}
+                                                    className="w-full flex items-center gap-3 px-4 py-2.5 pl-14 hover:bg-card/60 transition-colors group border-b border-border/10 last:border-0"
+                                                >
+                                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold shrink-0 ${
+                                                        task.type === 'WITNESS' ? 'bg-amber-500/10 text-amber-600' : 'bg-primary/10 text-primary'
+                                                    }`}>
+                                                        {task.type === 'WITNESS' ? '!' : idx + 1}
+                                                    </div>
+                                                    <div className="flex-1 text-left min-w-0">
+                                                        <p className="text-sm truncate group-hover:text-primary transition-colors">{task.data.title}</p>
+                                                        {task.data.description && (
+                                                            <p className="text-[10px] text-muted-foreground truncate">{task.data.description}</p>
+                                                        )}
+                                                    </div>
+                                                    <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
+                                                        task.type === 'WITNESS' ? 'bg-amber-500/10 text-amber-600' : 'bg-primary/10 text-primary'
+                                                    }`}>
+                                                        {task.type === 'WITNESS' ? 'Review' : 'Learn'}
+                                                    </span>
+                                                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/20 group-hover:text-primary shrink-0" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -144,7 +144,7 @@ IMPORTANT: Responses will be read aloud via TTS. Be natural and conversational. 
 /* ================================================================
    POST — Handle oral exam conversation
    ================================================================ */
-async function handlePost(req: NextRequest, user: AuthUser) {
+async function handlePost(req: NextRequest, user: AuthUser): Promise<Response> {
   try {
     const body = await req.json();
     const {
@@ -425,4 +425,4 @@ function extractScore(text: string): number | null {
   return match ? parseInt(match[1], 10) : null;
 }
 
-export const POST = withAuth(handlePost) as any; // Type assertion for streaming Response compatibility
+export const POST = withAuth(handlePost);

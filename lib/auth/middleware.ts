@@ -65,9 +65,10 @@ export async function verifyAuth(request: NextRequest): Promise<AuthUser | null>
 
 /**
  * Middleware wrapper for protected API routes
+ * Supports both NextResponse (JSON) and Response (streaming)
  */
 export function withAuth(
-  handler: (req: NextRequest, user: AuthUser) => Promise<NextResponse>
+  handler: (req: NextRequest, user: AuthUser) => Promise<NextResponse | Response>
 ) {
   return async (req: NextRequest) => {
     const user = await verifyAuth(req);

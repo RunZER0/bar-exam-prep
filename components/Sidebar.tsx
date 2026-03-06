@@ -27,6 +27,7 @@ import {
   Crown,
   Users,
   Target,
+  Mic,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -36,6 +37,7 @@ const NAV_ITEMS = [
   { href: '/drafting', label: 'Legal Drafting', icon: FileText },
   { href: '/study', label: 'Study', icon: BookOpen },
   { href: '/exams', label: 'Examinations', icon: ClipboardCheck },
+  { href: '/oral-exams', label: 'Oral Exams', icon: Mic },
   { href: '/quizzes', label: 'Quizzes & Trivia', icon: Lightbulb },
   { href: '/community', label: 'Community', icon: Users },
   { href: '/research', label: 'Research', icon: Search },

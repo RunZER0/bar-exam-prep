@@ -612,13 +612,19 @@ export default function FloatingChat() {
             <textarea
               ref={inputRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                // Auto-resize
+                const el = e.target;
+                el.style.height = 'auto';
+                el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+              }}
               onKeyDown={handleKeyDown}
               placeholder="Ask a question..."
               rows={1}
               disabled={isRecording}
-              className="flex-1 resize-none bg-muted/50 border border-border/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 max-h-24 disabled:opacity-50"
-              style={{ minHeight: '40px' }}
+              className="flex-1 resize-none bg-muted/50 border border-border/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 disabled:opacity-50 overflow-y-auto transition-[height] duration-100"
+              style={{ minHeight: '40px', maxHeight: '160px' }}
             />
             <button
               type="submit"

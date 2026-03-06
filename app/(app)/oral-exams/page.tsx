@@ -63,12 +63,16 @@ export default function OralExamsPage() {
   const [inputMode, setInputMode] = useState<InputMode>('voice');
   const [selectedUnit, setSelectedUnit] = useState<string>('');
   const [panelistCount, setPanelistCount] = useState(3);
+  const [enableStreaming, setEnableStreaming] = useState(true);
 
   // ---- Session state ----
   const [phase, setPhase] = useState<SessionPhase>('setup');
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentPanelistIndex, setCurrentPanelistIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingContent, setStreamingContent] = useState('');
+  const [streamingPanelist, setStreamingPanelist] = useState<any>(null);
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [textInput, setTextInput] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -242,7 +246,7 @@ export default function OralExamsPage() {
      SEND MESSAGE — core conversation loop
      ================================================================ */
   const sendMessage = useCallback(async (userText: string) => {
-    if (!userText.trim() || isLoading) return;
+    if (!userText.trim() || isLoading || isStreaming) return;
     setError(null);
 
     // Add user message
@@ -255,7 +259,6 @@ export default function OralExamsPage() {
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setTextInput('');
-    setIsLoading(true);
 
     try {
       const payload: any = {
@@ -263,6 +266,7 @@ export default function OralExamsPage() {
         mode,
         feedbackMode,
         unitId: selectedUnit || undefined,
+        stream: enableStreaming,
         messages: updatedMessages.map(m => ({
           role: m.role,
           content: m.content,
@@ -275,31 +279,114 @@ export default function OralExamsPage() {
         payload.currentPanelistIndex = currentPanelistIndex;
       }
 
-      const data = await authFetchJSON('/api/oral-exams', payload);
+      if (enableStreaming) {
+        // -------- STREAMING MODE --------
+        setIsStreaming(true);
+        setStreamingContent('');
+        setStreamingPanelist(null);
 
-      const aiMsg: Message = {
-        id: `a-${Date.now()}`,
-        role: 'assistant',
-        content: data.content,
-        timestamp: new Date(),
-        panelist: data.panelist || undefined,
-      };
-      setMessages(prev => [...prev, aiMsg]);
+        const token = await getIdToken();
+        const response = await fetch('/api/oral-exams', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
 
-      if (data.nextPanelistIndex !== undefined) {
-        setCurrentPanelistIndex(data.nextPanelistIndex);
+        if (!response.ok) throw new Error('Stream failed');
+        if (!response.body) throw new Error('No response body');
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullContent = '';
+        let metadata: any = null;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                
+                if (data.type === 'metadata') {
+                  metadata = data;
+                  if (data.panelist) setStreamingPanelist(data.panelist);
+                  if (data.nextPanelistIndex !== undefined) {
+                    setCurrentPanelistIndex(data.nextPanelistIndex);
+                  }
+                }
+
+                if (data.type === 'chunk') {
+                  fullContent += data.content;
+                  setStreamingContent(fullContent);
+                }
+
+                if (data.type === 'done') {
+                  // Stream complete — add final message
+                  const aiMsg: Message = {
+                    id: `a-${Date.now()}`,
+                    role: 'assistant',
+                    content: data.fullContent || fullContent,
+                    timestamp: new Date(),
+                    panelist: metadata?.panelist || undefined,
+                  };
+                  setMessages(prev => [...prev, aiMsg]);
+                  setStreamingContent('');
+                  setStreamingPanelist(null);
+                  setIsStreaming(false);
+
+                  // Play TTS after streaming completes
+                  const voice = metadata?.panelist?.voice || metadata?.voice || 'onyx';
+                  await playTTS(aiMsg.content, voice);
+                }
+
+                if (data.type === 'error') {
+                  throw new Error(data.error);
+                }
+              } catch (parseErr) {
+                // Incomplete JSON, continue
+              }
+            }
+          }
+        }
+      } else {
+        // NON-STREAMING MODE (existing)
+        setIsLoading(true);
+        const data = await authFetchJSON('/api/oral-exams', payload);
+
+        const aiMsg: Message = {
+          id: `a-${Date.now()}`,
+          role: 'assistant',
+          content: data.content,
+          timestamp: new Date(),
+          panelist: data.panelist || undefined,
+        };
+        setMessages(prev => [...prev, aiMsg]);
+
+        if (data.nextPanelistIndex !== undefined) {
+          setCurrentPanelistIndex(data.nextPanelistIndex);
+        }
+
+        // Play TTS
+        const voice = data.panelist?.voice || data.voice || 'onyx';
+        await playTTS(data.content, voice);
+        setIsLoading(false);
       }
-
-      // Play TTS
-      const voice = data.panelist?.voice || data.voice || 'onyx';
-      await playTTS(data.content, voice);
     } catch (err: any) {
       console.error('Send error:', err);
       setError('Failed to get response. Please try again.');
-    } finally {
       setIsLoading(false);
+      setIsStreaming(false);
+      setStreamingContent('');
     }
-  }, [messages, examType, mode, feedbackMode, selectedUnit, panelistCount, currentPanelistIndex, isLoading, authFetchJSON, playTTS]);
+  }, [messages, examType, mode, feedbackMode, selectedUnit, panelistCount, currentPanelistIndex, isLoading, isStreaming, enableStreaming, authFetchJSON, playTTS, getIdToken]);
 
   /* ================================================================
      START SESSION
@@ -663,6 +750,35 @@ export default function OralExamsPage() {
                   </div>
                 </div>
 
+                {/* Streaming Mode Toggle */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Response Delivery</label>
+                    <button
+                      onClick={() => setEnableStreaming(!enableStreaming)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        enableStreaming ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          enableStreaming ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {enableStreaming ? (
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" />
+                        Streaming enabled — responses appear in real-time with controlled interruptions
+                      </span>
+                    ) : (
+                      <span>Standard mode — complete responses delivered at once</span>
+                    )}
+                  </div>
+                </div>
+
                 {/* Start Button */}
                 <button
                   onClick={startSession}
@@ -895,7 +1011,7 @@ export default function OralExamsPage() {
         })}
 
         {/* Loading indicator */}
-        {isLoading && (
+        {isLoading && !isStreaming && (
           <div className="flex justify-start">
             <div className={`rounded-2xl px-4 py-3 bg-card border-l-4 ${
               examType === 'devils-advocate' ? 'border-l-red-500' : 'border-l-blue-500'
@@ -907,6 +1023,40 @@ export default function OralExamsPage() {
                     ? `${PANELISTS_INFO[currentPanelistIndex % PANELISTS_INFO.length]?.name || 'Examiner'} is thinking...`
                     : 'Preparing challenge...'}
                 </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Streaming message */}
+        {isStreaming && streamingContent && (
+          <div className="flex justify-start animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className={`max-w-[85%] md:max-w-[70%]`}>
+              {/* Panelist header for streaming */}
+              {streamingPanelist && (
+                <div className="flex items-center gap-2 mb-1 px-1">
+                  <span className="text-lg">{streamingPanelist.avatar}</span>
+                  <span className="text-xs font-medium">{streamingPanelist.name}</span>
+                  <span className="text-xs text-muted-foreground">• {streamingPanelist.title}</span>
+                  <div className="ml-2 flex items-center gap-1">
+                    <span className="w-1 h-1 rounded-full bg-primary animate-pulse" />
+                    <span className="w-1 h-1 rounded-full bg-primary animate-pulse" style={{ animationDelay: '0.2s' }} />
+                    <span className="w-1 h-1 rounded-full bg-primary animate-pulse" style={{ animationDelay: '0.4s' }} />
+                  </div>
+                </div>
+              )}
+
+              <div
+                className={`rounded-2xl px-4 py-3 ${
+                  examType === 'devils-advocate'
+                    ? 'bg-card border-l-4 border-l-red-500 border rounded-bl-md'
+                    : 'bg-card border-l-4 border-l-blue-500 border rounded-bl-md'
+                }`}
+              >
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                  {streamingContent}
+                  <span className="inline-block w-1 h-4 ml-1 bg-primary animate-pulse" />
+                </p>
               </div>
             </div>
           </div>

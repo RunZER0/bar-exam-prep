@@ -87,11 +87,31 @@ IMPORTANT: Your responses will be read aloud via TTS. Keep language natural and 
 /* ================================================================
    ORAL EXAMINER — System Prompt Builder (per panelist)
    ================================================================ */
-function buildExaminerPrompt(panelist: typeof PANELISTS[0], mode: string, unitContext: string, feedbackMode: string, otherPanelists: string[]) {
+function buildExaminerPrompt(panelist: typeof PANELISTS[0], mode: string, unitContext: string, feedbackMode: string, otherPanelists: string[], enableInterruptions: boolean = true) {
   const modeInstructions = getModeInstructions(mode);
   const feedbackInstructions = feedbackMode === 'per-exchange'
     ? `After the student answers, briefly assess their response (1-2 sentences) before asking your next question. Note: "Strong cite of Section X" or "You missed the key authority here".`
     : `Do NOT provide assessment during the session. Only ask questions and probe answers.`;
+
+  const interruptionInstructions = enableInterruptions ? `
+
+CONTROLLED INTERRUPTIONS — You may interrupt the student in these specific situations:
+1. **Rambling without authority**: If they speak for more than 2-3 sentences without citing law, interject: "I'll stop you there — you haven't cited any statutory provision or case law."
+2. **Off-topic**: If they stray from the question, redirect: "You're off track. The question was about [X], not [Y]."
+3. **Factual error**: If they state incorrect law: "That's wrong. Section [X] actually says..."
+4. **Time management**: Occasionally use: "That's enough on that point. Move to your next argument."
+5. **Vagueness**: If answer lacks specificity: "Be specific. Which section? Which case?"
+
+INTERRUPTION RULES:
+- Only interrupt for substantive reasons (above 5 triggers)
+- Keep interruptions brief and direct (one sentence)
+- After interrupting, either: (a) redirect with a new question, or (b) say "Continue, but cite authority."
+- DO NOT interrupt during the first 2-3 sentences of their response
+- Interruptions should feel like real oral exam control, not harassment
+
+Example interruption flow:
+Student: "Well, in civil litigation, there are rules about jurisdiction and..."
+You: "${panelist.name}: I'll stop you there. Which specific rule under the Civil Procedure Act governs territorial jurisdiction? Section number."` : '';
 
   return `You are ${panelist.name}, ${panelist.title}. You are one of ${otherPanelists.length + 1} examiners on an oral examination panel for Kenya School of Law ATP students.
 
@@ -114,6 +134,7 @@ EXAMINATION GUIDELINES:
 6. Test statutory recall: "Under which specific section...?"
 7. Keep questions conversational — this is a spoken exam.
 8. Vary between short sharp questions and longer scenario-based ones.
+${interruptionInstructions}
 
 ${feedbackInstructions}
 
@@ -135,6 +156,7 @@ async function handlePost(req: NextRequest, user: AuthUser) {
       panelistCount = 3,
       currentPanelistIndex = 0,
       generateSummary = false,
+      stream = false, // Enable SSE streaming
     } = body;
 
     // Build unit context
@@ -197,20 +219,80 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         });
       }
 
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: apiMessages,
-        temperature: 0.8,
-        max_tokens: 800,
-      });
+      if (stream) {
+        // STREAMING mode
+        const streamResponse = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: apiMessages,
+          temperature: 0.8,
+          max_tokens: 800,
+          stream: true,
+        });
 
-      const response = completion.choices[0]?.message?.content || 'I challenge you to state your position.';
+        const encoder = new TextEncoder();
+        const readable = new ReadableStream({
+          async start(controller) {
+            try {
+              // Send initial metadata
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'metadata',
+                examType: 'devils-advocate',
+                voice: 'onyx',
+              })}\n\n`));
 
-      return NextResponse.json({
-        type: 'devils-advocate',
-        content: response,
-        voice: 'onyx',
-      });
+              let fullContent = '';
+              for await (const chunk of streamResponse) {
+                const content = chunk.choices[0]?.delta?.content || '';
+                if (content) {
+                  fullContent += content;
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'chunk',
+                    content,
+                  })}\n\n`));
+                }
+              }
+
+              // Send final complete message
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'done',
+                fullContent,
+              })}\n\n`));
+
+              controller.close();
+            } catch (error) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'error',
+                error: 'Stream failed',
+              })}\n\n`));
+              controller.close();
+            }
+          },
+        });
+
+        return new Response(readable, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        });
+      } else {
+        // NON-STREAMING mode (existing)
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: apiMessages,
+          temperature: 0.8,
+          max_tokens: 800,
+        });
+
+        const response = completion.choices[0]?.message?.content || 'I challenge you to state your position.';
+
+        return NextResponse.json({
+          type: 'devils-advocate',
+          content: response,
+          voice: 'onyx',
+        });
+      }
 
     } else if (type === 'examiner') {
       // ----- ORAL EXAMINER PANEL -----
@@ -218,7 +300,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
       const currentPanelist = activePanelists[currentPanelistIndex % activePanelists.length];
       const otherNames = activePanelists.filter(p => p.id !== currentPanelist.id).map(p => p.name);
 
-      const systemPrompt = buildExaminerPrompt(currentPanelist, mode, unitContext, feedbackMode, otherNames);
+      const systemPrompt = buildExaminerPrompt(currentPanelist, mode, unitContext, feedbackMode, otherNames, true);
       const apiMessages = [
         { role: 'system' as const, content: systemPrompt },
         ...messages.map((m: any) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
@@ -232,33 +314,100 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         });
       }
 
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: apiMessages,
-        temperature: 0.8,
-        max_tokens: 600,
-      });
-
-      const response = completion.choices[0]?.message?.content || `${currentPanelist.name}: Let us begin. State your understanding of the first principle.`;
-
       // Determine next panelist (round-robin with occasional same-panelist follow-up)
       const shouldFollowUp = Math.random() < 0.3 && messages.length > 0;
       const nextPanelistIndex = shouldFollowUp
         ? currentPanelistIndex
         : (currentPanelistIndex + 1) % activePanelists.length;
 
-      return NextResponse.json({
-        type: 'examiner',
-        content: response,
-        panelist: {
-          id: currentPanelist.id,
-          name: currentPanelist.name,
-          title: currentPanelist.title,
-          avatar: currentPanelist.avatar,
-          voice: currentPanelist.voice,
-        },
-        nextPanelistIndex,
-      });
+      if (stream) {
+        // STREAMING mode
+        const streamResponse = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: apiMessages,
+          temperature: 0.8,
+          max_tokens: 600,
+          stream: true,
+        });
+
+        const encoder = new TextEncoder();
+        const readable = new ReadableStream({
+          async start(controller) {
+            try {
+              // Send initial metadata with panelist info
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'metadata',
+                examType: 'examiner',
+                panelist: {
+                  id: currentPanelist.id,
+                  name: currentPanelist.name,
+                  title: currentPanelist.title,
+                  avatar: currentPanelist.avatar,
+                  voice: currentPanelist.voice,
+                },
+                nextPanelistIndex,
+              })}\n\n`));
+
+              let fullContent = '';
+              for await (const chunk of streamResponse) {
+                const content = chunk.choices[0]?.delta?.content || '';
+                if (content) {
+                  fullContent += content;
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'chunk',
+                    content,
+                  })}\n\n`));
+                }
+              }
+
+              // Send final complete message
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'done',
+                fullContent,
+              })}\n\n`));
+
+              controller.close();
+            } catch (error) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'error',
+                error: 'Stream failed',
+              })}\n\n`));
+              controller.close();
+            }
+          },
+        });
+
+        return new Response(readable, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        });
+      } else {
+        // NON-STREAMING mode (existing)
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: apiMessages,
+          temperature: 0.8,
+          max_tokens: 600,
+        });
+
+        const response = completion.choices[0]?.message?.content || `${currentPanelist.name}: Let us begin. State your understanding of the first principle.`;
+
+        return NextResponse.json({
+          type: 'examiner',
+          content: response,
+          panelist: {
+            id: currentPanelist.id,
+            name: currentPanelist.name,
+            title: currentPanelist.title,
+            avatar: currentPanelist.avatar,
+            voice: currentPanelist.voice,
+          },
+          nextPanelistIndex,
+        });
+      }
     }
 
     return NextResponse.json({ error: 'Invalid type. Use "devils-advocate" or "examiner".' }, { status: 400 });
@@ -276,4 +425,4 @@ function extractScore(text: string): number | null {
   return match ? parseInt(match[1], 10) : null;
 }
 
-export const POST = withAuth(handlePost);
+export const POST = withAuth(handlePost) as any; // Type assertion for streaming Response compatibility

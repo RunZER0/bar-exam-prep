@@ -11,11 +11,6 @@ const CACHE_DURATION_HOURS = 12; // Shorter cache for fresher content
 
 // Configuration for exam types
 const PAPER_CONFIG = {
-  abcd: {
-    mini: { marks: 15, questions: 15, time: 20 },
-    semi: { marks: 30, questions: 30, time: 40 },
-    full: { marks: 60, questions: 60, time: 90 },
-  },
   cle: {
     mini: { marks: 15, questions: 2, time: 30 },
     semi: { marks: 30, questions: 4, time: 60 },
@@ -23,7 +18,7 @@ const PAPER_CONFIG = {
   },
 } as const;
 
-type ExamType = 'abcd' | 'cle';
+type ExamType = 'cle';
 type PaperSize = 'mini' | 'semi' | 'full';
 
 // ============================================================
@@ -98,38 +93,11 @@ async function generateExamQuestions(
   const unit = getUnitById(unitId);
   if (!unit) return null;
 
-  const config = PAPER_CONFIG[examType][paperSize];
+  const config = PAPER_CONFIG.cle[paperSize];
   const weakAreas = await getUserWeakAreas(userId, unitId);
-  const marksPerQuestion = examType === 'abcd' ? 1 : Math.floor(config.marks / config.questions);
+  const marksPerQuestion = Math.floor(config.marks / config.questions);
 
-  let prompt: string;
-
-  if (examType === 'abcd') {
-    prompt = `Generate ${config.questions} multiple choice questions for a ${paperSize} paper exam on ${unit.name} (Kenyan Law).
-
-Format as JSON array:
-[
-  {
-    "id": "q1",
-    "question": "Question text?",
-    "options": ["A) option1", "B) option2", "C) option3", "D) option4"],
-    "correctAnswer": "A) option1",
-    "explanation": "Under Section X(Y) of [Act Name] / Article X of the Constitution / In [Case] [Year] eKLR...",
-    "marks": 1,
-    "topic": "Sub-topic name"
-  }
-]
-
-Rules:
-- Each question worth 1 mark
-- Reference these Kenyan statutes: ${unit.statutes.slice(0, 3).join(', ')}
-- EVERY explanation MUST cite the specific Section, Article, or Case (e.g., "Section 107(1) of the Evidence Act")
-- Mix difficulty levels (easy, medium, hard)
-${weakAreas.length > 0 ? `- FOCUS ON THESE WEAK AREAS: ${weakAreas.join(', ')}` : ''}
-- Cover different sub-topics of ${unit.name}
-- Output ONLY valid JSON array`;
-  } else {
-    prompt = `Generate ${config.questions} essay/problem questions for a CLE standard ${paperSize} paper exam on ${unit.name} (Kenyan Law).
+  const prompt = `Generate ${config.questions} essay/problem questions for a CLE standard ${paperSize} paper exam on ${unit.name} (Kenyan Law).
 
 Format as JSON array:
 [
@@ -153,7 +121,6 @@ Rules:
 ${weakAreas.length > 0 ? `- FOCUS ON THESE WEAK AREAS: ${weakAreas.join(', ')}` : ''}
 - Each question worth ${marksPerQuestion} marks
 - Output ONLY valid JSON array`;
-  }
 
   const questions = await generateFastJSON<any[]>(prompt, 4000);
   
@@ -173,13 +140,7 @@ function genFallbackQuestions(
 ): any[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `q${i + 1}`,
-    question: examType === 'abcd'
-      ? `Question ${i + 1} for ${unitName}. [Loading failed - please regenerate]`
-      : `Essay question ${i + 1} for ${unitName}. Analyze the legal issues and provide your answer using IRAC format. [Loading failed - please regenerate]`,
-    options: examType === 'abcd'
-      ? ['A) Option 1', 'B) Option 2', 'C) Option 3', 'D) Option 4']
-      : undefined,
-    correctAnswer: examType === 'abcd' ? 'A) Option 1' : undefined,
+    question: `Essay question ${i + 1} for ${unitName}. Analyze the legal issues and provide your answer using IRAC format. [Loading failed - please regenerate]`,
     marks: marksPerQ,
     topic: unitName,
   }));
@@ -273,27 +234,27 @@ async function predictLikelyExams(userId: string): Promise<Array<{
 
     // Generate predictions
     if (sortedUnits.length > 0) {
-      // Most studied unit - ABCD semi (most common)
-      predictions.push({
-        unitId: sortedUnits[0][0],
-        examType: 'abcd',
-        paperSize: 'semi',
-        probability: 0.8,
-      });
-      
-      // Also predict CLE semi for same unit
+      // Most studied unit - CLE semi (most common)
       predictions.push({
         unitId: sortedUnits[0][0],
         examType: 'cle',
         paperSize: 'semi',
+        probability: 0.8,
+      });
+      
+      // Also predict CLE full for same unit
+      predictions.push({
+        unitId: sortedUnits[0][0],
+        examType: 'cle',
+        paperSize: 'full',
         probability: 0.5,
       });
 
-      // Second unit ABCD
+      // Second unit CLE
       if (sortedUnits.length > 1) {
         predictions.push({
           unitId: sortedUnits[1][0],
-          examType: 'abcd',
+          examType: 'cle',
           paperSize: 'semi',
           probability: 0.4,
         });
@@ -302,7 +263,7 @@ async function predictLikelyExams(userId: string): Promise<Array<{
       // New user - predict first unit
       predictions.push({
         unitId: ATP_UNITS[0]?.id || 'atp-100',
-        examType: 'abcd',
+        examType: 'cle',
         paperSize: 'semi',
         probability: 0.7,
       });

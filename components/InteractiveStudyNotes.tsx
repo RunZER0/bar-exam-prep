@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { 
   Sparkles, X, Send, BookOpen, Lightbulb, 
-  Loader2, MessageCircle,
+  Loader2, MessageCircle, Save, Check,
   GraduationCap, FileText, Scale
 } from 'lucide-react';
 
@@ -313,7 +313,46 @@ export default function InteractiveStudyNotes({
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
   const [showAIChat, setShowAIChat] = useState(false);
   const [aiChatText, setAIChatText] = useState('');
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
+  const [notesSaved, setNotesSaved] = useState(false);
   const notesRef = useRef<HTMLDivElement>(null);
+
+  // Check if notes were already saved
+  useEffect(() => {
+    const key = `saved-notes-${unitName}-${skillName}`;
+    if (typeof window !== 'undefined' && localStorage.getItem(key)) {
+      setNotesSaved(true);
+    }
+  }, [unitName, skillName]);
+
+  const handleSaveNotes = useCallback(() => {
+    const key = `saved-notes-${unitName}-${skillName}`;
+    const notesData = {
+      skillName,
+      unitName,
+      sections: sections.map(s => ({ id: s.id, title: s.title, content: s.content, source: s.source, examTips: s.examTips })),
+      savedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(key, JSON.stringify(notesData));
+    
+    // Also maintain an index of all saved notes
+    const indexKey = 'saved-notes-index';
+    const existing = JSON.parse(localStorage.getItem(indexKey) || '[]') as Array<{ key: string; skillName: string; unitName: string; savedAt: string }>;
+    const filtered = existing.filter(e => e.key !== key);
+    filtered.push({ key, skillName, unitName, savedAt: notesData.savedAt });
+    localStorage.setItem(indexKey, JSON.stringify(filtered));
+    
+    setNotesSaved(true);
+    setShowSavePrompt(false);
+  }, [unitName, skillName, sections]);
+
+  const handleProceedClick = useCallback(() => {
+    if (!notesSaved) {
+      setShowSavePrompt(true);
+    } else {
+      onProceed();
+    }
+  }, [notesSaved, onProceed]);
 
   useEffect(() => {
     setExpandedId(slides[slideIndex]?.id || null);
@@ -527,14 +566,54 @@ export default function InteractiveStudyNotes({
           </div>
         </div>
 
+        {/* Save Notes Prompt */}
+        {showSavePrompt && (
+          <div className="rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/50 dark:border-amber-800/50 p-4 space-y-3 animate-in fade-in slide-in-from-bottom-3 duration-300">
+            <div className="flex items-center gap-2">
+              <Save className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Save these notes for later?</p>
+            </div>
+            <p className="text-xs text-amber-700/80 dark:text-amber-400/70">
+              You can revisit saved notes anytime from the study page without regenerating them.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleSaveNotes}
+                size="sm"
+                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                Save Notes
+              </Button>
+              <Button
+                onClick={() => { setShowSavePrompt(false); onProceed(); }}
+                variant="outline"
+                size="sm"
+                className="flex-1"
+              >
+                Skip & Continue
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Proceed Button */}
         <Button 
-          onClick={onProceed}
+          onClick={handleProceedClick}
           className="w-full h-12 text-base font-semibold bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg"
           size="lg"
         >
-          <MessageCircle className="h-5 w-5 mr-2" />
-          Start the exercises
+          {notesSaved ? (
+            <>
+              <Check className="h-5 w-5 mr-2 text-green-200" />
+              Notes Saved — Start Exercises
+            </>
+          ) : (
+            <>
+              <MessageCircle className="h-5 w-5 mr-2" />
+              Start the exercises
+            </>
+          )}
         </Button>
       </div>
 

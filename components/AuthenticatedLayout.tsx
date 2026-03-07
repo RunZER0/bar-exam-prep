@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSidebar } from '@/contexts/SidebarContext';
 import Sidebar from '@/components/Sidebar';
@@ -18,11 +18,45 @@ export default function AuthenticatedLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, loading, getIdToken } = useAuth();
   const { collapsed, immersive } = useSidebar();
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
 
-  const mainMargin = immersive ? 'ml-0 md:ml-[72px]' : collapsed ? 'ml-0 md:ml-[72px]' : 'ml-0 md:ml-64';
+  const mainMargin = immersive ? 'ml-0' : collapsed ? 'ml-0 md:ml-[72px]' : 'ml-0 md:ml-64';
   const preloadInitialized = useRef(false);
+  const onboardingCheckRef = useRef(false);
+
+  // Check onboarding status for new users
+  useEffect(() => {
+    if (!user || loading || onboardingCheckRef.current) return;
+    if (pathname === '/onboarding') {
+      setOnboardingChecked(true);
+      return;
+    }
+
+    onboardingCheckRef.current = true;
+    (async () => {
+      try {
+        const token = await getIdToken();
+        if (!token) return;
+        const res = await fetch('/api/onboarding/exam', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.needsOnboarding) {
+            router.replace('/onboarding');
+            return;
+          }
+        }
+      } catch {
+        // Silently continue if check fails
+      } finally {
+        setOnboardingChecked(true);
+      }
+    })();
+  }, [user, loading, pathname, getIdToken, router]);
 
   // Initialize autonomous preloading when user is authenticated
   useEffect(() => {

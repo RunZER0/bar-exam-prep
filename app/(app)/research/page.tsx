@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
-import { ATP_UNITS } from '@/lib/constants/legal-content';
+
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import {
   Search,
@@ -66,7 +66,7 @@ export default function ResearchPage() {
   const [sending, setSending] = useState(false);
   const [sessionId] = useState(() => crypto.randomUUID());
   const [copied, setCopied] = useState(false);
-  const [topicFilter, setTopicFilter] = useState('general');
+  const topicFilter = 'general';
   const [webSearchEnabled, setWebSearchEnabled] = useState(true);
   const [attachments, setAttachments] = useState<Array<{ id: string; file: File; preview?: string }>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -115,10 +115,7 @@ export default function ResearchPage() {
     ]);
     setSending(true);
 
-    const topicArea =
-      topicFilter === 'general'
-        ? 'General Kenyan Law'
-        : ATP_UNITS.find(u => u.id === topicFilter)?.name || 'General Kenyan Law';
+    const topicArea = 'General Kenyan Law';
 
     try {
       const token = await getIdToken();
@@ -255,34 +252,7 @@ Question: ${userMessage}`
         </div>
       </div>
 
-      {/* Topic filter bar */}
-      <div className="border-b border-border/20 px-4 md:px-6 py-2 overflow-x-auto shrink-0">
-        <div className="flex gap-2 min-w-max">
-          <button
-            onClick={() => setTopicFilter('general')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-              topicFilter === 'general'
-                ? 'bg-primary/10 text-primary border border-primary/20'
-                : 'text-muted-foreground hover:bg-muted/40'
-            }`}
-          >
-            General
-          </button>
-          {ATP_UNITS.map(u => (
-            <button
-              key={u.id}
-              onClick={() => setTopicFilter(u.id)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
-                topicFilter === u.id
-                  ? 'bg-primary/10 text-primary border border-primary/20'
-                  : 'text-muted-foreground hover:bg-muted/40'
-              }`}
-            >
-              {u.name}
-            </button>
-          ))}
-        </div>
-      </div>
+
 
       {/* Empty state / Messages */}
       <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6">

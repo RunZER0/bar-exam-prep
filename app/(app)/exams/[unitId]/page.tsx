@@ -19,7 +19,7 @@ import {
 // TYPES
 // ============================================================
 
-type ExamType = 'abcd' | 'cle';
+type ExamType = 'cle';
 type PaperSize = 'mini' | 'semi' | 'full';
 
 interface Question {
@@ -69,17 +69,10 @@ interface ExamResult {
 // CONFIGURATION
 // ============================================================
 
-const PAPER_CONFIG: Record<ExamType, Record<PaperSize, { marks: number; questions: number; time: number }>> = {
-  abcd: {
-    mini: { marks: 15, questions: 15, time: 20 },
-    semi: { marks: 30, questions: 30, time: 40 },
-    full: { marks: 60, questions: 60, time: 90 },
-  },
-  cle: {
-    mini: { marks: 15, questions: 2, time: 30 },
-    semi: { marks: 30, questions: 4, time: 60 },
-    full: { marks: 60, questions: 6, time: 180 },
-  },
+const PAPER_CONFIG: Record<PaperSize, { marks: number; questions: number; time: number }> = {
+  mini: { marks: 15, questions: 2, time: 30 },
+  semi: { marks: 30, questions: 4, time: 60 },
+  full: { marks: 60, questions: 6, time: 180 },
 };
 
 const getGrade = (percentage: number): string => {
@@ -104,11 +97,14 @@ export default function ExamSessionPage() {
   const { setAuthToken, getPreloadedExam, onExamStart, onExamComplete } = usePreloading();
 
   const unitId = params.unitId as string;
-  const examType = (searchParams.get('type') || 'abcd') as ExamType;
+  const examType: ExamType = 'cle';
   const paperSize = (searchParams.get('paper') || 'semi') as PaperSize;
   
   const unit = getUnitById(unitId);
-  const config = PAPER_CONFIG[examType]?.[paperSize] || PAPER_CONFIG.abcd.semi;
+  const config = PAPER_CONFIG[paperSize] || PAPER_CONFIG.semi;
+  const configQuestions = config.questions;
+  const configMarks = config.marks;
+  const configTime = config.time;
 
   const [phase, setPhase] = useState<'loading' | 'exam' | 'submitting' | 'results'>('loading');
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -122,6 +118,7 @@ export default function ExamSessionPage() {
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [slideDirection, setSlideDirection] = useState<'right' | 'left'>('right');
   const autoSubmitRef = useRef(false);
+  const loadedRef = useRef(false);
 
   // Enter immersive mode on mount, restore on unmount
   useEffect(() => {
@@ -131,8 +128,11 @@ export default function ExamSessionPage() {
 
   // Generate exam questions - Try preloaded first, then generate
   useEffect(() => {
+    if (loadedRef.current) return; // Prevent multiple loads
+    
     async function loadExam() {
       if (!unit) return;
+      loadedRef.current = true;
       try {
         const token = await getIdToken();
         if (!token) throw new Error('Not authenticated');
@@ -155,29 +155,9 @@ export default function ExamSessionPage() {
         
         // 2. No preload available - generate using AI
         console.log('No preload available, generating...');
-        const marksPerQuestion = examType === 'abcd' ? 1 : Math.floor(config.marks / config.questions);
+        const marksPerQuestion = Math.floor(config.marks / config.questions);
         
-        const prompt = examType === 'abcd'
-          ? `Generate ${config.questions} multiple choice questions for a ${paperSize} paper exam on ${unit.name} (Kenyan Law).
-
-Format as JSON array:
-[
-  {
-    "id": "q1",
-    "question": "Question text?",
-    "options": ["A) option1", "B) option2", "C) option3", "D) option4"],
-    "marks": 1,
-    "topic": "Sub-topic name"
-  }
-]
-
-Rules:
-- Each question worth 1 mark
-- Reference Kenyan statutes: ${unit.statutes.join(', ')}
-- Mix difficulty levels (easy, medium, hard)
-- Cover different sub-topics of ${unit.name}
-- Output ONLY valid JSON array`
-          : `Generate ${config.questions} essay/problem questions for a CLE standard ${paperSize} paper exam on ${unit.name} (Kenyan Law).
+        const prompt = `Generate ${config.questions} essay/problem questions for a CLE standard ${paperSize} paper exam on ${unit.name} (Kenyan Law).
 
 Format as JSON array:
 [
@@ -222,15 +202,30 @@ Rules:
         let parsed: Question[];
         
         try {
-          const content = data.response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          let content = data.response || '';
+          // Strip markdown code fences
+          content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          // Try to find JSON array in the response
+          const arrStart = content.indexOf('[');
+          const arrEnd = content.lastIndexOf(']');
+          if (arrStart !== -1 && arrEnd !== -1) {
+            content = content.slice(arrStart, arrEnd + 1);
+          }
           parsed = JSON.parse(content);
+          // Validate: ensure we got the right number and each has required fields
+          if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('Invalid format');
+          parsed = parsed.slice(0, configQuestions).map((q, i) => ({
+            id: q.id || `q${i + 1}`,
+            question: q.question || `Question ${i + 1}`,
+            marks: q.marks || Math.floor(configMarks / configQuestions),
+            topic: q.topic || unit.name,
+          }));
         } catch {
           // Fallback questions
-          const marksPerQ = examType === 'abcd' ? 1 : Math.floor(config.marks / config.questions);
-          parsed = Array.from({ length: config.questions }, (_, i) => ({
+          const marksPerQ = Math.floor(configMarks / configQuestions);
+          parsed = Array.from({ length: configQuestions }, (_, i) => ({
             id: `q${i + 1}`,
             question: `Question ${i + 1} for ${unit.name}. (Question generation failed - please try again)`,
-            options: examType === 'abcd' ? ['A) Option 1', 'B) Option 2', 'C) Option 3', 'D) Option 4'] : undefined,
             marks: marksPerQ,
             topic: unit.name,
           }));
@@ -247,7 +242,8 @@ Rules:
     }
 
     loadExam();
-  }, [unit, examType, paperSize, config, unitId, getIdToken, setAuthToken, getPreloadedExam, onExamStart]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unitId, examType, paperSize]);
 
   // Countdown timer with auto-submit
   useEffect(() => {
@@ -285,41 +281,7 @@ Rules:
     try {
       const token = await getIdToken();
 
-      const gradingPrompt = examType === 'abcd'
-        ? `Grade this multiple choice exam on ${unit?.name}. 
-
-Questions and answers:
-${questions.map((q, i) => `
-Q${i + 1} (${q.marks} mark): ${q.question}
-Options: ${q.options?.join(', ')}
-Student answered: ${answers[q.id] || '(not answered)'}
-`).join('\n')}
-
-Respond with ONLY valid JSON:
-{
-  "score": <total marks earned>,
-  "totalMarks": ${config.marks},
-  "percentage": <percentage>,
-  "overallFeedback": "General feedback on performance",
-  "feedback": [
-    {
-      "questionId": "q1",
-      "correct": true/false,
-      "score": 0 or 1,
-      "maxScore": 1,
-      "explanation": "Why correct/incorrect",
-      "correctAnswer": "The correct option"
-    }
-  ],
-  "challengingConcepts": [
-    {
-      "topic": "Topic student struggled with",
-      "description": "Brief explanation of the concept",
-      "studyResources": ["Resource 1", "Resource 2"]
-    }
-  ]
-}`
-        : `Grade this CLE standard essay exam on ${unit?.name} using detailed rubric grading.
+      const gradingPrompt = `Grade this CLE standard essay exam on ${unit?.name} using detailed rubric grading.
 
 Questions and answers:
 ${questions.map((q, i) => `
@@ -384,14 +346,21 @@ Respond with ONLY valid JSON:
 
       const data = await res.json();
       try {
-        const content = data.response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        let content = data.response || '';
+        content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        // Find JSON object in response
+        const objStart = content.indexOf('{');
+        const objEnd = content.lastIndexOf('}');
+        if (objStart !== -1 && objEnd !== -1) {
+          content = content.slice(objStart, objEnd + 1);
+        }
         const graded = JSON.parse(content);
-        graded.grade = getGrade(graded.percentage);
+        graded.grade = getGrade(graded.percentage || 0);
         setResult(graded);
       } catch {
         setResult({
           score: 0,
-          totalMarks: config.marks,
+          totalMarks: configMarks,
           percentage: 0,
           grade: 'F',
           overallFeedback: 'Automatic grading failed. Please review your answers manually.',
@@ -414,7 +383,7 @@ Respond with ONLY valid JSON:
       setError('Failed to grade exam. Please try again.');
       setPhase('exam');
     }
-  }, [answers, questions, unit, config, examType, unitId, paperSize, getIdToken, onExamComplete]);
+  }, [answers, questions, unit, configMarks, examType, unitId, paperSize, getIdToken, onExamComplete]);
 
   // ============================================================
   // RENDER: Not found
@@ -445,7 +414,7 @@ Respond with ONLY valid JSON:
         <div className="text-center">
           <p className="font-medium text-lg">Generating your exam…</p>
           <p className="text-sm text-muted-foreground mt-1">
-            {unit.name} · {examType === 'abcd' ? 'Multiple Choice' : 'CLE Standard'} · {config.questions} questions
+            {unit.name} · CLE Standard · {config.questions} questions
           </p>
         </div>
         {error && (
@@ -503,7 +472,7 @@ Respond with ONLY valid JSON:
               <GraduationCap className="h-4 w-4" />
               <span>{unit.name}</span>
               <span className="opacity-60">·</span>
-              <span>{examType === 'abcd' ? 'ABCD' : 'CLE'} {paperSize.charAt(0).toUpperCase() + paperSize.slice(1)}</span>
+              <span>CLE {paperSize.charAt(0).toUpperCase() + paperSize.slice(1)}</span>
             </div>
             
             <div className="flex items-center justify-center gap-8">
@@ -756,10 +725,8 @@ Respond with ONLY valid JSON:
           <div>
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold">{unit.name}</p>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                examType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-stone-500/10 text-stone-600 dark:bg-stone-400/10 dark:text-stone-400'
-              }`}>
-                {examType === 'abcd' ? 'ABCD' : 'CLE'}
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-stone-500/10 text-stone-600 dark:bg-stone-400/10 dark:text-stone-400">
+                CLE
               </span>
             </div>
             <p className="text-[10px] text-muted-foreground">{answeredCount}/{questions.length} answered</p>
@@ -805,114 +772,7 @@ Respond with ONLY valid JSON:
         </div>
       </div>
 
-      {/* Main content */}
-      {examType === 'abcd' ? (
-        /* ===== ABCD CAROUSEL ===== */
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Dot navigation */}
-          <div className="px-6 py-3 flex items-center justify-center gap-1.5 shrink-0">
-            {questions.map((q, i) => (
-              <button
-                key={q.id}
-                onClick={() => navigateTo(i)}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  i === currentIndex
-                    ? 'w-6 bg-primary'
-                    : answers[q.id]
-                    ? 'w-2 bg-primary/40'
-                    : 'w-2 bg-muted hover:bg-muted-foreground/30'
-                }`}
-                title={`Q${i + 1}${answers[q.id] ? ' (answered)' : ''}`}
-              />
-            ))}
-          </div>
-
-          {/* Question carousel */}
-          <div className="flex-1 overflow-y-auto px-4 md:px-6">
-            <div key={currentIndex} className={`max-w-2xl mx-auto py-6 animate-in fade-in ${
-              slideDirection === 'right' ? 'slide-in-from-right-8' : 'slide-in-from-left-8'
-            } duration-300`}>
-              {/* Question meta */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Question {currentIndex + 1}
-                  </span>
-                  {currentQ?.topic && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                      {currentQ.topic}
-                    </span>
-                  )}
-                </div>
-                <span className="text-xs font-medium text-primary">
-                  {currentQ?.marks} {currentQ?.marks === 1 ? 'mark' : 'marks'}
-                </span>
-              </div>
-
-              {/* Question text */}
-              <h2 className="text-lg md:text-xl font-semibold leading-relaxed mb-8">
-                {currentQ?.question}
-              </h2>
-
-              {/* Options */}
-              <div className="space-y-3">
-                {currentQ?.options?.map((option, i) => {
-                  const isSelected = answers[currentQ.id] === option;
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => setAnswers((prev) => ({ ...prev, [currentQ.id]: option }))}
-                      className={`w-full text-left p-4 rounded-2xl transition-all duration-200 ${
-                        isSelected
-                          ? 'bg-primary/8 ring-2 ring-primary/30 shadow-sm'
-                          : 'bg-muted/30 hover:bg-muted/50'
-                      }`}
-                    >
-                      <span className={isSelected ? 'font-medium' : ''}>{option}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom navigation */}
-          <div className="px-6 py-4 border-t border-border/20 flex items-center justify-between shrink-0">
-            <button
-              disabled={currentIndex === 0}
-              onClick={() => navigateTo(currentIndex - 1)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-border/30 hover:bg-muted/40 disabled:opacity-30 transition-colors text-sm font-medium"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Previous
-            </button>
-
-            {currentIndex < questions.length - 1 ? (
-              <button
-                onClick={() => navigateTo(currentIndex + 1)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium"
-              >
-                Next
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  if (answeredCount < questions.length) {
-                    if (!confirm(`You've answered ${answeredCount}/${questions.length} questions. Submit anyway?`)) return;
-                  }
-                  handleSubmit();
-                }}
-                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600/90 text-white hover:bg-emerald-700/90 transition-colors text-sm font-medium"
-              >
-                <FileText className="h-4 w-4" />
-                Submit Exam
-              </button>
-            )}
-          </div>
-        </div>
-      ) : (
-        /* ===== CLE DRAFTING FORMAT ===== */
+      {/* Main content — CLE Drafting Format */}
         <div className="flex-1 flex overflow-hidden">
           {/* Question sidebar */}
           <div className={`border-r border-border/20 bg-muted/10 flex flex-col transition-all duration-300 shrink-0 ${
@@ -1029,7 +889,6 @@ Respond with ONLY valid JSON:
             </div>
           </div>
         </div>
-      )}
     </div>
   );
 }

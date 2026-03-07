@@ -121,8 +121,8 @@ export function analyzeUserPatterns(
 
 /**
  * Generate personalized study recommendations based on profile.
- * Uses date-based rotation so suggestions vary day-to-day even
- * when the underlying weak/strong areas haven't changed.
+ * Uses user-specific + date-based rotation so suggestions vary per user
+ * and change day-to-day even when the underlying data hasn't changed.
  * Mixes backlog (weak areas) with new/untouched topics.
  */
 export function generateStudyRecommendations(
@@ -143,15 +143,22 @@ export function generateStudyRecommendations(
     action: string;
   }> = [];
 
-  // Date-based rotation seed — changes daily
+  // User-specific + date-based seed — unique per user per day
   const today = new Date();
   const daySeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+  
+  // Hash the userId to create a user-specific component
+  let userHash = 0;
+  for (let i = 0; i < profile.userId.length; i++) {
+    userHash = ((userHash << 5) - userHash + profile.userId.charCodeAt(i)) | 0;
+  }
+  const seed = Math.abs(daySeed * 31 + userHash);
 
-  // Deterministic shuffle using day seed
+  // Deterministic shuffle using combined seed
   const seededShuffle = <T,>(arr: T[]): T[] => {
     const copy = [...arr];
     for (let i = copy.length - 1; i > 0; i--) {
-      const j = (daySeed * (i + 1) + 7919) % (i + 1);
+      const j = Math.abs((seed * (i + 1) + 7919 * (i + 3)) % (i + 1));
       [copy[i], copy[j]] = [copy[j], copy[i]];
     }
     return copy;

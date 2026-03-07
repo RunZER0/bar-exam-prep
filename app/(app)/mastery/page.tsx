@@ -164,7 +164,8 @@ export default function MasteryPage() {
         setActiveTab('plan'); // Switch to plan view to show the practice inline
     };
 
-    const handleCarouselComplete = () => {
+    const handleCarouselComplete = async (result?: { passed?: boolean; score?: number }) => {
+        const completedTask = activeTask;
         setLastCompletedTask(activeTask);
         setActiveTask(null);
         setFeedbackMood(null);
@@ -174,9 +175,37 @@ export default function MasteryPage() {
             if (!prev) return null;
             return {
                 ...prev,
-                queue: prev.queue.filter(t => t.data.id !== activeTask?.data.id)
+                queue: prev.queue.filter(t => t.data.id !== completedTask?.data.id)
             };
         });
+
+        // Record progress to database
+        if (completedTask) {
+            try {
+                const token = await getIdToken();
+                if (token) {
+                    // Determine phase based on completion result
+                    const phase = result?.passed ? 'MASTERY' : 'NOTE';
+                    await fetch('/api/mastery/progress', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({
+                            nodeId: completedTask.data.id,
+                            phase,
+                            score: result?.score,
+                            passed: result?.passed ?? true,
+                        }),
+                    });
+                    // Invalidate cache so next load reflects updated progress
+                    invalidateMasteryCache();
+                }
+            } catch (err) {
+                console.error('Failed to record mastery progress:', err);
+            }
+        }
     };
 
     const handleFeedbackDone = (continueStudying: boolean) => {

@@ -8,7 +8,7 @@ import { usePreloading } from '@/lib/services/preloading';
 import {
   Gavel, Scale, FileText, Shield, Building, Briefcase, Users, BookOpen,
   Building2, Handshake, Calculator, ClipboardCheck, Clock, ArrowRight, X,
-  PenTool, CheckCircle, Sparkles, CircleDot, GraduationCap, Timer,
+  PenTool, CheckCircle, Sparkles, GraduationCap, Timer,
   FileQuestion, Edit3, ChevronRight, Target, Zap, Award, ArrowLeft,
 } from 'lucide-react';
 
@@ -21,7 +21,7 @@ const ICON_MAP: Record<string, any> = {
 // EXAM CONFIGURATION
 // ============================================================
 
-type ExamType = 'abcd' | 'cle';
+type ExamType = 'cle';
 type PaperSize = 'mini' | 'semi' | 'full';
 
 interface ExamConfig {
@@ -31,29 +31,7 @@ interface ExamConfig {
   label: string;
 }
 
-const EXAM_TYPES = [
-  {
-    id: 'abcd' as ExamType,
-    name: 'Multiple Choice (ABCD)',
-    description: 'Standard multiple choice questions with 4 options each',
-    icon: CircleDot,
-    color: 'emerald',
-  },
-  {
-    id: 'cle' as ExamType,
-    name: 'CLE Standard (Typed)',
-    description: 'Written exam format with AI-powered grading and feedback',
-    icon: Edit3,
-    color: 'gray',
-  },
-];
-
 const PAPER_SIZES: Record<ExamType, Record<PaperSize, ExamConfig>> = {
-  abcd: {
-    mini: { marks: 15, questions: 15, time: 20, label: 'Mini Paper' },
-    semi: { marks: 30, questions: 30, time: 40, label: 'Semi Paper' },
-    full: { marks: 60, questions: 60, time: 90, label: 'Full Paper' },
-  },
   cle: {
     mini: { marks: 15, questions: 2, time: 30, label: 'Mini Paper' },
     semi: { marks: 30, questions: 4, time: 60, label: 'Semi Paper' },
@@ -135,9 +113,9 @@ export default function ExamsPage() {
   const { getIdToken } = useAuth();
   const { setAuthToken, onExamsPageVisit } = usePreloading();
   
-  // Selection flow state
-  const [step, setStep] = useState<'type' | 'paper' | 'unit' | 'confirm'>('type');
-  const [selectedType, setSelectedType] = useState<ExamType | null>(null);
+  // Selection flow state — 3 steps: paper → unit → confirm (exam type is always CLE)
+  const [step, setStep] = useState<'paper' | 'unit' | 'confirm'>('paper');
+  const selectedType: ExamType = 'cle';
   const [selectedPaper, setSelectedPaper] = useState<PaperSize | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<typeof ATP_UNITS[number] | null>(null);
 
@@ -162,8 +140,7 @@ export default function ExamsPage() {
   }, [getIdToken, setAuthToken, onExamsPageVisit]);
 
   const openModal = () => {
-    setStep('type');
-    setSelectedType(null);
+    setStep('paper');
     setSelectedPaper(null);
     setSelectedUnit(null);
     setModalOpen(true);
@@ -171,11 +148,6 @@ export default function ExamsPage() {
 
   const closeModal = () => {
     setModalOpen(false);
-  };
-
-  const handleTypeSelect = (type: ExamType) => {
-    setSelectedType(type);
-    setStep('paper');
   };
 
   const handlePaperSelect = (size: PaperSize) => {
@@ -189,7 +161,7 @@ export default function ExamsPage() {
   };
 
   const handleStartExam = () => {
-    if (selectedUnit && selectedType && selectedPaper) {
+    if (selectedUnit && selectedPaper) {
       router.push(`/exams/${selectedUnit.id}?type=${selectedType}&paper=${selectedPaper}`);
     }
   };
@@ -197,12 +169,10 @@ export default function ExamsPage() {
   const goBack = () => {
     if (step === 'confirm') setStep('unit');
     else if (step === 'unit') setStep('paper');
-    else if (step === 'paper') setStep('type');
     else closeModal();
   };
 
-  const config = selectedType && selectedPaper ? PAPER_SIZES[selectedType][selectedPaper] : null;
-  const examTypeInfo = EXAM_TYPES.find(t => t.id === selectedType);
+  const config = selectedPaper ? PAPER_SIZES[selectedType][selectedPaper] : null;
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-10">
@@ -228,7 +198,7 @@ export default function ExamsPage() {
         {[
           { icon: Target, value: '60', label: 'Max Marks', gradient: 'from-emerald-500/6 to-transparent', iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-600' },
           { icon: Timer, value: '3h', label: 'CLE Time', gradient: 'from-sky-500/6 to-transparent', iconBg: 'bg-sky-500/10', iconColor: 'text-sky-600' },
-          { icon: FileQuestion, value: '2', label: 'Exam Types', gradient: 'from-violet-500/6 to-transparent', iconBg: 'bg-violet-500/10', iconColor: 'text-violet-600' },
+          { icon: FileQuestion, value: '3', label: 'Paper Sizes', gradient: 'from-violet-500/6 to-transparent', iconBg: 'bg-violet-500/10', iconColor: 'text-violet-600' },
           { icon: GraduationCap, value: '12', label: 'ATP Units', gradient: 'from-amber-500/6 to-transparent', iconBg: 'bg-amber-500/10', iconColor: 'text-amber-600' },
         ].map((stat) => {
           const Icon = stat.icon;
@@ -248,50 +218,36 @@ export default function ExamsPage() {
         })}
       </div>
 
-      {/* Exam Type Sections — gradient zones, no card borders */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {EXAM_TYPES.map((type) => (
-          <button
-            key={type.id}
-            onClick={() => {
-              setSelectedType(type.id);
-              setStep('paper');
-              setModalOpen(true);
-            }}
-            className={`group text-left rounded-2xl p-6 transition-all duration-300 ${
-              type.color === 'emerald'
-                ? 'bg-gradient-to-br from-emerald-500/5 via-emerald-500/3 to-transparent hover:from-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/3'
-                : 'bg-gradient-to-br from-stone-500/5 via-stone-400/3 to-transparent hover:from-stone-500/10 hover:shadow-lg hover:shadow-stone-500/3 dark:from-stone-400/5 dark:via-stone-400/3'
-            }`}
-          >
-            <div className={`p-3 rounded-xl w-fit mb-4 ${
-              type.color === 'emerald' ? 'bg-emerald-500/8' : 'bg-stone-500/8 dark:bg-stone-400/8'
-            }`}>
-              <type.icon className={`h-6 w-6 ${
-                type.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-600 dark:text-stone-400'
-              }`} />
-            </div>
-            <h3 className="text-lg font-semibold mb-1">{type.name}</h3>
-            <p className="text-sm text-muted-foreground mb-5">{type.description}</p>
-            <div className="space-y-2.5">
-              {(['mini', 'semi', 'full'] as PaperSize[]).map((size) => {
-                const cfg = PAPER_SIZES[type.id][size];
-                return (
-                  <div key={size} className="flex items-center justify-between text-sm py-1.5 border-b border-border/20 last:border-0">
-                    <span className="font-medium">{cfg.label}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {cfg.marks} marks · {cfg.time} min
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-5 flex items-center gap-1.5 text-sm font-medium text-primary opacity-60 group-hover:opacity-100 transition-opacity">
-              Select
-              <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </div>
-          </button>
-        ))}
+      {/* CLE Exam Format — Paper Size Options */}
+      <div className="rounded-2xl p-6 bg-gradient-to-br from-stone-500/5 via-stone-400/3 to-transparent dark:from-stone-400/5 dark:via-stone-400/3">
+        <div className="flex items-start gap-4 mb-5">
+          <div className="p-3 rounded-xl bg-stone-500/8 dark:bg-stone-400/8">
+            <Edit3 className="h-6 w-6 text-stone-600 dark:text-stone-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">CLE Standard Written Exam</h3>
+            <p className="text-sm text-muted-foreground">Written exam format with AI-powered grading and detailed feedback</p>
+          </div>
+        </div>
+        <div className="grid sm:grid-cols-3 gap-3">
+          {(['mini', 'semi', 'full'] as PaperSize[]).map((size) => {
+            const cfg = PAPER_SIZES.cle[size];
+            return (
+              <button
+                key={size}
+                onClick={() => {
+                  setSelectedPaper(size);
+                  setStep('unit');
+                  setModalOpen(true);
+                }}
+                className="group text-left p-4 rounded-xl bg-card/40 hover:bg-card/80 border border-border/20 hover:border-primary/20 transition-all"
+              >
+                <p className="font-medium text-sm">{cfg.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{cfg.marks} marks · {cfg.questions} questions · {cfg.time} min</p>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ATP Units Grid — minimal tiles */}
@@ -306,7 +262,7 @@ export default function ExamsPage() {
                 className="group text-left rounded-xl p-4 bg-gradient-to-br from-muted/40 to-transparent hover:from-primary/6 hover:to-transparent transition-all duration-300"
                 onClick={() => {
                   setSelectedUnit(unit);
-                  setStep('type');
+                  setStep('paper');
                   setModalOpen(true);
                 }}
               >
@@ -331,7 +287,7 @@ export default function ExamsPage() {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border/30">
           <div className="flex items-center gap-3">
-            {step !== 'type' && (
+            {step !== 'paper' && (
               <button
                 onClick={goBack}
                 className="p-2 -ml-2 rounded-lg hover:bg-muted/60 transition-colors"
@@ -341,10 +297,9 @@ export default function ExamsPage() {
             )}
             <div>
               <p className="text-xs text-muted-foreground font-medium">
-                Step {step === 'type' ? 1 : step === 'paper' ? 2 : step === 'unit' ? 3 : 4} of 4
+                Step {step === 'paper' ? 1 : step === 'unit' ? 2 : 3} of 3
               </p>
               <h3 className="font-semibold">
-                {step === 'type' && 'Select Exam Type'}
                 {step === 'paper' && 'Select Paper Size'}
                 {step === 'unit' && 'Select ATP Unit'}
                 {step === 'confirm' && 'Confirm & Start'}
@@ -362,8 +317,8 @@ export default function ExamsPage() {
         {/* Progress dots */}
         <div className="px-6 pt-4">
           <div className="flex gap-2">
-            {[1, 2, 3, 4].map((s) => {
-              const stepIndex = step === 'type' ? 1 : step === 'paper' ? 2 : step === 'unit' ? 3 : 4;
+            {[1, 2, 3].map((s) => {
+              const stepIndex = step === 'paper' ? 1 : step === 'unit' ? 2 : 3;
               return (
                 <div
                   key={s}
@@ -378,49 +333,12 @@ export default function ExamsPage() {
 
         {/* Content */}
         <div className="p-6 overflow-y-auto">
-          {/* Step 1: Exam Type */}
-          {step === 'type' && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-              <p className="text-sm text-muted-foreground">
-                Choose your exam format to get started.
-              </p>
-              <div className="grid gap-3">
-                {EXAM_TYPES.map((type) => (
-                  <button
-                    key={type.id}
-                    onClick={() => handleTypeSelect(type.id)}
-                    className={`w-full p-5 rounded-2xl text-left transition-all duration-200 flex items-center gap-4 ${
-                      type.color === 'emerald'
-                        ? 'bg-gradient-to-r from-emerald-500/5 to-transparent hover:from-emerald-500/10 hover:shadow-md hover:shadow-emerald-500/3'
-                        : 'bg-gradient-to-r from-stone-500/5 to-transparent hover:from-stone-500/10 hover:shadow-md hover:shadow-stone-500/3 dark:from-stone-400/5'
-                    }`}
-                  >
-                    <div className={`p-3 rounded-xl ${
-                      type.color === 'emerald' ? 'bg-emerald-500/10' : 'bg-stone-500/10 dark:bg-stone-400/10'
-                    }`}>
-                      <type.icon className={`h-5 w-5 ${
-                        type.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-600 dark:text-stone-400'
-                      }`} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold">{type.name}</p>
-                      <p className="text-sm text-muted-foreground">{type.description}</p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground/40" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Paper Size */}
-          {step === 'paper' && selectedType && (
+          {/* Step 1: Paper Size */}
+          {step === 'paper' && (
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                  selectedType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-stone-500/10 text-stone-600 dark:bg-stone-400/10 dark:text-stone-400'
-                }`}>
-                  {selectedType === 'abcd' ? 'Multiple Choice' : 'CLE Standard'}
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-stone-500/10 text-stone-600 dark:bg-stone-400/10 dark:text-stone-400">
+                  CLE Standard
                 </span>
                 <span>Select your paper size</span>
               </div>
@@ -475,10 +393,8 @@ export default function ExamsPage() {
           {step === 'unit' && (
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                  selectedType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-stone-500/10 text-stone-600 dark:bg-stone-400/10 dark:text-stone-400'
-                }`}>
-                  {selectedType === 'abcd' ? 'ABCD' : 'CLE'}
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-stone-500/10 text-stone-600 dark:bg-stone-400/10 dark:text-stone-400">
+                  CLE Standard
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-muted/60">
                   {config?.label}
@@ -508,8 +424,8 @@ export default function ExamsPage() {
             </div>
           )}
 
-          {/* Step 4: Confirmation */}
-          {step === 'confirm' && selectedUnit && config && examTypeInfo && (
+          {/* Step 3: Confirmation */}
+          {step === 'confirm' && selectedUnit && config && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="text-center py-4">
                 <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center mb-4">
@@ -524,10 +440,8 @@ export default function ExamsPage() {
               <div className="rounded-2xl bg-gradient-to-br from-muted/40 to-transparent p-5 space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Exam Type</span>
-                  <span className={`font-medium px-2 py-0.5 rounded-full text-xs ${
-                    selectedType === 'abcd' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-stone-500/10 text-stone-600 dark:bg-stone-400/10 dark:text-stone-400'
-                  }`}>
-                    {examTypeInfo.name}
+                  <span className="font-medium px-2 py-0.5 rounded-full text-xs bg-stone-500/10 text-stone-600 dark:bg-stone-400/10 dark:text-stone-400">
+                    CLE Standard
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">

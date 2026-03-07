@@ -806,6 +806,21 @@ export default function OralExamsPage() {
 
           {/* Summary content — clean text, no markdown */}
           <div className="rounded-2xl bg-gradient-to-br from-muted/30 to-muted/10 p-6 md:p-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-muted-foreground">Feedback</h2>
+              <button
+                onClick={() => isPlayingAudio ? stopAudio() : playTTS(cleanContent, 'onyx')}
+                disabled={isLoading}
+                className={`p-2 rounded-full transition-all ${
+                  isPlayingAudio
+                    ? 'bg-primary/20 text-primary animate-pulse'
+                    : 'hover:bg-muted/40 text-muted-foreground hover:text-foreground'
+                }`}
+                title={isPlayingAudio ? 'Stop reading' : 'Read feedback aloud'}
+              >
+                {isPlayingAudio ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              </button>
+            </div>
             <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
               {cleanContent}
             </div>

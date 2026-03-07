@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
@@ -12,7 +12,7 @@ import {
   Building, Gavel, Users as UsersIcon, Building2, Handshake,
   PenTool, Mic, TrendingUp, Search, ArrowLeft, Clock,
   CheckCircle2, Brain, RefreshCw, MessageSquare, BookMarked,
-  Layers, Star, Play, X, Lightbulb,
+  Layers, Star, Play, X, Lightbulb, Save, Trash2,
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════
@@ -79,6 +79,35 @@ export default function StudyPage() {
   // Ask AI
   const [aiPrompt, setAiPrompt] = useState('');
   const aiInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Saved Notes
+  const [savedNotesIndex, setSavedNotesIndex] = useState<Array<{ key: string; skillName: string; unitName: string; savedAt: string }>>([]);
+  const [viewingSavedNote, setViewingSavedNote] = useState<{ skillName: string; unitName: string; sections: any[]; savedAt: string } | null>(null);
+
+  // Load saved notes index from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const index = JSON.parse(localStorage.getItem('saved-notes-index') || '[]');
+      setSavedNotesIndex(index);
+    }
+  }, []);
+
+  const deleteSavedNote = useCallback((key: string) => {
+    localStorage.removeItem(key);
+    const index = JSON.parse(localStorage.getItem('saved-notes-index') || '[]') as typeof savedNotesIndex;
+    const updated = index.filter(n => n.key !== key);
+    localStorage.setItem('saved-notes-index', JSON.stringify(updated));
+    setSavedNotesIndex(updated);
+    if (viewingSavedNote) setViewingSavedNote(null);
+  }, [viewingSavedNote]);
+
+  const openSavedNote = useCallback((key: string) => {
+    const data = localStorage.getItem(key);
+    if (data) {
+      const parsed = JSON.parse(data);
+      setViewingSavedNote(parsed);
+    }
+  }, []);
 
   // Fetch case of the day on mount
   useEffect(() => {
@@ -156,12 +185,57 @@ export default function StudyPage() {
   };
 
   const goBack = () => {
+    if (viewingSavedNote) { setViewingSavedNote(null); return; }
     if (view === 'notes') { setView('browse'); setNotes(''); setNotesMeta(null); }
     else if (view === 'configure') setView('browse');
     else if (view === 'ask-ai') setView('browse');
     else if (view === 'topics') setView('browse');
     else setView('browse');
   };
+
+  /* ═══════════════════════════════════════
+     SAVED NOTE VIEWER
+     ═══════════════════════════════════════ */
+  if (viewingSavedNote) {
+    return (
+      <div className="min-h-screen bg-background animate-in fade-in duration-300">
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-between mb-6">
+            <button onClick={goBack} className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
+              Back to Study
+            </button>
+            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-600">
+              <Save className="h-3 w-3" />
+              Saved {new Date(viewingSavedNote.savedAt).toLocaleDateString()}
+            </span>
+          </div>
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold">{viewingSavedNote.skillName}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{viewingSavedNote.unitName}</p>
+          </div>
+          <div className="space-y-6">
+            {viewingSavedNote.sections.map((section: any, i: number) => (
+              <div key={section.id || i} className="rounded-xl border border-border/30 p-5">
+                <h3 className="font-semibold text-lg mb-3">{section.title}</h3>
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <MarkdownRenderer content={section.content} />
+                </div>
+                {section.examTips && (
+                  <div className="mt-4 p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                    <p className="text-xs font-semibold text-amber-600 mb-1 flex items-center gap-1">
+                      <Lightbulb className="h-3 w-3" /> Exam Tips
+                    </p>
+                    <p className="text-sm text-muted-foreground">{section.examTips}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   /* ═══════════════════════════════════════
      NOTES VIEW
@@ -569,6 +643,39 @@ export default function StudyPage() {
 
         {/* Course Outlines - Accordion */}
         <div>
+          {/* Saved Notes */}
+          {savedNotesIndex.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Save className="h-3.5 w-3.5" />
+                Saved Notes • {savedNotesIndex.length}
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {savedNotesIndex.slice().reverse().map(note => (
+                  <div
+                    key={note.key}
+                    className="group flex items-center gap-3 p-3 rounded-xl border border-border/30 hover:border-primary/30 transition-all cursor-pointer"
+                    onClick={() => openSavedNote(note.key)}
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+                      <BookMarked className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{note.skillName}</p>
+                      <p className="text-[10px] text-muted-foreground">{note.unitName} • {new Date(note.savedAt).toLocaleDateString()}</p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteSavedNote(note.key); }}
+                      className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/10 transition-all"
+                      title="Delete saved note"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
             <Layers className="h-3.5 w-3.5" />
             Course Outlines • {ATP_UNITS.length} Units

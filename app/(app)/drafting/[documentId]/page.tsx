@@ -484,6 +484,7 @@ function PracticeModePanel({
 }) {
   const [timing, setTiming] = useState<TimingChoice | null>(null);
   const [scenario, setScenario] = useState<string | null>(null);
+  const [useOwnCase, setUseOwnCase] = useState(false);
   const [loadingScn, setLoadingScn] = useState(false);
   const [draft, setDraft] = useState('');
   const [timeLeft, setTimeLeft] = useState(0);
@@ -515,6 +516,17 @@ function PracticeModePanel({
 
   const start = async (choice: TimingChoice) => {
     setTiming(choice);
+
+    // If user wants to use their own case, skip AI scenario generation
+    if (useOwnCase) {
+      setScenario(null); // No preset scenario — user drafts from their own facts
+      if (choice === 'timed') {
+        setTimeLeft(MINS * 60);
+        setTimerOn(true);
+      }
+      return;
+    }
+
     setLoadingScn(true);
     try {
       const token = await getIdToken();
@@ -556,7 +568,19 @@ function PracticeModePanel({
         setTimerOn(true);
       }
     } catch {
-      setScenario('Draft a ' + doc.name + ' based on a scenario of your choice. Include all required elements under Kenyan law.');
+      // Fallback: provide a generic but real scenario instead of leaving it empty
+      const fallbackScenarios: Record<string, string> = {
+        pleadings: `John Mwangi of Nairobi wishes to sue ABC Enterprises Ltd for breach of contract. On 15th January 2026, he entered into a supply agreement worth Kshs 2,500,000 for delivery of construction materials to his site in Kiambu County. The materials were to be delivered by 1st February 2026. Despite paying 60% upfront (Kshs 1,500,000), no delivery was made. He has demanded a refund through a demand letter dated 10th February 2026-but received no response.\n\nKey Issues:\n1) Whether the court has jurisdiction over this matter\n2) The appropriate remedies available\n3) Whether specific performance or damages should be sought`,
+        affidavits: `Mary Wanjiku Kamau, a businesswoman residing in Westlands, Nairobi, needs to swear an affidavit in support of her application for an injunction. Her neighbour, Peter Otieno, has begun constructing a commercial building that encroaches 3 metres onto her property (LR No. 1234/5678). She has a valid title deed and a recent survey report from a licensed surveyor confirming the encroachment. Construction began on 1st March 2026 despite her written objections.\n\nKey Issues:\n1) The facts to be deposed\n2) The documents to be exhibited\n3) The prayers sought in the main application`,
+        default: `Amina Hassan, an advocate of the High Court of Kenya, has been instructed by her client David Kipchoge, a retired civil servant residing in Eldoret, Uasin Gishu County. Mr. Kipchoge purchased a commercial plot (Plot LR No. 7890) in Eldoret Town on 5th December 2025 for Kshs 8,000,000 from Estate of the Late Samuel Cheruiyot. The vendor's representative, Jane Cheruiyot (administratrix), executed the sale agreement but has since refused to complete the transfer, claiming the Land Control Board consent was defective.\n\nKey Issues:\n1) The validity of the sale agreement\n2) The enforceability of the Land Control Board consent\n3) The appropriate legal remedies available\n4) Whether specific performance can be ordered`,
+      };
+      const category = doc.category?.toLowerCase() || '';
+      const fb = fallbackScenarios[category] || fallbackScenarios.default;
+      setScenario(fb);
+      if (choice === 'timed') {
+        setTimeLeft(MINS * 60);
+        setTimerOn(true);
+      }
     } finally {
       setLoadingScn(false);
     }
@@ -704,6 +728,26 @@ function PracticeModePanel({
               </div>
             </div>
           </button>
+
+          {/* Use own case toggle */}
+          <div className="pt-3 border-t border-border/30">
+            <label className="flex items-center justify-between cursor-pointer group">
+              <div>
+                <p className="text-sm font-medium">Use my own case scenario</p>
+                <p className="text-xs text-muted-foreground">Skip the generated scenario and draft from your own facts</p>
+              </div>
+              <button
+                onClick={() => setUseOwnCase(!useOwnCase)}
+                className={`relative w-10 h-5 rounded-full transition-colors ${
+                  useOwnCase ? 'bg-primary' : 'bg-muted-foreground/30'
+                }`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                  useOwnCase ? 'translate-x-5' : ''
+                }`} />
+              </button>
+            </label>
+          </div>
         </div>
       </div>
     );
@@ -857,8 +901,12 @@ function PracticeModePanel({
       <div className="flex-1 flex overflow-hidden">
         {/* Scenario panel */}
         <div className="w-72 md:w-80 shrink-0 border-r border-border/20 p-5 overflow-y-auto bg-card/10">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Scenario</h3>
-          <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/85">{scenario}</div>
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            {scenario ? 'Scenario' : 'Own Case'}
+          </h3>
+          <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/85">
+            {scenario || 'You chose to use your own case scenario. Draft your ' + doc.name.toLowerCase() + ' based on facts you are familiar with. Include all required legal elements and Kenyan law references.'}
+          </div>
 
           {/* Guidance - untimed only */}
           {timing === 'untimed' && (

@@ -234,8 +234,12 @@ export default function Sidebar() {
         className={`
           fixed top-0 left-0 z-40 h-screen bg-background border-r border-border/50 flex flex-col
           transition-all duration-300 ease-in-out
-          ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-          ${immersive && !peekOpen ? 'w-[72px]' : collapsed ? 'w-[72px]' : 'w-64'}
+          ${immersive && !peekOpen
+            ? '-translate-x-full'
+            : immersive && peekOpen
+              ? 'translate-x-0'
+              : mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          ${immersive ? 'w-64 shadow-2xl' : collapsed ? 'w-[72px]' : 'w-64'}
         `}
         onMouseLeave={() => { if (immersive) setPeekOpen(false); }}
       >
@@ -256,10 +260,10 @@ export default function Sidebar() {
         )}
       </aside>
 
-      {/* Immersive expand zone: hovering near left edge expands to full labels */}
+      {/* Immersive expand zone: hovering near left edge reveals sidebar */}
       {immersive && !peekOpen && (
         <div
-          className="fixed top-0 left-[72px] z-30 h-screen w-4 hidden md:block"
+          className="fixed top-0 left-0 z-30 h-screen w-4 hidden md:block"
           onMouseEnter={() => setPeekOpen(true)}
         />
       )}

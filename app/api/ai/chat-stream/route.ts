@@ -4,6 +4,7 @@ import OpenAI from 'openai';
 import { db } from '@/lib/db';
 import { chatHistory } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { ORCHESTRATOR_MODEL } from '@/lib/ai/model-config';
 
 const getOpenAI = () => {
   if (!process.env.OPENAI_API_KEY) return null;
@@ -90,6 +91,7 @@ export async function POST(req: NextRequest) {
       sessionId,
       attachments,
       context,
+      useSmartModel = false,
     } = body;
 
     if (!message) {
@@ -98,7 +100,10 @@ export async function POST(req: NextRequest) {
 
     // Build system prompt
     const personality = PERSONALITIES[competencyType] || PERSONALITIES.general;
-    const systemPrompt = `${KENYA_CONTEXT}\n\n${personality}`;
+    const smartModelAddendum = useSmartModel
+      ? `\n\nIMPORTANT: You are running as the premium AI assistant. Provide the most thorough, accurate, and up-to-date answers possible. When discussing recent legal developments, case law amendments, or current events in Kenyan law, clearly state the most recent information you have. If a topic may have changed recently, note the date of your knowledge and advise the user to verify with official sources like Kenya Law Reports (kenyalaw.org) or the Kenya Gazette.`
+      : '';
+    const systemPrompt = `${KENYA_CONTEXT}\n\n${personality}${smartModelAddendum}`;
 
     // Build messages array
     const messages: OpenAI.ChatCompletionMessageParam[] = [
@@ -139,13 +144,19 @@ export async function POST(req: NextRequest) {
       messages.push({ role: 'user', content: userContent });
     }
 
-    // Stream the response
+    // Stream the response — use smartest model for floating chat, or vision model for images
+    const selectedModel = useSmartModel
+      ? ORCHESTRATOR_MODEL
+      : hasImageData
+      ? 'gpt-4o'
+      : 'gpt-4o-mini';
+
     const stream = await openai.chat.completions.create({
-      model: hasImageData ? 'gpt-4o' : 'gpt-4o-mini',
+      model: selectedModel,
       messages,
       stream: true,
       temperature: 0.7,
-      max_tokens: competencyType === 'research' ? 4000 : 2000,
+      max_tokens: useSmartModel ? 4000 : (competencyType === 'research' ? 4000 : 2000),
     });
 
     const encoder = new TextEncoder();

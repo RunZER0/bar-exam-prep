@@ -332,6 +332,7 @@ export default function FloatingChat() {
           competencyType: 'general',
           sessionId,
           attachments: attachmentData.length > 0 ? attachmentData : undefined,
+          useSmartModel: true,
           context: {
             source: 'floating-chat',
             currentPage: pathname,
@@ -459,8 +460,8 @@ export default function FloatingChat() {
               <Sparkles className="h-4 w-4 text-emerald-500" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm">Quick Help</h3>
-              <p className="text-xs text-muted-foreground">Ask anything about your studies</p>
+              <h3 className="font-semibold text-sm">Ask AI</h3>
+              <p className="text-xs text-muted-foreground">Premium model · Up-to-date knowledge</p>
             </div>
           </div>
           <button

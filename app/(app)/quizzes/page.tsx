@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
@@ -26,14 +26,29 @@ import {
   Timer,
   Brain,
   TrendingUp,
+  Infinity,
+  X,
+  ChevronRight,
+  ChevronLeft,
+  StopCircle,
+  ListOrdered,
+  PenLine,
+  ArrowUpDown,
+  GripVertical,
 } from 'lucide-react';
 
+/* ── Question types ── */
 interface TriviaQuestion {
   question: string;
   options: string[];
   correct: number; // index
   explanation: string;
   difficulty?: 'easy' | 'medium' | 'hard';
+  questionType?: 'mcq' | 'ordering' | 'text-entry';
+  // For ordering questions
+  correctOrder?: number[];
+  // For text-entry questions
+  acceptableAnswers?: string[];
 }
 
 interface UserPerformance {
@@ -54,33 +69,28 @@ const QUIZ_MODES = [
     icon: Brain,
     gradient: 'from-green-500 to-emerald-600',
     bgGlow: 'bg-green-500/10',
-    count: 10,
     difficulty: 'Personalized',
-    time: '~7 min',
     adaptive: true,
     isDefault: true,
   },
   {
-    id: 'quick',
-    name: 'Quick Quiz',
-    description: '5 rapid-fire questions to warm up',
-    icon: Zap,
-    gradient: 'from-amber-500 to-orange-600',
-    bgGlow: 'bg-amber-500/20',
-    count: 5,
+    id: 'smartdrill',
+    name: 'SmartDrill',
+    description: 'Ordering, fill-ins & MCQs — deep mastery',
+    icon: ListOrdered,
+    gradient: 'from-violet-500 to-indigo-600',
+    bgGlow: 'bg-violet-500/15',
     difficulty: 'Mixed',
-    time: '~3 min',
+    smartdrill: true,
   },
   {
     id: 'challenge',
     name: 'Challenge Mode',
-    description: '10 questions — test your mastery',
+    description: 'Test your mastery with tough questions',
     icon: Trophy,
     gradient: 'from-gray-500 to-gray-600',
     bgGlow: 'bg-gray-500/20',
-    count: 10,
     difficulty: 'Medium',
-    time: '~8 min',
   },
   {
     id: 'blitz',
@@ -89,21 +99,17 @@ const QUIZ_MODES = [
     icon: Timer,
     gradient: 'from-rose-500 to-pink-600',
     bgGlow: 'bg-rose-500/20',
-    count: 8,
     timed: true,
     difficulty: 'Hard',
-    time: '~2 min',
   },
   {
     id: 'exam',
     name: 'Exam Simulation',
-    description: '20 questions across all topics',
+    description: 'Comprehensive exam-style questions',
     icon: GraduationCap,
     gradient: 'from-emerald-500 to-teal-600',
     bgGlow: 'bg-emerald-500/10',
-    count: 20,
     difficulty: 'Hard',
-    time: '~15 min',
   },
   {
     id: 'random',
@@ -112,24 +118,13 @@ const QUIZ_MODES = [
     icon: Shuffle,
     gradient: 'from-gray-400 to-gray-600',
     bgGlow: 'bg-gray-500/20',
-    count: 7,
     random: true,
     difficulty: 'Mixed',
-    time: '~5 min',
-  },
-  {
-    id: 'legendary',
-    name: 'Legendary',
-    description: 'Only the toughest questions. No mercy.',
-    icon: Sparkles,
-    gradient: 'from-yellow-400 via-amber-500 to-orange-500',
-    bgGlow: 'bg-yellow-500/30',
-    count: 10,
-    difficulty: 'Expert',
-    time: '~10 min',
-    legendary: true,
   },
 ];
+
+/* ── Question count presets ── */
+const QUESTION_COUNTS = [5, 10, 15, 20, 30, 50, 0] as const; // 0 = infinity
 
 export default function QuizzesPage() {
   const { getIdToken } = useAuth();
@@ -139,6 +134,10 @@ export default function QuizzesPage() {
   const [section, setSection] = useState<Section>('menu');
   const [selectedMode, setSelectedMode] = useState<string>('adaptive');
   const [selectedUnit, setSelectedUnit] = useState<string>('all');
+  const [questionCount, setQuestionCount] = useState<number>(10);
+  const [isInfinityMode, setIsInfinityMode] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalStep, setModalStep] = useState<1 | 2 | 3>(1);
   const [questions, setQuestions] = useState<TriviaQuestion[]>([]);
   const [quizSessionId, setQuizSessionId] = useState<string>('');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -151,6 +150,13 @@ export default function QuizzesPage() {
   const [questionTimer, setQuestionTimer] = useState(15);
   const [userPerformance, setUserPerformance] = useState<UserPerformance | null>(null);
   const [responsesTracked, setResponsesTracked] = useState<Array<{ questionIndex: number; isCorrect: boolean }>>([]);
+  const [loadingMoreQuestions, setLoadingMoreQuestions] = useState(false);
+  // SmartDrill state
+  const [dragOrder, setDragOrder] = useState<number[]>([]);
+  const [textAnswer, setTextAnswer] = useState('');
+  const [orderRevealed, setOrderRevealed] = useState(false);
+  const [textRevealed, setTextRevealed] = useState(false);
+  const dragItemRef = useRef<number | null>(null);
 
   // Initialize preloading with auth token
   useEffect(() => {
@@ -169,6 +175,7 @@ export default function QuizzesPage() {
 
   const mode = QUIZ_MODES.find((m) => m.id === selectedMode)!;
   const unitName = selectedUnit === 'all' ? 'All Units' : ATP_UNITS.find((u) => u.id === selectedUnit)?.name || 'All Units';
+  const effectiveCount = isInfinityMode ? 10 : questionCount; // For infinity, generate 10 at a time
 
   // Fetch user performance on mount
   useEffect(() => {
@@ -197,79 +204,85 @@ export default function QuizzesPage() {
 
   const getAdaptiveDifficulty = (): string => {
     if (!userPerformance) return 'mixed difficulty';
-    
     switch (userPerformance.currentLevel) {
-      case 'beginner':
-        return 'mostly easy with some medium difficulty questions';
-      case 'intermediate':
-        return 'mostly medium with some challenging questions';
-      case 'advanced':
-        return 'mostly hard with some expert-level questions';
-      case 'expert':
-        return 'expert-level and tricky edge-case questions';
-      default:
-        return 'mixed difficulty';
+      case 'beginner': return 'mostly easy with some medium difficulty questions';
+      case 'intermediate': return 'mostly medium with some challenging questions';
+      case 'advanced': return 'mostly hard with some expert-level questions';
+      case 'expert': return 'expert-level and tricky edge-case questions';
+      default: return 'mixed difficulty';
     }
   };
 
   const getTopicFocus = (): string => {
     if (!userPerformance || selectedUnit !== 'all') return '';
-    
     if (userPerformance.weakAreas.length > 0) {
-      // Focus 60% on weak areas, 40% on general
       return `Focus about 60% of questions on these weak areas: ${userPerformance.weakAreas.slice(0, 3).join(', ')}. Mix in questions from other topics for variety.`;
     }
     return '';
   };
 
-  const startQuiz = useCallback(async () => {
-    setLoading(true);
-    setSection('playing');
-    setCurrentIndex(0);
-    setScore(0);
-    setStreak(0);
-    setBestStreak(0);
-    setSelected(null);
-    setRevealed(false);
-    setResponsesTracked([]);
-    // Generate unique session ID for this quiz
-    setQuizSessionId(crypto.randomUUID());
+  const buildPrompt = (count: number) => {
+    const unitInfo = selectedUnit !== 'all' ? ATP_UNITS.find((u) => u.id === selectedUnit) : null;
+    let difficultyInstruction = '';
+    let topicInstruction = '';
 
-    try {
-      const token = await getIdToken();
-      const unitInfo = selectedUnit !== 'all' ? ATP_UNITS.find((u) => u.id === selectedUnit) : null;
-      
-      // Try to use preloaded questions first for instant start
-      const preloaded = await getPreloaded(selectedUnit !== 'all' ? selectedUnit : 'all', undefined, 'quiz');
-      if (preloaded?.found && preloaded.content?.questions && Array.isArray(preloaded.content.questions) && preloaded.content.questions.length > 0) {
-        console.log('Using preloaded quiz questions');
-        setQuestions(preloaded.content.questions.slice(0, mode.count));
-        setLoading(false);
-        return;
-      }
-      
-      // Build adaptive prompt
-      let difficultyInstruction = '';
-      let topicInstruction = '';
-      
-      if (mode.adaptive) {
-        difficultyInstruction = getAdaptiveDifficulty();
-        topicInstruction = getTopicFocus();
-      } else if (mode.legendary) {
-        difficultyInstruction = 'expert-level, tricky edge cases, and nuanced legal scenarios only';
-      } else if (mode.id === 'blitz') {
-        difficultyInstruction = 'quick-recall questions that can be answered in seconds';
-      } else if (mode.id === 'exam') {
-        difficultyInstruction = 'exam-style questions with realistic complexity';
-      }  
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          message: `Generate ${mode.count} trivia/quiz questions about Kenyan law${unitInfo ? ` specifically on ${unitInfo.name} covering ${unitInfo.statutes.join(', ')}` : ' across all ATP units'}.
+    if (mode.adaptive) {
+      difficultyInstruction = getAdaptiveDifficulty();
+      topicInstruction = getTopicFocus();
+    } else if (mode.id === 'blitz') {
+      difficultyInstruction = 'quick-recall questions that can be answered in seconds';
+    } else if (mode.id === 'exam') {
+      difficultyInstruction = 'exam-style questions with realistic complexity';
+    }
+
+    // SmartDrill mode — mix question types
+    if (mode.id === 'smartdrill') {
+      return `Generate ${count} varied questions about Kenyan law${unitInfo ? ` specifically on ${unitInfo.name} covering ${unitInfo.statutes.join(', ')}` : ' across all ATP units'}.
+
+Create a MIX of these question types:
+1. **MCQ** (multiple choice) — standard 4-option questions
+2. **Ordering** — give 4-5 items the student must arrange in the correct order (e.g., steps in a procedure, hierarchy of courts, chronological order of events)
+3. **Text Entry** — short answer fill-in-the-blank questions where the student types a specific legal term, section number, or short phrase
+
+Format as a JSON array with these fields:
+[
+  {
+    "question": "What is...?",
+    "questionType": "mcq",
+    "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
+    "correct": 0,
+    "explanation": "Cite specific legal source",
+    "difficulty": "easy|medium|hard"
+  },
+  {
+    "question": "Arrange the following steps in the correct order for filing a civil suit:",
+    "questionType": "ordering",
+    "options": ["File a plaint", "Serve the defendant", "Pay court fees", "Enter appearance"],
+    "correctOrder": [2, 0, 3, 1],
+    "correct": 0,
+    "explanation": "Under Order V of the Civil Procedure Rules...",
+    "difficulty": "medium"
+  },
+  {
+    "question": "Under the Constitution of Kenya 2010, the Bill of Rights is found in Chapter ____.",
+    "questionType": "text-entry",
+    "options": [],
+    "acceptableAnswers": ["Four", "4", "Chapter Four", "Chapter 4"],
+    "correct": 0,
+    "explanation": "The Bill of Rights is in Chapter Four (Articles 19-59) of the Constitution of Kenya 2010.",
+    "difficulty": "easy"
+  }
+]
+
+Rules:
+- Aim for roughly 40% MCQ, 30% ordering, 30% text-entry
+- EVERY explanation MUST cite a specific legal source
+- For ordering: "correctOrder" is the array of original indices in the correct sequence
+- For text-entry: "acceptableAnswers" lists all acceptable answer variations (case-insensitive matching will be used)
+- Output ONLY the JSON array`;
+    }
+
+    return `Generate ${count} trivia/quiz questions about Kenyan law${unitInfo ? ` specifically on ${unitInfo.name} covering ${unitInfo.statutes.join(', ')}` : ' across all ATP units'}.
 
 ${difficultyInstruction ? `Difficulty: ${difficultyInstruction}.` : ''}
 ${topicInstruction}
@@ -291,51 +304,128 @@ Rules:
 - The "correct" field is the 0-based index of the correct option
 - EVERY explanation MUST cite a specific legal source (e.g., "Section 107(1) of the Evidence Act, Cap 80", "Article 50(2)(a) of the Constitution of Kenya 2010", "Republic v Mbugua [2019] eKLR")
 - No vague references like "according to the law" - be specific
-- Output ONLY the JSON array`,
-          competencyType: 'research',
-          context: { 
-            topicArea: unitInfo?.name || 'General Kenyan Law', 
-            quizMode: mode.id,
-            userLevel: userPerformance?.currentLevel || 'unknown',
-            weakAreas: userPerformance?.weakAreas || [],
-          },
-        }),
-      });
+- Output ONLY the JSON array`;
+  };
 
-      if (!res.ok) throw new Error('Failed');
+  const fetchQuestions = async (count: number, append = false): Promise<TriviaQuestion[]> => {
+    const token = await getIdToken();
+    const unitInfo = selectedUnit !== 'all' ? ATP_UNITS.find((u) => u.id === selectedUnit) : null;
 
-      const data = await res.json();
-      try {
-        const content = data.response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        setQuestions(JSON.parse(content));
-      } catch {
-        // Fallback
-        setQuestions([{
-          question: 'What is the supreme law of Kenya?',
-          options: ['A) Penal Code', 'B) Constitution of Kenya 2010', 'C) Judicature Act', 'D) Civil Procedure Act'],
-          correct: 1,
-          explanation: 'The Constitution of Kenya 2010 is the supreme law of the Republic.',
-        }]);
+    const res = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        message: buildPrompt(count),
+        competencyType: 'research',
+        context: {
+          topicArea: unitInfo?.name || 'General Kenyan Law',
+          quizMode: mode.id,
+          userLevel: userPerformance?.currentLevel || 'unknown',
+          weakAreas: userPerformance?.weakAreas || [],
+        },
+      }),
+    });
+
+    if (!res.ok) throw new Error('Failed');
+    const data = await res.json();
+    const content = data.response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const parsed = JSON.parse(content) as TriviaQuestion[];
+    // Ensure questionType is set
+    return parsed.map((q) => ({
+      ...q,
+      questionType: q.questionType || 'mcq',
+    }));
+  };
+
+  const startQuiz = useCallback(async () => {
+    setLoading(true);
+    setSection('playing');
+    setShowModal(false);
+    setCurrentIndex(0);
+    setScore(0);
+    setStreak(0);
+    setBestStreak(0);
+    setSelected(null);
+    setRevealed(false);
+    setResponsesTracked([]);
+    setDragOrder([]);
+    setTextAnswer('');
+    setOrderRevealed(false);
+    setTextRevealed(false);
+    setQuizSessionId(crypto.randomUUID());
+
+    try {
+      const unitKey = selectedUnit !== 'all' ? selectedUnit : 'all';
+      
+      // Try preloaded questions first
+      const preloaded = await getPreloaded(unitKey, undefined, 'quiz');
+      if (preloaded?.found && preloaded.content?.questions?.length > 0) {
+        const qs = preloaded.content.questions.slice(0, effectiveCount).map((q: any) => ({
+          ...q,
+          questionType: q.questionType || 'mcq',
+        }));
+        setQuestions(qs);
+        setLoading(false);
+        return;
       }
+
+      const qs = await fetchQuestions(effectiveCount);
+      setQuestions(qs);
     } catch {
-      setSection('menu');
+      setQuestions([{
+        question: 'What is the supreme law of Kenya?',
+        options: ['A) Penal Code', 'B) Constitution of Kenya 2010', 'C) Judicature Act', 'D) Civil Procedure Act'],
+        correct: 1,
+        explanation: 'The Constitution of Kenya 2010 is the supreme law of the Republic.',
+        questionType: 'mcq',
+      }]);
     } finally {
       setLoading(false);
     }
-  }, [getIdToken, mode, selectedUnit, userPerformance]);
+  }, [getIdToken, mode, selectedUnit, userPerformance, effectiveCount, isInfinityMode]);
+
+  // Infinity mode — load more questions when nearing the end
+  const loadMoreQuestions = useCallback(async () => {
+    if (loadingMoreQuestions) return;
+    setLoadingMoreQuestions(true);
+    try {
+      const newQs = await fetchQuestions(10);
+      setQuestions((prev) => [...prev, ...newQs]);
+    } catch {
+      // Silent fail
+    } finally {
+      setLoadingMoreQuestions(false);
+    }
+  }, [getIdToken, mode, selectedUnit, userPerformance, loadingMoreQuestions]);
 
   // Speed blitz timer
   useEffect(() => {
-    if (section !== 'playing' || !mode.timed || revealed || loading) return;
+    if (section !== 'playing' || !mode?.timed || revealed || loading) return;
     if (questionTimer <= 0) {
-      // Time's up — count as wrong
       setRevealed(true);
       setStreak(0);
       return;
     }
     const interval = setInterval(() => setQuestionTimer((t) => t - 1), 1000);
     return () => clearInterval(interval);
-  }, [section, mode.timed, revealed, questionTimer, loading]);
+  }, [section, mode?.timed, revealed, questionTimer, loading]);
+
+  // Initialize drag order when reaching an ordering question
+  useEffect(() => {
+    const q = questions[currentIndex];
+    if (q?.questionType === 'ordering' && dragOrder.length === 0) {
+      // Shuffle the items
+      const indices = q.options.map((_, i) => i);
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
+      setDragOrder(indices);
+    }
+  }, [currentIndex, questions]);
 
   const handleSelect = async (index: number) => {
     if (revealed) return;
@@ -356,10 +446,8 @@ Rules:
       setStreak(0);
     }
 
-    // Track response for analytics
     setResponsesTracked((prev) => [...prev, { questionIndex: currentIndex, isCorrect }]);
 
-    // Submit response to backend (non-blocking)
     try {
       const token = await getIdToken();
       fetch('/api/submit', {
@@ -381,190 +469,438 @@ Rules:
           options: q.options,
           explanation: q.explanation,
         }),
-      }).catch(() => {}); // Ignore errors - this is fire-and-forget
+      }).catch(() => {});
     } catch {}
   };
 
+  /* ── SmartDrill: ordering submission ── */
+  const handleOrderSubmit = async () => {
+    if (orderRevealed) return;
+    setOrderRevealed(true);
+    setRevealed(true);
+
+    const q = questions[currentIndex];
+    const correctOrder = q.correctOrder || [];
+    const isCorrect = JSON.stringify(dragOrder) === JSON.stringify(correctOrder);
+
+    if (isCorrect) {
+      setScore((s) => s + 1);
+      setStreak((s) => {
+        const newStreak = s + 1;
+        setBestStreak((b) => Math.max(b, newStreak));
+        return newStreak;
+      });
+    } else {
+      setStreak(0);
+    }
+    setResponsesTracked((prev) => [...prev, { questionIndex: currentIndex, isCorrect }]);
+
+    try {
+      const token = await getIdToken();
+      fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          questionText: q.question,
+          userAnswer: dragOrder.map((i) => q.options[i]).join(' → '),
+          correctAnswer: correctOrder.map((i) => q.options[i]).join(' → '),
+          isCorrect,
+          difficulty: q.difficulty || 'medium',
+          topicArea: unitName,
+          quizMode: mode.id,
+          sessionId: quizSessionId,
+          questionNumber: currentIndex + 1,
+          options: q.options,
+          explanation: q.explanation,
+        }),
+      }).catch(() => {});
+    } catch {}
+  };
+
+  /* ── SmartDrill: text-entry submission ── */
+  const handleTextSubmit = async () => {
+    if (textRevealed) return;
+    setTextRevealed(true);
+    setRevealed(true);
+
+    const q = questions[currentIndex];
+    const acceptable = q.acceptableAnswers || [];
+    const isCorrect = acceptable.some(
+      (a) => a.toLowerCase().trim() === textAnswer.toLowerCase().trim()
+    );
+
+    if (isCorrect) {
+      setScore((s) => s + 1);
+      setStreak((s) => {
+        const newStreak = s + 1;
+        setBestStreak((b) => Math.max(b, newStreak));
+        return newStreak;
+      });
+    } else {
+      setStreak(0);
+    }
+    setResponsesTracked((prev) => [...prev, { questionIndex: currentIndex, isCorrect }]);
+
+    try {
+      const token = await getIdToken();
+      fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          questionText: q.question,
+          userAnswer: textAnswer,
+          correctAnswer: acceptable[0] || '',
+          isCorrect,
+          difficulty: q.difficulty || 'medium',
+          topicArea: unitName,
+          quizMode: mode.id,
+          sessionId: quizSessionId,
+          questionNumber: currentIndex + 1,
+          options: [],
+          explanation: q.explanation,
+        }),
+      }).catch(() => {});
+    } catch {}
+  };
+
+  /* ── Ordering drag helpers ── */
+  const moveOrderItem = (fromIdx: number, toIdx: number) => {
+    if (orderRevealed) return;
+    setDragOrder((prev) => {
+      const copy = [...prev];
+      const [moved] = copy.splice(fromIdx, 1);
+      copy.splice(toIdx, 0, moved);
+      return copy;
+    });
+  };
+
   const nextQuestion = () => {
-    if (currentIndex >= questions.length - 1) {
+    const isLast = currentIndex >= questions.length - 1;
+
+    if (isInfinityMode) {
+      // In infinity mode, always advance — load more if running low
+      if (currentIndex >= questions.length - 3) {
+        loadMoreQuestions();
+      }
+      setCurrentIndex((i) => i + 1);
+      setSelected(null);
+      setRevealed(false);
+      setQuestionTimer(15);
+      setDragOrder([]);
+      setTextAnswer('');
+      setOrderRevealed(false);
+      setTextRevealed(false);
+      return;
+    }
+
+    if (isLast) {
       setSection('results');
-      // Trigger preloading of next quiz questions in background
       afterQuizCompletion(selectedUnit !== 'all' ? selectedUnit : 'all');
     } else {
       setCurrentIndex((i) => i + 1);
       setSelected(null);
       setRevealed(false);
       setQuestionTimer(15);
+      setDragOrder([]);
+      setTextAnswer('');
+      setOrderRevealed(false);
+      setTextRevealed(false);
     }
   };
 
-  // Menu
+  /* ── Infinity mode — terminate quiz ── */
+  const terminateQuiz = () => {
+    // Trim questions to what the user actually answered
+    setQuestions((prev) => prev.slice(0, currentIndex + (revealed ? 1 : 0)));
+    setSection('results');
+    afterQuizCompletion(selectedUnit !== 'all' ? selectedUnit : 'all');
+  };
+
+  /* ── Open the quiz setup modal ── */
+  const openSetupModal = () => {
+    setModalStep(1);
+    setShowModal(true);
+  };
+
+  // ═══════════════════════════════════
+  //  RENDER: MENU
+  // ═══════════════════════════════════
   if (section === 'menu') {
     return (
-      <div className="p-6 md:p-10 max-w-6xl mx-auto space-y-10">
-        {/* Header with gradient text */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary via-green-500 to-primary bg-clip-text text-transparent">
-            Quizzes & Trivia
-          </h1>
-          <p className="text-muted-foreground max-w-xl mx-auto">
-            Challenge yourself with fun, engaging quizzes. Pick a mode, choose a topic, and let&apos;s go!
-          </p>
-          {/* User level indicator */}
-          {userPerformance && (
-            <div className="flex items-center justify-center gap-2 mt-3">
-              <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
-                userPerformance.currentLevel === 'expert' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                userPerformance.currentLevel === 'advanced' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                userPerformance.currentLevel === 'intermediate' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-              }`}>
-                <TrendingUp className="h-3 w-3" />
-                {userPerformance.currentLevel.charAt(0).toUpperCase() + userPerformance.currentLevel.slice(1)} Level
+      <>
+        <div className="p-6 md:p-10 max-w-4xl mx-auto space-y-10">
+          {/* Header */}
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary via-green-500 to-primary bg-clip-text text-transparent">
+              Quizzes & Trivia
+            </h1>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              Challenge yourself with fun, engaging quizzes. Pick a mode, choose a topic, and let&apos;s go!
+            </p>
+            {userPerformance && (
+              <div className="flex items-center justify-center gap-2 mt-3">
+                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
+                  userPerformance.currentLevel === 'beginner'
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                    : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                }`}>
+                  <TrendingUp className="h-3 w-3" />
+                  {userPerformance.currentLevel.charAt(0).toUpperCase() + userPerformance.currentLevel.slice(1)} Level
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {userPerformance.overallMastery}% Mastery
+                </span>
               </div>
-              <span className="text-xs text-muted-foreground">
-                {userPerformance.overallMastery}% Mastery
-              </span>
+            )}
+          </div>
+
+          {/* Big CTA */}
+          <div className="flex flex-col items-center gap-6 pt-4">
+            <Button
+              size="lg"
+              onClick={openSetupModal}
+              className="gap-3 px-10 py-7 text-lg font-semibold bg-gradient-to-r from-primary to-emerald-600 hover:from-primary/90 hover:to-emerald-600/90 shadow-xl shadow-primary/25 transition-all duration-300 hover:scale-[1.02] rounded-2xl"
+            >
+              <Lightbulb className="h-6 w-6" />
+              Take a Quiz
+              <ArrowRight className="h-5 w-5" />
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              Choose your mode, topic & question count in one quick step
+            </p>
+          </div>
+
+          {/* Mode preview cards (non-interactive, just informational) */}
+          <div className="space-y-4 pt-4">
+            <h2 className="text-lg font-semibold text-center">Available Modes</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {QUIZ_MODES.map((m) => {
+                const Icon = m.icon;
+                return (
+                  <div key={m.id} className="group relative rounded-2xl p-[1px] bg-border">
+                    <div className="rounded-2xl p-4 bg-card h-full">
+                      <div className={`inline-flex items-center justify-center h-10 w-10 rounded-xl bg-gradient-to-br ${m.gradient} text-white shadow mb-3`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <h3 className="font-semibold text-sm mb-0.5">{m.name}</h3>
+                      <p className="text-xs text-muted-foreground">{m.description}</p>
+                      {m.adaptive && (
+                        <div className="mt-2 inline-block px-2 py-0.5 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-[9px] font-bold text-white">
+                          RECOMMENDED
+                        </div>
+                      )}
+                      {m.smartdrill && (
+                        <div className="mt-2 inline-block px-2 py-0.5 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 text-[9px] font-bold text-white">
+                          NEW
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Mode selection - enhanced grid */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Choose Your Mode</h2>
-            <span className="text-xs text-muted-foreground">{QUIZ_MODES.length} modes available</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {QUIZ_MODES.map((m) => {
-              const Icon = m.icon;
-              const active = selectedMode === m.id;
-              return (
-                <div
-                  key={m.id}
-                  onClick={() => setSelectedMode(m.id)}
-                  className={`group relative cursor-pointer rounded-2xl p-[2px] transition-all duration-300 ${
-                    active
-                      ? `bg-gradient-to-br ${m.gradient} shadow-lg shadow-primary/20`
-                      : 'bg-border hover:bg-gradient-to-br hover:' + m.gradient.replace('from-', 'hover:from-').replace('to-', 'hover:to-')
-                  }`}
+        {/* ═══ SETUP MODAL ═══ */}
+        {showModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+            
+            {/* Modal */}
+            <div className="relative w-full max-w-lg bg-card border border-border/50 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              {/* Progress indicator */}
+              <div className="flex gap-1 px-6 pt-5">
+                {[1, 2, 3].map((s) => (
+                  <div
+                    key={s}
+                    className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                      s <= modalStep ? 'bg-gradient-to-r from-primary to-emerald-500' : 'bg-muted'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 pt-4 pb-2">
+                <div>
+                  <h2 className="text-lg font-bold">
+                    {modalStep === 1 ? 'Choose Your Mode' : modalStep === 2 ? 'Pick a Topic' : 'Question Count'}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Step {modalStep} of 3
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="p-2 hover:bg-muted rounded-xl transition-colors"
                 >
-                  <div className={`relative h-full rounded-2xl p-5 transition-all duration-300 ${
-                    active ? 'bg-card/95' : 'bg-card hover:bg-card/95'
-                  }`}>
-                    {/* Glow effect */}
-                    <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${m.bgGlow} blur-xl -z-10`} />
-                    
-                    {/* Icon with gradient background */}
-                    <div className={`inline-flex items-center justify-center h-12 w-12 rounded-xl bg-gradient-to-br ${m.gradient} text-white shadow-lg mb-4`}>
-                      <Icon className="h-6 w-6" />
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
+                {/* Step 1: Mode */}
+                {modalStep === 1 && (
+                  <div className="grid grid-cols-1 gap-3">
+                    {QUIZ_MODES.map((m) => {
+                      const Icon = m.icon;
+                      const active = selectedMode === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() => setSelectedMode(m.id)}
+                          className={`relative w-full text-left rounded-2xl p-4 border-2 transition-all duration-200 ${
+                            active
+                              ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10'
+                              : 'border-border hover:border-primary/30 hover:bg-muted/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`flex items-center justify-center h-11 w-11 rounded-xl bg-gradient-to-br ${m.gradient} text-white shadow`}>
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold text-sm">{m.name}</h3>
+                                {m.adaptive && (
+                                  <span className="px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600 text-[9px] font-bold">RECOMMENDED</span>
+                                )}
+                                {m.smartdrill && (
+                                  <span className="px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-600 text-[9px] font-bold">NEW</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-0.5">{m.description}</p>
+                            </div>
+                            {active && <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Step 2: Unit/Topic */}
+                {modalStep === 2 && (
+                  <div className="grid grid-cols-1 gap-2">
+                    <button
+                      onClick={() => setSelectedUnit('all')}
+                      className={`flex items-center gap-3 w-full text-left rounded-xl p-3.5 border-2 transition-all duration-200 ${
+                        selectedUnit === 'all'
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/30 hover:bg-muted/50'
+                      }`}
+                    >
+                      <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                      <span className="font-medium text-sm flex-1">All Topics</span>
+                      {selectedUnit === 'all' && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                    </button>
+                    {ATP_UNITS.map((u) => (
+                      <button
+                        key={u.id}
+                        onClick={() => setSelectedUnit(u.id)}
+                        className={`flex items-center gap-3 w-full text-left rounded-xl p-3.5 border-2 transition-all duration-200 ${
+                          selectedUnit === u.id
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/30 hover:bg-muted/50'
+                        }`}
+                      >
+                        <span className="font-medium text-sm flex-1">{u.name}</span>
+                        {selectedUnit === u.id && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Step 3: Question Count */}
+                {modalStep === 3 && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      {QUESTION_COUNTS.map((count) => {
+                        const isInf = count === 0;
+                        const active = isInf ? isInfinityMode : (!isInfinityMode && questionCount === count);
+                        return (
+                          <button
+                            key={count}
+                            onClick={() => {
+                              if (isInf) {
+                                setIsInfinityMode(true);
+                              } else {
+                                setIsInfinityMode(false);
+                                setQuestionCount(count);
+                              }
+                            }}
+                            className={`flex flex-col items-center justify-center rounded-2xl p-4 border-2 transition-all duration-200 ${
+                              active
+                                ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10'
+                                : 'border-border hover:border-primary/30 hover:bg-muted/50'
+                            }`}
+                          >
+                            {isInf ? (
+                              <>
+                                <Infinity className="h-7 w-7 text-primary mb-1" />
+                                <span className="font-bold text-sm">Endless</span>
+                                <span className="text-[10px] text-muted-foreground">Terminate anytime</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-2xl font-bold">{count}</span>
+                                <span className="text-xs text-muted-foreground">questions</span>
+                              </>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
-
-                    {/* Content */}
-                    <h3 className="font-semibold text-base mb-1">{m.name}</h3>
-                    <p className="text-sm text-muted-foreground mb-4">{m.description}</p>
-
-                    {/* Stats row */}
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className={`px-2 py-0.5 rounded-full ${
-                        m.difficulty === 'Personalized' ? 'bg-green-500/10 text-green-600' :
-                        m.difficulty === 'Easy' || m.difficulty === 'Mixed' ? 'bg-emerald-500/10 text-emerald-600' :
-                        m.difficulty === 'Medium' ? 'bg-amber-500/10 text-amber-600' :
-                        m.difficulty === 'Hard' ? 'bg-rose-500/10 text-rose-600' :
-                        m.difficulty === 'Expert' ? 'bg-gray-500/10 text-gray-600' :
-                        'bg-gray-500/10 text-gray-600'
-                      }`}>
-                        {m.difficulty}
-                      </span>
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {m.time}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {m.count} Q&apos;s
-                      </span>
-                    </div>
-
-                    {/* Selected indicator */}
-                    {active && (
-                      <div className="absolute top-3 right-3">
-                        <CheckCircle2 className={`h-5 w-5 text-transparent bg-gradient-to-br ${m.gradient} bg-clip-text`} style={{ color: 'rgb(var(--primary))' }} />
-                      </div>
-                    )}
-                    
-                    {/* Adaptive badge */}
-                    {m.adaptive && (
-                      <div className="absolute -top-1 -right-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-[10px] font-bold text-white shadow-lg">
-                        🎯 RECOMMENDED
-                      </div>
-                    )}
-                    
-                    {/* Legendary badge */}
-                    {m.legendary && (
-                      <div className="absolute -top-1 -right-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 text-[10px] font-bold text-white shadow-lg">
-                        ⚡ LEGENDARY
+                    {isInfinityMode && (
+                      <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                        <Infinity className="h-4 w-4 text-amber-600 shrink-0" />
+                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                          Endless mode: questions keep coming until you press <strong>Terminate</strong>. You&apos;ll get a full report.
+                        </p>
                       </div>
                     )}
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                )}
+              </div>
 
-        {/* Unit selection - pill style */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Choose a Topic</h2>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setSelectedUnit('all')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                selectedUnit === 'all'
-                  ? 'bg-gradient-to-r from-primary to-emerald-600 text-white shadow-lg shadow-primary/25'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-              }`}
-            >
-              <span className="flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" />
-                All Topics
-              </span>
-            </button>
-            {ATP_UNITS.map((u) => (
-              <button
-                key={u.id}
-                onClick={() => setSelectedUnit(u.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  selectedUnit === u.id
-                    ? 'bg-gradient-to-r from-primary to-emerald-600 text-white shadow-lg shadow-primary/25'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-                }`}
-              >
-                {u.name}
-              </button>
-            ))}
+              {/* Footer */}
+              <div className="flex items-center justify-between px-6 py-4 border-t border-border/50 bg-muted/20">
+                {modalStep > 1 ? (
+                  <Button variant="ghost" size="sm" onClick={() => setModalStep((s) => (s - 1) as 1 | 2 | 3)} className="gap-1">
+                    <ChevronLeft className="h-4 w-4" /> Back
+                  </Button>
+                ) : (
+                  <div />
+                )}
+                {modalStep < 3 ? (
+                  <Button size="sm" onClick={() => setModalStep((s) => (s + 1) as 1 | 2 | 3)} className="gap-1 bg-gradient-to-r from-primary to-emerald-600 hover:from-primary/90 hover:to-emerald-600/90">
+                    Next <ChevronRight className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={startQuiz}
+                    className="gap-2 bg-gradient-to-r from-primary to-emerald-600 hover:from-primary/90 hover:to-emerald-600/90 shadow-lg"
+                  >
+                    <Lightbulb className="h-4 w-4" />
+                    Start {mode.name}
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-
-        {/* Start button - enhanced */}
-        <div className="flex flex-col items-center gap-4 pt-4">
-          <Button 
-            size="lg" 
-            onClick={startQuiz} 
-            className="gap-3 px-8 py-6 text-lg font-semibold bg-gradient-to-r from-primary to-emerald-600 hover:from-primary/90 hover:to-emerald-600/90 shadow-xl shadow-primary/25 transition-all duration-300 hover:scale-[1.02]"
-          >
-            <Lightbulb className="h-6 w-6" />
-            Start {mode.name}
-            <ArrowRight className="h-5 w-5" />
-          </Button>
-          <p className="text-sm text-muted-foreground">
-            {mode.count} questions · {unitName}
-          </p>
-        </div>
-      </div>
+        )}
+      </>
     );
   }
 
-  // Loading
+  // ═══════════════════════════════════
+  //  RENDER: LOADING
+  // ═══════════════════════════════════
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -575,9 +911,12 @@ Rules:
     );
   }
 
-  // Results
+  // ═══════════════════════════════════
+  //  RENDER: RESULTS
+  // ═══════════════════════════════════
   if (section === 'results') {
-    const pct = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
+    const totalAnswered = responsesTracked.length || questions.length;
+    const pct = totalAnswered > 0 ? Math.round((score / totalAnswered) * 100) : 0;
     const resultConfig = pct >= 80 
       ? { gradient: 'from-emerald-500 to-teal-500', emoji: '🎉', title: 'Outstanding!', subtitle: 'You crushed it!' }
       : pct >= 60 
@@ -588,7 +927,6 @@ Rules:
 
     return (
       <div className="p-6 md:p-10 max-w-2xl mx-auto space-y-8 text-center">
-        {/* Animated score circle */}
         <div className="relative inline-block">
           <div className={`relative inline-flex items-center justify-center h-32 w-32 rounded-full bg-gradient-to-br ${resultConfig.gradient} text-white shadow-2xl`}>
             <span className="text-4xl font-bold">{pct}%</span>
@@ -602,7 +940,8 @@ Rules:
           </h2>
           <p className="text-muted-foreground mt-1">{resultConfig.subtitle}</p>
           <p className="text-sm text-muted-foreground mt-2">
-            {score}/{questions.length} correct · {mode.name}
+            {score}/{totalAnswered} correct · {mode.name}
+            {isInfinityMode && ' · Endless Mode'}
           </p>
         </div>
 
@@ -624,7 +963,7 @@ Rules:
           <Card className="border-2 border-gray-500/20 bg-gray-500/5">
             <CardContent className="pt-4 pb-3 text-center">
               <Star className="h-6 w-6 mx-auto text-gray-500 mb-2" />
-              <p className="text-2xl font-bold text-gray-600">{questions.length - score}</p>
+              <p className="text-2xl font-bold text-gray-600">{totalAnswered - score}</p>
               <p className="text-xs text-muted-foreground">To Review</p>
             </CardContent>
           </Card>
@@ -643,9 +982,24 @@ Rules:
     );
   }
 
-  // Playing
+  // ═══════════════════════════════════
+  //  RENDER: PLAYING
+  // ═══════════════════════════════════
   const q = questions[currentIndex];
-  if (!q) return null;
+  if (!q) {
+    // Possibly waiting for more questions in infinity mode
+    if (isInfinityMode && loadingMoreQuestions) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="font-medium">Loading more questions…</p>
+        </div>
+      );
+    }
+    return null;
+  }
+
+  const qType = q.questionType || 'mcq';
 
   return (
     <div className="p-6 md:p-10 max-w-3xl mx-auto space-y-6">
@@ -656,7 +1010,9 @@ Rules:
             <mode.icon className="h-4 w-4" />
           </div>
           <span className="text-sm font-medium text-muted-foreground">
-            Question {currentIndex + 1} of {questions.length}
+            {isInfinityMode
+              ? `Question ${currentIndex + 1}`
+              : `Question ${currentIndex + 1} of ${questions.length}`}
           </span>
           {streak > 1 && (
             <span className="flex items-center gap-1 text-xs bg-orange-500/10 text-orange-600 font-medium px-2 py-0.5 rounded-full">
@@ -677,33 +1033,68 @@ Rules:
               {questionTimer}s
             </span>
           )}
+          {/* Infinity terminate button */}
+          {isInfinityMode && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={terminateQuiz}
+              className="gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-800 dark:hover:bg-rose-900/20"
+            >
+              <StopCircle className="h-4 w-4" />
+              Terminate
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Progress bar - gradient */}
-      <div className="flex gap-1 h-2 bg-muted rounded-full overflow-hidden">
-        {questions.map((_, i) => (
-          <div
-            key={i}
-            className={`flex-1 transition-all duration-300 ${
-              i < currentIndex
-                ? `bg-gradient-to-r ${mode.gradient}`
-                : i === currentIndex
-                ? `bg-gradient-to-r ${mode.gradient} opacity-60`
-                : 'bg-transparent'
-            }`}
-          />
-        ))}
-      </div>
+      {/* Progress bar */}
+      {!isInfinityMode && (
+        <div className="flex gap-1 h-2 bg-muted rounded-full overflow-hidden">
+          {questions.map((_, i) => (
+            <div
+              key={i}
+              className={`flex-1 transition-all duration-300 ${
+                i < currentIndex
+                  ? `bg-gradient-to-r ${mode.gradient}`
+                  : i === currentIndex
+                  ? `bg-gradient-to-r ${mode.gradient} opacity-60`
+                  : 'bg-transparent'
+              }`}
+            />
+          ))}
+        </div>
+      )}
+      {isInfinityMode && (
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-primary to-emerald-500 animate-pulse rounded-full" style={{ width: '100%' }} />
+        </div>
+      )}
 
-      {/* Question card - enhanced */}
+      {/* Question type badge for SmartDrill */}
+      {mode.id === 'smartdrill' && (
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+            qType === 'mcq' ? 'bg-blue-500/10 text-blue-600' :
+            qType === 'ordering' ? 'bg-violet-500/10 text-violet-600' :
+            'bg-amber-500/10 text-amber-600'
+          }`}>
+            {qType === 'mcq' && <><Target className="h-3 w-3" /> Multiple Choice</>}
+            {qType === 'ordering' && <><ArrowUpDown className="h-3 w-3" /> Ordering</>}
+            {qType === 'text-entry' && <><PenLine className="h-3 w-3" /> Fill-in</>}
+          </span>
+        </div>
+      )}
+
+      {/* Question card */}
       <Card className="border-2 shadow-xl overflow-hidden">
         <div className={`h-1 bg-gradient-to-r ${mode.gradient}`} />
         <CardHeader className="pb-4">
           <CardTitle className="text-xl leading-relaxed">{q.question}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 pb-6">
-          {q.options.map((option, i) => {
+          {/* ── MCQ OPTIONS ── */}
+          {qType === 'mcq' && q.options.map((option, i) => {
             let style = 'bg-muted/50 hover:bg-muted border-transparent hover:border-muted-foreground/20';
             let iconEl = null;
             
@@ -735,20 +1126,138 @@ Rules:
               </button>
             );
           })}
+
+          {/* ── ORDERING ── */}
+          {qType === 'ordering' && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground mb-3">Drag or use arrows to arrange in the correct order:</p>
+              {dragOrder.map((itemIdx, posIdx) => {
+                const correctOrder = q.correctOrder || [];
+                const isCorrectPos = orderRevealed && correctOrder[posIdx] === itemIdx;
+                const isWrongPos = orderRevealed && correctOrder[posIdx] !== itemIdx;
+
+                return (
+                  <div
+                    key={itemIdx}
+                    className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 ${
+                      orderRevealed
+                        ? isCorrectPos
+                          ? 'border-emerald-500 bg-emerald-500/10'
+                          : 'border-red-500/50 bg-red-500/5'
+                        : 'border-border bg-muted/30 hover:bg-muted/50'
+                    }`}
+                  >
+                    <span className="text-xs font-bold text-muted-foreground w-5">{posIdx + 1}.</span>
+                    <span className="flex-1 text-sm font-medium">{q.options[itemIdx]}</span>
+                    {!orderRevealed && (
+                      <div className="flex flex-col gap-0.5">
+                        <button
+                          onClick={() => posIdx > 0 && moveOrderItem(posIdx, posIdx - 1)}
+                          disabled={posIdx === 0}
+                          className="p-0.5 hover:bg-muted rounded disabled:opacity-20"
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5 rotate-90" />
+                        </button>
+                        <button
+                          onClick={() => posIdx < dragOrder.length - 1 && moveOrderItem(posIdx, posIdx + 1)}
+                          disabled={posIdx === dragOrder.length - 1}
+                          className="p-0.5 hover:bg-muted rounded disabled:opacity-20"
+                        >
+                          <ChevronRight className="h-3.5 w-3.5 rotate-90" />
+                        </button>
+                      </div>
+                    )}
+                    {orderRevealed && isCorrectPos && <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />}
+                    {orderRevealed && isWrongPos && <XCircle className="h-5 w-5 text-red-400 shrink-0" />}
+                  </div>
+                );
+              })}
+              {!orderRevealed && (
+                <Button
+                  onClick={handleOrderSubmit}
+                  className={`w-full mt-3 gap-2 bg-gradient-to-r ${mode.gradient} hover:opacity-90`}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Submit Order
+                </Button>
+              )}
+              {orderRevealed && q.correctOrder && (
+                <div className="mt-3 p-3 rounded-xl bg-muted/30 border border-border">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Correct order:</p>
+                  <ol className="list-decimal list-inside text-sm space-y-0.5">
+                    {q.correctOrder.map((idx, i) => (
+                      <li key={i}>{q.options[idx]}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── TEXT ENTRY ── */}
+          {qType === 'text-entry' && (
+            <div className="space-y-3">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={textAnswer}
+                  onChange={(e) => setTextAnswer(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !textRevealed && handleTextSubmit()}
+                  disabled={textRevealed}
+                  placeholder="Type your answer…"
+                  className={`w-full px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all duration-200 bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary ${
+                    textRevealed
+                      ? (q.acceptableAnswers || []).some((a) => a.toLowerCase().trim() === textAnswer.toLowerCase().trim())
+                        ? 'border-emerald-500 bg-emerald-500/10'
+                        : 'border-red-500 bg-red-500/10'
+                      : 'border-border'
+                  }`}
+                />
+              </div>
+              {!textRevealed && (
+                <Button
+                  onClick={handleTextSubmit}
+                  disabled={!textAnswer.trim()}
+                  className={`w-full gap-2 bg-gradient-to-r ${mode.gradient} hover:opacity-90`}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Submit Answer
+                </Button>
+              )}
+              {textRevealed && (
+                <div className={`p-3 rounded-xl border ${
+                  (q.acceptableAnswers || []).some((a) => a.toLowerCase().trim() === textAnswer.toLowerCase().trim())
+                    ? 'bg-emerald-500/5 border-emerald-500/30'
+                    : 'bg-rose-500/5 border-rose-500/30'
+                }`}>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Accepted answers: {(q.acceptableAnswers || []).join(', ')}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Explanation - enhanced */}
+      {/* Explanation */}
       {revealed && (
         <div className={`animate-fade-in rounded-xl p-5 border-2 ${
-          selected === q.correct 
+          (qType === 'mcq' && selected === q.correct) ||
+          (qType === 'ordering' && JSON.stringify(dragOrder) === JSON.stringify(q.correctOrder || [])) ||
+          (qType === 'text-entry' && (q.acceptableAnswers || []).some((a) => a.toLowerCase().trim() === textAnswer.toLowerCase().trim()))
             ? 'bg-emerald-500/5 border-emerald-500/30' 
             : 'bg-rose-500/5 border-rose-500/30'
         }`}>
           <p className={`font-semibold mb-2 flex items-center gap-2 ${
-            selected === q.correct ? 'text-emerald-600' : 'text-rose-600'
+            (qType === 'mcq' && selected === q.correct) ||
+            (qType === 'ordering' && JSON.stringify(dragOrder) === JSON.stringify(q.correctOrder || [])) ||
+            (qType === 'text-entry' && (q.acceptableAnswers || []).some((a) => a.toLowerCase().trim() === textAnswer.toLowerCase().trim()))
+              ? 'text-emerald-600' : 'text-rose-600'
           }`}>
-            {selected === q.correct ? (
+            {((qType === 'mcq' && selected === q.correct) ||
+              (qType === 'ordering' && JSON.stringify(dragOrder) === JSON.stringify(q.correctOrder || [])) ||
+              (qType === 'text-entry' && (q.acceptableAnswers || []).some((a) => a.toLowerCase().trim() === textAnswer.toLowerCase().trim()))) ? (
               <>
                 <CheckCircle2 className="h-5 w-5" />
                 Correct!
@@ -764,14 +1273,24 @@ Rules:
         </div>
       )}
 
-      {/* Next button - enhanced */}
+      {/* Next / Loading more indicator */}
       {revealed && (
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end pt-2 gap-3">
+          {loadingMoreQuestions && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Loading more…
+            </div>
+          )}
           <Button 
             onClick={nextQuestion} 
             className={`gap-2 bg-gradient-to-r ${mode.gradient} hover:opacity-90 shadow-lg transition-all duration-200 hover:scale-[1.02]`}
           >
-            {currentIndex < questions.length - 1 ? 'Next Question' : 'See Results'}
+            {!isInfinityMode && currentIndex < questions.length - 1
+              ? 'Next Question'
+              : !isInfinityMode
+              ? 'See Results'
+              : 'Next Question'}
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>

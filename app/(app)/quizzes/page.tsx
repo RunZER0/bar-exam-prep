@@ -124,7 +124,51 @@ const QUIZ_MODES = [
 ];
 
 /* ── Question count presets ── */
-const QUESTION_COUNTS = [5, 10, 15, 20, 30, 50, 0] as const; // 0 = infinity
+const SLIDER_MIN = 5;
+const SLIDER_MAX = 50;
+
+/* ── Context-aware loading messages per mode ── */
+const LOADING_MESSAGES: Record<string, string[]> = {
+  adaptive: [
+    "Analysing your mastery profile to calibrate difficulty…",
+    "Looking at where you shine and where you stumble…",
+    "Crafting questions that push your boundaries just right…",
+    "Your AI mentor is setting up a personalised challenge…",
+    "Reviewing your weak spots so we can strengthen them…",
+    "Building a quiz that grows with you — hold tight…",
+  ],
+  smartdrill: [
+    "Mixing ordering, fill-ins & MCQs for deep mastery…",
+    "Preparing a SmartDrill session — think McGraw-Hill, but better…",
+    "Creating questions that test recall, sequencing & application…",
+    "Your SmartDrill is loading — ordering steps, filling blanks…",
+    "Assembling a varied question mix for maximum retention…",
+  ],
+  challenge: [
+    "Pulling together a proper challenge — no easy passes here…",
+    "Your opponent today? The Kenyan Bar itself. Let's go…",
+    "Setting up questions that separate the good from the great…",
+    "Challenge mode engaged — only real mastery survives this…",
+  ],
+  blitz: [
+    "15 seconds per question. Warming up your reflexes…",
+    "Speed Blitz loading — your brain better be caffeinated ☕…",
+    "Tick-tock. Rapid-fire recall questions incoming…",
+    "Fast-twitch legal knowledge mode activated…",
+  ],
+  exam: [
+    "Simulating a full exam environment — settle in…",
+    "Creating exam-grade questions across all ATP units…",
+    "Your mock exam is being assembled by AI examiners…",
+    "Think of this as a dress rehearsal for the real thing…",
+  ],
+  random: [
+    "Rolling the dice… let's see what topic fate picks…",
+    "Lady Justice is blindfolded — and so is your topic selector…",
+    "Surprise! Let's see if you know a bit of everything…",
+    "Random draw in progress — could be anything…",
+  ],
+};
 
 export default function QuizzesPage() {
   const { getIdToken } = useAuth();
@@ -151,6 +195,8 @@ export default function QuizzesPage() {
   const [userPerformance, setUserPerformance] = useState<UserPerformance | null>(null);
   const [responsesTracked, setResponsesTracked] = useState<Array<{ questionIndex: number; isCorrect: boolean }>>([]);
   const [loadingMoreQuestions, setLoadingMoreQuestions] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const [totalAnswered, setTotalAnswered] = useState(0); // Running counter for infinity mode
   // SmartDrill state
   const [dragOrder, setDragOrder] = useState<number[]>([]);
   const [textAnswer, setTextAnswer] = useState('');
@@ -176,6 +222,17 @@ export default function QuizzesPage() {
   const mode = QUIZ_MODES.find((m) => m.id === selectedMode)!;
   const unitName = selectedUnit === 'all' ? 'All Units' : ATP_UNITS.find((u) => u.id === selectedUnit)?.name || 'All Units';
   const effectiveCount = isInfinityMode ? 10 : questionCount; // For infinity, generate 10 at a time
+
+  // Cycling loading message
+  useEffect(() => {
+    if (!loading) return;
+    const msgs = LOADING_MESSAGES[selectedMode] || LOADING_MESSAGES.adaptive;
+    setLoadingMessage(msgs[Math.floor(Math.random() * msgs.length)]);
+    const interval = setInterval(() => {
+      setLoadingMessage(msgs[Math.floor(Math.random() * msgs.length)]);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [loading, selectedMode]);
 
   // Fetch user performance on mount
   useEffect(() => {
@@ -340,6 +397,53 @@ Rules:
     }));
   };
 
+  /* ── Streaming quiz fetch — first question shows instantly ── */
+  const fetchQuestionsStreaming = async (count: number, onFirstQuestion: () => void) => {
+    const token = await getIdToken();
+    const res = await fetch('/api/ai/quiz-stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        prompt: buildPrompt(count),
+        count,
+      }),
+    });
+
+    if (!res.ok) throw new Error('Failed');
+
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    let firstSent = false;
+
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value, { stream: true });
+        const lines = text.split('\n');
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'question' && data.question) {
+              setQuestions((prev) => [...prev, data.question]);
+              if (!firstSent) {
+                firstSent = true;
+                onFirstQuestion();
+              }
+            }
+          } catch { /* skip partial */ }
+        }
+      }
+    }
+
+    // If no questions came through streaming, try to return false
+    return firstSent;
+  };
+
   const startQuiz = useCallback(async () => {
     setLoading(true);
     setSection('playing');
@@ -355,12 +459,14 @@ Rules:
     setTextAnswer('');
     setOrderRevealed(false);
     setTextRevealed(false);
+    setTotalAnswered(0);
+    setQuestions([]); // Clear for streaming
     setQuizSessionId(crypto.randomUUID());
 
     try {
       const unitKey = selectedUnit !== 'all' ? selectedUnit : 'all';
       
-      // Try preloaded questions first
+      // Try preloaded questions first (instant start)
       const preloaded = await getPreloaded(unitKey, undefined, 'quiz');
       if (preloaded?.found && preloaded.content?.questions?.length > 0) {
         const qs = preloaded.content.questions.slice(0, effectiveCount).map((q: any) => ({
@@ -372,8 +478,18 @@ Rules:
         return;
       }
 
-      const qs = await fetchQuestions(effectiveCount);
-      setQuestions(qs);
+      // Use streaming API — first question shows instantly, rest arrive in background
+      const streamed = await fetchQuestionsStreaming(effectiveCount, () => {
+        // Called when the very first question arrives
+        setLoading(false);
+      });
+
+      // If streaming didn't work, fall back to batch
+      if (!streamed) {
+        const qs = await fetchQuestions(effectiveCount);
+        setQuestions(qs);
+        setLoading(false);
+      }
     } catch {
       setQuestions([{
         question: 'What is the supreme law of Kenya?',
@@ -382,7 +498,6 @@ Rules:
         explanation: 'The Constitution of Kenya 2010 is the supreme law of the Republic.',
         questionType: 'mcq',
       }]);
-    } finally {
       setLoading(false);
     }
   }, [getIdToken, mode, selectedUnit, userPerformance, effectiveCount, isInfinityMode]);
@@ -447,6 +562,7 @@ Rules:
     }
 
     setResponsesTracked((prev) => [...prev, { questionIndex: currentIndex, isCorrect }]);
+    setTotalAnswered((t) => t + 1);
 
     try {
       const token = await getIdToken();
@@ -494,6 +610,7 @@ Rules:
       setStreak(0);
     }
     setResponsesTracked((prev) => [...prev, { questionIndex: currentIndex, isCorrect }]);
+    setTotalAnswered((t) => t + 1);
 
     try {
       const token = await getIdToken();
@@ -540,6 +657,7 @@ Rules:
       setStreak(0);
     }
     setResponsesTracked((prev) => [...prev, { questionIndex: currentIndex, isCorrect }]);
+    setTotalAnswered((t) => t + 1);
 
     try {
       const token = await getIdToken();
@@ -814,51 +932,74 @@ Rules:
                   </div>
                 )}
 
-                {/* Step 3: Question Count */}
+                {/* Step 3: Question Count — Sleek Slider */}
                 {modalStep === 3 && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      {QUESTION_COUNTS.map((count) => {
-                        const isInf = count === 0;
-                        const active = isInf ? isInfinityMode : (!isInfinityMode && questionCount === count);
-                        return (
-                          <button
-                            key={count}
-                            onClick={() => {
-                              if (isInf) {
-                                setIsInfinityMode(true);
-                              } else {
-                                setIsInfinityMode(false);
-                                setQuestionCount(count);
-                              }
-                            }}
-                            className={`flex flex-col items-center justify-center rounded-2xl p-4 border-2 transition-all duration-200 ${
-                              active
-                                ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10'
-                                : 'border-border hover:border-primary/30 hover:bg-muted/50'
-                            }`}
-                          >
-                            {isInf ? (
-                              <>
-                                <Infinity className="h-7 w-7 text-primary mb-1" />
-                                <span className="font-bold text-sm">Endless</span>
-                                <span className="text-[10px] text-muted-foreground">Terminate anytime</span>
-                              </>
-                            ) : (
-                              <>
-                                <span className="text-2xl font-bold">{count}</span>
-                                <span className="text-xs text-muted-foreground">questions</span>
-                              </>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
+                  <div className="space-y-6">
+                    {/* Infinity toggle */}
+                    <button
+                      onClick={() => setIsInfinityMode(!isInfinityMode)}
+                      className={`w-full flex items-center justify-between rounded-2xl p-4 border-2 transition-all duration-200 ${
+                        isInfinityMode
+                          ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10'
+                          : 'border-border hover:border-primary/30 hover:bg-muted/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Infinity className={`h-6 w-6 ${isInfinityMode ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <div className="text-left">
+                          <span className="font-bold text-sm">Endless Mode</span>
+                          <p className="text-[10px] text-muted-foreground">Questions never stop — terminate anytime</p>
+                        </div>
+                      </div>
+                      <div className={`h-6 w-11 rounded-full transition-colors duration-200 relative ${isInfinityMode ? 'bg-primary' : 'bg-muted'}`}>
+                        <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${isInfinityMode ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      </div>
+                    </button>
+
+                    {/* Slider — only visible when NOT infinity */}
+                    {!isInfinityMode && (
+                      <div className="space-y-4 px-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-muted-foreground">Questions</span>
+                          <span className="text-3xl font-bold bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">
+                            {questionCount}
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={SLIDER_MIN}
+                          max={SLIDER_MAX}
+                          step={5}
+                          value={questionCount}
+                          onChange={(e) => setQuestionCount(Number(e.target.value))}
+                          className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary
+                            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:w-6
+                            [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-primary [&::-webkit-slider-thumb]:to-emerald-500
+                            [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-primary/30 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
+                            [&::-webkit-slider-thumb]:cursor-grab [&::-webkit-slider-thumb]:active:cursor-grabbing
+                            [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:rounded-full
+                            [&::-moz-range-thumb]:bg-gradient-to-br [&::-moz-range-thumb]:from-primary [&::-moz-range-thumb]:to-emerald-500
+                            [&::-moz-range-thumb]:shadow-lg [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white
+                            [&::-moz-range-thumb]:cursor-grab"
+                          style={{
+                            background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${((questionCount - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN)) * 100}%, hsl(var(--muted)) ${((questionCount - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN)) * 100}%, hsl(var(--muted)) 100%)`,
+                          }}
+                        />
+                        <div className="flex justify-between text-[10px] text-muted-foreground font-medium">
+                          <span>{SLIDER_MIN}</span>
+                          <span>15</span>
+                          <span>25</span>
+                          <span>35</span>
+                          <span>{SLIDER_MAX}</span>
+                        </div>
+                      </div>
+                    )}
+
                     {isInfinityMode && (
                       <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
                         <Infinity className="h-4 w-4 text-amber-600 shrink-0" />
                         <p className="text-xs text-amber-700 dark:text-amber-400">
-                          Endless mode: questions keep coming until you press <strong>Terminate</strong>. You&apos;ll get a full report.
+                          Questions keep coming until you press <strong>Terminate</strong>. You&apos;ll get a full report with your total score.
                         </p>
                       </div>
                     )}
@@ -899,14 +1040,45 @@ Rules:
   }
 
   // ═══════════════════════════════════
-  //  RENDER: LOADING
+  //  RENDER: LOADING (personality-filled)
   // ═══════════════════════════════════
   if (loading) {
+    const ModeIcon = mode.icon;
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="font-medium">Generating quiz questions…</p>
-        <p className="text-sm text-muted-foreground">{mode.name} · {unitName}</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 px-6">
+        {/* Animated mode icon */}
+        <div className={`relative p-5 rounded-3xl bg-gradient-to-br ${mode.gradient} text-white shadow-2xl animate-pulse`}>
+          <ModeIcon className="h-10 w-10" />
+          <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-card flex items-center justify-center">
+            <Loader2 className="h-3 w-3 animate-spin text-primary" />
+          </div>
+        </div>
+
+        {/* Mode & topic label */}
+        <div className="text-center space-y-1">
+          <h2 className={`text-xl font-bold bg-gradient-to-r ${mode.gradient} bg-clip-text text-transparent`}>
+            {mode.name}
+          </h2>
+          <p className="text-xs text-muted-foreground">{unitName} · {isInfinityMode ? 'Endless' : `${questionCount} questions`}</p>
+        </div>
+
+        {/* Personality message — fades & cycles */}
+        <div className="max-w-sm text-center animate-fade-in" key={loadingMessage}>
+          <p className="text-sm font-medium text-muted-foreground italic leading-relaxed">
+            &ldquo;{loadingMessage}&rdquo;
+          </p>
+        </div>
+
+        {/* Pulsing dots */}
+        <div className="flex gap-1.5">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className={`h-2 w-2 rounded-full bg-gradient-to-r ${mode.gradient}`}
+              style={{ animation: `pulse 1.4s ease-in-out ${i * 0.2}s infinite` }}
+            />
+          ))}
+        </div>
       </div>
     );
   }

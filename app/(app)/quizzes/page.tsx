@@ -53,7 +53,7 @@ const QUIZ_MODES = [
     description: 'AI adapts difficulty to your level',
     icon: Brain,
     gradient: 'from-green-500 to-emerald-600',
-    bgGlow: 'bg-green-500/20',
+    bgGlow: 'bg-green-500/10',
     count: 10,
     difficulty: 'Personalized',
     time: '~7 min',
@@ -100,7 +100,7 @@ const QUIZ_MODES = [
     description: '20 questions across all topics',
     icon: GraduationCap,
     gradient: 'from-emerald-500 to-teal-600',
-    bgGlow: 'bg-emerald-500/20',
+    bgGlow: 'bg-emerald-500/10',
     count: 20,
     difficulty: 'Hard',
     time: '~15 min',
@@ -607,7 +607,7 @@ Rules:
         </div>
 
         <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
-          <Card className="border-2 border-emerald-500/20 bg-emerald-500/5">
+          <Card className="border border-emerald-500/15 bg-emerald-500/3">
             <CardContent className="pt-4 pb-3 text-center">
               <Target className="h-6 w-6 mx-auto text-emerald-500 mb-2" />
               <p className="text-2xl font-bold text-emerald-600">{score}</p>

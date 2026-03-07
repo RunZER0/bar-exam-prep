@@ -104,7 +104,7 @@ export default function Sidebar() {
               className={`
                 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
                 ${active 
-                  ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
+                  ? 'bg-primary/8 text-primary border border-primary/15' 
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 }
                 ${collapsed ? 'justify-center' : ''}
@@ -170,7 +170,7 @@ export default function Sidebar() {
           {user?.photoURL ? (
             <img src={user.photoURL} alt="" className="h-9 w-9 rounded-full shrink-0" />
           ) : (
-            <div className="h-9 w-9 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 font-semibold text-sm shrink-0">
+            <div className="h-9 w-9 rounded-full bg-primary/8 border border-primary/15 flex items-center justify-center text-primary font-semibold text-sm shrink-0">
               {user?.displayName?.charAt(0) || user?.email?.charAt(0) || '?'}
             </div>
           )}

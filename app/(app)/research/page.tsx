@@ -20,6 +20,9 @@ import {
   Lightbulb,
   Send,
   Sparkles,
+  Paperclip,
+  Image,
+  X,
 } from 'lucide-react';
 
 interface Message {
@@ -65,12 +68,36 @@ export default function ResearchPage() {
   const [copied, setCopied] = useState(false);
   const [topicFilter, setTopicFilter] = useState('general');
   const [webSearchEnabled, setWebSearchEnabled] = useState(true);
+  const [attachments, setAttachments] = useState<Array<{ id: string; file: File; preview?: string }>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    Array.from(files).forEach(file => {
+      const att: { id: string; file: File; preview?: string } = {
+        id: Date.now().toString() + Math.random(),
+        file,
+      };
+      if (file.type.startsWith('image/')) att.preview = URL.createObjectURL(file);
+      setAttachments(prev => [...prev, att]);
+    });
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments(prev => {
+      const att = prev.find(a => a.id === id);
+      if (att?.preview) URL.revokeObjectURL(att.preview);
+      return prev.filter(a => a.id !== id);
+    });
+  };
 
   const sendMessage = async (overrideMessage?: string) => {
     const userMessage = overrideMessage || input.trim();
@@ -194,17 +221,22 @@ Question: ${userMessage}`
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen">
       {/* Top bar */}
-      <div className="border-b border-border/30 px-4 md:px-6 py-3 flex items-center justify-between shrink-0 bg-background">
-        <div>
-          <h1 className="text-base font-semibold">Legal Research</h1>
-          <p className="text-xs text-muted-foreground">Deep research into Kenyan statutes, case law & legal principles</p>
+      <div className="border-b border-border/20 px-4 md:px-6 py-3 flex items-center justify-between shrink-0 bg-gradient-to-r from-teal-500/5 via-background to-cyan-500/5">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-teal-500/15 to-cyan-500/10">
+            <Search className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+          </div>
+          <div>
+            <h1 className="text-base font-semibold">Legal Research</h1>
+            <p className="text-xs text-muted-foreground">Deep research into Kenyan statutes, case law & legal principles</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setWebSearchEnabled(!webSearchEnabled)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
               webSearchEnabled
-                ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20'
                 : 'bg-muted/50 text-muted-foreground'
             }`}
           >
@@ -214,7 +246,7 @@ Question: ${userMessage}`
 
           <button onClick={copyLastResponse} disabled={!hasMessages}
             className="p-2 rounded-lg hover:bg-muted/50 text-muted-foreground disabled:opacity-30 transition-colors">
-            {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+            {copied ? <Check className="h-4 w-4 text-teal-500" /> : <Copy className="h-4 w-4" />}
           </button>
           <button onClick={() => setMessages([])} disabled={!hasMessages}
             className="p-2 rounded-lg hover:bg-muted/50 text-muted-foreground disabled:opacity-30 transition-colors">
@@ -257,8 +289,8 @@ Question: ${userMessage}`
         {!hasMessages ? (
           <div className="max-w-2xl mx-auto mt-8 space-y-8">
             <div className="text-center">
-              <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-green-500/10 mb-4">
-                <Search className="h-8 w-8 text-emerald-600" />
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-teal-500/15 to-cyan-500/10 mb-4">
+                <Search className="h-8 w-8 text-teal-600 dark:text-teal-400" />
               </div>
               <h2 className="text-xl font-bold">Legal Research</h2>
               <p className="text-muted-foreground mt-2 max-w-md mx-auto">
@@ -272,7 +304,7 @@ Question: ${userMessage}`
                 return (
                   <button
                     key={s.label}
-                    className="text-left p-4 rounded-2xl bg-gradient-to-br from-muted/30 to-muted/10 hover:from-primary/5 hover:to-primary/[0.02] border border-border/20 hover:border-primary/20 transition-all duration-300 group"
+                    className="text-left p-4 rounded-2xl bg-gradient-to-br from-muted/30 to-muted/10 hover:from-teal-500/6 hover:to-teal-500/[0.02] transition-all duration-300 group"
                     onClick={() => sendMessage(s.prompt)}
                   >
                     <div className="flex items-center gap-2 mb-2">
@@ -295,7 +327,7 @@ Question: ${userMessage}`
                   className={`max-w-[85%] md:max-w-[80%] rounded-2xl px-4 py-3 ${
                     msg.role === 'user'
                       ? 'bg-primary text-primary-foreground rounded-br-md'
-                      : 'bg-muted/40 border border-border/20 rounded-bl-md'
+                      : 'bg-gradient-to-br from-muted/50 to-muted/20 rounded-bl-md'
                   }`}
                 >
                   {msg.filtered && (
@@ -335,9 +367,41 @@ Question: ${userMessage}`
         )}
       </div>
 
+      {/* Attachments preview */}
+      {attachments.length > 0 && (
+        <div className="shrink-0 px-4 md:px-6 pb-2">
+          <div className="max-w-4xl mx-auto flex gap-2 overflow-x-auto">
+            {attachments.map(att => (
+              <div key={att.id} className="relative flex-shrink-0 group">
+                {att.preview ? (
+                  <div className="w-14 h-14 rounded-xl overflow-hidden border border-border/30">
+                    <img src={att.preview} alt="" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/30">
+                    <FileText className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-xs truncate max-w-[80px]">{att.file.name}</span>
+                  </div>
+                )}
+                <button onClick={() => removeAttachment(att.id)} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Input */}
-      <div className="border-t border-border/30 px-4 md:px-6 py-3 bg-background shrink-0">
+      <div className="border-t border-border/20 px-4 md:px-6 py-3 bg-gradient-to-t from-background to-transparent shrink-0">
+        <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx" multiple onChange={handleFileSelect} className="hidden" />
         <div className="max-w-4xl mx-auto flex gap-3 items-end">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="shrink-0 h-11 w-11 rounded-xl bg-muted/30 hover:bg-muted/60 flex items-center justify-center transition-colors"
+          >
+            <Paperclip className="h-4 w-4 text-muted-foreground" />
+          </button>
           <div className="flex-1 relative">
             <textarea
               ref={textareaRef}
@@ -347,7 +411,7 @@ Question: ${userMessage}`
               placeholder="What would you like to research?"
               disabled={sending}
               rows={1}
-              className="w-full resize-none rounded-xl bg-muted/30 border border-border/30 px-4 py-3 text-sm outline-none focus:border-primary/30 focus:ring-1 focus:ring-primary/10 placeholder:text-muted-foreground/50 disabled:opacity-50 overflow-y-auto transition-[height] duration-100"
+              className="w-full resize-none rounded-xl bg-muted/20 border border-border/20 px-4 py-3 text-sm outline-none focus:border-teal-500/40 focus:ring-1 focus:ring-teal-500/10 placeholder:text-muted-foreground/50 disabled:opacity-50 overflow-y-auto transition-colors"
               style={{ maxHeight: 160 }}
             />
           </div>

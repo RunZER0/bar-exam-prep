@@ -328,14 +328,14 @@ export default function ClarifyPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] md:h-screen">
       {/* Header */}
-      <div className="shrink-0 border-b border-border/50 bg-card/50 backdrop-blur-xl px-6 py-4">
+      <div className="shrink-0 border-b border-border/20 bg-gradient-to-r from-violet-500/5 via-background to-purple-500/5 px-6 py-4">
         <div className="flex items-center gap-4 max-w-4xl mx-auto">
-          <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
-            <MessageCircleQuestion className="w-5 h-5 text-primary" />
+          <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500/15 to-purple-500/10">
+            <MessageCircleQuestion className="w-5 h-5 text-violet-600 dark:text-violet-400" />
           </div>
           <div>
             <h1 className="text-lg font-semibold">Get Clarification</h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Ask questions, upload screenshots, or record voice notes
             </p>
           </div>
@@ -347,8 +347,8 @@ export default function ClarifyPage() {
         <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-4">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center mb-6">
-                <Sparkles className="w-10 h-10 text-primary" />
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500/15 to-purple-500/10 flex items-center justify-center mb-6">
+                <Sparkles className="w-10 h-10 text-violet-500" />
               </div>
               <h2 className="text-2xl font-bold mb-2">Need Help Understanding Something?</h2>
               <p className="text-muted-foreground max-w-md mb-10">
@@ -359,28 +359,28 @@ export default function ClarifyPage() {
               <div className="grid grid-cols-3 gap-4 w-full max-w-sm">
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-border/50 bg-card hover:bg-accent hover:border-primary/30 transition-all duration-300"
+                  className="group flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-br from-sky-500/8 to-sky-500/3 hover:from-sky-500/15 hover:to-sky-500/8 transition-all duration-300"
                 >
-                  <div className="p-3 rounded-xl bg-gray-500/10 border border-gray-500/20 group-hover:scale-110 transition-transform">
-                    <Image className="w-5 h-5 text-gray-500" />
+                  <div className="p-3 rounded-xl bg-sky-500/10 group-hover:scale-110 transition-transform">
+                    <Image className="w-5 h-5 text-sky-500" />
                   </div>
                   <span className="text-sm font-medium">Screenshot</span>
                 </button>
                 <button
                   onClick={startRecording}
-                  className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-border/50 bg-card hover:bg-accent hover:border-primary/30 transition-all duration-300"
+                  className="group flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-br from-rose-500/8 to-rose-500/3 hover:from-rose-500/15 hover:to-rose-500/8 transition-all duration-300"
                 >
-                  <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 group-hover:scale-110 transition-transform">
-                    <Mic className="w-5 h-5 text-red-500" />
+                  <div className="p-3 rounded-xl bg-rose-500/10 group-hover:scale-110 transition-transform">
+                    <Mic className="w-5 h-5 text-rose-500" />
                   </div>
                   <span className="text-sm font-medium">Voice Note</span>
                 </button>
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-border/50 bg-card hover:bg-accent hover:border-primary/30 transition-all duration-300"
+                  className="group flex flex-col items-center gap-3 p-5 rounded-2xl bg-gradient-to-br from-amber-500/8 to-amber-500/3 hover:from-amber-500/15 hover:to-amber-500/8 transition-all duration-300"
                 >
-                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 group-hover:scale-110 transition-transform">
-                    <FileText className="w-5 h-5 text-emerald-500" />
+                  <div className="p-3 rounded-xl bg-amber-500/10 group-hover:scale-110 transition-transform">
+                    <FileText className="w-5 h-5 text-amber-500" />
                   </div>
                   <span className="text-sm font-medium">Document</span>
                 </button>
@@ -397,7 +397,7 @@ export default function ClarifyPage() {
                     className={`max-w-[85%] md:max-w-[75%] px-4 py-3 rounded-2xl ${
                       message.role === 'user'
                         ? 'bg-primary text-primary-foreground rounded-br-md'
-                        : 'bg-card border border-border/50 rounded-bl-md'
+                        : 'bg-gradient-to-br from-muted/50 to-muted/20 rounded-bl-md'
                     }`}
                   >
                     {message.attachments && message.attachments.length > 0 && (
@@ -487,7 +487,7 @@ export default function ClarifyPage() {
       )}
 
       {/* Input */}
-      <div className="shrink-0 border-t border-border/50 bg-card/50 backdrop-blur-xl p-4">
+      <div className="shrink-0 border-t border-border/20 bg-gradient-to-t from-background to-transparent p-4">
         <input
           ref={fileInputRef}
           type="file"
@@ -501,14 +501,14 @@ export default function ClarifyPage() {
           <div className="flex gap-1.5">
             <button
               type="button"
-              className="shrink-0 h-11 w-11 rounded-xl border border-border/50 hover:border-border flex items-center justify-center hover:bg-muted/40 transition-colors"
+              className="shrink-0 h-11 w-11 rounded-xl bg-muted/30 hover:bg-muted/60 flex items-center justify-center transition-colors"
               onClick={() => fileInputRef.current?.click()}
             >
-              <Paperclip className="w-4 h-4" />
+              <Paperclip className="w-4 h-4 text-muted-foreground" />
             </button>
             <button
               type="button"
-              className={`shrink-0 h-11 w-11 rounded-xl border border-border/50 hover:border-border flex items-center justify-center hover:bg-muted/40 transition-colors ${isRecording ? 'text-red-500 border-red-500/50' : ''}`}
+              className={`shrink-0 h-11 w-11 rounded-xl flex items-center justify-center transition-colors ${isRecording ? 'bg-red-500/15 text-red-500' : 'bg-muted/30 hover:bg-muted/60 text-muted-foreground'}`}
               onClick={isRecording ? stopRecording : startRecording}
             >
               {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
@@ -519,7 +519,7 @@ export default function ClarifyPage() {
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
             placeholder="What do you need help understanding?"
             disabled={isLoading}
-            className="flex-1 min-h-[44px] max-h-32 resize-none rounded-xl bg-background border border-border/50 focus:border-primary/50 px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary/20"
+            className="flex-1 min-h-[44px] max-h-32 resize-none rounded-xl bg-muted/20 border border-border/20 focus:border-violet-500/40 px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-violet-500/15 transition-colors"
             rows={1}
             onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
               if (e.key === 'Enter' && !e.shiftKey) {

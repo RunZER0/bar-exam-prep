@@ -525,6 +525,25 @@ export default function StudyPage() {
                 </div>
               )}
 
+              {/* Verbatim Case Text */}
+              {caseOfDay.full_text && (
+                <div className="mx-6 mb-4">
+                  <details className="group rounded-xl border border-amber-500/15 overflow-hidden">
+                    <summary className="flex items-center justify-between cursor-pointer px-4 py-3 bg-amber-500/5 hover:bg-amber-500/8 transition-colors">
+                      <h4 className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5" /> Full Case Text
+                      </h4>
+                      <ChevronDown className="h-4 w-4 text-amber-600 dark:text-amber-400 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="px-4 py-4 max-h-96 overflow-y-auto">
+                      <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap font-mono">
+                        {caseOfDay.full_text}
+                      </p>
+                    </div>
+                  </details>
+                </div>
+              )}
+
               {/* Detailed Breakdown */}
               <div className="px-6 pb-6 space-y-4">
                 <CaseSection title="Facts" content={caseOfDay.facts} />

@@ -213,21 +213,21 @@ export default function DashboardPage() {
 
       {/* AI Recommendation Card */}
       {userProfile && userProfile.recommendations.length > 0 && (
-        <div className="relative overflow-hidden rounded-2xl p-5 md:p-6 border border-green-500/20 bg-green-500/5">
+        <div className="relative overflow-hidden rounded-2xl p-5 md:p-6 border border-primary/15 bg-primary/3">
           <div className="flex items-start gap-4">
-            <div className="p-2.5 rounded-xl bg-green-600 text-white shrink-0">
+            <div className="p-2.5 rounded-xl bg-primary text-primary-foreground shrink-0">
               <Brain className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
-                <h3 className="font-semibold text-sm">AI Study Recommendation</h3>
+                <h3 className="font-semibold text-sm">Study Recommendation</h3>
                 <Sparkles className="h-4 w-4 text-amber-500" />
               </div>
               <p className="text-sm text-muted-foreground mb-3">
                 {userProfile.recommendations[0].description}
               </p>
               <Link href={userProfile.recommendations[0].href}>
-                <Button size="sm" className="gap-2 bg-green-600 hover:bg-green-700">
+                <Button size="sm" className="gap-2">
                   {userProfile.recommendations[0].title}
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Button>

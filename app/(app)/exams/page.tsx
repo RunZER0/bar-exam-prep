@@ -115,7 +115,7 @@ function AnimatedModal({ isOpen, onClose, children, size = 'md' }: AnimatedModal
       <div
         className={`
           relative bg-background rounded-2xl shadow-2xl shadow-black/20 w-full ${sizeClasses[size]}
-          overflow-hidden transition-all duration-300 ease-out origin-center
+          overflow-hidden transition-all duration-300 ease-out origin-center max-h-[90vh] flex flex-col
           ${isAnimating ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-4'}
         `}
         onClick={(e) => e.stopPropagation()}
@@ -226,10 +226,10 @@ export default function ExamsPage() {
       {/* Quick Stats — borderless gradient tiles */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { icon: Target, value: '60', label: 'Max Marks', gradient: 'from-emerald-500/8 to-transparent', iconBg: 'bg-emerald-500/15', iconColor: 'text-emerald-600' },
-          { icon: Timer, value: '3h', label: 'CLE Time', gradient: 'from-sky-500/8 to-transparent', iconBg: 'bg-sky-500/15', iconColor: 'text-sky-600' },
-          { icon: FileQuestion, value: '2', label: 'Exam Types', gradient: 'from-violet-500/8 to-transparent', iconBg: 'bg-violet-500/15', iconColor: 'text-violet-600' },
-          { icon: GraduationCap, value: '12', label: 'ATP Units', gradient: 'from-amber-500/8 to-transparent', iconBg: 'bg-amber-500/15', iconColor: 'text-amber-600' },
+          { icon: Target, value: '60', label: 'Max Marks', gradient: 'from-emerald-500/6 to-transparent', iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-600' },
+          { icon: Timer, value: '3h', label: 'CLE Time', gradient: 'from-sky-500/6 to-transparent', iconBg: 'bg-sky-500/10', iconColor: 'text-sky-600' },
+          { icon: FileQuestion, value: '2', label: 'Exam Types', gradient: 'from-violet-500/6 to-transparent', iconBg: 'bg-violet-500/10', iconColor: 'text-violet-600' },
+          { icon: GraduationCap, value: '12', label: 'ATP Units', gradient: 'from-amber-500/6 to-transparent', iconBg: 'bg-amber-500/10', iconColor: 'text-amber-600' },
         ].map((stat) => {
           const Icon = stat.icon;
           return (
@@ -260,12 +260,12 @@ export default function ExamsPage() {
             }}
             className={`group text-left rounded-2xl p-6 transition-all duration-300 ${
               type.color === 'emerald'
-                ? 'bg-gradient-to-br from-emerald-500/8 via-emerald-500/4 to-transparent hover:from-emerald-500/14 hover:shadow-lg hover:shadow-emerald-500/5'
-                : 'bg-gradient-to-br from-stone-500/8 via-stone-400/4 to-transparent hover:from-stone-500/14 hover:shadow-lg hover:shadow-stone-500/5 dark:from-stone-400/8 dark:via-stone-400/4'
+                ? 'bg-gradient-to-br from-emerald-500/5 via-emerald-500/3 to-transparent hover:from-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/3'
+                : 'bg-gradient-to-br from-stone-500/5 via-stone-400/3 to-transparent hover:from-stone-500/10 hover:shadow-lg hover:shadow-stone-500/3 dark:from-stone-400/5 dark:via-stone-400/3'
             }`}
           >
             <div className={`p-3 rounded-xl w-fit mb-4 ${
-              type.color === 'emerald' ? 'bg-emerald-500/12' : 'bg-stone-500/12 dark:bg-stone-400/12'
+              type.color === 'emerald' ? 'bg-emerald-500/8' : 'bg-stone-500/8 dark:bg-stone-400/8'
             }`}>
               <type.icon className={`h-6 w-6 ${
                 type.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-600 dark:text-stone-400'
@@ -377,7 +377,7 @@ export default function ExamsPage() {
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto">
           {/* Step 1: Exam Type */}
           {step === 'type' && (
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -391,12 +391,12 @@ export default function ExamsPage() {
                     onClick={() => handleTypeSelect(type.id)}
                     className={`w-full p-5 rounded-2xl text-left transition-all duration-200 flex items-center gap-4 ${
                       type.color === 'emerald'
-                        ? 'bg-gradient-to-r from-emerald-500/8 to-transparent hover:from-emerald-500/15 hover:shadow-md hover:shadow-emerald-500/5'
-                        : 'bg-gradient-to-r from-stone-500/8 to-transparent hover:from-stone-500/15 hover:shadow-md hover:shadow-stone-500/5 dark:from-stone-400/8'
+                        ? 'bg-gradient-to-r from-emerald-500/5 to-transparent hover:from-emerald-500/10 hover:shadow-md hover:shadow-emerald-500/3'
+                        : 'bg-gradient-to-r from-stone-500/5 to-transparent hover:from-stone-500/10 hover:shadow-md hover:shadow-stone-500/3 dark:from-stone-400/5'
                     }`}
                   >
                     <div className={`p-3 rounded-xl ${
-                      type.color === 'emerald' ? 'bg-emerald-500/15' : 'bg-stone-500/15 dark:bg-stone-400/15'
+                      type.color === 'emerald' ? 'bg-emerald-500/10' : 'bg-stone-500/10 dark:bg-stone-400/10'
                     }`}>
                       <type.icon className={`h-5 w-5 ${
                         type.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-600 dark:text-stone-400'

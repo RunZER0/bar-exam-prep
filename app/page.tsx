@@ -175,15 +175,15 @@ export default function Home() {
       <section className="relative overflow-hidden">
         {/* Gradient orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-600/5 rounded-full blur-3xl" />
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-600/3 rounded-full blur-3xl" />
         </div>
 
         <div className="max-w-6xl mx-auto px-4 pt-16 pb-20 md:pt-24 md:pb-28 relative">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
             {/* Left - copy */}
             <div className="space-y-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/8 border border-emerald-500/15">
                 <Image
                   src="/favicon-32x32.png"
                   alt="Ynai Logo"
@@ -277,7 +277,7 @@ export default function Home() {
                       className="h-12 bg-zinc-800/50 border-zinc-700/50 focus:border-emerald-500/50 text-zinc-100 placeholder:text-zinc-600"
                     />
                     {error && <p className="text-sm text-red-400">{error}</p>}
-                    <Button type="submit" className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 text-white" disabled={authLoading}>
+                    <Button type="submit" className="w-full h-12 bg-emerald-600/90 hover:bg-emerald-500/90 text-white" disabled={authLoading}>
                       {authLoading ? (
                         <div className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                       ) : isSignUp ? (
@@ -328,7 +328,7 @@ export default function Home() {
                   key={f.title} 
                   className="group p-6 rounded-2xl bg-zinc-800/30 border border-zinc-800/50 hover:border-zinc-700/50 hover:bg-zinc-800/50 transition-all duration-300"
                 >
-                  <div className="p-3 rounded-xl bg-emerald-500/10 w-fit mb-4 border border-emerald-500/20">
+                  <div className="p-3 rounded-xl bg-emerald-500/8 w-fit mb-4 border border-emerald-500/15">
                     <Icon className="h-5 w-5 text-emerald-400" />
                   </div>
                   <h3 className="font-semibold text-zinc-100 mb-2">{f.title}</h3>
@@ -365,7 +365,7 @@ export default function Home() {
                 </div>
                 <p className="text-zinc-400 leading-relaxed mb-4">{t.content}</p>
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-full bg-emerald-500/8 border border-emerald-500/15 flex items-center justify-center">
                     <span className="text-sm font-semibold text-emerald-400">
                       {t.name.split(' ').map(n => n[0]).join('')}
                     </span>
@@ -392,7 +392,7 @@ export default function Home() {
           </p>
           <Button 
             size="lg" 
-            className="px-8 h-12 bg-emerald-600 hover:bg-emerald-500 text-white gap-2"
+            className="px-8 h-12 bg-emerald-600/90 hover:bg-emerald-500/90 text-white gap-2"
             onClick={() => {
               setIsSignUp(true);
               window.scrollTo({ top: 0, behavior: 'smooth' });

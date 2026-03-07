@@ -903,7 +903,7 @@ Respond with ONLY valid JSON:
                   }
                   handleSubmit();
                 }}
-                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors text-sm font-medium"
+                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600/90 text-white hover:bg-emerald-700/90 transition-colors text-sm font-medium"
               >
                 <FileText className="h-4 w-4" />
                 Submit Exam
@@ -937,7 +937,7 @@ Respond with ONLY valid JSON:
                   <div className="flex items-center gap-2">
                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
                       i === currentIndex ? 'bg-primary text-primary-foreground' :
-                      answers[q.id] ? 'bg-emerald-500/20 text-emerald-600' :
+                      answers[q.id] ? 'bg-emerald-500/10 text-emerald-600' :
                       'bg-muted text-muted-foreground'
                     }`}>
                       {i + 1}
@@ -1018,7 +1018,7 @@ Respond with ONLY valid JSON:
                         }
                         handleSubmit();
                       }}
-                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors text-xs font-medium"
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600/90 text-white hover:bg-emerald-700/90 transition-colors text-xs font-medium"
                     >
                       <FileText className="h-3.5 w-3.5" />
                       Submit

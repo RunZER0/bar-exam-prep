@@ -120,7 +120,10 @@ export function analyzeUserPatterns(
 }
 
 /**
- * Generate personalized study recommendations based on profile
+ * Generate personalized study recommendations based on profile.
+ * Uses date-based rotation so suggestions vary day-to-day even
+ * when the underlying weak/strong areas haven't changed.
+ * Mixes backlog (weak areas) with new/untouched topics.
  */
 export function generateStudyRecommendations(
   profile: AdaptiveProfile,
@@ -139,25 +142,69 @@ export function generateStudyRecommendations(
     topicId?: string;
     action: string;
   }> = [];
-  
-  // Prioritize weak areas
-  for (const topicId of profile.weakAreas.slice(0, 3)) {
+
+  // Date-based rotation seed — changes daily
+  const today = new Date();
+  const daySeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+
+  // Deterministic shuffle using day seed
+  const seededShuffle = <T,>(arr: T[]): T[] => {
+    const copy = [...arr];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = (daySeed * (i + 1) + 7919) % (i + 1);
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
+  // All known ATP unit topic areas for discovering untouched ones
+  const ALL_TOPIC_AREAS = [
+    'Civil Litigation', 'Criminal Litigation', 'Legal Writing & Drafting',
+    'Professional Ethics', 'Property Law & Conveyancing', 'Commercial Transactions',
+    'Family Law', 'Constitutional & Administrative Law', 'Alternative Dispute Resolution',
+    'Probate & Administration', 'Employment & Labour Law', 'Tax Law',
+  ];
+
+  // Find topics the user hasn't touched yet
+  const touchedTopics = new Set([...profile.weakAreas, ...profile.strongAreas]);
+  const untouchedTopics = ALL_TOPIC_AREAS.filter(t => !touchedTopics.has(t));
+
+  // Rotate weak areas so a different one leads each day
+  const rotatedWeak = seededShuffle(profile.weakAreas);
+  const rotatedUntouched = seededShuffle(untouchedTopics);
+
+  // Pick 1-2 from backlog (weak areas) with date rotation
+  const backlogPicks = rotatedWeak.slice(0, Math.min(2, rotatedWeak.length));
+  for (const topicId of backlogPicks) {
     recommendations.push({
-      title: `Focus on ${topicId}`,
-      description: 'Your quiz performance shows this needs more attention',
+      title: `Strengthen: ${topicId}`,
+      description: 'This area needs attention based on your recent performance — let\'s sharpen it.',
       priority: 'high',
       topicId,
       action: 'study',
     });
   }
-  
-  // Suggest maintaining strong areas
-  if (profile.strongAreas.length > 0) {
+
+  // Pick 1 from untouched/new topics to keep things fresh
+  if (rotatedUntouched.length > 0) {
+    const newTopic = rotatedUntouched[0];
     recommendations.push({
-      title: 'Maintain Your Strengths',
-      description: `Keep sharp on ${profile.strongAreas[0]} with quick quizzes`,
+      title: `Explore: ${newTopic}`,
+      description: 'You haven\'t covered this area yet — broadening your coverage is key for the bar exam.',
+      priority: 'medium',
+      topicId: newTopic,
+      action: 'study',
+    });
+  }
+
+  // Rotate strong areas for maintenance quizzes
+  if (profile.strongAreas.length > 0) {
+    const rotatedStrong = seededShuffle(profile.strongAreas);
+    recommendations.push({
+      title: `Quick Review: ${rotatedStrong[0]}`,
+      description: `Stay sharp on ${rotatedStrong[0]} with a quick quiz to maintain your edge.`,
       priority: 'low',
-      topicId: profile.strongAreas[0],
+      topicId: rotatedStrong[0],
       action: 'quiz',
     });
   }

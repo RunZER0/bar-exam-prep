@@ -26,7 +26,7 @@
     --radius: 0.5rem;
     --sidebar: 0 0% 97%;
     --glass: 0 0% 100% / 0.8;
-    --glow: 142 76% 36% / 0.15;
+    --glow: 142 76% 36% / 0.08;
   }
 
   .dark {
@@ -51,7 +51,7 @@
     --ring: 142 76% 42%;
     --sidebar: 0 0% 6%;
     --glass: 0 0% 8% / 0.9;
-    --glow: 142 76% 42% / 0.2;
+    --glow: 142 76% 42% / 0.1;
   }
 }
 
@@ -329,5 +329,17 @@ html {
 }
 .citation-link:hover {
   text-decoration-thickness: 2px;
+}
+
+/* Smooth fade-slide-in animation for chat messages */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 

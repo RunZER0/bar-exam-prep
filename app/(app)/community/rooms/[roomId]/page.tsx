@@ -330,7 +330,7 @@ export default function RoomDetailPage() {
                           <span className="text-xs text-muted-foreground">{formatTime(message.createdAt)}</span>
                           <Pin className="h-3 w-3 text-amber-500" />
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 whitespace-pre-wrap">
                           {message.content}
                         </p>
                       </div>
@@ -356,7 +356,7 @@ export default function RoomDetailPage() {
                         {formatTime(message.createdAt)}
                       </span>
                     </div>
-                    <p className="text-gray-600 dark:text-gray-300 mt-1">
+                    <p className="text-gray-600 dark:text-gray-300 mt-1 whitespace-pre-wrap">
                       {message.content}
                     </p>
                     <div className="flex items-center gap-4 mt-2">
@@ -415,7 +415,7 @@ export default function RoomDetailPage() {
               <Button 
                 onClick={handleSendMessage}
                 disabled={!newMessage.trim()}
-                className="bg-green-600 hover:bg-green-700 h-10 w-10 p-0"
+                className="h-10 w-10 p-0"
               >
                 <Send className="h-4 w-4" />
               </Button>

@@ -447,6 +447,7 @@ export default function OralExamsPage() {
     }
 
     setIsLoading(true);
+    setError(null);
     stopAudio();
     try {
       const data = await authFetchJSON('/api/oral-exams', {
@@ -459,15 +460,14 @@ export default function OralExamsPage() {
 
       setSummary({ content: data.content, score: data.score });
       setPhase('summary');
-
-      await playTTS(data.content, 'nova');
     } catch (err) {
       console.error('Summary error:', err);
-      setError('Failed to generate summary.');
+      setError('Failed to generate summary. Please try again.');
+      setIsLoading(false);
     } finally {
       setIsLoading(false);
     }
-  }, [messages, examType, mode, feedbackMode, authFetchJSON, playTTS, stopAudio]);
+  }, [messages, examType, mode, feedbackMode, authFetchJSON, stopAudio]);
 
   /* ================================================================
      HANDLE VOICE SEND
@@ -522,7 +522,7 @@ export default function OralExamsPage() {
           <div className="text-center space-y-2">
             <h1 className="text-3xl font-bold tracking-tight">Oral Examinations</h1>
             <p className="text-muted-foreground text-lg">
-              Sharpen your advocacy skills with AI-powered oral practice
+              Sharpen your advocacy skills with realistic oral practice
             </p>
           </div>
 
@@ -532,7 +532,7 @@ export default function OralExamsPage() {
               {/* Devil's Advocate */}
               <button
                 onClick={() => setExamType('devils-advocate')}
-                className="group relative overflow-hidden rounded-2xl border-2 border-border bg-card p-8 text-left transition-all hover:border-red-500/50 hover:shadow-lg hover:shadow-red-500/10"
+                className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500/8 via-red-500/4 to-transparent p-8 text-left transition-all hover:from-red-500/15 hover:shadow-lg hover:shadow-red-500/5"
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-red-500/10 to-transparent rounded-bl-full" />
                 <div className="relative space-y-4">
@@ -542,8 +542,8 @@ export default function OralExamsPage() {
                   <div>
                     <h2 className="text-xl font-semibold">Devil&apos;s Advocate</h2>
                     <p className="text-muted-foreground mt-1">
-                      Go toe-to-toe with an AI that challenges your every legal assertion.
-                      Defend your position with authority — statute, case law, and logic.
+                      Go toe-to-toe with a challenger that tests your every legal assertion.
+                      Defend your position under pressure — cite statute, case law, and logic.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2 pt-2">
@@ -560,7 +560,7 @@ export default function OralExamsPage() {
               {/* Oral Examiner */}
               <button
                 onClick={() => setExamType('examiner')}
-                className="group relative overflow-hidden rounded-2xl border-2 border-border bg-card p-8 text-left transition-all hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10"
+                className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500/8 via-blue-500/4 to-transparent p-8 text-left transition-all hover:from-blue-500/15 hover:shadow-lg hover:shadow-blue-500/5"
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-bl-full" />
                 <div className="relative space-y-4">
@@ -571,7 +571,7 @@ export default function OralExamsPage() {
                     <h2 className="text-xl font-semibold">Oral Examiner Panel</h2>
                     <p className="text-muted-foreground mt-1">
                       Face a panel of up to 3 examiners with distinct personas.
-                      Turn-taking, interruptions, and real oral exam simulation.
+                      Realistic oral exam simulation with turn-taking and follow-up questions.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2 pt-2">
@@ -595,7 +595,7 @@ export default function OralExamsPage() {
                 <ArrowLeft className="w-4 h-4" /> Back to selection
               </button>
 
-              <div className="rounded-2xl border bg-card p-6 md:p-8 space-y-8">
+              <div className="rounded-2xl bg-gradient-to-br from-muted/30 to-muted/10 p-6 md:p-8 space-y-8">
                 <div className="flex items-center gap-3">
                   {examType === 'devils-advocate' ? (
                     <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
@@ -750,35 +750,6 @@ export default function OralExamsPage() {
                   </div>
                 </div>
 
-                {/* Streaming Mode Toggle */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Response Delivery</label>
-                    <button
-                      onClick={() => setEnableStreaming(!enableStreaming)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        enableStreaming ? 'bg-primary' : 'bg-muted'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          enableStreaming ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {enableStreaming ? (
-                      <span className="flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" />
-                        Streaming enabled — responses appear in real-time with controlled interruptions
-                      </span>
-                    ) : (
-                      <span>Standard mode — complete responses delivered at once</span>
-                    )}
-                  </div>
-                </div>
-
                 {/* Start Button */}
                 <button
                   onClick={startSession}
@@ -799,6 +770,24 @@ export default function OralExamsPage() {
      RENDER — SUMMARY PHASE
      ================================================================ */
   if (phase === 'summary' && summary) {
+    // Strip markdown for clean display
+    const cleanContent = summary.content
+      .replace(/#{1,6}\s/g, '')
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/`(.*?)`/g, '$1')
+      .replace(/---/g, '');
+
+    const handleSaveReport = () => {
+      const blob = new Blob([cleanContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `oral-exam-report-${new Date().toISOString().split('T')[0]}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
         <div className="max-w-3xl mx-auto space-y-6">
@@ -808,33 +797,33 @@ export default function OralExamsPage() {
             </div>
             <h1 className="text-2xl font-bold">Session Complete</h1>
             {summary.score !== null && (
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card border">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/10 to-primary/5">
                 <span className="text-2xl font-bold">{summary.score}</span>
                 <span className="text-muted-foreground">/100</span>
               </div>
             )}
           </div>
 
-          {/* Summary content */}
-          <div className="rounded-2xl border bg-card p-6 md:p-8">
-            <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-              {summary.content}
+          {/* Summary content — clean text, no markdown */}
+          <div className="rounded-2xl bg-gradient-to-br from-muted/30 to-muted/10 p-6 md:p-8">
+            <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
+              {cleanContent}
             </div>
           </div>
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="rounded-xl border bg-card p-4 text-center">
+            <div className="rounded-xl bg-gradient-to-br from-muted/30 to-transparent p-4 text-center">
               <MessageSquare className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
               <div className="text-xl font-bold">{messages.filter(m => m.role === 'user').length}</div>
               <div className="text-xs text-muted-foreground">Your Responses</div>
             </div>
-            <div className="rounded-xl border bg-card p-4 text-center">
+            <div className="rounded-xl bg-gradient-to-br from-muted/30 to-transparent p-4 text-center">
               <Clock className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
               <div className="text-xl font-bold">{messages.length}</div>
               <div className="text-xs text-muted-foreground">Total Exchanges</div>
             </div>
-            <div className="rounded-xl border bg-card p-4 text-center">
+            <div className="rounded-xl bg-gradient-to-br from-muted/30 to-transparent p-4 text-center">
               <Sparkles className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
               <div className="text-xl font-bold capitalize">{mode}</div>
               <div className="text-xs text-muted-foreground">Difficulty</div>
@@ -844,12 +833,18 @@ export default function OralExamsPage() {
           {/* Actions */}
           <div className="flex gap-3">
             <button
+              onClick={handleSaveReport}
+              className="flex-1 py-3 rounded-xl border border-border/30 bg-gradient-to-r from-muted/20 to-transparent hover:from-muted/40 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+            >
+              <ArrowLeft className="w-4 h-4" /> Save Report
+            </button>
+            <button
               onClick={() => {
                 setPhase('setup');
                 setMessages([]);
                 setSummary(null);
               }}
-              className="flex-1 py-3 rounded-xl border bg-card hover:bg-muted transition-colors font-medium flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded-xl border border-border/30 hover:bg-muted/30 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
             >
               <RotateCcw className="w-4 h-4" /> New Session
             </button>
@@ -858,9 +853,9 @@ export default function OralExamsPage() {
                 setPhase('active');
                 setSummary(null);
               }}
-              className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium flex items-center justify-center gap-2 text-sm"
             >
-              <Play className="w-4 h-4" /> Continue Session
+              <Play className="w-4 h-4" /> Continue
             </button>
           </div>
         </div>
@@ -876,7 +871,7 @@ export default function OralExamsPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] bg-background">
       {/* Top Bar */}
-      <div className="shrink-0 border-b bg-card/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between">
+      <div className="shrink-0 border-b border-border/20 bg-gradient-to-r from-background to-background px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           {examType === 'devils-advocate' ? (
             <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
@@ -968,7 +963,7 @@ export default function OralExamsPage() {
           const panelist = msg.panelist;
 
           return (
-            <div key={msg.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+            <div key={msg.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`} style={{ animation: 'fadeSlideIn 0.4s ease-out forwards' }}>
               <div className={`max-w-[85%] md:max-w-[70%] ${isUser ? 'order-last' : ''}`}>
                 {/* Panelist header */}
                 {panelist && (
@@ -1066,77 +1061,78 @@ export default function OralExamsPage() {
       </div>
 
       {/* Input Area */}
-      <div className="shrink-0 border-t bg-card/80 backdrop-blur-sm p-4">
+      <div className="shrink-0 border-t border-border/20 bg-gradient-to-t from-background to-transparent p-4">
         {isPlayingAudio && (
-          <div className="flex items-center justify-center gap-2 mb-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <span className="w-1 h-3 bg-primary rounded-full animate-pulse" />
-              <span className="w-1 h-4 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0.1s' }} />
-              <span className="w-1 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-              <span className="w-1 h-5 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
-              <span className="w-1 h-3 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <div className="flex items-center gap-0.5">
+              {[...Array(5)].map((_, i) => (
+                <span key={i} className={`w-0.5 rounded-full bg-primary animate-pulse`} style={{ height: `${8 + Math.random() * 12}px`, animationDelay: `${i * 0.1}s` }} />
+              ))}
             </div>
-            <span>Speaking...</span>
-            <button onClick={stopAudio} className="ml-2 p-1 rounded hover:bg-muted">
-              <Square className="w-3 h-3" />
+            <span className="text-xs text-muted-foreground">Speaking...</span>
+            <button onClick={stopAudio} className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors">
+              <Square className="w-3 h-3 text-muted-foreground" />
             </button>
           </div>
         )}
 
         {inputMode === 'voice' ? (
-          /* Voice Input */
-          <div className="flex items-center justify-center gap-4">
-            <button
-              onClick={handleVoiceSend}
-              disabled={isLoading}
-              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-                isRecording
-                  ? 'bg-red-500 text-white scale-110 shadow-lg shadow-red-500/30 animate-pulse'
-                  : isLoading
-                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                    : 'bg-primary text-primary-foreground hover:scale-105 shadow-lg'
-              }`}
-            >
-              {isRecording ? <Square className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-            </button>
+          /* Voice Input — cleaner design */
+          <div className="flex flex-col items-center gap-3">
             {isRecording && (
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-red-500/10">
                 <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-red-500 font-mono">{fmtDuration(recordingDuration)}</span>
+                <span className="text-sm font-mono text-red-500">{fmtDuration(recordingDuration)}</span>
               </div>
             )}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleVoiceSend}
+                disabled={isLoading}
+                className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 ${
+                  isRecording
+                    ? 'bg-red-500 text-white shadow-lg shadow-red-500/20 scale-105'
+                    : isLoading
+                      ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                      : `bg-${accent}-500/10 text-${accent}-500 hover:bg-${accent}-500/20 hover:scale-105`
+                }`}
+              >
+                {isRecording ? <Square className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              </button>
+              <span className="text-xs text-muted-foreground">
+                {isRecording ? 'Tap to stop & send' : 'Tap to speak'}
+              </span>
+            </div>
           </div>
         ) : (
-          /* Text Input */
-          <div className="flex items-end gap-2 max-w-3xl mx-auto">
-            <textarea
-              ref={textareaRef}
-              value={textInput}
-              onChange={e => setTextInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type your response..."
-              disabled={isLoading}
-              rows={1}
-              className="flex-1 rounded-xl border bg-background px-4 py-3 text-sm resize-none focus:ring-2 focus:ring-primary/20 outline-none overflow-y-auto transition-[height] duration-100 disabled:opacity-50"
-              style={{ maxHeight: '160px' }}
-            />
+          /* Text Input — modern design */
+          <div className="flex items-end gap-3 max-w-3xl mx-auto">
+            <div className="flex-1 relative">
+              <textarea
+                ref={textareaRef}
+                value={textInput}
+                onChange={e => setTextInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type your response..."
+                disabled={isLoading}
+                rows={1}
+                className="w-full rounded-2xl bg-muted/20 border border-border/20 px-4 py-3 pr-12 text-sm resize-none focus:border-primary/30 focus:ring-1 focus:ring-primary/10 outline-none overflow-y-auto transition-colors disabled:opacity-50"
+                style={{ maxHeight: '140px' }}
+              />
+            </div>
             <button
               onClick={handleTextSend}
               disabled={isLoading || !textInput.trim()}
-              className="p-3 rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
+              className={`shrink-0 h-11 w-11 rounded-full flex items-center justify-center transition-all duration-200 ${
+                isLoading || !textInput.trim()
+                  ? 'bg-muted text-muted-foreground'
+                  : `bg-${accent === 'red' ? 'red' : 'blue'}-500 text-white hover:opacity-90 shadow-md`
+              }`}
             >
-              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           </div>
         )}
-
-        {/* Hint */}
-        <p className="text-center text-xs text-muted-foreground mt-2">
-          {inputMode === 'voice'
-            ? isRecording ? 'Tap to stop recording and send' : 'Tap the mic to speak your answer'
-            : 'Press Enter to send, Shift+Enter for new line'
-          }
-        </p>
       </div>
     </div>
   );

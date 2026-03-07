@@ -56,7 +56,7 @@ const ITEM_ICONS: Record<string, React.ElementType> = {
 const ITEM_COLORS: Record<string, string> = {
   reading: 'bg-gray-500/10 text-gray-500 border-gray-500/20',
   case_study: 'bg-gray-500/10 text-gray-500 border-gray-500/20',
-  practice_questions: 'bg-green-500/10 text-green-500 border-green-500/20',
+  practice_questions: 'bg-green-500/8 text-green-500 border-green-500/15',
   quiz: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
   review: 'bg-pink-500/10 text-pink-500 border-pink-500/20',
   drafting: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
@@ -208,10 +208,10 @@ export default function TutorDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20">
+        <Card className="bg-gradient-to-br from-green-500/5 to-green-500/3 border-green-500/15">
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
                 <CheckCircle2 className="w-5 h-5 text-green-500" />
               </div>
               <div>
@@ -393,7 +393,7 @@ export default function TutorDashboard() {
                   <Card key={item.id} className="bg-muted/30 opacity-70">
                     <CardContent className="pt-3 pb-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
                           <CheckCircle2 className="w-4 h-4 text-green-500" />
                         </div>
                         <div className="flex-1">

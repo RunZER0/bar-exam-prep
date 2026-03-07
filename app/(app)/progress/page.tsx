@@ -585,7 +585,7 @@ function FormatCard({ label, icon, attempts, score, color }: {
       {hasData ? (
         <div>
           <div className="text-2xl font-bold">{score}%</div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">{attempts} attempt{attempts !== 1 ? 's' : ''}</div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">Avg. score · {attempts} attempt{attempts !== 1 ? 's' : ''}</div>
         </div>
       ) : (
         <div>

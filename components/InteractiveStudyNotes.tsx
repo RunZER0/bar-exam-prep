@@ -19,7 +19,7 @@ import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { 
   Sparkles, X, Send, BookOpen, Lightbulb, 
   Loader2, MessageCircle, Save, Check,
-  GraduationCap, FileText, Scale
+  GraduationCap, FileText, Scale, Stamp
 } from 'lucide-react';
 
 // ============================================
@@ -36,10 +36,13 @@ export interface StudySection {
 
 interface InteractiveStudyNotesProps {
   skillName: string;
+  skillId?: string;
   unitName: string;
   sections: StudySection[];
   onClose?: () => void;
   onProceed: () => void;
+  learned?: boolean;
+  cached?: boolean;
 }
 
 // ============================================
@@ -298,11 +301,15 @@ function AIChatPanel({ initialText, skillName, onClose, mode = 'chat' }: AIChatP
 
 export default function InteractiveStudyNotes({
   skillName,
+  skillId,
   unitName,
   sections,
   onClose,
   onProceed,
+  learned: initialLearned,
+  cached,
 }: InteractiveStudyNotesProps) {
+  const { getIdToken } = useAuth();
   const slides = useMemo(
     () => sections.slice(0, Math.max(1, Math.min(sections.length, 10))),
     [sections]
@@ -315,6 +322,8 @@ export default function InteractiveStudyNotes({
   const [aiChatText, setAIChatText] = useState('');
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [notesSaved, setNotesSaved] = useState(false);
+  const [isLearned, setIsLearned] = useState(initialLearned || false);
+  const [stampLoading, setStampLoading] = useState(false);
   const notesRef = useRef<HTMLDivElement>(null);
 
   // Check if notes were already saved
@@ -345,6 +354,25 @@ export default function InteractiveStudyNotes({
     setNotesSaved(true);
     setShowSavePrompt(false);
   }, [unitName, skillName, sections]);
+
+  const handleStampLearned = useCallback(async () => {
+    if (!skillId || stampLoading) return;
+    setStampLoading(true);
+    try {
+      const token = await getIdToken();
+      await fetch('/api/mastery/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ skillId, action: isLearned ? 'unlearn' : 'learn' }),
+      });
+      setIsLearned(!isLearned);
+    } catch (err) {
+      console.error('Stamp error:', err);
+      setIsLearned(!isLearned); // Optimistic toggle
+    } finally {
+      setStampLoading(false);
+    }
+  }, [skillId, isLearned, stampLoading, getIdToken]);
 
   const handleProceedClick = useCallback(() => {
     if (!notesSaved) {
@@ -441,6 +469,27 @@ export default function InteractiveStudyNotes({
                 <h2 className="font-bold text-lg text-foreground">{skillName}</h2>
                 <p className="text-sm text-muted-foreground">{unitName}</p>
               </div>
+              {skillId && (
+                <button
+                  onClick={handleStampLearned}
+                  disabled={stampLoading}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                    isLearned
+                      ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 ring-1 ring-green-300 dark:ring-green-700'
+                      : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary'
+                  }`}
+                  title={isLearned ? 'Marked as learned — click to undo' : 'Mark as learned'}
+                >
+                  {stampLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : isLearned ? (
+                    <Check className="h-3.5 w-3.5" />
+                  ) : (
+                    <Stamp className="h-3.5 w-3.5" />
+                  )}
+                  {isLearned ? 'Learned' : 'Mark Learned'}
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-3">

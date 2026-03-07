@@ -8,7 +8,7 @@ import Image from 'next/image';
 // Rotates every 4 seconds to keep the user entertained
 // ──────────────────────────────────────────────
 
-const FUN_FACTS: { text: string; category: 'fact' | 'quote' | 'trivia' | 'platform' | 'cognition' }[] = [
+const FUN_FACTS: { text: string; category: 'fact' | 'quote' | 'trivia' | 'platform' | 'cognition' | 'joke' }[] = [
   // Famous case quotes
   { text: '"Justice delayed is justice denied." — William E. Gladstone', category: 'quote' },
   { text: '"The law is reason, free from passion." — Aristotle', category: 'quote' },
@@ -20,6 +20,32 @@ const FUN_FACTS: { text: string; category: 'fact' | 'quote' | 'trivia' | 'platfo
   { text: '"He who comes to equity must come with clean hands." — Equity Maxim', category: 'quote' },
   { text: '"An accused person is presumed innocent until proven guilty." — Woolmington v DPP [1935]', category: 'quote' },
   { text: '"The Constitution is the supreme law of Kenya." — Article 2, Constitution of Kenya 2010', category: 'quote' },
+
+  // Legal jokes & puns 😂
+  { text: 'Why did the lawyer bring a ladder to court? Because they wanted to take their case to a higher court! 😂', category: 'joke' },
+  { text: 'What\'s the difference between a lawyer and a herd of buffalo? The lawyer charges more. 🦬', category: 'joke' },
+  { text: 'A man walks into a bar… exam. Just kidding, nobody walks INTO a bar exam willingly. 📚', category: 'joke' },
+  { text: 'Why don\'t lawyers ever go to the beach? Because cats keep trying to bury them in the sand. 🏖️', category: 'joke' },
+  { text: 'I told my friend I was studying tort law. He said, "That sounds delicious." I said, "No, that\'s torte." 🎂', category: 'joke' },
+  { text: 'What do you call a lawyer who doesn\'t chase ambulances? Retired. 🚑', category: 'joke' },
+  { text: 'Why did the judge go to the dentist? To get to the root of the problem. 🦷⚖️', category: 'joke' },
+  { text: 'My study group said I had no precedent for skipping class. I cited "The Case of I Overslept v. My Alarm Clock." ⏰', category: 'joke' },
+  { text: 'How does an attorney sleep? First they lie on one side, then they lie on the other. 😴', category: 'joke' },
+  { text: 'What\'s the difference between a good lawyer and a great lawyer? A good lawyer knows the law. A great lawyer knows the judge. 🤝', category: 'joke' },
+  { text: 'Breaking: Law student discovers "brief" is just a fancy word for "please summarize these 400 pages by tomorrow." 📄', category: 'joke' },
+  { text: 'Why are lawyers bad at math? They always want to argue about the terms. ➕⚖️', category: 'joke' },
+  { text: 'The law of diminishing returns: The more you study, the less you remember the night before the exam. 🧠', category: 'joke' },
+  { text: 'Pro tip: If you can\'t dazzle them with brilliance, baffle them with Latin maxims. Res ipsa loquitur! 🎩', category: 'joke' },
+  { text: 'A criminal\'s best asset is his lie-ability. ⚖️😄', category: 'joke' },
+  { text: 'How many law students does it take to change a lightbulb? "It depends." — Every law professor ever. 💡', category: 'joke' },
+  { text: 'My moot court partner ghosted me. I guess they couldn\'t handle the objection. 👻', category: 'joke' },
+  { text: 'Why do bar exam students make great friends? They\'re always prepared for cross-examination. 🍻', category: 'joke' },
+  { text: 'What\'s a lawyer\'s favorite drink? Subpoena colada. 🍹', category: 'joke' },
+  { text: 'I tried to sue the airline for losing my luggage. I lost my case. ✈️', category: 'joke' },
+  { text: 'Studying for the bar exam is like running a marathon — except the finish line keeps moving and everyone\'s judging you. 🏃‍♂️', category: 'joke' },
+  { text: 'Why did the contract go to therapy? It had too many issues with consideration. 💔', category: 'joke' },
+  { text: 'My professor said "this will be on the exam." That was 3 hours ago. He\'s still talking. 😅', category: 'joke' },
+  { text: 'You know you\'re a law student when you argue with the waiter about the "terms and conditions" of the menu. 🍽️', category: 'joke' },
 
   // Exciting legal facts
   { text: 'Kenya\'s Constitution of 2010 is one of the most progressive in the world, with a detailed Bill of Rights spanning 45 articles.', category: 'fact' },
@@ -71,6 +97,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   trivia: '💡 Fun Trivia',
   platform: '🎯 Ynai Tip',
   cognition: '🧠 Study Science',
+  joke: '😂 Legal Humor',
 };
 
 interface EngagingLoaderProps {

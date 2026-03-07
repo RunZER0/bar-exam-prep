@@ -254,9 +254,10 @@ IMPORTANT: Only use real, verifiable Kenyan cases and statutes. If you don't kno
     // Validate the response
     const guardrails = await validateResponse(prompt, content, 'drafting');
 
-    // Filter if high risk of hallucination or unreliable
-    const filtered = guardrails.isHallucination || 
-                    (!guardrails.isReliable && guardrails.confidence < 60);
+    // For drafting guidance, only filter if BOTH hallucinated AND very low confidence.
+    // Drafting prompts often trigger false-positive hallucination flags because the
+    // auditor can't independently verify every procedural detail.
+    const filtered = guardrails.isHallucination && guardrails.confidence < 30;
 
     if (filtered) {
       return {

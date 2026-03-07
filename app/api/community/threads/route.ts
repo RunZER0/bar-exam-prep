@@ -19,7 +19,7 @@ async function handleGet(req: NextRequest, user: AuthUser) {
 
   const categoryFilter = category !== 'all' ? `AND t.category = '${category}'` : '';
 
-  const threads = await sql`
+  const rawThreads = await sql`
     SELECT t.*, 
            u.display_name as author_name, 
            u.photo_url as author_photo,
@@ -35,6 +35,26 @@ async function handleGet(req: NextRequest, user: AuthUser) {
       t.created_at DESC
     LIMIT ${limit} OFFSET ${offset}
   `;
+
+  // Map snake_case DB columns to camelCase for the client
+  const threads = rawThreads.map((t: any) => ({
+    id: t.id,
+    authorId: t.author_id,
+    authorName: t.author_username || t.author_name || 'Anonymous',
+    authorPhoto: t.author_photo,
+    title: t.title,
+    content: t.content,
+    category: t.category,
+    tags: t.tags || [],
+    upvotes: t.upvotes || 0,
+    downvotes: t.downvotes || 0,
+    replyCount: t.reply_count || 0,
+    isPinned: t.is_pinned || false,
+    isLocked: t.is_locked || false,
+    isAgentPost: t.is_agent_post || false,
+    userVote: t.user_vote || null,
+    createdAt: t.created_at,
+  }));
 
   return NextResponse.json({ threads, page, hasMore: threads.length === limit });
 }
@@ -69,7 +89,8 @@ async function handlePost(req: NextRequest, user: AuthUser) {
 // PATCH - Vote on a thread
 async function handlePatch(req: NextRequest, user: AuthUser) {
   const body = await req.json();
-  const { threadId, voteType } = body; // voteType: 'up' | 'down' | 'none'
+  const { threadId, voteType, vote } = body; // Support both 'voteType' and 'vote' from client
+  const effectiveVote = voteType || vote; // Client sends 'vote', normalize
 
   if (!threadId) {
     return NextResponse.json({ error: 'Thread ID required' }, { status: 400 });
@@ -80,7 +101,7 @@ async function handlePatch(req: NextRequest, user: AuthUser) {
     SELECT id, vote_type FROM thread_votes WHERE user_id = ${user.id} AND thread_id = ${threadId}
   `;
 
-  if (voteType === 'none' && existing) {
+  if (effectiveVote === 'none' && existing) {
     // Remove vote
     await sql`DELETE FROM thread_votes WHERE id = ${existing.id}`;
     const col = existing.vote_type === 'up' ? 'upvotes' : 'downvotes';
@@ -90,20 +111,20 @@ async function handlePatch(req: NextRequest, user: AuthUser) {
       await sql`UPDATE community_threads SET downvotes = GREATEST(downvotes - 1, 0) WHERE id = ${threadId}`;
     }
   } else if (existing) {
-    if (existing.vote_type === voteType) {
+    if (existing.vote_type === effectiveVote) {
       return NextResponse.json({ ok: true }); // Already voted this way
     }
     // Change vote direction
-    await sql`UPDATE thread_votes SET vote_type = ${voteType} WHERE id = ${existing.id}`;
-    if (voteType === 'up') {
+    await sql`UPDATE thread_votes SET vote_type = ${effectiveVote} WHERE id = ${existing.id}`;
+    if (effectiveVote === 'up') {
       await sql`UPDATE community_threads SET upvotes = upvotes + 1, downvotes = GREATEST(downvotes - 1, 0) WHERE id = ${threadId}`;
     } else {
       await sql`UPDATE community_threads SET downvotes = downvotes + 1, upvotes = GREATEST(upvotes - 1, 0) WHERE id = ${threadId}`;
     }
-  } else if (voteType !== 'none') {
+  } else if (effectiveVote !== 'none') {
     // New vote
-    await sql`INSERT INTO thread_votes (user_id, thread_id, vote_type) VALUES (${user.id}, ${threadId}, ${voteType})`;
-    if (voteType === 'up') {
+    await sql`INSERT INTO thread_votes (user_id, thread_id, vote_type) VALUES (${user.id}, ${threadId}, ${effectiveVote})`;
+    if (effectiveVote === 'up') {
       await sql`UPDATE community_threads SET upvotes = upvotes + 1 WHERE id = ${threadId}`;
     } else {
       await sql`UPDATE community_threads SET downvotes = downvotes + 1 WHERE id = ${threadId}`;

@@ -429,7 +429,7 @@ function FormatBar({
     <div>
       <div className="flex justify-between text-sm mb-1">
         <span>{label}</span>
-        <span className="font-medium">{score}%</span>
+        <span className="font-medium">{score}% <span className="text-[10px] text-muted-foreground font-normal">avg</span></span>
       </div>
       <div className="w-full bg-muted rounded-full h-2">
         <div 

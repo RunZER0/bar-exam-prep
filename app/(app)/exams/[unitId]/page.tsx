@@ -117,6 +117,7 @@ export default function ExamSessionPage() {
   const [usedPreload, setUsedPreload] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [slideDirection, setSlideDirection] = useState<'right' | 'left'>('right');
+  const [draftSaved, setDraftSaved] = useState(false);
   const autoSubmitRef = useRef(false);
   const loadedRef = useRef(false);
 
@@ -125,6 +126,39 @@ export default function ExamSessionPage() {
     setImmersive(true);
     return () => setImmersive(false);
   }, [setImmersive]);
+
+  // Auto-save answers to localStorage every time they change
+  const draftKey = `exam-draft-${unitId}-${paperSize}`;
+  useEffect(() => {
+    if (phase !== 'exam' || Object.keys(answers).length === 0) return;
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({ answers, currentIndex, timeLeft, savedAt: Date.now() }));
+      setDraftSaved(true);
+      const t = setTimeout(() => setDraftSaved(false), 1500);
+      return () => clearTimeout(t);
+    } catch {}
+  }, [answers, currentIndex, phase]);
+
+  // Restore saved draft on load
+  useEffect(() => {
+    if (phase !== 'exam' || Object.keys(answers).length > 0) return;
+    try {
+      const saved = localStorage.getItem(draftKey);
+      if (saved) {
+        const data = JSON.parse(saved);
+        // Only restore if saved within last 4 hours
+        if (data.savedAt && Date.now() - data.savedAt < 4 * 3600000) {
+          if (data.answers && Object.keys(data.answers).length > 0) {
+            setAnswers(data.answers);
+            if (typeof data.currentIndex === 'number') setCurrentIndex(data.currentIndex);
+            if (typeof data.timeLeft === 'number' && data.timeLeft > 0) setTimeLeft(data.timeLeft);
+          }
+        } else {
+          localStorage.removeItem(draftKey);
+        }
+      }
+    } catch {}
+  }, [phase]);
 
   // Generate exam questions - Try preloaded first, then generate
   useEffect(() => {
@@ -345,6 +379,7 @@ Respond with ONLY valid JSON:
       if (!res.ok) throw new Error('Grading failed');
 
       const data = await res.json();
+      let examPercentage = 0;
       try {
         let content = data.response || '';
         content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -356,6 +391,7 @@ Respond with ONLY valid JSON:
         }
         const graded = JSON.parse(content);
         graded.grade = getGrade(graded.percentage || 0);
+        examPercentage = graded.percentage || 0;
         setResult(graded);
       } catch {
         setResult({
@@ -376,9 +412,30 @@ Respond with ONLY valid JSON:
       }
       setPhase('results');
       
+      // Clear saved draft on successful submission
+      try { localStorage.removeItem(draftKey); } catch {}
+      
       // Notify preloading service about exam completion
       // This triggers preloading of next exam with updated user progress
       onExamComplete(unitId, examType, paperSize, result || undefined);
+
+      // Record exam result to progress tracking
+      try {
+        const token2 = await getIdToken();
+        await fetch('/api/exams/record', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token2}` },
+          body: JSON.stringify({
+            unitId,
+            examType,
+            paperSize,
+            score: examPercentage,
+            totalMarks: configMarks,
+            questionsAnswered: answeredCount,
+            totalQuestions: questions.length,
+          }),
+        }).catch(() => {}); // silent fail — don't block UI
+      } catch {} // Ignore recording errors
     } catch {
       setError('Failed to grade exam. Please try again.');
       setPhase('exam');
@@ -772,14 +829,37 @@ Respond with ONLY valid JSON:
         </div>
       </div>
 
-      {/* Main content — CLE Drafting Format */}
+      {/* Main content — CLE Drafting Format: 1/3 question | 2/3 writing */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Question sidebar */}
+          {/* Question sidebar — retractable, shows full current question */}
           <div className={`border-r border-border/20 bg-muted/10 flex flex-col transition-all duration-300 shrink-0 ${
-            sidebarHidden ? 'w-0 overflow-hidden' : 'w-72 md:w-80'
+            sidebarHidden ? 'w-0 overflow-hidden' : 'w-1/3 min-w-[280px] max-w-[420px]'
           }`}>
-            <div className="p-4 border-b border-border/20">
-              <p className="text-xs font-medium text-muted-foreground">Questions</p>
+            {/* Current question — full display */}
+            <div className="p-5 border-b border-border/20 bg-gradient-to-b from-primary/5 to-transparent">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-primary">
+                  Question {currentIndex + 1} of {questions.length}
+                </span>
+                <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                  {currentQ?.marks} marks
+                </span>
+              </div>
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                <p className="text-sm leading-relaxed font-medium text-foreground">
+                  {currentQ?.question}
+                </p>
+              </div>
+              {currentQ?.topic && (
+                <span className="inline-block mt-3 text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                  {currentQ.topic}
+                </span>
+              )}
+            </div>
+
+            {/* Question navigator */}
+            <div className="p-3 border-b border-border/20">
+              <p className="text-[10px] font-medium text-muted-foreground mb-2 px-1">All Questions</p>
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
               {questions.map((q, i) => (
@@ -802,7 +882,7 @@ Respond with ONLY valid JSON:
                     }`}>
                       {i + 1}
                     </span>
-                    <span className="truncate">{q.question.slice(0, 60)}…</span>
+                    <span className="truncate text-xs">{q.question.slice(0, 50)}…</span>
                   </div>
                   <div className="flex items-center gap-2 mt-1 ml-8">
                     <span className="text-[10px] text-muted-foreground">{q.marks} marks</span>
@@ -815,26 +895,23 @@ Respond with ONLY valid JSON:
             </div>
           </div>
 
-          {/* Main writing area */}
+          {/* Main writing/drafting area — takes 2/3 width */}
           <div className="flex-1 flex flex-col min-w-0">
             <div key={currentIndex} className="flex-1 flex flex-col overflow-hidden animate-in fade-in duration-200">
-              {/* Question display */}
-              <div className="p-6 border-b border-border/20 shrink-0">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Question {currentIndex + 1} of {questions.length}
-                  </span>
-                  <span className="text-xs font-medium text-primary">{currentQ?.marks} marks</span>
+              {/* Compact question reference (visible when sidebar hidden) */}
+              {sidebarHidden && (
+                <div className="p-4 border-b border-border/20 shrink-0 bg-muted/20">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Question {currentIndex + 1} of {questions.length}
+                    </span>
+                    <span className="text-xs font-medium text-primary">{currentQ?.marks} marks</span>
+                  </div>
+                  <h2 className="text-sm font-semibold leading-relaxed">
+                    {currentQ?.question}
+                  </h2>
                 </div>
-                <h2 className="text-base md:text-lg font-semibold leading-relaxed">
-                  {currentQ?.question}
-                </h2>
-                {currentQ?.topic && (
-                  <span className="inline-block mt-2 text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                    {currentQ.topic}
-                  </span>
-                )}
-              </div>
+              )}
 
               {/* Writing area */}
               <div className="flex-1 p-6 overflow-y-auto">
@@ -852,6 +929,11 @@ Respond with ONLY valid JSON:
                   <span>IRAC: Issue, Rule, Application, Conclusion</span>
                   <span className="text-muted-foreground/40">|</span>
                   <span>{(answers[currentQ?.id] || '').length} characters</span>
+                  {draftSaved && (
+                    <span className="flex items-center gap-1 text-emerald-600 animate-in fade-in duration-300">
+                      <CheckCircle2 className="h-3 w-3" /> Draft saved
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <button

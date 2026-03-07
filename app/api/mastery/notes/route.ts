@@ -6,9 +6,12 @@ import { verifyIdToken } from '@/lib/firebase/admin';
 import OpenAI from 'openai';
 import { MENTOR_MODEL, getOpenAIKey } from '@/lib/ai/model-config';
 import { searchKnowledgeBaseSemantic } from '@/lib/ai/embedding-service';
+import { neon } from '@neondatabase/serverless';
 
+const rawSql = neon(process.env.DATABASE_URL!);
 const GROUNDED_MODEL = MENTOR_MODEL;
 const AI_NOTES_TIMEOUT_MS = Number(process.env.NOTES_AI_TIMEOUT_MS || 15000);
+const CACHE_TTL_DAYS = 7; // Cache notes for 7 days
 const openai = new OpenAI({ apiKey: getOpenAIKey() });
 
 // Unit names for display
@@ -181,7 +184,8 @@ export async function GET(req: NextRequest) {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    await verifyIdToken(token);
+    const decodedToken = await verifyIdToken(token);
+    const userId = decodedToken.uid;
 
     const skillId = req.nextUrl.searchParams.get('skillId');
     if (!skillId) {
@@ -199,11 +203,60 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Skill not found' }, { status: 404 });
     }
 
+    const skillName: string = (skill as any).name || (skill as any).title || 'This skill';
+
+    // === SHARED CACHE CHECK ===
+    // Auto-create cache table if not exists
+    await rawSql`
+      CREATE TABLE IF NOT EXISTS cached_skill_notes (
+        skill_id TEXT PRIMARY KEY,
+        skill_name TEXT NOT NULL,
+        unit_id TEXT NOT NULL,
+        sections JSONB NOT NULL DEFAULT '[]',
+        authorities JSONB NOT NULL DEFAULT '[]',
+        generated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `;
+    await rawSql`
+      CREATE TABLE IF NOT EXISTS user_note_stamps (
+        user_id TEXT NOT NULL,
+        skill_id TEXT NOT NULL,
+        learned_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        PRIMARY KEY (user_id, skill_id)
+      )
+    `;
+
+    // Check for cached notes (within 7 days)
+    const [cached] = await rawSql`
+      SELECT * FROM cached_skill_notes 
+      WHERE skill_id = ${skillId} 
+        AND generated_at > NOW() - INTERVAL '7 days'
+    `;
+
+    if (cached) {
+      // Check if user has "learned" stamp
+      const [stamp] = await rawSql`
+        SELECT learned_at FROM user_note_stamps WHERE user_id = ${userId} AND skill_id = ${skillId}
+      `;
+
+      console.log(`[Notes] Cache hit for skill: ${skillId}`);
+      return NextResponse.json({
+        skillId: cached.skill_id,
+        skillName: cached.skill_name,
+        unitId: cached.unit_id,
+        sections: cached.sections,
+        authorities: cached.authorities,
+        cached: true,
+        learned: stamp ? true : false,
+        learnedAt: stamp?.learned_at || null,
+      });
+    }
+
+    // === END CACHE CHECK — Generate fresh notes ===
+
     const sections: NotesSection[] = [];
     const authorities: NotesResponse['authorities'] = [];
     const authorityKeys = new Set<string>();
-
-    const skillName: string = (skill as any).name || (skill as any).title || 'This skill';
 
     // 2. Pull outline topics linked to this skill (used as context for LLM-generated notes)
     const outlineLinks = await db
@@ -366,13 +419,35 @@ Do not include any extra keys or prose outside JSON.`,
       });
     }
 
-    return NextResponse.json({
+    // === CACHE THE GENERATED NOTES (shared across all users) ===
+    const notesPayload: NotesResponse = {
       skillId: skill.id,
       skillName,
       unitId: skill.unitId,
       sections,
       authorities,
-    } satisfies NotesResponse);
+    };
+
+    try {
+      await rawSql`
+        INSERT INTO cached_skill_notes (skill_id, skill_name, unit_id, sections, authorities, generated_at)
+        VALUES (${skill.id}, ${skillName}, ${skill.unitId}, ${JSON.stringify(sections)}::jsonb, ${JSON.stringify(authorities)}::jsonb, NOW())
+        ON CONFLICT (skill_id) DO UPDATE SET
+          sections = EXCLUDED.sections,
+          authorities = EXCLUDED.authorities,
+          generated_at = NOW()
+      `;
+      console.log(`[Notes] Cached notes for skill: ${skill.id}`);
+    } catch (cacheErr) {
+      console.warn('[Notes] Cache write failed (non-critical):', cacheErr);
+    }
+
+    return NextResponse.json({
+      ...notesPayload,
+      cached: false,
+      learned: false,
+      learnedAt: null,
+    });
 
   } catch (error) {
     console.error('Error fetching skill notes:', error);
@@ -380,5 +455,51 @@ Do not include any extra keys or prose outside JSON.`,
       { error: 'Failed to fetch notes' },
       { status: 500 }
     );
+  }
+}
+
+// POST - Mark a skill's notes as "learned" (stamp)
+export async function POST(req: NextRequest) {
+  try {
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await verifyIdToken(token);
+    const userId = decodedToken.uid;
+
+    const { skillId, action } = await req.json();
+    if (!skillId) {
+      return NextResponse.json({ error: 'skillId required' }, { status: 400 });
+    }
+
+    // Auto-create table if needed
+    await rawSql`
+      CREATE TABLE IF NOT EXISTS user_note_stamps (
+        user_id TEXT NOT NULL,
+        skill_id TEXT NOT NULL,
+        learned_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        PRIMARY KEY (user_id, skill_id)
+      )
+    `;
+
+    if (action === 'unlearn') {
+      await rawSql`DELETE FROM user_note_stamps WHERE user_id = ${userId} AND skill_id = ${skillId}`;
+      return NextResponse.json({ learned: false });
+    }
+
+    // Default: mark as learned
+    await rawSql`
+      INSERT INTO user_note_stamps (user_id, skill_id, learned_at)
+      VALUES (${userId}, ${skillId}, NOW())
+      ON CONFLICT (user_id, skill_id) DO UPDATE SET learned_at = NOW()
+    `;
+
+    return NextResponse.json({ learned: true, learnedAt: new Date().toISOString() });
+  } catch (error) {
+    console.error('Error stamping notes:', error);
+    return NextResponse.json({ error: 'Failed to stamp notes' }, { status: 500 });
   }
 }

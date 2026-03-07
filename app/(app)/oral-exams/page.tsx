@@ -778,14 +778,98 @@ export default function OralExamsPage() {
       .replace(/`(.*?)`/g, '$1')
       .replace(/---/g, '');
 
-    const handleSaveReport = () => {
-      const blob = new Blob([cleanContent], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `oral-exam-report-${new Date().toISOString().split('T')[0]}.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
+    const handleSaveReport = async () => {
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      const usable = pageW - margin * 2;
+      let y = margin;
+
+      const addHeader = () => {
+        // Ynai branding header
+        doc.setFillColor(24, 24, 27); // zinc-900
+        doc.rect(0, 0, pageW, 28, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(18);
+        doc.setTextColor(255, 255, 255);
+        doc.text('YNAI', margin, 16);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(180, 180, 180);
+        doc.text('Your Next-Gen AI Legal Tutor', margin, 23);
+        // Right side date
+        doc.setFontSize(8);
+        doc.setTextColor(180, 180, 180);
+        doc.text(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), pageW - margin, 16, { align: 'right' });
+        y = 38;
+      };
+
+      const addFooter = (pageNum: number) => {
+        doc.setFillColor(245, 245, 245);
+        doc.rect(0, pageH - 14, pageW, 14, 'F');
+        doc.setFontSize(7);
+        doc.setTextColor(140, 140, 140);
+        doc.text('Ynai — Empowering Future Advocates', margin, pageH - 6);
+        doc.text(`Page ${pageNum}`, pageW - margin, pageH - 6, { align: 'right' });
+      };
+
+      addHeader();
+
+      // Title
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.setTextColor(24, 24, 27);
+      doc.text('Oral Examination Report', margin, y);
+      y += 8;
+
+      // Score badge
+      if (summary.score !== null) {
+        doc.setFillColor(240, 253, 244);
+        doc.roundedRect(margin, y, 50, 12, 3, 3, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(22, 101, 52);
+        doc.text(`${summary.score}/100`, margin + 25, y + 8.5, { align: 'center' });
+        y += 18;
+      }
+
+      // Meta info
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      const unit = selectedUnit ? ATP_UNITS.find(u => u.id === selectedUnit) : null;
+      doc.text(`Mode: ${mode.charAt(0).toUpperCase() + mode.slice(1)} | Type: ${examType === 'devils-advocate' ? "Devil's Advocate" : 'Oral Panel'}${unit ? ` | Unit: ${unit.name}` : ''}`, margin, y);
+      y += 4;
+      doc.text(`Exchanges: ${messages.length} | Your Responses: ${messages.filter(m => m.role === 'user').length}`, margin, y);
+      y += 8;
+
+      // Divider
+      doc.setDrawColor(230, 230, 230);
+      doc.line(margin, y, pageW - margin, y);
+      y += 8;
+
+      // Content body
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(40, 40, 40);
+      let pageNum = 1;
+
+      const lines = doc.splitTextToSize(cleanContent, usable);
+      for (const line of lines) {
+        if (y > pageH - 24) {
+          addFooter(pageNum);
+          doc.addPage();
+          pageNum++;
+          addHeader();
+        }
+        doc.text(line, margin, y);
+        y += 5;
+      }
+
+      addFooter(pageNum);
+      doc.save(`ynai-oral-report-${new Date().toISOString().split('T')[0]}.pdf`);
     };
 
     return (

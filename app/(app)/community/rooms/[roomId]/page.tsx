@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 import Link from 'next/link';
 import {
@@ -33,6 +32,9 @@ import {
   ThumbsUp,
   MessageSquare,
   Star,
+  Paperclip,
+  Mic,
+  Smile,
 } from 'lucide-react';
 
 interface Message {
@@ -386,39 +388,66 @@ export default function RoomDetailPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Message Input */}
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-            <div className="flex items-end gap-3">
-              <div className="flex-1 relative">
-                <Textarea
-                  placeholder="Share your thoughts..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                  rows={1}
-                  className="resize-none pr-20"
-                />
-                <div className="absolute right-2 bottom-2 flex items-center gap-1">
-                  <button className="p-1.5 hover:bg-muted rounded-lg transition-colors">
-                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                  <button className="p-1.5 hover:bg-muted rounded-lg transition-colors">
-                    <LinkIcon className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </div>
+          {/* Message Input — Unified Bar */}
+          <div className="p-3 border-t border-border/30 bg-background">
+            <div className="flex items-end rounded-2xl border border-border/50 bg-muted/30 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+              {/* Left action buttons */}
+              <div className="flex items-center gap-0.5 pl-2 pb-2.5">
+                <button
+                  className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  title="Attach image"
+                >
+                  <ImageIcon className="h-4 w-4" />
+                </button>
+                <button
+                  className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  title="Attach file"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </button>
+                <button
+                  className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  title="Voice message"
+                >
+                  <Mic className="h-4 w-4" />
+                </button>
               </div>
-              <Button 
-                onClick={handleSendMessage}
-                disabled={!newMessage.trim()}
-                className="h-10 w-10 p-0"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
+
+              {/* Textarea */}
+              <textarea
+                placeholder="Share your thoughts... (Shift+Enter for new line)"
+                value={newMessage}
+                onChange={(e) => {
+                  setNewMessage(e.target.value);
+                  const el = e.target;
+                  el.style.height = 'auto';
+                  el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                rows={1}
+                className="flex-1 resize-none bg-transparent border-0 px-3 py-3 text-sm focus:outline-none focus:ring-0 placeholder:text-muted-foreground/60 overflow-y-auto"
+                style={{ minHeight: '44px', maxHeight: '140px' }}
+              />
+
+              {/* Send button */}
+              <div className="pr-2 pb-2.5">
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!newMessage.trim()}
+                  className={`p-2 rounded-xl transition-all ${
+                    newMessage.trim()
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                      : 'bg-muted-foreground/15 text-muted-foreground/40 cursor-not-allowed'
+                  }`}
+                >
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

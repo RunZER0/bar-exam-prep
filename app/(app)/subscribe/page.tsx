@@ -99,6 +99,17 @@ export default function SubscribePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Reset "processing" if the user returns via browser back-button (bfcache)
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        setProcessing(false);
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
   const verifyPayment = async (reference: string) => {
     setProcessing(true);
     setError(null);
@@ -139,6 +150,8 @@ export default function SubscribePage() {
       if (data.authorization_url) {
         // Redirect to Paystack checkout
         window.location.href = data.authorization_url;
+        // Safety: if redirect doesn't navigate away within 10s, unblock the UI
+        setTimeout(() => setProcessing(false), 10000);
       } else {
         setError(data.error || 'Failed to initialize payment. Please try again.');
         setProcessing(false);

@@ -10,6 +10,7 @@ import {
   CheckCircle, AlertCircle, Clock, Sparkles, Download, Timer,
 } from 'lucide-react';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
+import TrialLimitReached from '@/components/TrialLimitReached';
 
 /* ================================================================
    TYPES
@@ -76,6 +77,7 @@ export default function OralExamsPage() {
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [textInput, setTextInput] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [trialLimitFeature, setTrialLimitFeature] = useState<'oral_devil' | 'oral_exam' | null>(null);
 
   // ---- Voice state ----
   const [isRecording, setIsRecording] = useState(false);
@@ -439,7 +441,7 @@ export default function OralExamsPage() {
           if (response.status === 403) {
             const errData = await response.json();
             if (errData.error === 'FREE_TRIAL_LIMIT') {
-              setError(errData.message);
+              setTrialLimitFeature(examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam');
               setIsStreaming(false);
               return;
             }
@@ -582,7 +584,7 @@ export default function OralExamsPage() {
 
       // Check for subscription limit
       if (data.error === 'FREE_TRIAL_LIMIT') {
-        setError(data.message);
+        setTrialLimitFeature(examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam');
         setPhase('setup');
         await stopSessionRecording();
         return;
@@ -607,7 +609,7 @@ export default function OralExamsPage() {
       console.error('Start error:', err);
       // Handle 403 from authFetchJSON
       if (err.message?.includes('403') || err.message?.includes('FREE_TRIAL_LIMIT')) {
-        setError('Your free trial session limit has been reached. Subscribe for unlimited access.');
+        setTrialLimitFeature(examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam');
         setPhase('setup');
       } else {
         setError('Failed to start session. Please try again.');
@@ -1485,6 +1487,14 @@ export default function OralExamsPage() {
           </div>
         )}
       </div>
+
+      {/* Trial limit modal */}
+      {trialLimitFeature && (
+        <TrialLimitReached
+          feature={trialLimitFeature}
+          onDismiss={() => setTrialLimitFeature(null)}
+        />
+      )}
     </div>
   );
 }

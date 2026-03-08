@@ -9,6 +9,7 @@ import { getDocumentById } from '@/lib/constants/legal-content';
 import { Button } from '@/components/ui/button';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import EngagingLoader from '@/components/EngagingLoader';
+import TrialLimitReached from '@/components/TrialLimitReached';
 import {
   ArrowLeft, FileText, PenLine, GraduationCap, Send, Loader2,
   Check, ChevronRight, ChevronLeft, Timer, TimerOff, RotateCcw,
@@ -76,6 +77,7 @@ export default function DraftingDocumentPage() {
   const docId = params.documentId as string;
   const doc = getDocumentById(docId);
   const [mode, setMode] = useState<PageMode>(null);
+  const [showTrialLimit, setShowTrialLimit] = useState(false);
 
   // Enter immersive when a mode is active, exit on unmount or back
   useEffect(() => {
@@ -142,9 +144,19 @@ export default function DraftingDocumentPage() {
   }
 
   if (mode === 'learn') {
-    return <LearnModePanel doc={doc} onBack={() => setMode(null)} onPractice={() => setMode('practice')} getIdToken={getIdToken} />;
+    return (
+      <>
+        <LearnModePanel doc={doc} onBack={() => setMode(null)} onPractice={() => setMode('practice')} getIdToken={getIdToken} onTrialLimit={() => setShowTrialLimit(true)} />
+        {showTrialLimit && <TrialLimitReached feature="drafting" onDismiss={() => { setShowTrialLimit(false); setMode(null); }} />}
+      </>
+    );
   }
-  return <PracticeModePanel doc={doc} onBack={() => setMode(null)} getIdToken={getIdToken} />;
+  return (
+    <>
+      <PracticeModePanel doc={doc} onBack={() => setMode(null)} getIdToken={getIdToken} onTrialLimit={() => setShowTrialLimit(true)} />
+      {showTrialLimit && <TrialLimitReached feature="drafting" onDismiss={() => { setShowTrialLimit(false); setMode(null); }} />}
+    </>
+  );
 }
 
 /* ====== LEARN MODE ====== */
@@ -154,11 +166,13 @@ function LearnModePanel({
   onBack,
   onPractice,
   getIdToken,
+  onTrialLimit,
 }: {
   doc: { id: string; name: string; description: string; category: string };
   onBack: () => void;
   onPractice: () => void;
   getIdToken: () => Promise<string | null>;
+  onTrialLimit: () => void;
 }) {
   const [sections, setSections] = useState<LearnSection[]>([]);
   const [idx, setIdx] = useState(0);
@@ -213,7 +227,13 @@ function LearnModePanel({
             context: { documentType: doc.name, mode: 'learn-generate', category: doc.category },
           }),
         });
-        if (!res.ok) throw new Error('fetch failed');
+        if (!res.ok) {
+          if (res.status === 403) {
+            const errData = await res.json();
+            if (errData.error === 'FREE_TRIAL_LIMIT') { onTrialLimit(); return; }
+          }
+          throw new Error('fetch failed');
+        }
         const data = await res.json();
         if (cancelled) return;
         let parsed: LearnSection[];
@@ -477,10 +497,12 @@ function PracticeModePanel({
   doc,
   onBack,
   getIdToken,
+  onTrialLimit,
 }: {
   doc: { id: string; name: string; description: string; category: string };
   onBack: () => void;
   getIdToken: () => Promise<string | null>;
+  onTrialLimit: () => void;
 }) {
   const [timing, setTiming] = useState<TimingChoice | null>(null);
   const [scenario, setScenario] = useState<string | null>(null);
@@ -553,6 +575,13 @@ function PracticeModePanel({
           context: { documentType: doc.name, mode: 'scenario-generate' },
         }),
       });
+      if (!res.ok) {
+        if (res.status === 403) {
+          const errData = await res.json();
+          if (errData.error === 'FREE_TRIAL_LIMIT') { onTrialLimit(); return; }
+        }
+        throw new Error('fetch failed');
+      }
       const data = await res.json();
       // Strip any leftover markdown formatting from AI
       let cleanScenario = data.response

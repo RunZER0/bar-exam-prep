@@ -61,6 +61,7 @@ export default function MasteryPage() {
     const { getIdToken, user } = useAuth();
     const [queueData, setQueueData] = useState<DailyQueue | null>(null);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<TabId>('plan');
     const [showFullList, setShowFullList] = useState(false);
     
@@ -97,6 +98,7 @@ export default function MasteryPage() {
     // Invalidates cache if the cached date doesn't match today (EAT)
     const fetchQueue = useCallback(async (skipCache = false) => {
         try {
+            setFetchError(null);
             const today = getEATToday();
             
             // Check prefetch cache first — but invalidate if stale (different day)
@@ -117,7 +119,10 @@ export default function MasteryPage() {
 
             setLoading(true);
             const token = await getIdToken();
-            if (!token) return;
+            if (!token) {
+                setFetchError('Could not authenticate. Please sign out and sign in again.');
+                return;
+            }
             
             const res = await fetch('/api/mastery/plan', {
                 headers: { Authorization: `Bearer ${token}` }
@@ -127,9 +132,13 @@ export default function MasteryPage() {
                 setQueueData(data);
                 // Cache for future navigations
                 setCachedData('mastery:plan', data, 10 * 60 * 1000);
+            } else {
+                console.error(`[MasteryHub] API returned ${res.status}`);
+                setFetchError('Could not load your study plan. Tap retry to try again.');
             }
         } catch (e) {
             console.error("Failed to load queue", e);
+            setFetchError('Network error — check your connection and tap retry.');
         } finally {
             setLoading(false);
         }
@@ -430,8 +439,25 @@ export default function MasteryPage() {
 
                         {!activePractice && (
                             <>
-                                {/* Task Queue - Clean list */}
-                                {(!queueData?.queue || queueData.queue.length === 0) ? (
+                                {/* Error state — API failed, don't lie about being "done" */}
+                                {fetchError ? (
+                                    <div className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 p-8 text-center">
+                                        <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mx-auto mb-3">
+                                            <RotateCcw className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                                        </div>
+                                        <h3 className="font-semibold mb-1 text-sm">Couldn&apos;t load your plan</h3>
+                                        <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-4">
+                                            {fetchError}
+                                        </p>
+                                        <button
+                                            onClick={() => fetchQueue(true)}
+                                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                                        >
+                                            <RotateCcw className="h-4 w-4" />
+                                            Retry
+                                        </button>
+                                    </div>
+                                ) : (!queueData?.queue || queueData.queue.length === 0) ? (
                                     <div className="rounded-xl border border-border/50 bg-card p-8 text-center">
                                         <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
                                             <CheckCircle2 className="h-6 w-6 text-emerald-500" />

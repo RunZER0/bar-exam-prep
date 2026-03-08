@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import InteractiveStudyNotes, { StudySection } from "@/components/InteractiveStudyNotes";
-import EngagingLoader from "@/components/EngagingLoader";
-import {
+import EngagingLoader from "@/components/EngagingLoader";import AiThinkingIndicator from '@/components/AiThinkingIndicator';import {
   Loader2,
   CheckCircle,
   ArrowRight,
@@ -543,12 +542,7 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
         )}
 
         {phase === "grading" && (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-primary" />
-              <p className="text-sm text-muted-foreground">AI is grading your response...</p>
-            </div>
-          </div>
+          <AiThinkingIndicator variant="card" messageSet="grading" />
         )}
 
         {phase === "feedback" && result && (

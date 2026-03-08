@@ -8,6 +8,7 @@ import { useSidebar } from '@/contexts/SidebarContext';
 import { getUnitById } from '@/lib/constants/legal-content';
 import { usePreloading } from '@/lib/services/preloading';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import AiThinkingIndicator from '@/components/AiThinkingIndicator';
 import {
   ArrowLeft, ArrowRight, Clock, CheckCircle2, XCircle, Loader2, BarChart3,
   RotateCcw, BookOpen, Lightbulb, ChevronDown, ChevronUp, Trophy, Target,
@@ -492,18 +493,10 @@ Respond with ONLY valid JSON:
   if (phase === 'submitting') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="relative">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Brain className="h-5 w-5 text-primary animate-pulse" />
-          </div>
-        </div>
-        <div className="text-center">
-          <p className="font-medium text-lg">AI is grading your exam…</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            {examType === 'cle' && 'Analyzing your answers using detailed rubric…'}
-          </p>
-        </div>
+        <AiThinkingIndicator variant="card" messageSet="grading" />
+        <p className="text-sm text-muted-foreground">
+          {examType === 'cle' && 'Analyzing your answers using detailed rubric…'}
+        </p>
       </div>
     );
   }

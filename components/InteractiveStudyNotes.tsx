@@ -16,6 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import AiThinkingIndicator from '@/components/AiThinkingIndicator';
 import { 
   Sparkles, X, Send, BookOpen, Lightbulb, 
   Loader2, MessageCircle, Save, Check,
@@ -252,14 +253,7 @@ function AIChatPanel({ initialText, skillName, onClose, mode = 'chat' }: AIChatP
             </div>
           ))}
           {loading && (
-            <div className="flex justify-start">
-              <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  <span className="text-sm text-muted-foreground">Thinking...</span>
-                </div>
-              </div>
-            </div>
+            <AiThinkingIndicator variant="inline" messageSet="thinking" />
           )}
           <div ref={messagesEndRef} />
         </div>

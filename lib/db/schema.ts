@@ -469,6 +469,10 @@ export const communityEvents = pgTable('community_events', {
   endsAt: timestamp('ends_at').notNull(),
   createdById: uuid('created_by_id').references(() => users.id),
   isAgentCreated: boolean('is_agent_created').default(false).notNull(),
+  submitterName: text('submitter_name'), // Display name of who submitted
+  reviewStatus: text('review_status').default('approved'), // pending_review, approved, rejected
+  reviewFeedback: text('review_feedback'), // AI review feedback
+  challengeContent: jsonb('challenge_content').$type<{ question: string; type: 'mcq' | 'short_answer' | 'drafting'; options?: string[]; answer?: string }[]>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

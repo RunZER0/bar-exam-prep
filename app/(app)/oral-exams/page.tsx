@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 import TrialLimitReached from '@/components/TrialLimitReached';
+import AiThinkingIndicator from '@/components/AiThinkingIndicator';
 
 /* ================================================================
    TYPES
@@ -1360,20 +1361,14 @@ export default function OralExamsPage() {
 
         {/* Loading indicator */}
         {isLoading && !isStreaming && (
-          <div className="flex justify-start">
-            <div className={`rounded-2xl px-4 py-3 bg-card border-l-4 ${
-              examType === 'devils-advocate' ? 'border-l-red-500' : 'border-l-blue-500'
-            } border rounded-bl-md`}>
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
-                  {examType === 'examiner'
-                    ? `${PANELISTS_INFO[currentPanelistIndex % PANELISTS_INFO.length]?.name || 'Examiner'} is thinking...`
-                    : 'Preparing challenge...'}
-                </span>
-              </div>
-            </div>
-          </div>
+          <AiThinkingIndicator
+            variant="inline"
+            message={
+              examType === 'examiner'
+                ? `${PANELISTS_INFO[currentPanelistIndex % PANELISTS_INFO.length]?.name || 'Examiner'} is thinking...`
+                : 'Preparing challenge...'
+            }
+          />
         )}
 
         {/* Streaming message */}

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getUnitById } from '@/lib/constants/legal-content';
 import { Button } from '@/components/ui/button';
 import { SmartChatInput } from '@/components/SmartChatInput';
+import AiThinkingIndicator from '@/components/AiThinkingIndicator';
 import {
   ArrowLeft,
   BookOpen,
@@ -639,18 +640,7 @@ Make this practical and exam-focused for the Kenya bar exam.`;
           ))}
 
           {sending && (
-            <div className="flex justify-start">
-              <div className="bg-muted/50 rounded-2xl rounded-tl-md px-4 py-3 border border-border/50">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className="flex gap-1">
-                    <span className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
-                  <span>Researching and preparing your answer...</span>
-                </div>
-              </div>
-            </div>
+            <AiThinkingIndicator variant="inline" messageSet="research" />
           )}
 
           <div ref={messagesEndRef} />

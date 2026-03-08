@@ -69,6 +69,12 @@ interface CommunityEvent {
   endsAt: string;
   rewards: { position: number; reward: string }[];
   isJoined: boolean;
+  isAgentCreated: boolean;
+  submitterName: string | null;
+  challengeContent: any[] | null;
+  hoursLeft: number;
+  daysLeft: number;
+  unitId: string | null;
 }
 
 interface Ranking {
@@ -222,8 +228,20 @@ export default function CommunityPage() {
 
   // Events & Rankings
   const [events, setEvents] = useState<CommunityEvent[]>([]);
+  const [aiChallenges, setAiChallenges] = useState<CommunityEvent[]>([]);
+  const [communityChallenges, setCommunityChallenges] = useState<CommunityEvent[]>([]);
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [weekInfo, setWeekInfo] = useState<any>(null);
+
+  // Challenge submission
+  const [showSubmitChallenge, setShowSubmitChallenge] = useState(false);
+  const [submitTitle, setSubmitTitle] = useState('');
+  const [submitDescription, setSubmitDescription] = useState('');
+  const [submitType, setSubmitType] = useState<string>('trivia');
+  const [submitUnitId, setSubmitUnitId] = useState('');
+  const [submitQuestions, setSubmitQuestions] = useState<{ question: string; type: string; options?: string[]; answer?: string }[]>([{ question: '', type: 'mcq', options: ['', '', '', ''], answer: '' }]);
+  const [submittingChallenge, setSubmittingChallenge] = useState(false);
+  const [submitFeedback, setSubmitFeedback] = useState<{ approved: boolean; message: string } | null>(null);
 
   // Threads
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -342,7 +360,7 @@ export default function CommunityPage() {
         if (res.ok) { const d = await res.json(); setThreads(d.threads || []); }
       } else if (t === 'events') {
         const res = await apiFetch('/api/community/events');
-        if (res.ok) { const d = await res.json(); setEvents(d.events || []); }
+        if (res.ok) { const d = await res.json(); setEvents(d.events || []); setAiChallenges(d.aiChallenges || []); setCommunityChallenges(d.communityChallenges || []); }
       } else if (t === 'rankings') {
         const res = await apiFetch('/api/community/rankings');
         if (res.ok) {
@@ -459,6 +477,39 @@ export default function CommunityPage() {
       method: 'POST', body: JSON.stringify({ action: 'join', eventId }),
     });
     loadTabData('events');
+  };
+
+  const submitChallenge = async () => {
+    if (!submitTitle.trim() || !submitDescription.trim()) return;
+    setSubmittingChallenge(true);
+    setSubmitFeedback(null);
+    try {
+      const res = await apiFetch('/api/community/events', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'submit_challenge',
+          title: submitTitle,
+          description: submitDescription,
+          type: submitType,
+          unitId: submitUnitId || undefined,
+          questions: submitQuestions.length > 0 ? submitQuestions : undefined,
+        }),
+      });
+      const d = await res.json();
+      if (d.approved) {
+        setSubmitFeedback({ approved: true, message: d.feedback || 'Your challenge was approved and is now live!' });
+        setShowSubmitChallenge(false);
+        setSubmitTitle(''); setSubmitDescription(''); setSubmitType('trivia');
+        setSubmitUnitId(''); setSubmitQuestions([]);
+        loadTabData('events');
+      } else {
+        setSubmitFeedback({ approved: false, message: d.feedback || 'Your challenge was not approved. Please revise and try again.' });
+      }
+    } catch {
+      setSubmitFeedback({ approved: false, message: 'Something went wrong. Please try again.' });
+    } finally {
+      setSubmittingChallenge(false);
+    }
   };
 
   /* ---- Thread actions ---- */
@@ -697,18 +748,25 @@ export default function CommunityPage() {
 
         {/* Message input */}
         <div className="px-4 py-3 border-t border-border/20 bg-card/50">
-          <div className="flex gap-2">
-            <input
+          <div className="flex gap-2 items-end">
+            <textarea
               value={msgInput}
-              onChange={e => setMsgInput(e.target.value)}
+              onChange={e => {
+                setMsgInput(e.target.value);
+                const el = e.target;
+                el.style.height = 'auto';
+                el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+              }}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
               placeholder={`Message #${activeRoom.name.toLowerCase()}`}
-              className="flex-1 px-3 py-2 rounded-xl bg-background border border-border/20 text-sm outline-none focus:ring-1 focus:ring-primary/20"
+              rows={1}
+              className="flex-1 px-3 py-2 rounded-xl bg-background border border-border/20 text-sm outline-none focus:ring-1 focus:ring-primary/20 resize-none overflow-y-auto"
+              style={{ minHeight: '40px', maxHeight: '120px' }}
             />
             <button
               onClick={sendMessage}
               disabled={!msgInput.trim() || sendingMsg}
-              className="px-3 py-2 rounded-xl bg-primary text-primary-foreground disabled:opacity-30 transition-opacity"
+              className="px-3 py-2 rounded-xl bg-primary text-primary-foreground disabled:opacity-30 transition-opacity shrink-0"
             >
               {sendingMsg ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </button>
@@ -1324,81 +1382,321 @@ export default function CommunityPage() {
           </div>
         )}
 
-        {/* ============ EVENTS TAB ============ */}
+        {/* ============ CHALLENGES TAB ============ */}
         {!loading && tab === 'events' && (
-          <div className="space-y-3">
-            {events.length === 0 ? (
-              <div className="text-center py-16 space-y-2">
-                <Trophy className="h-10 w-10 mx-auto text-muted-foreground/20" />
-                <p className="text-sm text-muted-foreground">No challenges yet. Check back soon!</p>
+          <div className="space-y-6">
+            {/* Submit Feedback Banner */}
+            {submitFeedback && (
+              <div className={`p-3 rounded-xl border text-sm flex items-start gap-2 ${
+                submitFeedback.approved
+                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                  : 'bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-400'
+              }`}>
+                {submitFeedback.approved ? <Check className="h-4 w-4 mt-0.5 shrink-0" /> : <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />}
+                <p className="text-xs">{submitFeedback.message}</p>
+                <button onClick={() => setSubmitFeedback(null)} className="ml-auto shrink-0"><X className="h-3 w-3" /></button>
               </div>
-            ) : (
-              events.map(event => {
-                const isActive = event.status === 'active';
-                const isUpcoming = event.status === 'upcoming';
-                const typeColors: Record<string, string> = {
-                  trivia: 'from-blue-500/10 to-blue-600/5 border-blue-500/20',
-                  reading: 'from-emerald-500/10 to-emerald-600/5 border-emerald-500/20',
-                  quiz_marathon: 'from-orange-500/10 to-orange-600/5 border-orange-500/20',
-                  drafting: 'from-purple-500/10 to-purple-600/5 border-purple-500/20',
-                  research: 'from-teal-500/10 to-teal-600/5 border-teal-500/20',
-                };
-                const typeIcons: Record<string, typeof Zap> = {
-                  trivia: Zap, reading: BookOpen, quiz_marathon: Target, drafting: FileText, research: Search,
-                };
-                const EventIcon = typeIcons[event.type] || Zap;
-                const colorClass = typeColors[event.type] || typeColors.trivia;
-
-                return (
-                  <div key={event.id} className={`rounded-xl bg-gradient-to-r ${colorClass} border p-4 space-y-3`}>
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-background/50">
-                        <EventIcon className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-semibold">{event.title}</h3>
-                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                            isActive ? 'bg-emerald-500/10 text-emerald-600' : isUpcoming ? 'bg-amber-500/10 text-amber-600' : 'bg-muted text-muted-foreground'
-                          }`}>
-                            {event.status}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{event.description}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
-                        <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {event.participantCount} joined</span>
-                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Ends {new Date(event.endsAt).toLocaleDateString('en-KE', { month: 'short', day: 'numeric' })}</span>
-                      </div>
-                      {!event.isJoined ? (
-                        <button
-                          onClick={() => joinEvent(event.id)}
-                          className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/15"
-                        >
-                          Join Challenge
-                        </button>
-                      ) : (
-                        <span className="text-[10px] font-medium text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">Participating</span>
-                      )}
-                    </div>
-
-                    {event.rewards && event.rewards.length > 0 && (
-                      <div className="flex gap-2 pt-1">
-                        {event.rewards.slice(0, 3).map((r, i) => (
-                          <div key={i} className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                            {i === 0 ? <Crown className="h-3 w-3 text-amber-500" /> : i === 1 ? <Medal className="h-3 w-3 text-slate-400" /> : <Award className="h-3 w-3 text-amber-700" />}
-                            {r.reward}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
             )}
+
+            {/* ---- Section 1: Today's AI Challenges ---- */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="h-4 w-4 text-amber-500" />
+                <h2 className="text-sm font-bold">Today&apos;s AI Challenges</h2>
+                <span className="text-[10px] bg-amber-500/10 text-amber-600 px-2 py-0.5 rounded-full font-medium">Counts for Rankings</span>
+              </div>
+              {aiChallenges.length === 0 ? (
+                <div className="text-center py-10 space-y-2 rounded-xl border border-dashed border-border/30">
+                  <Sparkles className="h-8 w-8 mx-auto text-muted-foreground/20" />
+                  <p className="text-xs text-muted-foreground">AI challenges for today are being prepared...</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {aiChallenges.map(event => {
+                    const isActive = event.status === 'active';
+                    const typeColors: Record<string, string> = {
+                      trivia: 'from-blue-500/10 to-blue-600/5 border-blue-500/20',
+                      reading: 'from-emerald-500/10 to-emerald-600/5 border-emerald-500/20',
+                      quiz_marathon: 'from-orange-500/10 to-orange-600/5 border-orange-500/20',
+                      drafting: 'from-purple-500/10 to-purple-600/5 border-purple-500/20',
+                      research: 'from-teal-500/10 to-teal-600/5 border-teal-500/20',
+                    };
+                    const typeLabels: Record<string, string> = {
+                      trivia: 'Multiple Choice', drafting: 'Drafting', research: 'Short Answer',
+                      reading: 'Reading', quiz_marathon: 'Quiz Marathon',
+                    };
+                    const typeIcons: Record<string, typeof Zap> = {
+                      trivia: Zap, reading: BookOpen, quiz_marathon: Target, drafting: FileText, research: Search,
+                    };
+                    const EventIcon = typeIcons[event.type] || Zap;
+                    const colorClass = typeColors[event.type] || typeColors.trivia;
+
+                    return (
+                      <div key={event.id} className={`rounded-xl bg-gradient-to-r ${colorClass} border p-4 space-y-3`}>
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 rounded-lg bg-background/50">
+                            <EventIcon className="h-5 w-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-sm font-semibold">{event.title}</h3>
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
+                                {typeLabels[event.type] || event.type}
+                              </span>
+                              {isActive && <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">Active</span>}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">{event.description}</p>
+                          </div>
+                        </div>
+
+                        {/* Challenge content preview */}
+                        {event.challengeContent && event.challengeContent.length > 0 && event.isJoined && (
+                          <div className="bg-background/60 rounded-lg p-3 space-y-2 border border-border/10">
+                            {event.challengeContent.map((q: { question: string; type: string; options?: string[] }, qi: number) => (
+                              <div key={qi} className="space-y-1">
+                                <p className="text-xs font-medium">Q{qi + 1}. {q.question}</p>
+                                {q.type === 'mcq' && q.options && (
+                                  <div className="grid grid-cols-2 gap-1 pl-3">
+                                    {q.options.map((opt: string, oi: number) => (
+                                      <span key={oi} className="text-[11px] text-muted-foreground">{String.fromCharCode(65 + oi)}. {opt}</span>
+                                    ))}
+                                  </div>
+                                )}
+                                {q.type === 'drafting' && <p className="text-[11px] text-muted-foreground pl-3 italic">Draft your response below...</p>}
+                                {q.type === 'short_answer' && <p className="text-[11px] text-muted-foreground pl-3 italic">Write a brief answer...</p>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+                            <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {event.participantCount} joined</span>
+                            {event.hoursLeft != null && <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {event.hoursLeft}h left</span>}
+                          </div>
+                          {!event.isJoined ? (
+                            <button onClick={() => joinEvent(event.id)}
+                              className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/15 transition-colors">
+                              Take Challenge
+                            </button>
+                          ) : (
+                            <span className="text-[10px] font-medium text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">Participating</span>
+                          )}
+                        </div>
+
+                        {event.rewards && event.rewards.length > 0 && (
+                          <div className="flex gap-2 pt-1">
+                            {event.rewards.slice(0, 3).map((r, i) => (
+                              <div key={i} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                {i === 0 ? <Crown className="h-3 w-3 text-amber-500" /> : i === 1 ? <Medal className="h-3 w-3 text-slate-400" /> : <Award className="h-3 w-3 text-amber-700" />}
+                                {r.reward}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* ---- Section 2: Community Challenges ---- */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-blue-500" />
+                  <h2 className="text-sm font-bold">Community Challenges</h2>
+                  <span className="text-[10px] bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded-full font-medium">Peer-Created</span>
+                </div>
+                <button
+                  onClick={() => setShowSubmitChallenge(!showSubmitChallenge)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+                >
+                  <Plus className="h-3 w-3" /> Submit Challenge
+                </button>
+              </div>
+
+              {/* Submit Challenge Form */}
+              {showSubmitChallenge && (
+                <div className="mb-4 p-4 rounded-xl border border-border/30 bg-card/60 space-y-3">
+                  <h3 className="text-xs font-semibold flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5" /> Create a Challenge
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">Your challenge will be reviewed by AI for quality before being published.</p>
+                  <input
+                    value={submitTitle}
+                    onChange={e => setSubmitTitle(e.target.value)}
+                    placeholder="Challenge title (e.g. 'Constitutional Law Quiz')"
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border/30 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                  <textarea
+                    value={submitDescription}
+                    onChange={e => setSubmitDescription(e.target.value)}
+                    placeholder="Describe the challenge — what students should expect, topic areas..."
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border/30 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
+                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={submitType}
+                      onChange={e => setSubmitType(e.target.value as string)}
+                      className="flex-1 px-3 py-2 rounded-lg bg-background border border-border/30 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    >
+                      <option value="trivia">Multiple Choice</option>
+                      <option value="drafting">Drafting</option>
+                      <option value="research">Short Answer</option>
+                      <option value="quiz_marathon">Quiz Marathon</option>
+                      <option value="reading">Reading Challenge</option>
+                    </select>
+                  </div>
+
+                  {/* Questions Builder */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-medium text-muted-foreground">Questions (optional — add your own or let AI generate)</p>
+                      <button
+                        onClick={() => setSubmitQuestions([...submitQuestions, { question: '', type: submitType === 'trivia' ? 'mcq' : submitType === 'drafting' ? 'drafting' : 'short_answer', options: ['', '', '', ''], answer: '' }])}
+                        className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                      >
+                        <Plus className="h-3 w-3" /> Add Question
+                      </button>
+                    </div>
+                    {submitQuestions.map((q, qi) => (
+                      <div key={qi} className="p-3 rounded-lg bg-background/80 border border-border/20 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-medium">Question {qi + 1}</span>
+                          <button onClick={() => setSubmitQuestions(submitQuestions.filter((_, i) => i !== qi))} className="text-red-500 hover:text-red-600">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                        <input
+                          value={q.question}
+                          onChange={e => { const updated = [...submitQuestions]; updated[qi] = { ...updated[qi], question: e.target.value }; setSubmitQuestions(updated); }}
+                          placeholder="Enter the question..."
+                          className="w-full px-2 py-1.5 rounded bg-background border border-border/20 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+                        />
+                        {q.type === 'mcq' && q.options && (
+                          <div className="grid grid-cols-2 gap-1">
+                            {q.options.map((opt, oi) => (
+                              <input
+                                key={oi}
+                                value={opt}
+                                onChange={e => {
+                                  const updated = [...submitQuestions];
+                                  const opts = [...(updated[qi].options || [])];
+                                  opts[oi] = e.target.value;
+                                  updated[qi] = { ...updated[qi], options: opts };
+                                  setSubmitQuestions(updated);
+                                }}
+                                placeholder={`Option ${String.fromCharCode(65 + oi)}`}
+                                className="px-2 py-1 rounded bg-background border border-border/20 text-[11px] focus:outline-none focus:ring-1 focus:ring-primary/30"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        <input
+                          value={q.answer}
+                          onChange={e => { const updated = [...submitQuestions]; updated[qi] = { ...updated[qi], answer: e.target.value }; setSubmitQuestions(updated); }}
+                          placeholder="Correct answer..."
+                          className="w-full px-2 py-1.5 rounded bg-background border border-border/20 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={submitChallenge}
+                      disabled={submittingChallenge || !submitTitle.trim() || !submitDescription.trim()}
+                      className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                    >
+                      {submittingChallenge ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> AI is reviewing...</> : <><Send className="h-3.5 w-3.5" /> Submit for Review</>}
+                    </button>
+                    <button
+                      onClick={() => { setShowSubmitChallenge(false); setSubmitFeedback(null); }}
+                      className="px-4 py-2 rounded-lg bg-muted text-muted-foreground text-xs hover:bg-muted/80 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {communityChallenges.length === 0 && !showSubmitChallenge ? (
+                <div className="text-center py-10 space-y-2 rounded-xl border border-dashed border-border/30">
+                  <Globe className="h-8 w-8 mx-auto text-muted-foreground/20" />
+                  <p className="text-xs text-muted-foreground">No community challenges yet. Be the first to create one!</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {communityChallenges.map(event => {
+                    const isActive = event.status === 'active';
+                    const typeLabels: Record<string, string> = {
+                      trivia: 'Multiple Choice', drafting: 'Drafting', research: 'Short Answer',
+                      reading: 'Reading', quiz_marathon: 'Quiz Marathon',
+                    };
+
+                    return (
+                      <div key={event.id} className="rounded-xl bg-gradient-to-r from-blue-500/5 to-indigo-500/5 border border-blue-500/15 p-4 space-y-3">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 rounded-lg bg-blue-500/10">
+                            <Globe className="h-5 w-5 text-blue-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-sm font-semibold">{event.title}</h3>
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600">
+                                {typeLabels[event.type] || event.type}
+                              </span>
+                              {isActive && <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">Active</span>}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">{event.description}</p>
+                            {event.submitterName && (
+                              <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+                                <UserCheck className="h-3 w-3" /> Posted by {event.submitterName}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Challenge content for participants */}
+                        {event.challengeContent && event.challengeContent.length > 0 && event.isJoined && (
+                          <div className="bg-background/60 rounded-lg p-3 space-y-2 border border-border/10">
+                            {event.challengeContent.map((q: { question: string; type: string; options?: string[] }, qi: number) => (
+                              <div key={qi} className="space-y-1">
+                                <p className="text-xs font-medium">Q{qi + 1}. {q.question}</p>
+                                {q.type === 'mcq' && q.options && (
+                                  <div className="grid grid-cols-2 gap-1 pl-3">
+                                    {q.options.map((opt: string, oi: number) => (
+                                      <span key={oi} className="text-[11px] text-muted-foreground">{String.fromCharCode(65 + oi)}. {opt}</span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+                            <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {event.participantCount} joined</span>
+                          </div>
+                          {!event.isJoined ? (
+                            <button onClick={() => joinEvent(event.id)}
+                              className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 text-xs font-medium hover:bg-blue-500/15 transition-colors">
+                              Join Challenge
+                            </button>
+                          ) : (
+                            <span className="text-[10px] font-medium text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">Participating</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

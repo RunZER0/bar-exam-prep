@@ -3,6 +3,8 @@
  * 
  * Scheduled task endpoint - called by external cron service
  * (GitHub Actions, cron-job.org, UptimeRobot, etc.)
+ * OR triggered automatically by the client-side autonomous preload
+ * when an authenticated user opens the app.
  * 
  * Handles:
  * - Daily reminder emails
@@ -12,24 +14,45 @@
 
 import { NextResponse } from 'next/server';
 import { processReminderTick } from '@/lib/services/notification-service';
+import { verifyIdToken } from '@/lib/firebase/admin';
 import { headers } from 'next/headers';
 
-// Security: Require a secret token for cron calls
+// Security: Require a secret token OR valid Firebase auth for cron calls
 const CRON_SECRET = process.env.CRON_SECRET;
 
 export async function GET(request: Request) {
-  // Verify cron secret
+  // Verify cron secret or Firebase auth
   const headersList = await headers();
   const authHeader = headersList.get('authorization');
-  const cronToken = authHeader?.replace('Bearer ', '');
+  const bearerToken = authHeader?.replace('Bearer ', '');
   
   // Also check query param for simpler cron services
   const url = new URL(request.url);
   const queryToken = url.searchParams.get('token');
   
-  const providedToken = cronToken || queryToken;
+  const providedToken = bearerToken || queryToken;
   
-  if (CRON_SECRET && providedToken !== CRON_SECRET) {
+  let authorized = false;
+
+  // Method 1: CRON_SECRET match
+  if (!CRON_SECRET) {
+    // No secret configured — allow all (dev mode)
+    authorized = true;
+  } else if (providedToken === CRON_SECRET) {
+    authorized = true;
+  }
+
+  // Method 2: Valid Firebase auth token (from autonomous preload)
+  if (!authorized && bearerToken) {
+    try {
+      await verifyIdToken(bearerToken);
+      authorized = true;
+    } catch {
+      // Token is neither CRON_SECRET nor valid Firebase token
+    }
+  }
+
+  if (!authorized) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }

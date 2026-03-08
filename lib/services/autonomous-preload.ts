@@ -219,6 +219,9 @@ class AutonomousPreloadService {
     }
 
     console.log('[AutonomousPreload] Running all preload tasks');
+
+    // Fire daily cron tick (idempotent — only processes reminders once per day)
+    this.triggerDailyCron(token);
     
     // Sort by priority
     const sortedTasks = [...PRELOAD_TASKS].sort((a, b) => a.priority - b.priority);
@@ -346,6 +349,40 @@ class AutonomousPreloadService {
     }
     
     return status;
+  }
+
+  /**
+   * Fire the daily cron tick (fire-and-forget, idempotent).
+   * This ensures daily reminder emails and push notifications go out
+   * even without an external cron service.
+   */
+  private triggerDailyCron(token: string) {
+    const cronKey = 'cron:last-tick';
+    try {
+      const lastTick = localStorage.getItem(cronKey);
+      const today = new Date().toISOString().split('T')[0];
+      if (lastTick === today) return; // Already triggered today
+
+      console.log('[AutonomousPreload] Triggering daily cron tick');
+      localStorage.setItem(cronKey, today);
+
+      // Fire-and-forget — don't await, don't block preload
+      fetch('/api/cron/tick', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      }).then(res => {
+        if (res.ok) console.log('[AutonomousPreload] Daily cron tick succeeded');
+        else console.warn('[AutonomousPreload] Daily cron tick returned', res.status);
+      }).catch(() => {
+        // Remove today's flag so it retries on next session
+        localStorage.removeItem(cronKey);
+      });
+    } catch {
+      // localStorage not available (SSR)
+    }
   }
 }
 

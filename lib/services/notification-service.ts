@@ -393,10 +393,8 @@ export async function processReminderTick(): Promise<{
   pushSent: number;
 }> {
   const now = new Date();
-  const currentHour = now.getUTCHours();
   
   // Find users due for reminders
-  // This is a simplified version - production would handle timezones properly
   const usersToNotify = await db
     .select({
       userId: users.id,
@@ -421,6 +419,10 @@ export async function processReminderTick(): Promise<{
   let emailsSent = 0;
   let pushSent = 0;
 
+  // Use a stable "start of today" timestamp for idempotency check
+  const startOfDay = new Date(now);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+
   for (const user of usersToNotify) {
     // Check if already notified today (idempotency)
     const alreadySent = await db
@@ -429,17 +431,11 @@ export async function processReminderTick(): Promise<{
       .where(and(
         eq(notificationLog.userId, user.userId),
         eq(notificationLog.template, 'DAILY_REMINDER'),
-        gte(notificationLog.createdAt, new Date(now.setHours(0, 0, 0, 0)))
+        gte(notificationLog.createdAt, startOfDay)
       ))
       .limit(1);
 
     if (alreadySent.length > 0) {
-      continue;
-    }
-
-    // Check user's preferred time (simplified - assumes UTC)
-    const preferredHour = parseInt(user.reminderTime?.split(':')[0] || '9', 10);
-    if (currentHour !== preferredHour) {
       continue;
     }
 

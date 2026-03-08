@@ -3,6 +3,9 @@ import { MENTOR_MODEL, getOpenAIKey } from '@/lib/ai/model-config';
 import { db } from '@/lib/db';
 import { authorityRecords } from '@/lib/db/schema';
 import { or, ilike, sql } from 'drizzle-orm';
+import { neon } from '@neondatabase/serverless';
+
+const rawSql = neon(process.env.DATABASE_URL!);
 
 const getOpenAI = () => {
     const apiKey = getOpenAIKey();
@@ -24,7 +27,7 @@ export class NarrativeNoteRenderer {
 
     /**
      * Fetch real statute/case context from the authority_records table.
-     * Falls back to Supabase Kenya Law index, then empty (AI uses training knowledge).
+     * Falls back to Neon cases/statutes tables, then empty (AI uses training knowledge).
      */
     static async fetchAuthorityContext(topic: string): Promise<string[]> {
         const trimmed = topic.trim().slice(0, 150);
@@ -62,90 +65,80 @@ export class NarrativeNoteRenderer {
             console.warn('[NarrativeRenderer] Local authority fetch failed:', e);
         }
 
-        // 2. Fallback: Query Supabase Kenya Law index (cases + statutes)
-        const supabaseUrl = process.env.SUPABASE_URL;
-        const supabaseKey = process.env.SUPABASE_ANON_KEY;
-        if (supabaseUrl && supabaseKey) {
-            try {
-                console.log(`[NarrativeRenderer] Querying Supabase for: ${trimmed}`);
-                const headers = {
-                    apikey: supabaseKey,
-                    Authorization: `Bearer ${supabaseKey}`,
-                    Accept: 'application/json',
-                };
+        // 2. Fallback: Query Neon cases/statutes tables (migrated Kenya Law data)
+        try {
+            console.log(`[NarrativeRenderer] Querying Neon cases/statutes for: ${trimmed}`);
 
-                // Extract meaningful search terms (remove common words)
-                const stopWords = new Set(['the', 'and', 'for', 'with', 'under', 'from', 'this', 'that', 'which', 'their', 'have', 'been', 'will', 'into', 'upon', 'such', 'than', 'other', 'between']);
-                const searchTerms = trimmed.split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w.toLowerCase())).slice(0, 5);
-                
-                // Try multiple search strategies for better coverage
-                const queries: Promise<Response>[] = [];
-                const headers2 = headers;
+            // Extract meaningful search terms (remove common words)
+            const stopWords = new Set(['the', 'and', 'for', 'with', 'under', 'from', 'this', 'that', 'which', 'their', 'have', 'been', 'will', 'into', 'upon', 'such', 'than', 'other', 'between']);
+            const searchTerms = trimmed.split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w.toLowerCase())).slice(0, 5);
 
-                // Strategy 1: Combined search pattern (original)
-                const searchPattern = `*${searchTerms.join('*')}*`;
+            const context: string[] = [];
+            const seenUrls = new Set<string>();
+
+            // Combined search pattern
+            const searchPattern = `%${searchTerms.join('%')}%`;
+
+            // Query cases and statutes in parallel
+            const queries: Promise<any[]>[] = [
+                rawSql`
+                    SELECT title, citation, court_code, url, year
+                    FROM cases
+                    WHERE title ILIKE ${searchPattern} OR parties ILIKE ${searchPattern}
+                    ORDER BY year DESC NULLS LAST
+                    LIMIT 5
+                `,
+            ];
+
+            // Broader search if multiple terms
+            if (searchTerms.length >= 2) {
+                const topTermPattern = `%${searchTerms[0]}%`;
                 queries.push(
-                    fetch(
-                        `${supabaseUrl}/rest/v1/cases?select=title,citation,court_code,url,year&or=(title.ilike.${searchPattern},parties.ilike.${searchPattern})&order=year.desc.nullslast&limit=5`,
-                        { headers: headers2, signal: AbortSignal.timeout(8000) }
-                    )
+                    rawSql`
+                        SELECT title, citation, court_code, url, year
+                        FROM cases
+                        WHERE title ILIKE ${topTermPattern} OR parties ILIKE ${topTermPattern}
+                        ORDER BY year DESC NULLS LAST
+                        LIMIT 5
+                    `
                 );
-
-                // Strategy 2: Search each significant term individually for broader results
-                if (searchTerms.length >= 2) {
-                    const topTerm = searchTerms[0];
-                    queries.push(
-                        fetch(
-                            `${supabaseUrl}/rest/v1/cases?select=title,citation,court_code,url,year&or=(title.ilike.*${encodeURIComponent(topTerm)}*,parties.ilike.*${encodeURIComponent(topTerm)}*)&order=year.desc.nullslast&limit=5`,
-                            { headers: headers2, signal: AbortSignal.timeout(8000) }
-                        )
-                    );
-                }
-
-                // Statute search
-                queries.push(
-                    fetch(
-                        `${supabaseUrl}/rest/v1/statutes?select=name,chapter,url,full_text&or=(name.ilike.${searchPattern},chapter.ilike.${searchPattern})&limit=3`,
-                        { headers: headers2, signal: AbortSignal.timeout(8000) }
-                    )
-                );
-
-                const responses = await Promise.all(queries);
-
-                const context: string[] = [];
-                const seenUrls = new Set<string>();
-
-                // Process statute response (last in the array)
-                const statutesRes = responses[responses.length - 1];
-                if (statutesRes.ok) {
-                    const statutes = await statutesRes.json();
-                    for (const s of statutes) {
-                        const snippet = s.full_text ? `\n${s.full_text.slice(0, 800)}` : '';
-                        context.push(`**${s.name}** (${s.chapter || 'Statute'})${snippet}`);
-                    }
-                }
-
-                // Process all case responses (everything except the last)
-                for (let i = 0; i < responses.length - 1; i++) {
-                    const casesRes = responses[i];
-                    if (casesRes.ok) {
-                        const cases = await casesRes.json();
-                        for (const c of cases) {
-                            const key = c.url || c.title;
-                            if (seenUrls.has(key)) continue;
-                            seenUrls.add(key);
-                            context.push(`**${c.title}** ${c.citation || ''} (${c.court_code}, ${c.year}) - ${c.url}`);
-                        }
-                    }
-                }
-
-                if (context.length > 0) {
-                    console.log(`[NarrativeRenderer] Supabase returned ${context.length} authorities`);
-                    return context;
-                }
-            } catch (e) {
-                console.warn('[NarrativeRenderer] Supabase fallback failed:', e);
             }
+
+            // Statute search
+            queries.push(
+                rawSql`
+                    SELECT name, chapter, url, full_text
+                    FROM statutes
+                    WHERE name ILIKE ${searchPattern} OR chapter ILIKE ${searchPattern}
+                    LIMIT 3
+                `
+            );
+
+            const responses = await Promise.all(queries);
+
+            // Process statute response (last in the array)
+            const statuteResults = responses[responses.length - 1];
+            for (const s of statuteResults) {
+                const snippet = s.full_text ? `\n${s.full_text.slice(0, 800)}` : '';
+                context.push(`**${s.name}** (${s.chapter || 'Statute'})${snippet}`);
+            }
+
+            // Process all case responses (everything except the last)
+            for (let i = 0; i < responses.length - 1; i++) {
+                for (const c of responses[i]) {
+                    const key = c.url || c.title;
+                    if (seenUrls.has(key)) continue;
+                    seenUrls.add(key);
+                    context.push(`**${c.title}** ${c.citation || ''} (${c.court_code}, ${c.year}) - ${c.url}`);
+                }
+            }
+
+            if (context.length > 0) {
+                console.log(`[NarrativeRenderer] Neon returned ${context.length} authorities`);
+                return context;
+            }
+        } catch (e) {
+            console.warn('[NarrativeRenderer] Neon cases/statutes fallback failed:', e);
         }
 
         // 3. No results from any source — AI will use training knowledge + web_search

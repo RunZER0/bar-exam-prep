@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { neon } from '@neondatabase/serverless';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
+const sql = neon(process.env.DATABASE_URL!);
 
 /* ----------------------------------------------------------------
    Helpers
@@ -69,15 +69,6 @@ export async function POST(req: NextRequest) {
         if (!type || (!name && !fullMatch)) {
             return NextResponse.json({ found: false, reason: 'missing fields' });
         }
-        if (!SUPABASE_URL || !SUPABASE_KEY) {
-            return NextResponse.json({ found: false, reason: 'not configured' });
-        }
-
-        const headers = {
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${SUPABASE_KEY}`,
-            'Content-Type': 'application/json',
-        };
 
         /* ============================================================
            CASE LAW  —  return Kenya Law URL
@@ -96,17 +87,17 @@ export async function POST(req: NextRequest) {
             const primary = (parts[0] || raw).slice(0, 50);
             if (!primary) return NextResponse.json({ found: false });
 
-            const url =
-                `${SUPABASE_URL}/rest/v1/cases` +
-                `?or=(title.ilike.*${encodeURIComponent(primary)}*,parties.ilike.*${encodeURIComponent(primary)}*` +
-                `,citation.ilike.*${encodeURIComponent(primary)}*)` +
-                `&select=title,citation,url,court_code,year` +
-                `&limit=5&order=year.desc`;
+            const searchPattern = `%${primary}%`;
+            const cases = await sql`
+                SELECT title, citation, url, court_code, year
+                FROM cases
+                WHERE title ILIKE ${searchPattern}
+                   OR parties ILIKE ${searchPattern}
+                   OR citation ILIKE ${searchPattern}
+                ORDER BY year DESC NULLS LAST
+                LIMIT 5
+            `;
 
-            const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
-            if (!res.ok) return NextResponse.json({ found: false });
-
-            const cases: any[] = await res.json();
             if (cases.length === 0) return NextResponse.json({ found: false });
 
             // Score: prefer rows matching more of the parties
@@ -140,28 +131,29 @@ export async function POST(req: NextRequest) {
             if (!cleanName) return NextResponse.json({ found: false });
 
             // Strategy 1: Direct ilike match on cleaned name
-            let url =
-                `${SUPABASE_URL}/rest/v1/statutes` +
-                `?name.ilike=*${encodeURIComponent(cleanName)}*` +
-                `&select=name,chapter,url,full_text` +
-                `&limit=3`;
-
-            let res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
-            let statutes: any[] = res.ok ? await res.json() : [];
+            const searchPattern = `%${cleanName}%`;
+            let statutes = await sql`
+                SELECT name, chapter, url, full_text
+                FROM statutes
+                WHERE name ILIKE ${searchPattern}
+                ORDER BY name
+                LIMIT 3
+            `;
 
             // Strategy 2: If no match, try with just core words (broader search)
             if (statutes.length === 0) {
                 const coreWords = extractCoreWords(cleanName);
                 if (coreWords.length >= 2) {
-                    // Use the most significant word (usually "Act", "Rules", etc. is too generic - pick the first non-generic)
                     const significantWords = coreWords.filter(w => !['Act', 'Rules', 'Regulations', 'Order', 'Bill'].includes(w));
                     const searchWord = significantWords[0] || coreWords[0];
-                    url = `${SUPABASE_URL}/rest/v1/statutes` +
-                        `?name.ilike=*${encodeURIComponent(searchWord)}*` +
-                        `&select=name,chapter,url,full_text` +
-                        `&limit=5`;
-                    res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
-                    const broader: any[] = res.ok ? await res.json() : [];
+                    const broaderPattern = `%${searchWord}%`;
+                    const broader = await sql`
+                        SELECT name, chapter, url, full_text
+                        FROM statutes
+                        WHERE name ILIKE ${broaderPattern}
+                        ORDER BY name
+                        LIMIT 5
+                    `;
                     
                     // Score by how many core words match
                     if (broader.length > 0) {
@@ -172,15 +164,15 @@ export async function POST(req: NextRequest) {
                                 if (nameLower.includes(w.toLowerCase())) score++;
                             }
                             return { ...s, score };
-                        }).sort((a, b) => b.score - a.score);
-                        statutes = scored.filter(s => s.score > 0);
+                        }).sort((a: any, b: any) => b.score - a.score);
+                        statutes = scored.filter((s: any) => s.score > 0);
                     }
                 }
             }
 
             if (statutes.length === 0) return NextResponse.json({ found: false });
 
-            const best = statutes[0];
+            const best = statutes[0] as any;
 
             // Try to extract the referenced section
             const sectionNum = extractSectionNumber(fullMatch || '');

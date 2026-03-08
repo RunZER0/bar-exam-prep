@@ -6,8 +6,7 @@ import OpenAI from 'openai';
 const sql = neon(process.env.DATABASE_URL!);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
+// Cases table now in Neon (migrated from Supabase)
 
 // Library of landmark Kenyan cases — focused on post-2010 Constitution era with verbatim excerpts
 const LANDMARK_CASES = [
@@ -501,24 +500,19 @@ DISSENTING (Mwilu DCJ):
 ];
 
 /**
- * Try to fetch a case from the Supabase scraped Kenya Law database.
- * Returns metadata (title, citation, url, court, year) if found.
+ * Fetch a case from the Neon cases table (migrated from Kenya Law).
+ * Returns metadata (title, citation, url, court_code, year) if found.
  */
-async function fetchSupabaseCase(recentNames: Set<string>): Promise<any | null> {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+async function fetchNeonCase(recentNames: Set<string>): Promise<any | null> {
   try {
-    const headers = {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-    };
-
     // Fetch recent significant cases from Supreme Court & Court of Appeal
-    const url = `${SUPABASE_URL}/rest/v1/cases?court_code=in.(SC,CA,KECA,KESC)&select=title,parties,citation,url,court_code,year&order=year.desc&limit=50`;
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return null;
-
-    const cases: any[] = await res.json();
+    const cases = await sql`
+      SELECT title, parties, citation, url, court_code, year
+      FROM cases
+      WHERE court_code IN ('SC', 'CA', 'KECA', 'KESC')
+      ORDER BY year DESC NULLS LAST
+      LIMIT 50
+    `;
     // Filter out recently used ones
     const available = cases.filter((c: any) => !recentNames.has(c.title));
     if (available.length === 0) return null;
@@ -527,7 +521,7 @@ async function fetchSupabaseCase(recentNames: Set<string>): Promise<any | null> 
     const dayIndex = Math.floor(Date.now() / 86400000) % available.length;
     return available[dayIndex];
   } catch (e) {
-    console.error('[CaseOfDay] Supabase fetch error:', e);
+    console.error('[CaseOfDay] Neon cases fetch error:', e);
     return null;
   }
 }
@@ -555,7 +549,7 @@ async function fetchKnowledgeBaseCase(recentNames: Set<string>): Promise<any | n
 }
 
 /**
- * Use AI to generate case analysis from a case title/citation for Supabase or KB sourced cases.
+ * Use AI to generate case analysis from a case title/citation for KB or Neon sourced cases.
  */
 async function generateCaseAnalysis(caseInfo: { title: string; citation?: string; court?: string; year?: number; url?: string; content?: string }): Promise<any> {
   try {
@@ -591,7 +585,7 @@ async function generateCaseAnalysis(caseInfo: { title: string; citation?: string
 
 /**
  * Auto-generates today's Case of the Day if none exists.
- * Sources: 1) LANDMARK_CASES library  2) knowledge_base case_law  3) Supabase Kenya Law cases
+ * Sources: 1) LANDMARK_CASES library  2) knowledge_base case_law  3) Neon cases table (Kenya Law data)
  */
 async function ensureTodaysCase(today: string): Promise<void> {
   const [existing] = await sql`SELECT id FROM case_of_the_day WHERE date = ${today}`;
@@ -642,26 +636,26 @@ async function ensureTodaysCase(today: string): Promise<void> {
     return;
   }
 
-  // Source 3: Supabase scraped Kenya Law cases
-  const sbCase = await fetchSupabaseCase(recentNames);
-  if (sbCase) {
-    const courtName = sbCase.court_code === 'SC' || sbCase.court_code === 'KESC' ? 'Supreme Court of Kenya'
-      : sbCase.court_code === 'CA' || sbCase.court_code === 'KECA' ? 'Court of Appeal of Kenya'
+  // Source 3: Neon cases table (migrated Kenya Law data)
+  const neonCase = await fetchNeonCase(recentNames);
+  if (neonCase) {
+    const courtName = neonCase.court_code === 'SC' || neonCase.court_code === 'KESC' ? 'Supreme Court of Kenya'
+      : neonCase.court_code === 'CA' || neonCase.court_code === 'KECA' ? 'Court of Appeal of Kenya'
       : 'High Court of Kenya';
     const analysis = await generateCaseAnalysis({
-      title: sbCase.title, citation: sbCase.citation, court: courtName, year: sbCase.year, url: sbCase.url,
+      title: neonCase.title, citation: neonCase.citation, court: courtName, year: neonCase.year, url: neonCase.url,
     });
     await sql`
       INSERT INTO case_of_the_day (date, case_name, citation, court, year, unit_id, facts, issue, holding, ratio, significance, summary, keywords, full_text, source_url)
       VALUES (
-        ${today}, ${sbCase.title}, ${sbCase.citation || ''}, ${courtName},
-        ${sbCase.year || new Date().getFullYear()}, ${'atp-100'},
+        ${today}, ${neonCase.title}, ${neonCase.citation || ''}, ${courtName},
+        ${neonCase.year || new Date().getFullYear()}, ${'atp-100'},
         ${analysis.facts}, ${analysis.issue}, ${analysis.holding}, ${analysis.ratio},
         ${analysis.significance}, ${analysis.summary}, ${analysis.keywords || []},
-        ${null}, ${sbCase.url || null}
+        ${null}, ${neonCase.url || null}
       )
     `;
-    console.log(`[CaseOfDay] Seeded from Supabase: ${sbCase.title}`);
+    console.log(`[CaseOfDay] Seeded from Neon cases: ${neonCase.title}`);
     return;
   }
 

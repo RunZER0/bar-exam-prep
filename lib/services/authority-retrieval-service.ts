@@ -13,6 +13,7 @@ import OpenAI from 'openai';
 import { db } from '@/lib/db';
 import { authorityRecords, authorityPassages, missingAuthorityLog } from '@/lib/db/schema';
 import { eq, and, or, ilike, desc, sql } from 'drizzle-orm';
+import { neon } from '@neondatabase/serverless';
 import { createHash } from 'crypto';
 import {
   isAllowedDomain,
@@ -87,16 +88,15 @@ const MODEL_CONFIG = {
   extractionModel: process.env.EXTRACTION_MODEL || 'gpt-5.2',
 };
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-const SUPABASE_TIMEOUT_MS = Number(process.env.SUPABASE_TIMEOUT_MS || 6000);
+const rawSql = neon(process.env.DATABASE_URL!);
+const DB_TIMEOUT_MS = Number(process.env.SUPABASE_TIMEOUT_MS || 6000);
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 // ============================================
-// SUPABASE INDEX (Kenya Law snapshots)
+// NEON CASES/STATUTES INDEX (migrated Kenya Law data)
 // ============================================
 
 async function querySupabaseAuthorities(
@@ -108,13 +108,7 @@ async function querySupabaseAuthorities(
   console.log('[AuthorityRetrieval] Searching term:', term);
 
   try {
-    // 1. Try vector similarity search first (Pinecone simulation via Postgres pgvector if available, else standard text search)
-    // Since we are in the "Senior Partner Protocol", we prioritize "Verbatim Text Fetch" from our local DB if possible.
-    // However, the directive asks to query Pinecone -> Supabase -> Web Fallback. 
-    // Assuming we don't have Pinecone fully set up in this context yet, we simulate the "Pinecone Search" step 
-    // by doing a high-quality full-text search on our local 'authority_records' which mirrors the vector store concept.
-    
-    // Check local DB first ("Pinecone" / "Supabase" mirror)
+    // 1. Try local authority_records first (full-text search)
     const localResults = await db.execute(sql`
       SELECT 
         id, 
@@ -150,59 +144,51 @@ async function querySupabaseAuthorities(
       return candidates;
     }
 
-    // 2. Fallback to Remote Supabase if configured (original logic)
-    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-       console.log('[AuthorityRetrieval] No local hits, trying remote Supabase...');
-       // ... existing Supabase fetch logic ...
-       // (Keeping the existing logic below for fallback to satisfy "Supabase Fetch")
+    // 2. Fallback to Neon cases/statutes tables (migrated Kenya Law data)
+    console.log('[AuthorityRetrieval] No local hits, trying Neon cases/statutes...');
+    const searchPattern = `%${term}%`;
 
-      const headers = {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        Accept: 'application/json',
-      };
-      
-      const orCaseFilter = `(title.ilike.*${term}*,citation.ilike.*${term}*)`;
-      const orStatuteFilter = `(name.ilike.*${term}*,chapter.ilike.*${term}*)`;
+    const [casesResult, statutesResult] = await Promise.all([
+      rawSql`
+        SELECT title, citation, url, court_code, judgment_date, year
+        FROM cases
+        WHERE title ILIKE ${searchPattern} OR citation ILIKE ${searchPattern}
+        ORDER BY year DESC NULLS LAST
+        LIMIT 5
+      `,
+      rawSql`
+        SELECT name, chapter, url, full_text
+        FROM statutes
+        WHERE name ILIKE ${searchPattern} OR chapter ILIKE ${searchPattern}
+        LIMIT 5
+      `,
+    ]);
 
-      const [casesRes, statutesRes] = await Promise.all([
-        fetch(`${SUPABASE_URL}/rest/v1/cases?select=title,citation,url,court_code,judgment_date,year&or=${orCaseFilter}&order=judgment_date.desc.nullslast&limit=5`, { headers, signal: AbortSignal.timeout(SUPABASE_TIMEOUT_MS) }),
-        fetch(`${SUPABASE_URL}/rest/v1/statutes?select=name,chapter,url,full_text&or=${orStatuteFilter}&limit=5`, { headers, signal: AbortSignal.timeout(SUPABASE_TIMEOUT_MS) }),
-      ]);
-
-      if (casesRes.ok) {
-        const cases = await casesRes.json();
-        for (const row of cases) {
-          if (!row?.url) continue;
-          candidates.push({
-            url: row.url,
-            title: row.title || row.citation || 'Case',
-            sourceType: 'CASE',
-            suggestedCitation: row.citation,
-            citation: row.citation,
-            court: row.court_code,
-            decisionDate: row.judgment_date,
-          });
-        }
-      }
-
-      if (statutesRes.ok) {
-        const statutes = await statutesRes.json();
-        for (const row of statutes) {
-          if (!row?.url) continue;
-          candidates.push({
-            url: row.url,
-            title: row.name || row.chapter || 'Statute',
-            sourceType: 'STATUTE',
-            suggestedCitation: row.chapter,
-            prefetchedText: row.full_text,
-          });
-        }
-      }
-      return candidates;
+    for (const row of casesResult) {
+      if (!row?.url) continue;
+      candidates.push({
+        url: row.url,
+        title: row.title || row.citation || 'Case',
+        sourceType: 'CASE',
+        suggestedCitation: row.citation,
+        citation: row.citation,
+        court: row.court_code,
+        decisionDate: row.judgment_date,
+      });
     }
 
-    return [];
+    for (const row of statutesResult) {
+      if (!row?.url) continue;
+      candidates.push({
+        url: row.url,
+        title: row.name || row.chapter || 'Statute',
+        sourceType: 'STATUTE',
+        suggestedCitation: row.chapter,
+        prefetchedText: row.full_text,
+      });
+    }
+
+    return candidates;
 
   } catch (err) {
     console.error('[authority-retrieval] Query error:', err);

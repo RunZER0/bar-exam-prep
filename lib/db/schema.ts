@@ -24,6 +24,10 @@ export const sourceTypeEnum = pgEnum('source_type', ['CASE', 'STATUTE', 'REGULAT
 export const licenseTagEnum = pgEnum('license_tag', ['PUBLIC_LEGAL_TEXT', 'CC_BY_SA', 'RESTRICTED', 'UNKNOWN']);
 export const notificationChannelEnum = pgEnum('notification_channel', ['EMAIL', 'PUSH', 'IN_APP']);
 export const notificationStatusEnum = pgEnum('notification_status', ['PENDING', 'SENT', 'FAILED', 'BOUNCED']);
+
+// M5: Subscription & Payment Enums
+export const subscriptionPlanEnum = pgEnum('subscription_plan', ['free_trial', 'weekly', 'monthly', 'annual']);
+export const subscriptionStatusEnum = pgEnum('subscription_status', ['trialing', 'active', 'past_due', 'cancelled', 'expired']);
 export const studyActivityTypeEnum = pgEnum('study_activity_type', [
   'READING_NOTES',
   'MEMORY_CHECK',
@@ -52,6 +56,17 @@ export const users = pgTable('users', {
   communityUsername: text('community_username').unique(),
   communityBio: text('community_bio'),
   communityJoinedAt: timestamp('community_joined_at'),
+  // Subscription
+  subscriptionPlan: subscriptionPlanEnum('subscription_plan').default('free_trial').notNull(),
+  subscriptionStatus: subscriptionStatusEnum('subscription_status').default('trialing').notNull(),
+  trialEndsAt: timestamp('trial_ends_at'),
+  subscriptionEndsAt: timestamp('subscription_ends_at'),
+  paystackCustomerId: text('paystack_customer_id'),
+  paystackSubscriptionCode: text('paystack_subscription_code'),
+  // Trial usage counters
+  trialDraftingUsed: integer('trial_drafting_used').default(0).notNull(),
+  trialOralDevilUsed: integer('trial_oral_devil_used').default(0).notNull(),
+  trialOralExamUsed: integer('trial_oral_exam_used').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -1584,6 +1599,31 @@ export const notificationLogRelations = relations(notificationLog, ({ one }) => 
 export const pushSubscriptionsRelations = relations(pushSubscriptions, ({ one }) => ({
   user: one(users, {
     fields: [pushSubscriptions.userId],
+    references: [users.id],
+  }),
+}));
+
+// ═══════════════════════════════════════
+// M5: Payment Transactions
+// ═══════════════════════════════════════
+export const paymentTransactions = pgTable('payment_transactions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  paystackReference: text('paystack_reference').notNull().unique(),
+  paystackTransactionId: text('paystack_transaction_id'),
+  plan: subscriptionPlanEnum('plan').notNull(),
+  amount: integer('amount').notNull(), // in kobo (KES × 100)
+  currency: text('currency').default('KES').notNull(),
+  status: text('status').default('pending').notNull(), // pending, success, failed
+  channel: text('channel'), // card, mobile_money, bank
+  paidAt: timestamp('paid_at'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const paymentTransactionsRelations = relations(paymentTransactions, ({ one }) => ({
+  user: one(users, {
+    fields: [paymentTransactions.userId],
     references: [users.id],
   }),
 }));

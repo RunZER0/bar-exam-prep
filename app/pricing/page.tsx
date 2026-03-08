@@ -33,11 +33,11 @@ const PLANS = [
       'Chat history access',
     ],
     popular: true,
-    savings: '25% cheaper than weekly',
+    savings: 'Save 25% vs weekly',
   },
   {
     name: 'Annual',
-    price: 15000,
+    price: 12000,
     period: 'year',
     description: 'Best value for serious preparation',
     features: [
@@ -48,7 +48,7 @@ const PLANS = [
       'Community access',
     ],
     popular: false,
-    savings: 'Save over 40% vs weekly',
+    savings: 'Save 33% vs monthly, 54% vs weekly',
   },
 ];
 
@@ -217,7 +217,7 @@ export default function PricingPage() {
           <div>
             <h3 className="font-semibold mb-2">Is there a free trial?</h3>
             <p className="text-muted-foreground text-sm">
-              New users get limited access to explore the platform. Subscribe to unlock full features including AI tutoring and all study materials.
+              Yes! Every new account gets a 3-day free trial with access to the Mastery Hub, up to 3 legal drafting documents, and one session each in Devil's Advocate and Oral Exam modes. No card required to start.
             </p>
           </div>
           <div>

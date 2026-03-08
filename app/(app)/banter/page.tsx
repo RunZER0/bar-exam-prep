@@ -434,7 +434,7 @@ export default function BanterPage() {
         )}
 
         {/* Input */}
-        <div className="shrink-0 border-t border-border/15 bg-card/20 px-4 py-3">
+        <div className="shrink-0 border-t border-border/15 bg-card/20 px-4 py-3 mb-16 md:mb-0">
           <div className="max-w-2xl mx-auto flex gap-2">
             <input
               value={roastInput}
@@ -459,7 +459,7 @@ export default function BanterPage() {
 
   /* ── BANTER VIEW (main) ── */
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-background">
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-background pb-20">
 
       {/* ── Roast ribbon (top bar - click to switch to roast view) ── */}
       <div className="shrink-0">
@@ -473,8 +473,8 @@ export default function BanterPage() {
       </div>
 
       {/* ── Main content area ── */}
-      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto px-4">
-        <div className="w-full max-w-lg py-8 space-y-6">
+      <div className="flex-1 flex flex-col items-center justify-start overflow-y-auto px-4">
+        <div className="w-full max-w-lg pt-10 pb-24 space-y-6">
 
           {/* Greeting */}
           <div className="text-center animate-fade-in">

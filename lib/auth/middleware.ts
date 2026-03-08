@@ -41,13 +41,19 @@ export async function verifyAuth(request: NextRequest): Promise<AuthUser | null>
       };
     }
 
-    // Create new user if doesn't exist
+    // Create new user if doesn't exist — start 3-day free trial
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + 3);
+
     const [newUser] = await db.insert(users).values({
       firebaseUid: decodedToken.uid,
       email: decodedToken.email!,
       displayName: decodedToken.name || null,
       photoURL: decodedToken.picture || null,
       role: decodedToken.email === process.env.ADMIN_EMAIL ? 'admin' : 'student',
+      subscriptionPlan: 'free_trial',
+      subscriptionStatus: 'trialing',
+      trialEndsAt: trialEnd,
     }).returning();
 
     return {

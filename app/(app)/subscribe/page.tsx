@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { 
@@ -52,13 +52,13 @@ const PLANS = [
     ],
     popular: true,
     gradient: 'from-amber-500 to-orange-500',
-    savings: '25% cheaper than weekly',
+    savings: 'Save 25% vs weekly',
     icon: Crown,
   },
   {
     id: 'annual',
     name: 'Annual',
-    price: 15000,
+    price: 12000,
     period: 'year',
     description: 'Best value for serious preparation',
     features: [
@@ -70,33 +70,83 @@ const PLANS = [
     ],
     popular: false,
     gradient: 'from-green-500 to-emerald-500',
-    savings: 'Save over 40% vs weekly',
+    savings: 'Save 33% vs monthly, 54% vs weekly',
     icon: Rocket,
   },
 ];
 
 const PAYMENT_METHODS = [
-  { id: 'mpesa', name: 'M-Pesa', description: 'Kenya', popular: true },
-  { id: 'card', name: 'Card', description: 'Visa/Mastercard', popular: false },
-  { id: 'paypal', name: 'PayPal', description: 'International', popular: false },
+  { id: 'card', name: 'Card / M-Pesa', description: 'Visa, Mastercard, M-Pesa via Paystack', popular: true },
 ];
 
 export default function SubscribePage() {
-  const { user } = useAuth();
+  const { user, getIdToken } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState('monthly');
-  const [selectedPayment, setSelectedPayment] = useState('mpesa');
+  const [selectedPayment, setSelectedPayment] = useState('card');
   const [processing, setProcessing] = useState(false);
   const [step, setStep] = useState<'plan' | 'payment' | 'confirm'>('plan');
+  const [error, setError] = useState<string | null>(null);
 
   const plan = PLANS.find((p) => p.id === selectedPlan)!;
 
+  // Check for callback from Paystack redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref') || params.get('reference') || params.get('trxref');
+    if (ref) {
+      verifyPayment(ref);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const verifyPayment = async (reference: string) => {
+    setProcessing(true);
+    setError(null);
+    try {
+      const token = await getIdToken();
+      const res = await fetch(`/api/payments/verify?reference=${encodeURIComponent(reference)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.verified) {
+        setStep('confirm');
+      } else {
+        setError(data.message || 'Payment could not be verified. Please contact support.');
+        setStep('payment');
+      }
+    } catch {
+      setError('Payment verification failed. Your payment may still be processing - please check back in a minute.');
+      setStep('payment');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const handleSubscribe = async () => {
     setProcessing(true);
-    // Simulate processing - in production this would redirect to payment gateway
-    setTimeout(() => {
+    setError(null);
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/payments/initialize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          plan: selectedPlan,
+          callbackUrl: `${window.location.origin}/subscribe`,
+        }),
+      });
+      const data = await res.json();
+      if (data.authorization_url) {
+        // Redirect to Paystack checkout
+        window.location.href = data.authorization_url;
+      } else {
+        setError(data.error || 'Failed to initialize payment. Please try again.');
+        setProcessing(false);
+      }
+    } catch {
+      setError('Something went wrong. Please try again.');
       setProcessing(false);
-      setStep('confirm');
-    }, 2000);
+    }
   };
 
   return (
@@ -269,11 +319,18 @@ export default function SubscribePage() {
                     Subscribing as {user?.email}
                   </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                    Your subscription will be activated immediately after payment
+                    You&apos;ll be redirected to Paystack to complete your payment securely
                   </p>
                 </div>
               </div>
             </div>
+
+            {/* Error message */}
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-6">
+                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              </div>
+            )}
 
             {/* Buttons */}
             <div className="flex gap-3">

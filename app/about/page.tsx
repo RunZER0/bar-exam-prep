@@ -38,7 +38,7 @@ const FAQ_ITEMS = [
   },
   {
     question: "Who is behind Ynai?",
-    answer: "Ynai was created by KSL graduates who understand the journey intimately. We're advocates who've walked the same path, felt the same anxiety, and wished for a better way to prepare. Our team combines legal expertise with technology to create something we wished existed when we were students. We're not a distant corporation – we're your seniors in the profession who genuinely want to see you succeed."
+    answer: "Ynai was created by a current KSL student who is going through the exact same journey you are. Not a distant corporation, not a group of former students looking back - someone who is right now preparing for the bar exam alongside you. The platform combines firsthand understanding of what you're facing with AI technology to create something that genuinely works. Think of it as a fellow student who happens to be really good with technology, building the tools we all wish we had."
   },
   {
     question: "How is Ynai different from traditional study methods?",
@@ -121,12 +121,12 @@ export default function AboutPage() {
       {/* Hero Section */}
       <section className="max-w-4xl mx-auto px-6 py-16 text-center">
         <h1 className="text-4xl font-bold mb-6">
-          Built by KSL Graduates, <br />
+          Built by a KSL Student, <br />
           <span className="text-emerald-500">For KSL Students</span>
         </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          We know the sleepless nights. The uncertainty. The weight of expectations. 
-          Ynai exists because we believe no student should face the bar exam alone, 
+          I know the sleepless nights. The uncertainty. The weight of expectations.
+          Ynai exists because I believe no student should face the bar exam alone,
           unprepared, or overwhelmed.
         </p>
       </section>
@@ -145,16 +145,19 @@ export default function AboutPage() {
           </div>
           <div className="space-y-4 text-muted-foreground leading-relaxed">
             <p>
-              It started with frustration. As KSL students, we had brilliant lecturers, dedicated classmates, and burning ambition. But when it came to actually preparing for the bar exam – the one test that would determine our careers – we felt lost.
+              It started with fear. In 2025, the Kenya School of Law bar exam results came out and the numbers were devastating - barely half the students who sat for the exams passed. Behind every failed script was a person who had spent years in university, sacrificed everything to get to KSL, and then watched their dream slip through their fingers. Some of them were the brightest minds in their law school classes. The bar exam didn't care.
             </p>
             <p>
-              Where do you focus when everything seems important? How do you know if you're actually ready? What do you do at 2 AM when a concept just won't click and there's no one to ask?
+              I'm sitting in those same halls right now. I'm a current KSL student in the trenches with you - not a former student looking back with nostalgia, but someone staring at the same mountain you are. I know what it feels like to read the same provision five times and still not know if you've understood it. I know the 2 AM panic when you realise how much content there is and how little time remains. I know the loneliness of studying for an exam where the odds feel stacked against you.
             </p>
             <p>
-              We scraped through, some of us barely. But we never forgot that feeling of uncertainty, that wish for something better. Years later, with careers established and technology advanced enough to make our vision possible, we built what we wished we had.
+              When I looked at those failure rates - at my seniors who didn't make it, at the colleagues around me fighting the same anxiety - I refused to accept that our fate was just luck and willpower. There had to be a smarter way. A way to know exactly what you don't know. A way to practise in the exact format the bar exam demands. A way to get expert-level guidance at 3 AM when no lecturer is answering calls.
+            </p>
+            <p>
+              So I built Ynai. Not after graduating. Not from a comfortable office. From the same desk where I prepare my own bar exam answers. Every feature in this platform exists because I needed it myself - and I know you need it too.
             </p>
             <p className="font-medium text-foreground">
-              Ynai isn't just an app. It's our answer to a question every KSL student asks: "Am I truly prepared?" Now you can be.
+              Ynai isn't just an app. It's our lifeline. Built by one of us, for all of us. Because the bar exam failure rate is not our destiny - preparation is.
             </p>
           </div>
         </div>

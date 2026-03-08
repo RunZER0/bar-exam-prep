@@ -10,13 +10,14 @@
  * - Expandable sections with beautiful styling
  */
 
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import AiThinkingIndicator from '@/components/AiThinkingIndicator';
+import { parseCitations, CitationLink, StatutePanel, type ParsedCitation } from '@/lib/citations';
 import { 
   Sparkles, X, Send, BookOpen, Lightbulb, 
   Loader2, MessageCircle, Save, Check,
@@ -293,6 +294,71 @@ function AIChatPanel({ initialText, skillName, onClose, mode = 'chat' }: AIChatP
 // MAIN COMPONENT
 // ============================================
 
+/* ---- Citation-aware Markdown: renders text with clickable legal citations ---- */
+function CitationMarkdown({ content, onCitationClick }: { content: string; onCitationClick: (c: ParsedCitation) => void }) {
+  // Split content into lines and render each with citation detection
+  const lines = content.split('\n');
+  return (
+    <div className="space-y-2">
+      {lines.map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <br key={i} />;
+
+        // Headers
+        const h3 = trimmed.match(/^###\s+(.*)/);
+        if (h3) return <h3 key={i} className="text-base font-semibold mt-3 mb-1.5"><RenderCitationText text={h3[1]} onCitationClick={onCitationClick} /></h3>;
+        const h2 = trimmed.match(/^##\s+(.*)/);
+        if (h2) return <h2 key={i} className="text-lg font-semibold mt-4 mb-2"><RenderCitationText text={h2[1]} onCitationClick={onCitationClick} /></h2>;
+        const h1 = trimmed.match(/^#\s+(.*)/);
+        if (h1) return <h1 key={i} className="text-xl font-bold mt-4 mb-2"><RenderCitationText text={h1[1]} onCitationClick={onCitationClick} /></h1>;
+
+        // List items
+        const li = trimmed.match(/^[-*+]\s+(.*)/);
+        if (li) return <li key={i} className="leading-relaxed ml-5 list-disc"><RenderCitationText text={li[1]} onCitationClick={onCitationClick} /></li>;
+
+        // Blockquote
+        if (trimmed.startsWith('>')) {
+          return (
+            <blockquote key={i} className="border-l-4 border-primary/40 pl-4 py-1 bg-muted/30 rounded-r-lg italic text-muted-foreground">
+              <RenderCitationText text={trimmed.replace(/^>\s*/, '')} onCitationClick={onCitationClick} />
+            </blockquote>
+          );
+        }
+
+        // Regular paragraph
+        return <p key={i} className="mb-2 leading-relaxed"><RenderCitationText text={trimmed} onCitationClick={onCitationClick} /></p>;
+      })}
+    </div>
+  );
+}
+
+function RenderCitationText({ text, onCitationClick }: { text: string; onCitationClick: (c: ParsedCitation) => void }) {
+  const citations = parseCitations(text);
+  if (citations.length === 0) {
+    // Still apply bold/italic
+    return <>{applyInlineFormatting(text)}</>;
+  }
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  citations.forEach((c, i) => {
+    if (c.startIndex > last) parts.push(<Fragment key={`t${i}`}>{applyInlineFormatting(text.slice(last, c.startIndex))}</Fragment>);
+    parts.push(<CitationLink key={`c${i}`} text={c.fullMatch} type={c.type} onClick={() => onCitationClick(c)} />);
+    last = c.endIndex;
+  });
+  if (last < text.length) parts.push(<Fragment key="tail">{applyInlineFormatting(text.slice(last))}</Fragment>);
+  return <>{parts}</>;
+}
+
+function applyInlineFormatting(text: string): React.ReactNode {
+  // Bold and italic inline
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) return <strong key={i} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>;
+    if (part.startsWith('*') && part.endsWith('*')) return <em key={i}>{part.slice(1, -1)}</em>;
+    return part;
+  });
+}
+
 export default function InteractiveStudyNotes({
   skillName,
   skillId,
@@ -318,6 +384,7 @@ export default function InteractiveStudyNotes({
   const [notesSaved, setNotesSaved] = useState(false);
   const [isLearned, setIsLearned] = useState(initialLearned || false);
   const [stampLoading, setStampLoading] = useState(false);
+  const [activeCitation, setActiveCitation] = useState<ParsedCitation | null>(null);
   const notesRef = useRef<HTMLDivElement>(null);
 
   // Check if notes were already saved
@@ -544,7 +611,7 @@ export default function InteractiveStudyNotes({
               <CardContent className="pt-0 pb-4 px-4 animate-in slide-in-from-top-2 duration-200">
                 <div className="pl-1 border-l-2 border-primary/20 ml-1">
                   <div className="prose prose-sm dark:prose-invert max-w-none pl-3 text-foreground/90 selection:bg-primary/20">
-                    <MarkdownRenderer content={currentSection.content} />
+                    <CitationMarkdown content={currentSection.content} onCitationClick={(c) => setActiveCitation(c)} />
                   </div>
 
                   {currentSection.examTips && (
@@ -685,6 +752,9 @@ export default function InteractiveStudyNotes({
           mode={aiChatText.startsWith('QUIZ_ME:') ? 'quiz' : 'chat'}
         />
       )}
+
+      {/* Statute / Case Law Panel */}
+      <StatutePanel citation={activeCitation} onClose={() => setActiveCitation(null)} getIdToken={getIdToken} />
     </>
   );
 }

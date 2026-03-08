@@ -94,7 +94,7 @@ export default function ExamSessionPage() {
   const router = useRouter();
   const { getIdToken } = useAuth();
   useTimeTracker('exams');
-  const { setImmersive } = useSidebar();
+  const { setCollapsed } = useSidebar();
   const { setAuthToken, getPreloadedExam, onExamStart, onExamComplete } = usePreloading();
 
   const unitId = params.unitId as string;
@@ -122,11 +122,11 @@ export default function ExamSessionPage() {
   const autoSubmitRef = useRef(false);
   const loadedRef = useRef(false);
 
-  // Enter immersive mode on mount, restore on unmount
+  // Collapse sidebar on mount for focused exam view, restore on unmount
   useEffect(() => {
-    setImmersive(true);
-    return () => setImmersive(false);
-  }, [setImmersive]);
+    setCollapsed(true);
+    return () => setCollapsed(false);
+  }, [setCollapsed]);
 
   // Auto-save answers to localStorage every time they change
   const draftKey = `exam-draft-${unitId}-${paperSize}`;

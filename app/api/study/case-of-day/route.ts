@@ -6,6 +6,9 @@ import OpenAI from 'openai';
 const sql = neon(process.env.DATABASE_URL!);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
+
 // Library of landmark Kenyan cases — focused on post-2010 Constitution era with verbatim excerpts
 const LANDMARK_CASES = [
   {
@@ -498,8 +501,97 @@ DISSENTING (Mwilu DCJ):
 ];
 
 /**
+ * Try to fetch a case from the Supabase scraped Kenya Law database.
+ * Returns metadata (title, citation, url, court, year) if found.
+ */
+async function fetchSupabaseCase(recentNames: Set<string>): Promise<any | null> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  try {
+    const headers = {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+    };
+
+    // Fetch recent significant cases from Supreme Court & Court of Appeal
+    const url = `${SUPABASE_URL}/rest/v1/cases?court_code=in.(SC,CA,KECA,KESC)&select=title,parties,citation,url,court_code,year&order=year.desc&limit=50`;
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+
+    const cases: any[] = await res.json();
+    // Filter out recently used ones
+    const available = cases.filter((c: any) => !recentNames.has(c.title));
+    if (available.length === 0) return null;
+
+    // Pick deterministically by day
+    const dayIndex = Math.floor(Date.now() / 86400000) % available.length;
+    return available[dayIndex];
+  } catch (e) {
+    console.error('[CaseOfDay] Supabase fetch error:', e);
+    return null;
+  }
+}
+
+/**
+ * Try to fetch a case from the knowledge_base (Neon DB) — entry_type = 'case_law'
+ */
+async function fetchKnowledgeBaseCase(recentNames: Set<string>): Promise<any | null> {
+  try {
+    const cases = await sql`
+      SELECT DISTINCT ON (title) title, citation, source, court, year, content
+      FROM knowledge_base
+      WHERE entry_type = 'case_law' AND content IS NOT NULL AND length(content) > 100
+      ORDER BY title, year DESC NULLS LAST
+      LIMIT 30
+    `;
+    const available = cases.filter((c: any) => !recentNames.has(c.title));
+    if (available.length === 0) return null;
+    const dayIndex = Math.floor(Date.now() / 86400000) % available.length;
+    return available[dayIndex];
+  } catch (e) {
+    console.error('[CaseOfDay] knowledge_base fetch error:', e);
+    return null;
+  }
+}
+
+/**
+ * Use AI to generate case analysis from a case title/citation for Supabase or KB sourced cases.
+ */
+async function generateCaseAnalysis(caseInfo: { title: string; citation?: string; court?: string; year?: number; url?: string; content?: string }): Promise<any> {
+  try {
+    const prompt = caseInfo.content
+      ? `Analyze this Kenyan case for a bar exam student. Case: "${caseInfo.title}" ${caseInfo.citation || ''}.\n\nContent from knowledge base:\n${caseInfo.content.slice(0, 3000)}\n\nProvide JSON with: facts, issue, holding, ratio, significance, summary, keywords (array of 3-5 terms).`
+      : `Analyze this Kenyan case for a bar exam student. Case: "${caseInfo.title}" ${caseInfo.citation || ''}, ${caseInfo.court || ''} (${caseInfo.year || ''}).\n\nProvide JSON with: facts, issue, holding, ratio, significance, summary, keywords (array of 3-5 terms). Use your knowledge of Kenyan law.`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a Kenyan law expert. Return ONLY valid JSON, no markdown.' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.3,
+      max_tokens: 1500,
+    });
+
+    const text = completion.choices[0]?.message?.content?.trim() || '{}';
+    return JSON.parse(text.replace(/```json?\n?/g, '').replace(/```/g, ''));
+  } catch (e) {
+    console.error('[CaseOfDay] AI analysis error:', e);
+    return {
+      facts: 'Case analysis pending.',
+      issue: 'See full judgment for details.',
+      holding: 'See full judgment.',
+      ratio: 'See full judgment.',
+      significance: 'Significant Kenyan case.',
+      summary: caseInfo.title,
+      keywords: ['Kenyan law'],
+    };
+  }
+}
+
+/**
  * Auto-generates today's Case of the Day if none exists.
- * Picks from landmark library, avoiding recent repeats; falls back to AI.
+ * Sources: 1) LANDMARK_CASES library  2) knowledge_base case_law  3) Supabase Kenya Law cases
  */
 async function ensureTodaysCase(today: string): Promise<void> {
   const [existing] = await sql`SELECT id FROM case_of_the_day WHERE date = ${today}`;
@@ -511,44 +603,81 @@ async function ensureTodaysCase(today: string): Promise<void> {
   `;
   const recentNames = new Set(recentCases.map((r: any) => r.case_name));
 
-  // Find unused cases from library
+  // Source 1: Library of landmark cases
   const available = LANDMARK_CASES.filter(c => !recentNames.has(c.case_name));
   
-  let caseToInsert: typeof LANDMARK_CASES[0] | null = null;
-
   if (available.length > 0) {
-    // Pick deterministically based on day to avoid randomness issues
     const dayIndex = Math.floor(new Date(today).getTime() / 86400000) % available.length;
-    caseToInsert = available[dayIndex];
-  } else {
-    // All library cases used recently; recycle the oldest used
-    const dayIndex = Math.floor(new Date(today).getTime() / 86400000) % LANDMARK_CASES.length;
-    caseToInsert = LANDMARK_CASES[dayIndex];
-  }
-
-  if (caseToInsert) {
+    const caseToInsert = available[dayIndex];
     await sql`
       INSERT INTO case_of_the_day (date, case_name, citation, court, year, unit_id, facts, issue, holding, ratio, significance, summary, keywords, full_text, source_url)
       VALUES (
-        ${today},
-        ${caseToInsert.case_name},
-        ${caseToInsert.citation},
-        ${caseToInsert.court},
-        ${caseToInsert.year},
-        ${caseToInsert.unit_id},
-        ${caseToInsert.facts},
-        ${caseToInsert.issue},
-        ${caseToInsert.holding},
-        ${caseToInsert.ratio},
-        ${caseToInsert.significance},
-        ${caseToInsert.summary},
-        ${caseToInsert.keywords},
-        ${caseToInsert.full_text || null},
-        ${caseToInsert.source_url || null}
+        ${today}, ${caseToInsert.case_name}, ${caseToInsert.citation}, ${caseToInsert.court}, ${caseToInsert.year},
+        ${caseToInsert.unit_id}, ${caseToInsert.facts}, ${caseToInsert.issue}, ${caseToInsert.holding},
+        ${caseToInsert.ratio}, ${caseToInsert.significance}, ${caseToInsert.summary}, ${caseToInsert.keywords},
+        ${caseToInsert.full_text || null}, ${caseToInsert.source_url || null}
       )
     `;
-    console.log(`[CaseOfDay] Seeded: ${caseToInsert.case_name}`);
+    console.log(`[CaseOfDay] Seeded from library: ${caseToInsert.case_name}`);
+    return;
   }
+
+  // Source 2: knowledge_base case_law entries
+  const kbCase = await fetchKnowledgeBaseCase(recentNames);
+  if (kbCase) {
+    const analysis = await generateCaseAnalysis({
+      title: kbCase.title, citation: kbCase.citation, court: kbCase.court, year: kbCase.year, content: kbCase.content,
+    });
+    await sql`
+      INSERT INTO case_of_the_day (date, case_name, citation, court, year, unit_id, facts, issue, holding, ratio, significance, summary, keywords, full_text, source_url)
+      VALUES (
+        ${today}, ${kbCase.title}, ${kbCase.citation || analysis.citation || ''}, ${kbCase.court || 'High Court of Kenya'},
+        ${kbCase.year || new Date().getFullYear()}, ${'atp-100'},
+        ${analysis.facts}, ${analysis.issue}, ${analysis.holding}, ${analysis.ratio},
+        ${analysis.significance}, ${analysis.summary}, ${analysis.keywords || []},
+        ${kbCase.content || null}, ${kbCase.source || null}
+      )
+    `;
+    console.log(`[CaseOfDay] Seeded from knowledge_base: ${kbCase.title}`);
+    return;
+  }
+
+  // Source 3: Supabase scraped Kenya Law cases
+  const sbCase = await fetchSupabaseCase(recentNames);
+  if (sbCase) {
+    const courtName = sbCase.court_code === 'SC' || sbCase.court_code === 'KESC' ? 'Supreme Court of Kenya'
+      : sbCase.court_code === 'CA' || sbCase.court_code === 'KECA' ? 'Court of Appeal of Kenya'
+      : 'High Court of Kenya';
+    const analysis = await generateCaseAnalysis({
+      title: sbCase.title, citation: sbCase.citation, court: courtName, year: sbCase.year, url: sbCase.url,
+    });
+    await sql`
+      INSERT INTO case_of_the_day (date, case_name, citation, court, year, unit_id, facts, issue, holding, ratio, significance, summary, keywords, full_text, source_url)
+      VALUES (
+        ${today}, ${sbCase.title}, ${sbCase.citation || ''}, ${courtName},
+        ${sbCase.year || new Date().getFullYear()}, ${'atp-100'},
+        ${analysis.facts}, ${analysis.issue}, ${analysis.holding}, ${analysis.ratio},
+        ${analysis.significance}, ${analysis.summary}, ${analysis.keywords || []},
+        ${null}, ${sbCase.url || null}
+      )
+    `;
+    console.log(`[CaseOfDay] Seeded from Supabase: ${sbCase.title}`);
+    return;
+  }
+
+  // Fallback: recycle from library
+  const dayIndex = Math.floor(new Date(today).getTime() / 86400000) % LANDMARK_CASES.length;
+  const fallback = LANDMARK_CASES[dayIndex];
+  await sql`
+    INSERT INTO case_of_the_day (date, case_name, citation, court, year, unit_id, facts, issue, holding, ratio, significance, summary, keywords, full_text, source_url)
+    VALUES (
+      ${today}, ${fallback.case_name}, ${fallback.citation}, ${fallback.court}, ${fallback.year},
+      ${fallback.unit_id}, ${fallback.facts}, ${fallback.issue}, ${fallback.holding},
+      ${fallback.ratio}, ${fallback.significance}, ${fallback.summary}, ${fallback.keywords},
+      ${fallback.full_text || null}, ${fallback.source_url || null}
+    )
+  `;
+  console.log(`[CaseOfDay] Recycled from library: ${fallback.case_name}`);
 }
 
 // GET - Get today's case or a specific date's case

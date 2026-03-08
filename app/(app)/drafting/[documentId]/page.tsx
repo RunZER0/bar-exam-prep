@@ -73,18 +73,17 @@ export default function DraftingDocumentPage() {
   const router = useRouter();
   const { getIdToken } = useAuth();
   useTimeTracker('drafting');
-  const { setImmersive } = useSidebar();
+  const { setCollapsed } = useSidebar();
   const docId = params.documentId as string;
   const doc = getDocumentById(docId);
   const [mode, setMode] = useState<PageMode>(null);
   const [showTrialLimit, setShowTrialLimit] = useState(false);
 
-  // Enter immersive when a mode is active, exit on unmount or back
+  // Collapse sidebar when a mode is active, restore on unmount or back
   useEffect(() => {
-    if (mode) setImmersive(true);
-    else setImmersive(false);
-    return () => setImmersive(false);
-  }, [mode, setImmersive]);
+    if (mode) setCollapsed(true);
+    return () => setCollapsed(false);
+  }, [mode, setCollapsed]);
 
   if (!doc) {
     return (

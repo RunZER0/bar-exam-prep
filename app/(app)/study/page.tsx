@@ -75,6 +75,7 @@ export default function StudyPage() {
   const [caseOfDay, setCaseOfDay] = useState<CaseOfDay | null>(null);
   const [caseExpanded, setCaseExpanded] = useState(false);
   const [caseLoading, setCaseLoading] = useState(true);
+  const [caseTab, setCaseTab] = useState<'summary' | 'analysis' | 'verbatim'>('summary');
 
   // Ask AI
   const [aiPrompt, setAiPrompt] = useState('');
@@ -589,37 +590,51 @@ export default function StudyPage() {
                 )}
               </div>
 
-              {/* Summary */}
-              {caseOfDay.summary && (
-                <div className="mx-4 mb-2 p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
-                  <p className="text-xs text-foreground/80 leading-relaxed">
-                    <Lightbulb className="h-3 w-3 inline mr-1 text-amber-600" />
-                    {caseOfDay.summary}
-                  </p>
-                </div>
-              )}
+              {/* View Tabs: Summary | Case Analysis | Verbatim Text */}
+              <div className="flex gap-1 mx-4 mb-2 bg-muted/40 rounded-lg p-0.5">
+                {(['summary', 'analysis', 'verbatim'] as const).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setCaseTab(t)}
+                    className={`flex-1 px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
+                      caseTab === t ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {t === 'summary' ? 'Summary' : t === 'analysis' ? 'Case Analysis' : 'Verbatim Text'}
+                  </button>
+                ))}
+              </div>
 
-              {/* Collapsible sections */}
-              <div className="px-4 pb-4 space-y-1.5">
-                {/* Ratio Decidendi - always visible, highlighted */}
-                <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
-                  <h4 className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-1">Ratio Decidendi</h4>
-                  <p className="text-xs text-foreground/85 leading-relaxed">{caseOfDay.ratio}</p>
-                </div>
+              <div className="px-4 pb-4">
+                {/* SUMMARY TAB */}
+                {caseTab === 'summary' && (
+                  <div className="space-y-2">
+                    {caseOfDay.summary && (
+                      <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                        <p className="text-xs text-foreground/80 leading-relaxed">
+                          <Lightbulb className="h-3 w-3 inline mr-1 text-amber-600" />
+                          {caseOfDay.summary}
+                        </p>
+                      </div>
+                    )}
+                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
+                      <h4 className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-1">Ratio Decidendi</h4>
+                      <p className="text-xs text-foreground/85 leading-relaxed">{caseOfDay.ratio}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Holding</h4>
+                      <p className="text-xs text-foreground/85 leading-relaxed">{caseOfDay.holding}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Significance</h4>
+                      <p className="text-xs text-foreground/85 leading-relaxed">{caseOfDay.significance}</p>
+                    </div>
+                  </div>
+                )}
 
-                {/* Holding - always visible */}
-                <div>
-                  <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Holding</h4>
-                  <p className="text-xs text-foreground/85 leading-relaxed">{caseOfDay.holding}</p>
-                </div>
-
-                {/* Facts & Issue - collapsed */}
-                <details className="group">
-                  <summary className="flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-1 hover:text-foreground transition-colors">
-                    <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
-                    Facts & Issue
-                  </summary>
-                  <div className="pl-4.5 space-y-2 pt-1 pb-1">
+                {/* ANALYSIS TAB */}
+                {caseTab === 'analysis' && (
+                  <div className="space-y-2">
                     <div>
                       <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Facts</h4>
                       <p className="text-xs text-foreground/85 leading-relaxed">{caseOfDay.facts}</p>
@@ -628,32 +643,37 @@ export default function StudyPage() {
                       <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Issue</h4>
                       <p className="text-xs text-foreground/85 leading-relaxed">{caseOfDay.issue}</p>
                     </div>
-                  </div>
-                </details>
-
-                {/* Significance - collapsed */}
-                <details className="group">
-                  <summary className="flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-1 hover:text-foreground transition-colors">
-                    <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
-                    Significance
-                  </summary>
-                  <p className="pl-4.5 text-xs text-foreground/85 leading-relaxed pt-1 pb-1">{caseOfDay.significance}</p>
-                </details>
-
-                {/* Full Case Text - collapsed */}
-                {caseOfDay.full_text && (
-                  <details className="group">
-                    <summary className="flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider py-1 hover:text-foreground transition-colors">
-                      <FileText className="h-3 w-3" />
-                      <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
-                      Verbatim Case Text
-                    </summary>
-                    <div className="mt-1 p-3 rounded-lg bg-muted/30 border border-border/30 max-h-64 overflow-y-auto">
-                      <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap">
-                        {caseOfDay.full_text}
-                      </p>
+                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
+                      <h4 className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-1">Ratio Decidendi</h4>
+                      <p className="text-xs text-foreground/85 leading-relaxed">{caseOfDay.ratio}</p>
                     </div>
-                  </details>
+                    <div>
+                      <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Holding</h4>
+                      <p className="text-xs text-foreground/85 leading-relaxed">{caseOfDay.holding}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Significance</h4>
+                      <p className="text-xs text-foreground/85 leading-relaxed">{caseOfDay.significance}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* VERBATIM TEXT TAB */}
+                {caseTab === 'verbatim' && (
+                  <div>
+                    {caseOfDay.full_text ? (
+                      <div className="p-4 rounded-lg bg-muted/30 border border-border/30 max-h-[60vh] overflow-y-auto">
+                        <p className="text-xs text-foreground/85 leading-[1.8] whitespace-pre-wrap font-serif">
+                          {caseOfDay.full_text}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <FileText className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                        <p className="text-xs">Verbatim text not yet available for this case.</p>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {caseOfDay.source_url && (
@@ -661,7 +681,7 @@ export default function StudyPage() {
                     href={caseOfDay.source_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-[11px] text-primary hover:underline pt-1"
+                    className="inline-flex items-center gap-1.5 text-[11px] text-primary hover:underline pt-2"
                   >
                     📖 Read full judgment on Kenya Law →
                   </a>
@@ -671,101 +691,101 @@ export default function StudyPage() {
           </div>
         )}
 
-        {/* Course Outlines - Accordion */}
-        <div>
-          {/* Saved Notes */}
-          {savedNotesIndex.length > 0 && (
-            <div className="mb-6">
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Save className="h-3.5 w-3.5" />
-                Saved Notes • {savedNotesIndex.length}
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {savedNotesIndex.slice().reverse().map(note => (
-                  <div
-                    key={note.key}
-                    className="group flex items-center gap-3 p-3 rounded-xl border border-border/30 hover:border-primary/30 transition-all cursor-pointer"
-                    onClick={() => openSavedNote(note.key)}
-                  >
-                    <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
-                      <BookMarked className="h-4 w-4 text-amber-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{note.skillName}</p>
-                      <p className="text-[10px] text-muted-foreground">{note.unitName} • {new Date(note.savedAt).toLocaleDateString()}</p>
-                    </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteSavedNote(note.key); }}
-                      className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/10 transition-all"
-                      title="Delete saved note"
+        {/* Course Outlines & Saved Notes — hidden when case is expanded */}
+        {!caseExpanded && (
+          <div>
+            {/* Saved Notes */}
+            {savedNotesIndex.length > 0 && (
+              <div className="mb-4">
+                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+                  <Save className="h-3.5 w-3.5" />
+                  Saved Notes • {savedNotesIndex.length}
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {savedNotesIndex.slice().reverse().map(note => (
+                    <div
+                      key={note.key}
+                      className="group flex items-center gap-2.5 p-2.5 rounded-lg border border-border/30 hover:border-primary/30 transition-all cursor-pointer"
+                      onClick={() => openSavedNote(note.key)}
                     >
-                      <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-            <Layers className="h-3.5 w-3.5" />
-            Course Outlines • {ATP_UNITS.length} Units
-          </h2>
-
-          <div className="space-y-1.5">
-            {ATP_UNITS.map(unit => {
-              const Icon = ICON_MAP[unit.icon] || BookOpen;
-              const topics = TOPICS_BY_UNIT[unit.id] || [];
-              const isExpanded = expandedUnits.has(unit.id);
-
-              return (
-                <div key={unit.id} className="rounded-xl border border-border/30 overflow-hidden transition-all">
-                  {/* Unit Header */}
-                  <button
-                    onClick={() => toggleUnit(unit.id)}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-card/60 transition-colors"
-                  >
-                    <div className="w-9 h-9 rounded-lg bg-primary/8 flex items-center justify-center shrink-0">
-                      <Icon className="h-4.5 w-4.5 text-primary/70" />
-                    </div>
-                    <div className="flex-1 text-left min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-sm">{unit.name}</h3>
-                        <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 bg-muted rounded">{unit.code}</span>
+                      <div className="w-7 h-7 rounded-md bg-amber-500/10 flex items-center justify-center shrink-0">
+                        <BookMarked className="h-3.5 w-3.5 text-amber-600" />
                       </div>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{unit.description}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{note.skillName}</p>
+                        <p className="text-[10px] text-muted-foreground">{note.unitName}</p>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteSavedNote(note.key); }}
+                        className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-500/10 transition-all"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3 w-3 text-red-500" />
+                      </button>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[10px] text-muted-foreground">{topics.length} topics</span>
-                      <ChevronDown className={`h-4 w-4 text-muted-foreground/40 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
-                    </div>
-                  </button>
-
-                  {/* Topics Dropdown */}
-                  {isExpanded && topics.length > 0 && (
-                    <div className="border-t border-border/20 bg-muted/20 animate-in fade-in slide-in-from-top-1 duration-200">
-                      {topics.map((topic, idx) => (
-                        <button
-                          key={topic.id}
-                          onClick={() => selectTopic(unit, topic)}
-                          className="w-full flex items-center gap-3 px-4 py-3 pl-16 hover:bg-card/60 transition-colors group border-b border-border/10 last:border-0"
-                        >
-                          <div className="w-6 h-6 rounded-md bg-primary/5 flex items-center justify-center shrink-0 text-[10px] font-semibold text-primary/50 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                            {idx + 1}
-                          </div>
-                          <div className="flex-1 text-left min-w-0">
-                            <p className="text-sm font-medium group-hover:text-primary transition-colors">{topic.name}</p>
-                            <p className="text-[11px] text-muted-foreground truncate">{topic.description}</p>
-                          </div>
-                          <Play className="h-3.5 w-3.5 text-muted-foreground/20 group-hover:text-primary shrink-0 transition-colors" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  ))}
                 </div>
-              );
-            })}
+              </div>
+            )}
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+              <Layers className="h-3.5 w-3.5" />
+              Course Outlines • {ATP_UNITS.length} Units
+            </h2>
+
+            <div className="space-y-1">
+              {ATP_UNITS.map(unit => {
+                const Icon = ICON_MAP[unit.icon] || BookOpen;
+                const topics = TOPICS_BY_UNIT[unit.id] || [];
+                const isExpanded = expandedUnits.has(unit.id);
+
+                return (
+                  <div key={unit.id} className="rounded-lg border border-border/30 overflow-hidden transition-all">
+                    {/* Unit Header - compact */}
+                    <button
+                      onClick={() => toggleUnit(unit.id)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-card/60 transition-colors"
+                    >
+                      <div className="w-7 h-7 rounded-md bg-primary/8 flex items-center justify-center shrink-0">
+                        <Icon className="h-3.5 w-3.5 text-primary/70" />
+                      </div>
+                      <div className="flex-1 text-left min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="font-medium text-xs">{unit.name}</h3>
+                          <span className="text-[9px] text-muted-foreground px-1 py-0.5 bg-muted rounded">{unit.code}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[10px] text-muted-foreground">{topics.length}</span>
+                        <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground/40 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                      </div>
+                    </button>
+
+                    {/* Topics Dropdown */}
+                    {isExpanded && topics.length > 0 && (
+                      <div className="border-t border-border/20 bg-muted/20 animate-in fade-in slide-in-from-top-1 duration-200">
+                        {topics.map((topic, idx) => (
+                          <button
+                            key={topic.id}
+                            onClick={() => selectTopic(unit, topic)}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 pl-12 hover:bg-card/60 transition-colors group border-b border-border/10 last:border-0"
+                          >
+                            <div className="w-5 h-5 rounded-md bg-primary/5 flex items-center justify-center shrink-0 text-[9px] font-semibold text-primary/50 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                              {idx + 1}
+                            </div>
+                            <div className="flex-1 text-left min-w-0">
+                              <p className="text-xs font-medium group-hover:text-primary transition-colors truncate">{topic.name}</p>
+                            </div>
+                            <Play className="h-3 w-3 text-muted-foreground/20 group-hover:text-primary shrink-0 transition-colors" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

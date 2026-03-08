@@ -20,10 +20,10 @@ export default function AuthenticatedLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading, getIdToken } = useAuth();
-  const { collapsed, immersive } = useSidebar();
+  const { collapsed } = useSidebar();
   const [onboardingChecked, setOnboardingChecked] = useState(false);
 
-  const mainMargin = immersive ? 'ml-0' : collapsed ? 'ml-0 md:ml-[72px]' : 'ml-0 md:ml-64';
+  const mainMargin = collapsed ? 'ml-0 md:ml-[72px]' : 'ml-0 md:ml-64';
   const preloadInitialized = useRef(false);
   const onboardingCheckRef = useRef(false);
 

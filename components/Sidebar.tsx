@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -56,10 +57,15 @@ const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(',') || []).map
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
-  const { collapsed, setCollapsed, mobileOpen, setMobileOpen, immersive, peekOpen, setPeekOpen } = useSidebar();
+  const { collapsed: persistedCollapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar();
+  const [hoverExpanded, setHoverExpanded] = useState(false);
+
+  // When hovering over collapsed sidebar, temporarily expand it
+  const collapsed = persistedCollapsed && !hoverExpanded;
 
   const toggleCollapse = () => {
-    setCollapsed(!collapsed);
+    setCollapsed(!persistedCollapsed);
+    setHoverExpanded(false);
   };
 
   const isActive = (href: string) => {
@@ -229,44 +235,32 @@ export default function Sidebar() {
         />
       )}
 
-      {/* Sidebar - always fixed, desktop always visible (icons always shown), mobile slide-in */}
+      {/* Sidebar - always fixed, desktop always visible (icons min when collapsed), mobile slide-in */}
       <aside
         className={`
           fixed top-0 left-0 z-40 h-screen bg-background border-r border-border/50 flex flex-col
           transition-all duration-300 ease-in-out
-          ${immersive && !peekOpen
-            ? '-translate-x-full'
-            : immersive && peekOpen
-              ? 'translate-x-0'
-              : mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-          ${immersive ? 'w-64 shadow-2xl' : collapsed ? 'w-[72px]' : 'w-64'}
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          ${collapsed ? 'w-[72px]' : 'w-64'}
+          ${hoverExpanded ? 'shadow-2xl z-50' : ''}
         `}
-        onMouseLeave={() => { if (immersive) setPeekOpen(false); }}
+        onMouseEnter={() => { if (persistedCollapsed && !hoverExpanded) setHoverExpanded(true); }}
+        onMouseLeave={() => { if (hoverExpanded) setHoverExpanded(false); }}
       >
         {nav}
         
-        {/* Collapse toggle - desktop only, hidden when immersive (auto-collapsed) */}
-        {!immersive && (
-          <button
-            onClick={toggleCollapse}
-            className="hidden md:flex absolute -right-3 top-20 h-6 w-6 items-center justify-center rounded-full bg-card border border-border hover:bg-accent transition-colors"
-          >
-            {collapsed ? (
-              <ChevronRight className="h-3 w-3" />
-            ) : (
-              <ChevronLeft className="h-3 w-3" />
-            )}
-          </button>
-        )}
+        {/* Collapse toggle - desktop only */}
+        <button
+          onClick={toggleCollapse}
+          className="hidden md:flex absolute -right-3 top-20 h-6 w-6 items-center justify-center rounded-full bg-card border border-border hover:bg-accent transition-colors"
+        >
+          {persistedCollapsed ? (
+            <ChevronRight className="h-3 w-3" />
+          ) : (
+            <ChevronLeft className="h-3 w-3" />
+          )}
+        </button>
       </aside>
-
-      {/* Immersive expand zone: hovering near left edge reveals sidebar */}
-      {immersive && !peekOpen && (
-        <div
-          className="fixed top-0 left-0 z-30 h-screen w-4 hidden md:block"
-          onMouseEnter={() => setPeekOpen(true)}
-        />
-      )}
     </>
   );
 }

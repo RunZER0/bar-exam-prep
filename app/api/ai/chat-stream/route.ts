@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
       messages,
       stream: true,
       temperature: 0.7,
-      max_tokens: useSmartModel ? 4000 : (competencyType === 'research' ? 4000 : 2000),
+      max_completion_tokens: useSmartModel ? 4000 : (competencyType === 'research' ? 4000 : 2000),
     });
 
     const encoder = new TextEncoder();
@@ -178,10 +178,12 @@ export async function POST(req: NextRequest) {
 
           // Save to chat history in background
           try {
+            // Map 'general' to 'clarification' since DB enum doesn't include 'general'
+            const dbCompetencyType = competencyType === 'general' ? 'clarification' : competencyType;
             await db.insert(chatHistory).values({
               userId: user.id,
               sessionId: sessionId || crypto.randomUUID(),
-              competencyType: competencyType as any,
+              competencyType: dbCompetencyType as any,
               message,
               response: fullContent,
               wasFiltered: false,

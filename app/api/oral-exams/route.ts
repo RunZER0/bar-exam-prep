@@ -237,7 +237,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         model: 'gpt-4o-mini',
         messages: summaryMessages,
         temperature: 0.7,
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
       });
 
       return NextResponse.json({
@@ -284,7 +284,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
           model: 'gpt-4o-mini',
           messages: apiMessages,
           temperature: 0.8,
-          max_tokens: maxTokens,
+          max_completion_tokens: maxTokens,
           stream: true,
         });
 
@@ -343,7 +343,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
           model: 'gpt-4o-mini',
           messages: apiMessages,
           temperature: 0.8,
-          max_tokens: maxTokens,
+          max_completion_tokens: maxTokens,
         });
 
         const response = completion.choices[0]?.message?.content || 'I challenge you to state your position.';
@@ -402,7 +402,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
           model: 'gpt-4o-mini',
           messages: apiMessages,
           temperature: 0.8,
-          max_tokens: examMaxTokens,
+          max_completion_tokens: examMaxTokens,
           stream: true,
         });
 
@@ -467,7 +467,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
           model: 'gpt-4o-mini',
           messages: apiMessages,
           temperature: 0.8,
-          max_tokens: examMaxTokens,
+          max_completion_tokens: examMaxTokens,
         });
 
         const response = completion.choices[0]?.message?.content || `${currentPanelist.name}: Let us begin. State your understanding of the first principle.`;

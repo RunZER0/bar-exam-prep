@@ -76,7 +76,7 @@ Respond: {"challenges": [{"title":"...", "description":"...", "type":"...", "uni
         },
       ],
       temperature: 0.95,
-      max_tokens: 800,
+      max_completion_tokens: 800,
       response_format: { type: 'json_object' },
     });
 

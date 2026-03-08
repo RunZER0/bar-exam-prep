@@ -63,7 +63,7 @@ KENYAN LAW CONTEXT:
         { role: 'user', content: `Generate study notes on: ${topicContext}` },
       ],
       temperature: 0.7,
-      max_tokens: 4096,
+      max_completion_tokens: 4096,
     });
 
     const notes = completion.choices[0]?.message?.content || 'Failed to generate notes.';

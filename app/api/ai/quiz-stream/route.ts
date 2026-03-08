@@ -49,7 +49,7 @@ Start outputting immediately — every character counts for speed.`,
       ],
       stream: true,
       temperature: 0.8,
-      max_tokens: Math.max(count * 350, 2000),
+      max_completion_tokens: Math.max(count * 350, 2000),
     });
 
     const encoder = new TextEncoder();

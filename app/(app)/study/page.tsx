@@ -558,30 +558,30 @@ export default function StudyPage() {
           <div className="animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-50/50 via-background to-orange-50/30 dark:from-amber-950/20 dark:via-background dark:to-orange-950/10 overflow-hidden">
               {/* Case Header */}
-              <div className="px-6 pt-6 pb-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
+              <div className="px-4 pt-4 pb-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 uppercase tracking-wider">
                         📚 Case of the Day
                       </span>
-                      <span className="text-[10px] text-muted-foreground">{new Date(caseOfDay.date).toLocaleDateString('en-KE', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                      <span className="text-[10px] text-muted-foreground">{new Date(caseOfDay.date).toLocaleDateString('en-KE', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                     </div>
-                    <h2 className="text-lg font-bold text-foreground">{caseOfDay.case_name}</h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">
+                    <h2 className="text-sm font-bold text-foreground leading-snug">{caseOfDay.case_name}</h2>
+                    <p className="text-xs text-muted-foreground">
                       {caseOfDay.citation} • {caseOfDay.court} ({caseOfDay.year})
                     </p>
                   </div>
-                  <button onClick={() => setCaseExpanded(false)} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                  <button onClick={() => setCaseExpanded(false)} className="p-1 rounded-lg hover:bg-muted transition-colors shrink-0">
                     <X className="h-4 w-4 text-muted-foreground" />
                   </button>
                 </div>
 
                 {/* Keywords */}
                 {caseOfDay.keywords?.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3">
+                  <div className="flex flex-wrap gap-1 mt-2">
                     {caseOfDay.keywords.map((kw, i) => (
-                      <span key={i} className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/8 text-amber-700 dark:text-amber-400 border border-amber-500/10">
+                      <span key={i} className="px-1.5 py-0.5 rounded-full text-[9px] bg-amber-500/8 text-amber-700 dark:text-amber-400 border border-amber-500/10">
                         {kw}
                       </span>
                     ))}
@@ -589,51 +589,81 @@ export default function StudyPage() {
                 )}
               </div>
 
-              {/* Summary (always shown) */}
+              {/* Summary */}
               {caseOfDay.summary && (
-                <div className="mx-6 mb-4 p-4 rounded-xl bg-amber-500/5 border border-amber-500/10">
-                  <h4 className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <Lightbulb className="h-3.5 w-3.5" /> Quick Summary
-                  </h4>
-                  <p className="text-sm text-foreground/80 leading-relaxed">{caseOfDay.summary}</p>
+                <div className="mx-4 mb-2 p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                  <p className="text-xs text-foreground/80 leading-relaxed">
+                    <Lightbulb className="h-3 w-3 inline mr-1 text-amber-600" />
+                    {caseOfDay.summary}
+                  </p>
                 </div>
               )}
 
-              {/* Verbatim Case Text */}
-              {caseOfDay.full_text && (
-                <div className="mx-6 mb-4">
-                  <details className="group rounded-xl border border-amber-500/15 overflow-hidden">
-                    <summary className="flex items-center justify-between cursor-pointer px-4 py-3 bg-amber-500/5 hover:bg-amber-500/8 transition-colors">
-                      <h4 className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <FileText className="h-3.5 w-3.5" /> Full Case Text
-                      </h4>
-                      <ChevronDown className="h-4 w-4 text-amber-600 dark:text-amber-400 transition-transform group-open:rotate-180" />
+              {/* Collapsible sections */}
+              <div className="px-4 pb-4 space-y-1.5">
+                {/* Ratio Decidendi - always visible, highlighted */}
+                <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
+                  <h4 className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-1">Ratio Decidendi</h4>
+                  <p className="text-xs text-foreground/85 leading-relaxed">{caseOfDay.ratio}</p>
+                </div>
+
+                {/* Holding - always visible */}
+                <div>
+                  <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Holding</h4>
+                  <p className="text-xs text-foreground/85 leading-relaxed">{caseOfDay.holding}</p>
+                </div>
+
+                {/* Facts & Issue - collapsed */}
+                <details className="group">
+                  <summary className="flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-1 hover:text-foreground transition-colors">
+                    <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                    Facts & Issue
+                  </summary>
+                  <div className="pl-4.5 space-y-2 pt-1 pb-1">
+                    <div>
+                      <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Facts</h4>
+                      <p className="text-xs text-foreground/85 leading-relaxed">{caseOfDay.facts}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Issue</h4>
+                      <p className="text-xs text-foreground/85 leading-relaxed">{caseOfDay.issue}</p>
+                    </div>
+                  </div>
+                </details>
+
+                {/* Significance - collapsed */}
+                <details className="group">
+                  <summary className="flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-1 hover:text-foreground transition-colors">
+                    <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                    Significance
+                  </summary>
+                  <p className="pl-4.5 text-xs text-foreground/85 leading-relaxed pt-1 pb-1">{caseOfDay.significance}</p>
+                </details>
+
+                {/* Full Case Text - collapsed */}
+                {caseOfDay.full_text && (
+                  <details className="group">
+                    <summary className="flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider py-1 hover:text-foreground transition-colors">
+                      <FileText className="h-3 w-3" />
+                      <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                      Verbatim Case Text
                     </summary>
-                    <div className="px-4 py-4 max-h-96 overflow-y-auto">
-                      <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap font-mono">
+                    <div className="mt-1 p-3 rounded-lg bg-muted/30 border border-border/30 max-h-64 overflow-y-auto">
+                      <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap">
                         {caseOfDay.full_text}
                       </p>
                     </div>
                   </details>
-                </div>
-              )}
-
-              {/* Detailed Breakdown */}
-              <div className="px-6 pb-6 space-y-4">
-                <CaseSection title="Facts" content={caseOfDay.facts} />
-                <CaseSection title="Issue" content={caseOfDay.issue} />
-                <CaseSection title="Holding" content={caseOfDay.holding} />
-                <CaseSection title="Ratio Decidendi" content={caseOfDay.ratio} highlight />
-                <CaseSection title="Significance" content={caseOfDay.significance} />
+                )}
 
                 {caseOfDay.source_url && (
                   <a
                     href={caseOfDay.source_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-xs text-primary hover:underline mt-2"
+                    className="inline-flex items-center gap-1.5 text-[11px] text-primary hover:underline pt-1"
                   >
-                    Read full judgment on Kenya Law →
+                    📖 Read full judgment on Kenya Law →
                   </a>
                 )}
               </div>
@@ -744,13 +774,14 @@ export default function StudyPage() {
 /* ═══════════════════════════════════════
    CASE SECTION COMPONENT
    ═══════════════════════════════════════ */
+// CaseSection kept for backwards compatibility but no longer used in main view
 function CaseSection({ title, content, highlight }: { title: string; content: string; highlight?: boolean }) {
   return (
-    <div className={`${highlight ? 'p-4 rounded-xl bg-primary/5 border border-primary/10' : ''}`}>
-      <h4 className={`text-xs font-semibold uppercase tracking-wider mb-1.5 ${
+    <div className={`${highlight ? 'p-3 rounded-lg bg-primary/5 border border-primary/10' : ''}`}>
+      <h4 className={`text-[10px] font-semibold uppercase tracking-wider mb-0.5 ${
         highlight ? 'text-primary' : 'text-muted-foreground'
       }`}>{title}</h4>
-      <p className="text-sm text-foreground/85 leading-relaxed">{content}</p>
+      <p className="text-xs text-foreground/85 leading-relaxed">{content}</p>
     </div>
   );
 }

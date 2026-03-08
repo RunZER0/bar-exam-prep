@@ -175,8 +175,10 @@ type TabId = (typeof TABS)[number]['id'];
 /* ================================================================
    HELPERS
    ================================================================ */
-function getTimeAgo(dateStr: string): string {
+function getTimeAgo(dateStr: string | null | undefined): string {
+  if (!dateStr) return 'just now';
   const diff = Date.now() - new Date(dateStr).getTime();
+  if (isNaN(diff) || diff < 0) return 'just now';
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;
@@ -533,20 +535,44 @@ export default function CommunityPage() {
   };
 
   const voteThread = async (threadId: string, vote: 'up' | 'down' | 'none') => {
-    await apiFetch('/api/community/threads', {
-      method: 'PATCH',
-      body: JSON.stringify({ threadId, vote }),
-    });
+    // Optimistic update
+    const prevThreads = [...threads];
     setThreads(prev => prev.map(t => {
       if (t.id !== threadId) return t;
       const oldVote = t.userVote;
-      let up = t.upvotes, down = t.downvotes;
+      let up = Number(t.upvotes) || 0, down = Number(t.downvotes) || 0;
       if (oldVote === 'up') up--;
       if (oldVote === 'down') down--;
       if (vote === 'up') up++;
       if (vote === 'down') down++;
-      return { ...t, upvotes: up, downvotes: down, userVote: vote === 'none' ? null : vote };
+      return { ...t, upvotes: Math.max(0, up), downvotes: Math.max(0, down), userVote: vote === 'none' ? null : vote };
     }));
+    // Also update activeThread if viewing it
+    if (activeThread?.id === threadId) {
+      setActiveThread(prev => {
+        if (!prev) return prev;
+        const oldVote = prev.userVote;
+        let up = Number(prev.upvotes) || 0, down = Number(prev.downvotes) || 0;
+        if (oldVote === 'up') up--;
+        if (oldVote === 'down') down--;
+        if (vote === 'up') up++;
+        if (vote === 'down') down++;
+        return { ...prev, upvotes: Math.max(0, up), downvotes: Math.max(0, down), userVote: vote === 'none' ? null : vote };
+      });
+    }
+    try {
+      const res = await apiFetch('/api/community/threads', {
+        method: 'PATCH',
+        body: JSON.stringify({ threadId, vote }),
+      });
+      if (!res.ok) {
+        // Revert on failure
+        setThreads(prevThreads);
+      }
+    } catch {
+      // Revert on network error
+      setThreads(prevThreads);
+    }
   };
 
   const openThread = async (thread: Thread) => {
@@ -578,20 +604,28 @@ export default function CommunityPage() {
   };
 
   const voteReply = async (replyId: string, vote: 'up' | 'down' | 'none') => {
-    await apiFetch('/api/community/threads/replies', {
-      method: 'PATCH',
-      body: JSON.stringify({ replyId, vote }),
-    });
+    const prevReplies = [...threadReplies];
     setThreadReplies(prev => prev.map(r => {
       if (r.id !== replyId) return r;
       const oldVote = r.userVote;
-      let up = r.upvotes, down = r.downvotes;
+      let up = Number(r.upvotes) || 0, down = Number(r.downvotes) || 0;
       if (oldVote === 'up') up--;
       if (oldVote === 'down') down--;
       if (vote === 'up') up++;
       if (vote === 'down') down++;
-      return { ...r, upvotes: up, downvotes: down, userVote: vote === 'none' ? null : vote };
+      return { ...r, upvotes: Math.max(0, up), downvotes: Math.max(0, down), userVote: vote === 'none' ? null : vote };
     }));
+    try {
+      const res = await apiFetch('/api/community/threads/replies', {
+        method: 'PATCH',
+        body: JSON.stringify({ replyId, vote }),
+      });
+      if (!res.ok) {
+        setThreadReplies(prevReplies);
+      }
+    } catch {
+      setThreadReplies(prevReplies);
+    }
   };
 
   /* ================================================================
@@ -1089,7 +1123,7 @@ export default function CommunityPage() {
             ) : (
               <div className="space-y-2">
                 {threads.map(thread => {
-                  const score = thread.upvotes - thread.downvotes;
+                  const score = (Number(thread.upvotes) || 0) - (Number(thread.downvotes) || 0);
                   const timeAgo = getTimeAgo(thread.createdAt);
                   return (
                     <div
@@ -1182,7 +1216,7 @@ export default function CommunityPage() {
                   >
                     <ThumbsUp className="h-3.5 w-3.5" />
                   </button>
-                  <span className="text-xs font-bold">{activeThread.upvotes - activeThread.downvotes}</span>
+                  <span className="text-xs font-bold">{(Number(activeThread.upvotes) || 0) - (Number(activeThread.downvotes) || 0)}</span>
                   <button
                     onClick={() => voteThread(activeThread.id, activeThread.userVote === 'down' ? 'none' : 'down')}
                     className={`p-1 rounded-md ${activeThread.userVote === 'down' ? 'text-red-500 bg-red-500/10' : 'text-muted-foreground/40 hover:text-red-500'}`}

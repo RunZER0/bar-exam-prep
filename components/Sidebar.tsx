@@ -51,7 +51,7 @@ const PREMIUM_ITEM = { href: '/subscribe', label: 'Upgrade', icon: Crown };
 const ADMIN_ITEM = { href: '/admin', label: 'Admin Panel', icon: Shield };
 
 // Admin emails - you can add more or use an API check
-const ADMIN_EMAILS = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(',') || [];
+const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(',') || []).map(e => e.trim().toLowerCase());
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -68,7 +68,7 @@ export default function Sidebar() {
     return pathname.startsWith(href);
   };
 
-  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
 
   const nav = (
     <>

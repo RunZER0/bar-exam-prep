@@ -41,7 +41,10 @@ export async function verifyAuth(request: NextRequest): Promise<AuthUser | null>
       };
     }
 
-    // Create new user if doesn't exist — start 3-day free trial
+    // Create new user if doesn't exist
+    const isAdmin = decodedToken.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase();
+
+    // Admins get full access; everyone else gets a 3-day free trial
     const trialEnd = new Date();
     trialEnd.setDate(trialEnd.getDate() + 3);
 
@@ -50,10 +53,11 @@ export async function verifyAuth(request: NextRequest): Promise<AuthUser | null>
       email: decodedToken.email!,
       displayName: decodedToken.name || null,
       photoURL: decodedToken.picture || null,
-      role: decodedToken.email === process.env.ADMIN_EMAIL ? 'admin' : 'student',
-      subscriptionPlan: 'free_trial',
-      subscriptionStatus: 'trialing',
-      trialEndsAt: trialEnd,
+      role: isAdmin ? 'admin' : 'student',
+      subscriptionPlan: isAdmin ? 'annual' : 'free_trial',
+      subscriptionStatus: isAdmin ? 'active' : 'trialing',
+      trialEndsAt: isAdmin ? null : trialEnd,
+      subscriptionEndsAt: isAdmin ? new Date('2099-12-31') : null,
     }).returning();
 
     return {

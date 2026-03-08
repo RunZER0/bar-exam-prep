@@ -739,7 +739,7 @@ function RecommendationsView({ queueData }: { queueData: DailyQueue | null }) {
                     <div>
                         <p className="text-xs font-medium text-foreground mb-1">How the Mastery Hub works</p>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
-                            Your daily plan is generated automatically based on the KSL syllabus, your mastery levels, and spaced repetition.
+                            Your daily plan is built automatically based on the KSL syllabus, your mastery levels, and spaced repetition.
                             Focus on your daily tasks first — then explore these sections for extra practice.
                         </p>
                     </div>

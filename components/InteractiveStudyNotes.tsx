@@ -623,7 +623,7 @@ export default function InteractiveStudyNotes({
               <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Save these notes for later?</p>
             </div>
             <p className="text-xs text-amber-700/80 dark:text-amber-400/70">
-              You can revisit saved notes anytime from the study page without regenerating them.
+              You can revisit saved notes anytime from the study page without fetching them again.
             </p>
             <div className="flex gap-2">
               <Button

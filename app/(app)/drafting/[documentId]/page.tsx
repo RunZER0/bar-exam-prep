@@ -782,7 +782,7 @@ function PracticeModePanel({
     );
   }
 
-  if (loadingScn) return <EngagingLoader size="lg" message="Generating your drafting scenario..." />;
+  if (loadingScn) return <EngagingLoader size="lg" message="Setting up your drafting scenario..." />;
 
   /* grade results */
   if (submitted && grade && !grading) {

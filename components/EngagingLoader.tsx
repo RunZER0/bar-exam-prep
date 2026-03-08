@@ -73,7 +73,7 @@ const FUN_FACTS: { text: string; category: 'fact' | 'quote' | 'trivia' | 'platfo
   { text: 'Tip: Highlight any text in your study notes and choose "Simplify" to get a clearer explanation instantly.', category: 'platform' },
   { text: 'Tip: Switch between Slide view and Reader view using the toggle in the study header — Reader mode shows everything on one page.', category: 'platform' },
   { text: 'Tip: The Mastery Hub adapts daily — it tracks what you\'ve covered and surfaces topics that need attention.', category: 'platform' },
-  { text: 'Tip: Your study materials are generated fresh based on the KSL syllabus, Kenyan statutes, and real case law from Kenya Law.', category: 'platform' },
+  { text: 'Tip: Your study materials are prepared fresh based on the KSL syllabus, Kenyan statutes, and real case law from Kenya Law.', category: 'platform' },
   { text: 'Tip: Use the floating chat bubble to ask any legal question — it has context from your current study session.', category: 'platform' },
   { text: 'Tip: Try the Legal Drafting section to practice writing affidavits, pleadings, and opinions with AI feedback.', category: 'platform' },
   { text: 'Tip: Your Readiness tab shows a breakdown of your mastery level across all 9 ATP units.', category: 'platform' },

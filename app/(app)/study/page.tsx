@@ -291,7 +291,7 @@ export default function StudyPage() {
               onClick={() => generateNotes()}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary text-sm font-medium hover:bg-primary/15 transition-colors"
             >
-              <RefreshCw className="h-4 w-4" /> Regenerate Notes
+              <RefreshCw className="h-4 w-4" /> Get Fresh Notes
             </button>
           </div>
         </div>
@@ -312,7 +312,7 @@ export default function StudyPage() {
             <Sparkles className="absolute inset-0 m-auto h-6 w-6 text-primary animate-pulse" />
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">Generating Your Notes</h3>
+            <h3 className="font-semibold text-foreground">Getting Your Notes Ready</h3>
             <p className="text-sm text-muted-foreground mt-1">
               {depth === 'indepth' ? 'Preparing exhaustive coverage...' :
                depth === 'refresher' ? 'Building a quick refresher...' :
@@ -419,7 +419,7 @@ export default function StudyPage() {
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
           >
             <Sparkles className="h-4 w-4" />
-            Generate Study Notes
+            Get Study Notes
           </button>
         </div>
       </div>
@@ -444,7 +444,7 @@ export default function StudyPage() {
             </div>
             <h1 className="text-xl font-bold">Ask AI to Prepare Notes</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Tell the AI what you want to study and it will generate tailored study materials
+              Tell the AI what you want to study and it will prepare tailored study materials for you
             </p>
           </div>
 
@@ -487,7 +487,7 @@ export default function StudyPage() {
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Sparkles className="h-4 w-4" />
-              Generate Notes
+              Get Notes
             </button>
           </div>
         </div>

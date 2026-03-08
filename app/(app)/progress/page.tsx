@@ -126,7 +126,7 @@ export default function ProgressPage() {
   }, [user]);
 
   if (loading) {
-    return <EngagingLoader size="lg" message="Generating your progress report..." />;
+    return <EngagingLoader size="lg" message="Putting together your progress report..." />;
   }
 
   if (!data) {

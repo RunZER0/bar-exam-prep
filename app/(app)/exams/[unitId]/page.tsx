@@ -230,7 +230,7 @@ Rules:
           }),
         });
 
-        if (!res.ok) throw new Error('Failed to generate exam');
+        if (!res.ok) throw new Error('Failed to prepare exam');
 
         const data = await res.json();
         let parsed: Question[];
@@ -271,7 +271,7 @@ Rules:
         // Notify service that exam started (triggers next exam preload)
         onExamStart(unitId, examType, paperSize);
       } catch (err) {
-        setError('Failed to generate exam. Please try again.');
+        setError('Couldn\'t prepare your exam. Please try again.');
       }
     }
 
@@ -469,7 +469,7 @@ Respond with ONLY valid JSON:
           </div>
         </div>
         <div className="text-center">
-          <p className="font-medium text-lg">Generating your exam…</p>
+          <p className="font-medium text-lg">Preparing your exam…</p>
           <p className="text-sm text-muted-foreground mt-1">
             {unit.name} · CLE Standard · {config.questions} questions
           </p>

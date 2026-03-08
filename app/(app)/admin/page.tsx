@@ -879,7 +879,7 @@ export default function AdminPage() {
           <div className="flex items-center justify-between py-3 border-b">
             <div>
               <p className="font-medium">Clear All Preloaded Content</p>
-              <p className="text-sm text-muted-foreground">Remove all cached AI-generated content</p>
+              <p className="text-sm text-muted-foreground">Remove all cached AI-prepared content</p>
             </div>
             <Button variant="destructive" size="sm">Clear</Button>
           </div>

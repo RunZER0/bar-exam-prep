@@ -647,7 +647,7 @@ Make this practical and exam-focused for the Kenya bar exam.`;
                     <span className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                     <span className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
-                  <span>Researching and generating response...</span>
+                  <span>Researching and preparing your answer...</span>
                 </div>
               </div>
             </div>

@@ -653,7 +653,7 @@ export default function OralExamsPage() {
       await saveSession(data.content, data.score);
     } catch (err) {
       console.error('Summary error:', err);
-      setError('Failed to generate summary. Please try again.');
+      setError('Couldn\'t prepare your summary. Please try again.');
       setIsLoading(false);
     } finally {
       setIsLoading(false);

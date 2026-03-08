@@ -1,19 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { communityEvents, eventParticipants, users } from '@/lib/db/schema';
-import { eq, desc, and, count, gte, lte, sql, ne } from 'drizzle-orm';
+import { communityEvents, eventParticipants, users, weeklyRankings } from '@/lib/db/schema';
+import { eq, desc, and, count, gte, lte, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const REWARDS = [
-  { position: 1, reward: '🏆 Champion — 500 XP', value: 500 },
-  { position: 2, reward: '🥈 Runner-up — 300 XP', value: 300 },
-  { position: 3, reward: '🥉 Bronze — 150 XP', value: 150 },
+  { position: 1, reward: '🏆 Champion — 500 pts', value: 500 },
+  { position: 2, reward: '🥈 Runner-up — 300 pts', value: 300 },
+  { position: 3, reward: '🥉 Bronze — 150 pts', value: 150 },
 ];
 
 const CHALLENGE_TYPES = ['trivia', 'reading', 'quiz_marathon', 'drafting', 'research'] as const;
+
+/* ================================================================
+   NAIROBI TIME HELPERS — Kenya is UTC+3 (no DST)
+   ================================================================ */
+const EAT_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC+3
+
+/** Returns midnight Nairobi time (EAT) for today, as a UTC Date */
+function getNairobiMidnight(): Date {
+  const now = new Date();
+  const nairobiNow = new Date(now.getTime() + EAT_OFFSET_MS);
+  const y = nairobiNow.getUTCFullYear();
+  const m = nairobiNow.getUTCMonth();
+  const d = nairobiNow.getUTCDate();
+  // Midnight EAT = 21:00 UTC previous day
+  return new Date(Date.UTC(y, m, d) - EAT_OFFSET_MS);
+}
+
+/** Returns the Nairobi-time date string (YYYY-MM-DD) for "today" */
+function getNairobiDateStr(): string {
+  const now = new Date();
+  const nairobiNow = new Date(now.getTime() + EAT_OFFSET_MS);
+  return nairobiNow.toISOString().split('T')[0];
+}
+
+/** Returns Monday 00:00 EAT (as UTC Date) for the week containing the given date */
+function getWeekStartEAT(date: Date): Date {
+  const eat = new Date(date.getTime() + EAT_OFFSET_MS);
+  const day = eat.getUTCDay(); // 0=Sun, 1=Mon...
+  const diff = day === 0 ? -6 : 1 - day;
+  eat.setUTCDate(eat.getUTCDate() + diff);
+  eat.setUTCHours(0, 0, 0, 0);
+  return new Date(eat.getTime() - EAT_OFFSET_MS);
+}
 
 const UNIT_TOPICS: Record<string, { name: string; subjects: string[] }> = {
   'atp-100': { name: 'Civil Litigation', subjects: ['jurisdiction', 'pleadings', 'interlocutory applications', 'discovery', 'trial procedure', 'enforcement'] },
@@ -26,16 +59,20 @@ const UNIT_TOPICS: Record<string, { name: string; subjects: string[] }> = {
 };
 
 /* ================================================================
-   AI CHALLENGE AGENT — generates 3 daily challenges
-   Types: drafting, multiple choice (trivia), short text answer
+   AI CHALLENGE AGENT — generates daily COMMUNITY challenges for ALL 7 units.
+   Same challenges for everyone. Tough, bar-exam level.
+   New set generated at midnight Nairobi time (EAT, UTC+3).
    ================================================================ */
 
 // In-memory flag so only one generation runs per server instance per day
 let _generatingDate: string | null = null;
 
+// Rotate challenge types across units each day so variety stays high
+const ROTATING_TYPES = ['drafting', 'trivia', 'research'] as const;
+
 async function ensureActiveChallenges(): Promise<void> {
   const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = getNairobiDateStr(); // Nairobi-time date
 
   // Auto-expire old active events (lightweight DB call)
   await db.update(communityEvents)
@@ -45,9 +82,8 @@ async function ensureActiveChallenges(): Promise<void> {
       lte(communityEvents.endsAt, now)
     ));
 
-  // Check how many active AI challenges were created today
-  const todayStart = new Date(now);
-  todayStart.setUTCHours(0, 0, 0, 0);
+  // Check how many active AI challenges were created today (Nairobi midnight)
+  const todayStart = getNairobiMidnight();
 
   const [todaysAiCount] = await db
     .select({ count: count() })
@@ -58,16 +94,42 @@ async function ensureActiveChallenges(): Promise<void> {
       gte(communityEvents.createdAt, todayStart)
     ));
 
-  if ((todaysAiCount?.count || 0) >= 3) return; // Already generated today's 3 AI challenges
+  // We generate 7 challenges (one per unit) — if we have at least 7, skip
+  if ((todaysAiCount?.count || 0) >= 7) return;
 
   // Prevent duplicate generation: only one in-flight per day
   if (_generatingDate === todayStr) return;
   _generatingDate = todayStr;
 
-  // Pick 3 random units for variety
   const unitKeys = Object.keys(UNIT_TOPICS);
-  const shuffled = unitKeys.sort(() => Math.random() - 0.5);
-  const selectedUnits = shuffled.slice(0, 3);
+  const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
+
+  // Find which units already have challenges today to avoid duplicates
+  const existingToday = await db
+    .select({ unitId: communityEvents.unitId })
+    .from(communityEvents)
+    .where(and(
+      eq(communityEvents.isAgentCreated, true),
+      eq(communityEvents.status, 'active'),
+      gte(communityEvents.createdAt, todayStart)
+    ));
+  const existingUnitIds = new Set(existingToday.map(e => e.unitId));
+  const unitsToGenerate = unitKeys.filter(u => !existingUnitIds.has(u));
+
+  if (unitsToGenerate.length === 0) return;
+
+  // Build the prompt for ALL missing units at once
+  const challengeSpecs = unitsToGenerate.map((unitId, i) => {
+    const unit = UNIT_TOPICS[unitId];
+    // Rotate type based on day + unit index so each unit gets different types on different days
+    const typeIdx = (dayOfYear + i) % 3;
+    const type = ROTATING_TYPES[typeIdx];
+    const subject = unit.subjects[(dayOfYear + i) % unit.subjects.length];
+    return { unitId, unitName: unit.name, type, subject, subjects: unit.subjects };
+  });
+
+  // Calculate end time: next midnight Nairobi time
+  const nextMidnightEAT = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
 
   try {
     const completion = await openai.chat.completions.create({
@@ -75,106 +137,112 @@ async function ensureActiveChallenges(): Promise<void> {
       messages: [
         {
           role: 'system',
-          content: `You are a creative challenge manager for Ynai, a Kenyan bar exam prep platform.
-Generate exactly 3 daily challenges. Each must have:
-- A catchy, fun title with emojis
-- An engaging description (2-3 sentences)
-- 3-5 questions/tasks testing real Kenyan legal knowledge (post-2010 Constitution)
+          content: `You are the Challenge Master for Ynai — a Kenyan Advocates Training Programme (ATP) bar exam prep platform.
 
-The 3 challenges MUST be:
-1. A DRAFTING challenge — students draft a legal document
-2. A MULTIPLE CHOICE (trivia) challenge — 3-5 MCQ questions with 4 options each
-3. A SHORT ANSWER (research) challenge — 3-5 questions requiring brief explanations
+CRITICAL RULES — VIOLATING THESE MAKES THE OUTPUT INVALID:
+1. ALL legal references MUST be from Kenya's POST-2010 era. The Constitution of Kenya 2010 is the ONLY constitution.
+2. NEVER cite any case decided before 2010. No colonial-era law. No "Republic v El Mann [1969]" or similar.
+3. Reference ONLY modern Kenyan statutes enacted after 2010:
+   - Constitution of Kenya 2010 (specific Articles)
+   - Civil Procedure Act (as amended), Land Registration Act 2012
+   - Marriage Act 2014, Matrimonial Property Act 2013
+   - Companies Act 2015, Insolvency Act 2015
+   - Employment Act 2007 (as amended), Labour Relations Act 2007
+   - Law of Succession Act (Cap 160, as interpreted post-2010)
+   - Advocates Act (Cap 16), LSK Act 2014
+   - Sexual Offences Act 2006 (as applied post-2010), Computer Misuse and Cybercrimes Act 2018
+   - Data Protection Act 2019, Access to Information Act 2016
+   - Environment and Land Court Act 2011, National Land Commission Act 2012
+4. For case law, cite ONLY real post-2010 decisions from Kenya's Supreme Court, Court of Appeal, High Court, or ELC. Examples:
+   - Mumo Matemu v Trusted Society of Human Rights Alliance [2013] eKLR
+   - Communications Authority of Kenya & 8 others v Royal Media Services Ltd [2014] eKLR
+   - In re the Matter of the Interim Independent Electoral Commission [2011] eKLR
+   - Katiba Institute v Attorney General [2017] eKLR
+   If you are not certain a case is real and post-2010, DO NOT cite it. Instead, describe the legal principle without a specific case name.
+5. These challenges are for QUALIFIED LAW GRADUATES preparing for the bar exam. Make them GENUINELY DIFFICULT.
+   - MCQ distractors must be plausible and test nuanced understanding
+   - Short answers must require precise legal analysis, not one-word responses
+   - Drafting tasks must require proper legal document structure
 
-Respond in JSON only.`,
+Generate exactly ${challengeSpecs.length} challenges — one per unit. Each challenge has:
+- A catchy title with emojis
+- A demanding description (2-3 sentences)
+- 3-5 questions worth a total of 50 points
+
+Question types & scoring:
+- "mcq": 4 options (A/B/C/D), one correct. 10 points each. Field "answer" = correct letter.
+- "short_answer": Brief but precise legal analysis. 10 points each. Field "modelAnswer" = comprehensive model answer.
+- "drafting": Draft a legal document excerpt. 15-20 points. Field "modelAnswer" = model draft with key elements.
+
+Each question object: {"question":"...","type":"mcq|short_answer|drafting","options":["A","B","C","D"],"answer":"B","modelAnswer":"...","points":10}
+- MCQ must have "options" and "answer" fields.
+- short_answer and drafting must have "modelAnswer" field.
+- All must have "points" field.
+
+Respond in JSON only: {"challenges": [...]}`,
         },
         {
           role: 'user',
-          content: `Generate 3 daily challenges:
-1. DRAFTING for ${UNIT_TOPICS[selectedUnits[0]].name} (topics: ${UNIT_TOPICS[selectedUnits[0]].subjects.join(', ')})
-2. MULTIPLE CHOICE for ${UNIT_TOPICS[selectedUnits[1]].name} (topics: ${UNIT_TOPICS[selectedUnits[1]].subjects.join(', ')})
-3. SHORT ANSWER for ${UNIT_TOPICS[selectedUnits[2]].name} (topics: ${UNIT_TOPICS[selectedUnits[2]].subjects.join(', ')})
-
-Respond: {
-  "challenges": [
-    {"title":"✍️ ...","description":"...","type":"drafting","unitId":"${selectedUnits[0]}","questions":[{"question":"Draft a...","type":"drafting"}]},
-    {"title":"🧠 ...","description":"...","type":"trivia","unitId":"${selectedUnits[1]}","questions":[{"question":"...","type":"mcq","options":["A","B","C","D"],"answer":"A"}]},
-    {"title":"📝 ...","description":"...","type":"research","unitId":"${selectedUnits[2]}","questions":[{"question":"Briefly explain...","type":"short_answer","answer":"..."}]}
-  ]
-}`,
+          content: `Generate these ${challengeSpecs.length} bar-exam-level challenges:\n${challengeSpecs.map((s, i) => 
+            `${i + 1}. ${s.type.toUpperCase()} for ${s.unitName} — focus on: ${s.subject} (other topics: ${s.subjects.join(', ')})`
+          ).join('\n')}\n\nEach challenge JSON: {"title":"...","description":"...","type":"...","unitId":"...","questions":[...],"totalPoints":50}`,
         },
       ],
-      temperature: 0.9,
-      max_completion_tokens: 2000,
+      temperature: 0.8,
+      max_completion_tokens: 6000,
       response_format: { type: 'json_object' },
     });
 
     const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
     if (parsed.challenges && Array.isArray(parsed.challenges)) {
-      for (let i = 0; i < Math.min(parsed.challenges.length, 3); i++) {
+      for (let i = 0; i < parsed.challenges.length && i < challengeSpecs.length; i++) {
         const ch = parsed.challenges[i];
-        const type = CHALLENGE_TYPES.includes(ch.type) ? ch.type : (['drafting', 'trivia', 'research'] as const)[i % 3];
+        const spec = challengeSpecs[i];
+        const type = CHALLENGE_TYPES.includes(ch.type) ? ch.type : spec.type;
         await db.insert(communityEvents).values({
           title: ch.title,
           description: ch.description,
           type,
           status: 'active',
-          unitId: ch.unitId || selectedUnits[i],
+          unitId: ch.unitId || spec.unitId,
           startsAt: now,
-          endsAt: new Date(now.getTime() + 24 * 60 * 60 * 1000), // 24 hours
+          endsAt: nextMidnightEAT,
           rewards: REWARDS,
           isAgentCreated: true,
           reviewStatus: 'approved',
           challengeContent: ch.questions || null,
-          maxParticipants: 200,
+          maxParticipants: 500,
         });
       }
-      console.log(`[CommunityAgent] Generated ${parsed.challenges.length} daily AI challenges`);
+      console.log(`[CommunityAgent] Generated ${parsed.challenges.length} AI challenges for ${challengeSpecs.length} units`);
       return;
     }
   } catch (err) {
     console.error('[CommunityAgent] AI generation failed, using fallback:', err);
   }
 
-  // Fallback: deterministic challenges
-  const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
-  const fallbacks = [
-    {
-      title: `✍️ Draft Challenge: ${UNIT_TOPICS[selectedUnits[0]].name}`,
-      description: `Put your drafting skills to the test! Draft a document related to ${UNIT_TOPICS[selectedUnits[0]].subjects[dayOfYear % UNIT_TOPICS[selectedUnits[0]].subjects.length]}. Show us what you've got!`,
-      type: 'drafting' as const,
-      unitId: selectedUnits[0],
-    },
-    {
-      title: `🧠 Quick Quiz: ${UNIT_TOPICS[selectedUnits[1]].name}`,
-      description: `Test your knowledge with rapid-fire multiple choice questions on ${UNIT_TOPICS[selectedUnits[1]].subjects[dayOfYear % UNIT_TOPICS[selectedUnits[1]].subjects.length]}!`,
-      type: 'trivia' as const,
-      unitId: selectedUnits[1],
-    },
-    {
-      title: `📝 Explain It: ${UNIT_TOPICS[selectedUnits[2]].name}`,
-      description: `Answer short legal questions about ${UNIT_TOPICS[selectedUnits[2]].subjects[dayOfYear % UNIT_TOPICS[selectedUnits[2]].subjects.length]}. Clear, concise reasoning wins!`,
-      type: 'research' as const,
-      unitId: selectedUnits[2],
-    },
-  ];
+  // Fallback: deterministic challenges for all missing units
+  for (let i = 0; i < challengeSpecs.length; i++) {
+    const spec = challengeSpecs[i];
+    const unit = UNIT_TOPICS[spec.unitId];
+    const typeEmoji = spec.type === 'drafting' ? '✍️' : spec.type === 'trivia' ? '🧠' : '📝';
+    const typeLabel = spec.type === 'drafting' ? 'Draft Challenge' : spec.type === 'trivia' ? 'Quick Quiz' : 'Explain It';
 
-  for (const ch of fallbacks) {
     await db.insert(communityEvents).values({
-      title: ch.title,
-      description: ch.description,
-      type: ch.type,
+      title: `${typeEmoji} ${typeLabel}: ${unit.name}`,
+      description: `Today's ${spec.type} challenge for ${unit.name} — focusing on ${spec.subject}. Show what you know!`,
+      type: spec.type,
       status: 'active',
-      unitId: ch.unitId,
+      unitId: spec.unitId,
       startsAt: now,
-      endsAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+      endsAt: nextMidnightEAT,
       rewards: REWARDS,
       isAgentCreated: true,
       reviewStatus: 'approved',
-      maxParticipants: 200,
+      maxParticipants: 500,
     });
   }
-  console.log('[CommunityAgent] Used fallback challenges');
+  console.log(`[CommunityAgent] Used fallback challenges for ${challengeSpecs.length} units`);
 }
 
 /* ================================================================
@@ -364,8 +432,12 @@ export async function GET(req: NextRequest) {
     };
 
     const enriched = await Promise.all(allEvents.map(enrichEvent));
-    const aiChallenges = enriched.filter(e => e.isAgentCreated);
+    let aiChallenges = enriched.filter(e => e.isAgentCreated);
     const communityChallenges = enriched.filter(e => !e.isAgentCreated);
+
+    // Community challenges — same for everyone, no per-user personalization.
+    // Sort by unit order (atp-100 through atp-106) for consistency.
+    aiChallenges.sort((a, b) => (a.unitId || '').localeCompare(b.unitId || ''));
 
     return NextResponse.json({ events: enriched, aiChallenges, communityChallenges });
   } catch (error) {
@@ -375,7 +447,8 @@ export async function GET(req: NextRequest) {
 }
 
 /* ================================================================
-   POST — Join/submit/leave events, or submit a new community challenge
+   POST — Join/submit/leave events, submit a new community challenge,
+   or GRADE challenge answers (scores feed into weekly rankings)
    ================================================================ */
 export async function POST(req: NextRequest) {
   try {
@@ -390,6 +463,209 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { action, eventId, score } = body;
+
+    /* ---- GRADE CHALLENGE ANSWERS ---- */
+    if (action === 'grade') {
+      const { answers } = body; // answers: { [questionIndex]: string }
+      if (!eventId || !answers) {
+        return NextResponse.json({ error: 'Event ID and answers required' }, { status: 400 });
+      }
+
+      const [event] = await db.select().from(communityEvents)
+        .where(eq(communityEvents.id, eventId)).limit(1);
+      if (!event) return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
+
+      // Must be a participant
+      const [participation] = await db.select().from(eventParticipants)
+        .where(and(eq(eventParticipants.eventId, eventId), eq(eventParticipants.userId, userId))).limit(1);
+      if (!participation) return NextResponse.json({ error: 'You must join the challenge first' }, { status: 400 });
+
+      // Don't allow re-grading if already scored
+      if (participation.score && participation.score > 0) {
+        return NextResponse.json({
+          error: 'You have already submitted answers for this challenge',
+          alreadyGraded: true,
+          previousScore: participation.score,
+        }, { status: 400 });
+      }
+
+      const questions = (event.challengeContent as any[]) || [];
+      if (questions.length === 0) {
+        return NextResponse.json({ error: 'This challenge has no questions' }, { status: 400 });
+      }
+
+      // Grade each question
+      let totalScore = 0;
+      let totalPossible = 0;
+      const results: { questionIndex: number; question: string; userAnswer: string; correct: boolean; pointsEarned: number; pointsPossible: number; feedback: string }[] = [];
+
+      // Grade MCQs instantly, collect non-MCQ for AI grading
+      const aiGradingNeeded: { index: number; question: any; userAnswer: string }[] = [];
+
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        const userAnswer = (answers[i] || answers[String(i)] || '').trim();
+        const pointsPossible = q.points || 10;
+        totalPossible += pointsPossible;
+
+        if (q.type === 'mcq') {
+          // Exact match grading for MCQ
+          const correctAnswer = (q.answer || '').trim().toUpperCase();
+          const userChoice = userAnswer.toUpperCase().replace(/[^A-D]/g, '');
+          const isCorrect = userChoice === correctAnswer;
+          const earned = isCorrect ? pointsPossible : 0;
+          totalScore += earned;
+          results.push({
+            questionIndex: i,
+            question: q.question,
+            userAnswer,
+            correct: isCorrect,
+            pointsEarned: earned,
+            pointsPossible,
+            feedback: isCorrect ? 'Correct!' : `Incorrect. The correct answer is ${correctAnswer}.`,
+          });
+        } else {
+          // Queue for AI grading
+          aiGradingNeeded.push({ index: i, question: q, userAnswer });
+        }
+      }
+
+      // AI-grade short_answer and drafting questions in one batch
+      if (aiGradingNeeded.length > 0) {
+        try {
+          const gradingPrompt = aiGradingNeeded.map((item, idx) => {
+            const q = item.question;
+            return `Question ${idx + 1} (${q.type}, ${q.points || 10} points):
+Q: ${q.question}
+Model Answer: ${q.modelAnswer || 'Not provided'}
+Student Answer: ${item.userAnswer || '(No answer provided)'}`;
+          }).join('\n\n');
+
+          const gradingCompletion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+              {
+                role: 'system',
+                content: `You are a STRICT Kenyan bar exam grader. Grade each student answer against the model answer.
+
+GRADING CRITERIA (be tough but fair):
+- Award points based on accuracy, completeness, and legal precision
+- For short_answer: Award 0-${aiGradingNeeded[0]?.question.points || 10} points. Partial credit for partially correct answers.
+- For drafting: Award 0-${aiGradingNeeded[0]?.question.points || 20} points. Check for proper format, legal accuracy, and completeness.
+- An empty or irrelevant answer gets 0 points.
+- A vague answer with no legal substance gets at most 20% of points.
+- A good answer missing key elements gets 50-70%.
+- Only a thorough, legally precise answer gets 80-100%.
+
+Provide brief, constructive feedback for each.
+
+Respond in JSON: {"grades": [{"questionNumber": 1, "pointsEarned": 7, "feedback": "..."}]}`,
+              },
+              { role: 'user', content: gradingPrompt },
+            ],
+            temperature: 0.2,
+            max_completion_tokens: 2000,
+            response_format: { type: 'json_object' },
+          });
+
+          const gradingResult = JSON.parse(gradingCompletion.choices[0]?.message?.content || '{}');
+          const grades = gradingResult.grades || [];
+
+          for (let gi = 0; gi < aiGradingNeeded.length; gi++) {
+            const item = aiGradingNeeded[gi];
+            const grade = grades[gi] || { pointsEarned: 0, feedback: 'Could not grade this answer.' };
+            const pointsPossible = item.question.points || 10;
+            const earned = Math.min(Math.max(0, grade.pointsEarned || 0), pointsPossible);
+            totalScore += earned;
+            results.push({
+              questionIndex: item.index,
+              question: item.question.question,
+              userAnswer: item.userAnswer,
+              correct: earned >= pointsPossible * 0.7,
+              pointsEarned: earned,
+              pointsPossible,
+              feedback: grade.feedback || (earned > 0 ? 'Partially correct.' : 'Incorrect.'),
+            });
+          }
+        } catch (err) {
+          console.error('[GradingAgent] AI grading failed:', err);
+          // Fallback: give 0 for AI-graded questions
+          for (const item of aiGradingNeeded) {
+            const pointsPossible = item.question.points || 10;
+            results.push({
+              questionIndex: item.index,
+              question: item.question.question,
+              userAnswer: item.userAnswer,
+              correct: false,
+              pointsEarned: 0,
+              pointsPossible,
+              feedback: 'Grading temporarily unavailable. Your answer has been recorded.',
+            });
+          }
+        }
+      }
+
+      // Sort results by question index
+      results.sort((a, b) => a.questionIndex - b.questionIndex);
+
+      // Update participant score
+      const correctCount = results.filter(r => r.correct).length;
+      await db.update(eventParticipants).set({
+        score: totalScore,
+        questionsAnswered: questions.length,
+        correctAnswers: correctCount,
+      }).where(and(eq(eventParticipants.eventId, eventId), eq(eventParticipants.userId, userId)));
+
+      // Feed points into weekly rankings
+      try {
+        const weekStart = getWeekStartEAT(new Date());
+        const weekStartStr = weekStart.toISOString().split('T')[0];
+        const weekEndDate = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
+        const weekEndStr = weekEndDate.toISOString().split('T')[0];
+
+        const [existingRanking] = await db.select().from(weeklyRankings)
+          .where(and(eq(weeklyRankings.userId, userId), eq(weeklyRankings.weekStart, weekStartStr))).limit(1);
+
+        if (existingRanking) {
+          await db.update(weeklyRankings).set({
+            totalPoints: sql`${weeklyRankings.totalPoints} + ${totalScore}`,
+            quizzesCompleted: sql`${weeklyRankings.quizzesCompleted} + 1`,
+            updatedAt: new Date(),
+          }).where(and(eq(weeklyRankings.userId, userId), eq(weeklyRankings.weekStart, weekStartStr)));
+        } else {
+          await db.insert(weeklyRankings).values({
+            userId,
+            weekStart: weekStartStr,
+            weekEnd: weekEndStr,
+            rank: 0,
+            totalPoints: totalScore,
+            quizzesCompleted: 1,
+            bonusEarned: 0,
+          });
+        }
+
+        // Recalculate ranks for the week
+        const allRankings = await db.select().from(weeklyRankings)
+          .where(eq(weeklyRankings.weekStart, weekStartStr))
+          .orderBy(desc(weeklyRankings.totalPoints));
+
+        for (let ri = 0; ri < allRankings.length; ri++) {
+          await db.update(weeklyRankings).set({ rank: ri + 1 })
+            .where(eq(weeklyRankings.id, allRankings[ri].id));
+        }
+      } catch (err) {
+        console.error('[Rankings] Failed to update weekly ranking after grading:', err);
+      }
+
+      return NextResponse.json({
+        success: true,
+        totalScore,
+        totalPossible,
+        percentage: Math.round((totalScore / totalPossible) * 100),
+        results,
+        message: `You scored ${totalScore}/${totalPossible} (${Math.round((totalScore / totalPossible) * 100)}%)`,
+      });
+    }
 
     /* ---- SUBMIT A NEW COMMUNITY CHALLENGE ---- */
     if (action === 'submit_challenge') {

@@ -11,7 +11,32 @@ const WEEKLY_BONUSES = [
   { rank: 3, amount: 300 },
 ];
 
-// GET - Fetch weekly rankings
+/* ================================================================
+   NAIROBI TIME HELPERS — Kenya is UTC+3 (no DST)
+   Week runs Monday 00:00 EAT → Sunday 23:59:59 EAT
+   Winners announced on Sunday.
+   ================================================================ */
+const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+/** Returns Monday 00:00 EAT (as UTC Date) for the week containing `date` */
+function getWeekStart(date: Date): Date {
+  const eat = new Date(date.getTime() + EAT_OFFSET_MS);
+  const day = eat.getUTCDay(); // 0=Sun, 1=Mon...
+  const diff = day === 0 ? -6 : 1 - day;
+  eat.setUTCDate(eat.getUTCDate() + diff);
+  eat.setUTCHours(0, 0, 0, 0);
+  return new Date(eat.getTime() - EAT_OFFSET_MS);
+}
+
+/** Returns Sunday 23:59:59 EAT (as UTC Date) for the week starting at `weekStart` */
+function getWeekEnd(weekStart: Date): Date {
+  const end = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
+  // Sunday 23:59:59 EAT
+  end.setTime(end.getTime() + 24 * 60 * 60 * 1000 - 1);
+  return end;
+}
+
+// GET - Fetch weekly rankings (Nairobi time boundaries)
 export async function GET(req: NextRequest) {
   try {
     const authHeader = req.headers.get('Authorization');
@@ -31,13 +56,11 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const weekOffset = parseInt(searchParams.get('weekOffset') || '0');
 
-    // Calculate week boundaries
+    // Calculate week boundaries (Nairobi time: Mon–Sun)
     const now = new Date();
     const currentWeekStart = getWeekStart(now);
-    currentWeekStart.setDate(currentWeekStart.getDate() - (weekOffset * 7));
-    const currentWeekEnd = new Date(currentWeekStart);
-    currentWeekEnd.setDate(currentWeekEnd.getDate() + 6);
-    currentWeekEnd.setHours(23, 59, 59, 999);
+    currentWeekStart.setTime(currentWeekStart.getTime() - (weekOffset * 7 * 24 * 60 * 60 * 1000));
+    const currentWeekEnd = getWeekEnd(currentWeekStart);
 
     // Fetch rankings for the week
     let rankings = await db
@@ -157,11 +180,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Calculate time remaining in the week
+    // Calculate time remaining until Sunday 23:59:59 EAT
     const weekEndTime = currentWeekEnd.getTime();
     const timeRemaining = Math.max(0, weekEndTime - now.getTime());
     const daysRemaining = Math.floor(timeRemaining / (24 * 60 * 60 * 1000));
     const hoursRemaining = Math.floor((timeRemaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+
+    // Check if today is Sunday in Nairobi time
+    const nairobiNow = new Date(now.getTime() + EAT_OFFSET_MS);
+    const isSunday = nairobiNow.getUTCDay() === 0;
 
     return NextResponse.json({
       rankings: rankingsWithUsers,
@@ -172,6 +199,8 @@ export async function GET(req: NextRequest) {
         daysRemaining,
         hoursRemaining,
         weekOffset,
+        isSunday,
+        timezone: 'EAT (UTC+3)',
       },
       prizes: WEEKLY_BONUSES.map(b => ({
         rank: b.rank,
@@ -288,12 +317,4 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Helper function to get the start of the week (Monday)
-function getWeekStart(date: Date): Date {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Sunday
-  d.setDate(diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+

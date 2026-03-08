@@ -14,6 +14,16 @@ import {
   MessageCircle, ArrowUp, Filter, CornerDownRight,
 } from 'lucide-react';
 
+const UNIT_NAMES: Record<string, string> = {
+  'atp-100': 'Civil Litigation',
+  'atp-101': 'Criminal Litigation',
+  'atp-102': 'Conveyancing',
+  'atp-103': 'Family Law',
+  'atp-104': 'Probate',
+  'atp-105': 'Commercial',
+  'atp-106': 'Legal Ethics',
+};
+
 /* ================================================================
    TYPES
    ================================================================ */
@@ -244,6 +254,11 @@ export default function CommunityPage() {
   const [submitQuestions, setSubmitQuestions] = useState<{ question: string; type: string; options?: string[]; answer?: string }[]>([{ question: '', type: 'mcq', options: ['', '', '', ''], answer: '' }]);
   const [submittingChallenge, setSubmittingChallenge] = useState(false);
   const [submitFeedback, setSubmitFeedback] = useState<{ approved: boolean; message: string } | null>(null);
+
+  // Challenge answer & grading state
+  const [challengeAnswers, setChallengeAnswers] = useState<Record<string, Record<number, string>>>({});
+  const [gradingEventId, setGradingEventId] = useState<string | null>(null);
+  const [gradeResults, setGradeResults] = useState<Record<string, { totalScore: number; totalPossible: number; percentage: number; results: any[] }>>({});
 
   // Threads
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -511,6 +526,32 @@ export default function CommunityPage() {
       setSubmitFeedback({ approved: false, message: 'Something went wrong. Please try again.' });
     } finally {
       setSubmittingChallenge(false);
+    }
+  };
+
+  /* ---- Grade challenge answers ---- */
+  const submitChallengeAnswers = async (eventId: string) => {
+    const answers = challengeAnswers[eventId] || {};
+    setGradingEventId(eventId);
+    try {
+      const res = await apiFetch('/api/community/events', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'grade', eventId, answers }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGradeResults(prev => ({ ...prev, [eventId]: data }));
+        // Refresh rankings
+        loadTabData('rankings');
+      } else if (data.alreadyGraded) {
+        setGradeResults(prev => ({ ...prev, [eventId]: { totalScore: data.previousScore, totalPossible: 50, percentage: Math.round((data.previousScore / 50) * 100), results: [] } }));
+      } else {
+        alert(data.error || 'Failed to grade answers');
+      }
+    } catch {
+      alert('Failed to submit answers. Please try again.');
+    } finally {
+      setGradingEventId(null);
     }
   };
 
@@ -1481,26 +1522,115 @@ export default function CommunityPage() {
                               {isActive && <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">Active</span>}
                             </div>
                             <p className="text-xs text-muted-foreground mt-0.5">{event.description}</p>
+                            {event.unitId && UNIT_NAMES[event.unitId] && (
+                              <p className="text-[10px] text-muted-foreground/70 mt-0.5 flex items-center gap-1">
+                                <BookOpen className="h-3 w-3" /> {UNIT_NAMES[event.unitId]}
+                              </p>
+                            )}
                           </div>
                         </div>
 
-                        {/* Challenge content preview */}
-                        {event.challengeContent && event.challengeContent.length > 0 && event.isJoined && (
-                          <div className="bg-background/60 rounded-lg p-3 space-y-2 border border-border/10">
-                            {event.challengeContent.map((q: { question: string; type: string; options?: string[] }, qi: number) => (
-                              <div key={qi} className="space-y-1">
-                                <p className="text-xs font-medium">Q{qi + 1}. {q.question}</p>
+                        {/* Grading results — shown after submission */}
+                        {gradeResults[event.id] && (
+                          <div className="bg-background/80 rounded-lg p-3 space-y-2 border border-border/20">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-xs font-bold flex items-center gap-1.5">
+                                <Star className="h-3.5 w-3.5 text-amber-500" /> Your Score
+                              </h4>
+                              <span className={`text-sm font-bold ${
+                                gradeResults[event.id].percentage >= 70 ? 'text-emerald-500' :
+                                gradeResults[event.id].percentage >= 40 ? 'text-amber-500' : 'text-red-500'
+                              }`}>
+                                {gradeResults[event.id].totalScore}/{gradeResults[event.id].totalPossible} ({gradeResults[event.id].percentage}%)
+                              </span>
+                            </div>
+                            {gradeResults[event.id].results.length > 0 && (
+                              <div className="space-y-1.5">
+                                {gradeResults[event.id].results.map((r: any, ri: number) => (
+                                  <div key={ri} className={`text-[11px] p-2 rounded-md ${r.correct ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                                    <div className="flex items-center justify-between mb-0.5">
+                                      <span className="font-medium">Q{ri + 1}. {r.correct ? '✓' : '✗'}</span>
+                                      <span className="font-bold">{r.pointsEarned}/{r.pointsPossible} pts</span>
+                                    </div>
+                                    <p className="text-muted-foreground">{r.feedback}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <p className="text-[10px] text-muted-foreground text-center">Points added to your weekly ranking</p>
+                          </div>
+                        )}
+
+                        {/* Challenge questions with answer inputs */}
+                        {event.challengeContent && event.challengeContent.length > 0 && event.isJoined && !gradeResults[event.id] && (
+                          <div className="bg-background/60 rounded-lg p-3 space-y-3 border border-border/10">
+                            {event.challengeContent.map((q: { question: string; type: string; options?: string[]; points?: number }, qi: number) => (
+                              <div key={qi} className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs font-medium">Q{qi + 1}. {q.question}</p>
+                                  <span className="text-[10px] text-muted-foreground font-medium">{q.points || 10} pts</span>
+                                </div>
                                 {q.type === 'mcq' && q.options && (
-                                  <div className="grid grid-cols-2 gap-1 pl-3">
-                                    {q.options.map((opt: string, oi: number) => (
-                                      <span key={oi} className="text-[11px] text-muted-foreground">{String.fromCharCode(65 + oi)}. {opt}</span>
-                                    ))}
+                                  <div className="grid gap-1 pl-3">
+                                    {q.options.map((opt: string, oi: number) => {
+                                      const letter = String.fromCharCode(65 + oi);
+                                      const selected = (challengeAnswers[event.id]?.[qi] || '') === letter;
+                                      return (
+                                        <button
+                                          key={oi}
+                                          onClick={() => setChallengeAnswers(prev => ({
+                                            ...prev,
+                                            [event.id]: { ...prev[event.id], [qi]: letter }
+                                          }))}
+                                          className={`text-left text-[11px] px-2 py-1.5 rounded-md transition-colors ${
+                                            selected ? 'bg-primary/15 text-primary font-medium border border-primary/30' : 'text-muted-foreground hover:bg-muted/50'
+                                          }`}
+                                        >
+                                          {letter}. {opt}
+                                        </button>
+                                      );
+                                    })}
                                   </div>
                                 )}
-                                {q.type === 'drafting' && <p className="text-[11px] text-muted-foreground pl-3 italic">Draft your response below...</p>}
-                                {q.type === 'short_answer' && <p className="text-[11px] text-muted-foreground pl-3 italic">Write a brief answer...</p>}
+                                {(q.type === 'short_answer' || q.type === 'research') && (
+                                  <textarea
+                                    value={challengeAnswers[event.id]?.[qi] || ''}
+                                    onChange={e => setChallengeAnswers(prev => ({
+                                      ...prev,
+                                      [event.id]: { ...prev[event.id], [qi]: e.target.value }
+                                    }))}
+                                    placeholder="Write your answer..."
+                                    rows={2}
+                                    className="w-full text-[11px] px-2 py-1.5 rounded-md bg-background border border-border/30 placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
+                                  />
+                                )}
+                                {q.type === 'drafting' && (
+                                  <textarea
+                                    value={challengeAnswers[event.id]?.[qi] || ''}
+                                    onChange={e => setChallengeAnswers(prev => ({
+                                      ...prev,
+                                      [event.id]: { ...prev[event.id], [qi]: e.target.value }
+                                    }))}
+                                    placeholder="Draft your legal document..."
+                                    rows={4}
+                                    className="w-full text-[11px] px-2 py-1.5 rounded-md bg-background border border-border/30 placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
+                                  />
+                                )}
                               </div>
                             ))}
+
+                            {/* Submit answers button */}
+                            <button
+                              onClick={() => submitChallengeAnswers(event.id)}
+                              disabled={gradingEventId === event.id || !Object.keys(challengeAnswers[event.id] || {}).length}
+                              className="w-full mt-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                              {gradingEventId === event.id ? (
+                                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Grading...</>
+                              ) : (
+                                <><Send className="h-3.5 w-3.5" /> Submit Answers</>
+                              )}
+                            </button>
                           </div>
                         )}
 
@@ -1514,6 +1644,10 @@ export default function CommunityPage() {
                               className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/15 transition-colors">
                               Take Challenge
                             </button>
+                          ) : gradeResults[event.id] ? (
+                            <span className="text-[10px] font-medium text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full">
+                              Scored {gradeResults[event.id].totalScore} pts
+                            </span>
                           ) : (
                             <span className="text-[10px] font-medium text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">Participating</span>
                           )}
@@ -1744,8 +1878,13 @@ export default function CommunityPage() {
                 <div>
                   <p className="text-xs text-muted-foreground">This Week's Leaderboard</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {weekInfo.daysRemaining}d {weekInfo.hoursRemaining}h remaining
+                    {weekInfo.isSunday ? (
+                      <span className="text-amber-500 font-medium">🏆 Winners announced today!</span>
+                    ) : (
+                      <>{weekInfo.daysRemaining}d {weekInfo.hoursRemaining}h until Sunday</>
+                    )}
                   </p>
+                  <p className="text-[9px] text-muted-foreground/60 mt-0.5">Nairobi time (EAT)</p>
                 </div>
                 <div className="flex gap-1">
                   {[
@@ -1800,7 +1939,7 @@ export default function CommunityPage() {
                         <p className="text-sm font-medium truncate">
                           {r.displayName} {r.isCurrentUser && <span className="text-[10px] text-primary">(You)</span>}
                         </p>
-                        <p className="text-[11px] text-muted-foreground">{r.quizzesCompleted} quizzes completed</p>
+                        <p className="text-[11px] text-muted-foreground">{r.quizzesCompleted} challenges completed</p>
                       </div>
 
                       <div className="text-right">

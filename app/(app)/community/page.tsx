@@ -1441,8 +1441,9 @@ export default function CommunityPage() {
               </div>
               {aiChallenges.length === 0 ? (
                 <div className="text-center py-10 space-y-2 rounded-xl border border-dashed border-border/30">
-                  <Sparkles className="h-8 w-8 mx-auto text-muted-foreground/20" />
-                  <p className="text-xs text-muted-foreground">AI challenges for today are being prepared...</p>
+                  <Sparkles className="h-8 w-8 mx-auto text-amber-500/30 animate-pulse" />
+                  <p className="text-xs text-muted-foreground">Today&apos;s challenges are on the way — check back in a moment!</p>
+                  <button onClick={() => loadTabData('events')} className="text-[11px] text-primary hover:underline">Refresh</button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1557,7 +1558,7 @@ export default function CommunityPage() {
                   <h3 className="text-xs font-semibold flex items-center gap-2">
                     <FileText className="h-3.5 w-3.5" /> Create a Challenge
                   </h3>
-                  <p className="text-[11px] text-muted-foreground">Your challenge will be reviewed by AI for quality before being published.</p>
+                  <p className="text-[11px] text-muted-foreground">Your challenge goes live instantly. Our AI will review it shortly and may polish the wording.</p>
                   <input
                     value={submitTitle}
                     onChange={e => setSubmitTitle(e.target.value)}
@@ -1645,7 +1646,7 @@ export default function CommunityPage() {
                       disabled={submittingChallenge || !submitTitle.trim() || !submitDescription.trim()}
                       className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                     >
-                      {submittingChallenge ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> AI is reviewing...</> : <><Send className="h-3.5 w-3.5" /> Submit for Review</>}
+                      {submittingChallenge ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Publishing...</> : <><Send className="h-3.5 w-3.5" /> Publish Challenge</>}
                     </button>
                     <button
                       onClick={() => { setShowSubmitChallenge(false); setSubmitFeedback(null); }}

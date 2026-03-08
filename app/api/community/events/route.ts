@@ -29,10 +29,15 @@ const UNIT_TOPICS: Record<string, { name: string; subjects: string[] }> = {
    AI CHALLENGE AGENT — generates 3 daily challenges
    Types: drafting, multiple choice (trivia), short text answer
    ================================================================ */
+
+// In-memory flag so only one generation runs per server instance per day
+let _generatingDate: string | null = null;
+
 async function ensureActiveChallenges(): Promise<void> {
   const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
 
-  // Auto-expire old active events
+  // Auto-expire old active events (lightweight DB call)
   await db.update(communityEvents)
     .set({ status: 'completed' })
     .where(and(
@@ -42,7 +47,7 @@ async function ensureActiveChallenges(): Promise<void> {
 
   // Check how many active AI challenges were created today
   const todayStart = new Date(now);
-  todayStart.setHours(0, 0, 0, 0);
+  todayStart.setUTCHours(0, 0, 0, 0);
 
   const [todaysAiCount] = await db
     .select({ count: count() })
@@ -54,6 +59,10 @@ async function ensureActiveChallenges(): Promise<void> {
     ));
 
   if ((todaysAiCount?.count || 0) >= 3) return; // Already generated today's 3 AI challenges
+
+  // Prevent duplicate generation: only one in-flight per day
+  if (_generatingDate === todayStr) return;
+  _generatingDate = todayStr;
 
   // Pick 3 random units for variety
   const unitKeys = Object.keys(UNIT_TOPICS);
@@ -171,22 +180,69 @@ Respond: {
 /* ================================================================
    AI REVIEW — reviews user-submitted challenges for quality
    ================================================================ */
-async function reviewChallenge(title: string, description: string, questions: any[]): Promise<{ approved: boolean; feedback: string; improvedTitle?: string; improvedDescription?: string }> {
+/* ================================================================
+   LOCAL VALIDATION — instant, runs before response
+   Rejects only clearly bad submissions. Lenient by design.
+   ================================================================ */
+function localValidate(title: string, description: string, questions: any[]): { pass: boolean; reason: string } {
+  if (title.trim().length < 5) return { pass: false, reason: 'Title is too short — please give your challenge a descriptive name (at least 5 characters).' };
+  if (description.trim().length < 15) return { pass: false, reason: 'Description needs more detail — explain what the challenge is about so others know what to expect (at least 15 characters).' };
+
+  // Check questions have actual content
+  const validQs = questions.filter(q => q.question?.trim().length >= 8);
+  if (questions.length > 0 && validQs.length === 0) {
+    return { pass: false, reason: 'Your questions need more substance — each question should be at least 8 characters and test a specific legal concept.' };
+  }
+
+  // MCQ questions must have at least 2 non-empty options and an answer
+  for (const q of validQs) {
+    if (q.type === 'mcq') {
+      const filledOptions = (q.options || []).filter((o: string) => o?.trim().length > 0);
+      if (filledOptions.length < 2) return { pass: false, reason: `Question "${q.question.slice(0, 40)}..." needs at least 2 answer options.` };
+      if (!q.answer?.trim()) return { pass: false, reason: `Question "${q.question.slice(0, 40)}..." is missing the correct answer.` };
+    }
+    if (q.type === 'short_answer' && !q.answer?.trim()) {
+      return { pass: false, reason: `Question "${q.question.slice(0, 40)}..." needs a model answer so participants can learn from it.` };
+    }
+  }
+
+  return { pass: true, reason: 'Looks good!' };
+}
+
+/* ================================================================
+   AI REVIEW — runs asynchronously AFTER the challenge is published.
+   If the AI flags serious issues, the challenge is taken down.
+   This keeps submission instant for users.
+   ================================================================ */
+async function reviewChallengeAsync(eventId: string, title: string, description: string, questions: any[]): Promise<void> {
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
-          content: `You are a quality reviewer for a Kenyan bar exam prep platform. Review submitted community challenges for:
-1. Grammar and spelling
-2. Legal accuracy (Kenyan law, post-2010 Constitution)
-3. Educational value
-4. Clarity
-5. Appropriateness
+          content: `You are a quality reviewer for Ynai, a Kenyan bar exam prep community.
 
-Approve if quality is acceptable. Reject if it has serious issues (wrong law, offensive, or nonsensical).
-You may improve the title/description for grammar. Respond in JSON only.`,
+Review the submitted challenge. Your job is to APPROVE most submissions — community participation matters.
+
+**APPROVE** if the challenge:
+- Is related to Kenyan law or legal practice in any way
+- Makes a genuine attempt at a question, even if imperfect
+- Is not offensive, spam, or completely nonsensical
+
+**REJECT ONLY** if the challenge:
+- Contains offensive, discriminatory, or abusive content
+- Is clearly spam or completely unrelated to law
+- States blatantly wrong legal principles that could mislead students (e.g., citing repealed provisions as current law)
+
+Do NOT reject for:
+- Minor grammar/spelling issues (fix them instead)
+- Questions that are easy or basic
+- Imperfect question phrasing — improve it
+- Missing some options — that's fine
+
+Always provide constructive, encouraging feedback.
+Respond in JSON only.`,
         },
         {
           role: 'user',
@@ -199,15 +255,28 @@ You may improve the title/description for grammar. Respond in JSON only.`,
     });
 
     const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-    return {
-      approved: result.approved ?? false,
-      feedback: result.feedback || 'Review complete.',
-      improvedTitle: result.improvedTitle,
-      improvedDescription: result.improvedDescription,
-    };
+
+    if (!result.approved) {
+      // Take it down — but save the feedback
+      await db.update(communityEvents).set({
+        status: 'upcoming',
+        reviewStatus: 'rejected',
+        reviewFeedback: result.feedback || 'Did not pass quality review.',
+      }).where(eq(communityEvents.id, eventId));
+      console.log(`[ReviewAgent] Rejected challenge ${eventId}: ${result.feedback}`);
+    } else {
+      // Optionally apply grammar/title improvements
+      const updates: Record<string, any> = {
+        reviewStatus: 'approved',
+        reviewFeedback: result.feedback || 'Approved!',
+      };
+      if (result.improvedTitle) updates.title = result.improvedTitle;
+      if (result.improvedDescription) updates.description = result.improvedDescription;
+      await db.update(communityEvents).set(updates).where(eq(communityEvents.id, eventId));
+    }
   } catch (err) {
-    console.error('[ReviewAgent] Review failed:', err);
-    return { approved: true, feedback: 'Auto-approved (review unavailable).' };
+    console.error('[ReviewAgent] Async review failed (challenge stays live):', err);
+    // Challenge stays live — fail-open policy
   }
 }
 
@@ -231,8 +300,12 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status');
     const type = searchParams.get('type');
 
-    // Community Agent: ensure we always have active AI challenges
-    await ensureActiveChallenges();
+    // Community Agent: kick off challenge generation in the background
+    // so it never blocks the response to the user
+    ensureActiveChallenges().catch(err => {
+      console.error('[CommunityAgent] Background generation failed:', err);
+      _generatingDate = null; // Allow retry
+    });
 
     // Fetch all non-rejected events
     let allEvents = await db
@@ -325,8 +398,19 @@ export async function POST(req: NextRequest) {
       if (!title?.trim() || !description?.trim()) {
         return NextResponse.json({ error: 'Title and description are required' }, { status: 400 });
       }
-      if (!questions || !Array.isArray(questions) || questions.length === 0) {
-        return NextResponse.json({ error: 'At least one question is required' }, { status: 400 });
+
+      const safeQuestions = (questions && Array.isArray(questions) && questions.length > 0)
+        ? questions
+        : [{ question: description.trim(), type: 'short_answer', answer: '' }];
+
+      // Instant local validation — no AI call, no waiting
+      const validation = localValidate(title, description, safeQuestions);
+      if (!validation.pass) {
+        return NextResponse.json({
+          success: false, approved: false,
+          feedback: validation.reason,
+          message: validation.reason,
+        });
       }
 
       // Get submitter's display name
@@ -337,51 +421,38 @@ export async function POST(req: NextRequest) {
         .limit(1);
       const submitterName = userRecord?.displayName || 'Anonymous';
 
-      // AI Review
-      const review = await reviewChallenge(title, description, questions);
       const now = new Date();
       const challengeType = CHALLENGE_TYPES.includes(type) ? type : 'trivia';
 
-      if (review.approved) {
-        const [inserted] = await db.insert(communityEvents).values({
-          title: review.improvedTitle || title,
-          description: review.improvedDescription || description,
-          type: challengeType,
-          status: 'active',
-          unitId: unitId || null,
-          startsAt: now,
-          endsAt: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
-          rewards: [],
-          isAgentCreated: false,
-          createdById: userId,
-          submitterName,
-          reviewStatus: 'approved',
-          reviewFeedback: review.feedback,
-          challengeContent: questions,
-          maxParticipants: 100,
-        }).returning({ id: communityEvents.id });
+      // Publish immediately — AI review happens in the background
+      const [inserted] = await db.insert(communityEvents).values({
+        title: title.trim(),
+        description: description.trim(),
+        type: challengeType,
+        status: 'active',
+        unitId: unitId || null,
+        startsAt: now,
+        endsAt: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+        rewards: [],
+        isAgentCreated: false,
+        createdById: userId,
+        submitterName,
+        reviewStatus: 'pending',
+        reviewFeedback: null,
+        challengeContent: safeQuestions,
+        maxParticipants: 100,
+      }).returning({ id: communityEvents.id });
 
-        return NextResponse.json({
-          success: true, approved: true, challengeId: inserted.id,
-          feedback: review.feedback,
-          message: 'Your challenge has been approved and is now live!',
-        });
-      } else {
-        await db.insert(communityEvents).values({
-          title, description, type: challengeType,
-          status: 'upcoming', unitId: unitId || null,
-          startsAt: now, endsAt: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
-          rewards: [], isAgentCreated: false, createdById: userId,
-          submitterName, reviewStatus: 'rejected',
-          reviewFeedback: review.feedback, challengeContent: questions,
-          maxParticipants: 100,
-        });
+      // Fire-and-forget AI review — will take down the challenge if it's truly bad
+      reviewChallengeAsync(inserted.id, title, description, safeQuestions).catch(err => {
+        console.error('[ReviewAgent] Background review error:', err);
+      });
 
-        return NextResponse.json({
-          success: false, approved: false, feedback: review.feedback,
-          message: 'Your challenge needs some work. See the feedback and try again.',
-        });
-      }
+      return NextResponse.json({
+        success: true, approved: true, challengeId: inserted.id,
+        feedback: 'Your challenge is live! Our AI reviewer will check it shortly.',
+        message: 'Your challenge is live! 🎉',
+      });
     }
 
     /* ---- EXISTING: join, submit score, leave ---- */

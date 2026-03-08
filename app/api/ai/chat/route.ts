@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/middleware';
+import { getSubscriptionInfo, incrementTrialUsage } from '@/lib/services/subscription';
 import { 
   generateDraftingResponse, 
   generateResearchResponse,
@@ -79,6 +80,23 @@ export const POST = withAuth(async (req: NextRequest, user) => {
 
     let aiResponse;
     let sources;
+
+    // ── Subscription gate for drafting ──
+    if (competencyType === 'drafting') {
+      const sub = await getSubscriptionInfo(user.id);
+      if (!sub.canAccess('drafting')) {
+        return NextResponse.json({
+          error: 'FREE_TRIAL_LIMIT',
+          response: sub.trialExpired
+            ? 'Your free trial has ended. Subscribe to continue using Legal Drafting.'
+            : `You've used all ${sub.usage.draftingLimit} free trial drafting documents. Subscribe for unlimited access.`,
+          upgradeUrl: '/subscribe',
+        }, { status: 403 });
+      }
+      if (sub.isTrial) {
+        await incrementTrialUsage(user.id, 'drafting');
+      }
+    }
 
     switch (competencyType) {
       case 'drafting':

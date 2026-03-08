@@ -48,7 +48,7 @@ export const POST = withAuth(async (req: NextRequest, user) => {
         amount,
         currency: 'KES',
         reference,
-        callback_url: callbackUrl || `${process.env.NEXT_PUBLIC_APP_URL || 'https://ynai.app'}/subscribe?ref=${reference}`,
+        callback_url: callbackUrl || `${process.env.NEXT_PUBLIC_APP_URL || 'https://ynai.co.ke'}/subscribe?ref=${reference}`,
         metadata: {
           userId: user.id,
           plan,

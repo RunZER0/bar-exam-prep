@@ -1627,3 +1627,30 @@ export const paymentTransactionsRelations = relations(paymentTransactions, ({ on
     references: [users.id],
   }),
 }));
+
+// ═══════════════════════════════════════
+// M6: Oral Session Recordings
+// ═══════════════════════════════════════
+export const oralSessions = pgTable('oral_sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  type: text('type').notNull(), // 'devils-advocate' | 'examiner'
+  mode: text('mode').default('balanced').notNull(), // easy | balanced | aggressive
+  unitId: text('unit_id'),
+  durationSeconds: integer('duration_seconds'), // actual session duration
+  exchangeCount: integer('exchange_count').default(0),
+  score: integer('score'), // summary score out of 100
+  summary: text('summary'), // AI-generated summary
+  transcript: jsonb('transcript'), // full message history as JSON
+  audioUrl: text('audio_url'), // URL to stored audio recording (if any)
+  audioExpiresAt: timestamp('audio_expires_at'), // when audio will be deleted
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const oralSessionsRelations = relations(oralSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [oralSessions.userId],
+    references: [users.id],
+  }),
+}));

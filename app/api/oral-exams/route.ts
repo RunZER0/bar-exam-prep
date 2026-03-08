@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, type AuthUser } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
+import { getSubscriptionInfo, incrementTrialUsage } from '@/lib/services/subscription';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -70,14 +71,26 @@ ${modeInstructions}
 
 CONTEXT: ${unitContext}
 
+SESSION STRUCTURE:
+- Sessions last approximately 15 minutes. Pace yourself accordingly.
+- You will be told the elapsed time and remaining time in the session.
+- When the session time is nearly up (final 2 minutes), begin wrapping up naturally: "Let me put one final challenge to you..." or "Before we close, I want to test one last point..."
+- When time is completely up, end the session gracefully: "Time's up, Counsel. That concludes our debate."
+
+RESPONSE LENGTH — CRITICAL:
+- Vary your response lengths significantly to keep the debate dynamic and realistic.
+- About 30% of responses should be SHORT (1-2 sentences): quick challenges, pushbacks, or sharp questions. Examples: "Under which specific section?", "That's wrong. The Court of Appeal held otherwise in Mwangi v Republic.", "So you're saying Section 63 doesn't apply here? Defend that."
+- About 40% should be MEDIUM (3-5 sentences): standard rebuttals with a counter-argument and a follow-up question.
+- About 30% should be LONGER (6-8 sentences): detailed counter-arguments with case citations when making a substantive legal point.
+- NEVER give consistently long responses. Real debate has rhythm — quick jabs followed by developed arguments.
+
 RULES:
 1. Always take the contrary position, even if the student is correct — force them to prove it.
 2. Cite counter-authority when challenging (cases, statutory provisions, constitutional articles).
 3. Ask pointed questions: "Under which provision?", "What did the court say in...?", "How do you reconcile that with...?"
-4. Vary response length: some rapid-fire one-liners, some detailed rebuttals. Keep it dynamic.
-5. Stay within Kenyan law context. Reference actual Kenyan cases, statutes, and the 2010 Constitution.
-6. If the student makes a strong point, shift to a related but harder angle rather than conceding too easily.
-7. Keep responses conversational — this is a spoken debate, not a written essay.
+4. Stay within Kenyan law context. Reference actual Kenyan cases, statutes, and the 2010 Constitution.
+5. If the student makes a strong point, shift to a related but harder angle rather than conceding too easily.
+6. Keep responses conversational — this is a spoken debate, not a written essay.
 
 ${feedbackInstructions}
 
@@ -133,7 +146,16 @@ EXAMINATION GUIDELINES:
 5. Ask practical scenario questions: "A client walks into your office and..."
 6. Test statutory recall: "Under which specific section...?"
 7. Keep questions conversational — this is a spoken exam.
-8. Vary between short sharp questions and longer scenario-based ones.
+8. CRITICAL — Vary response length to simulate a real exam panel:
+   - ~30% SHORT (1-2 sentences): Quick follow-ups, redirections, or pointed questions.
+   - ~40% MEDIUM (3-4 sentences): Standard questioning with brief context.
+   - ~30% LONGER (5-7 sentences): Scenario-based questions or detailed probing.
+   Never give uniformly long responses.
+
+SESSION TIMING:
+- Sessions last approximately 15 minutes.
+- When time is nearly up (final 2 minutes), wrap up naturally: "${panelist.name}: We have time for one final question..."
+- When time is completely up, close the session: "${panelist.name}: Thank you, Counsel. That will be all for today."
 ${interruptionInstructions}
 
 ${feedbackInstructions}
@@ -157,7 +179,29 @@ async function handlePost(req: NextRequest, user: AuthUser): Promise<Response> {
       currentPanelistIndex = 0,
       generateSummary = false,
       stream = false, // Enable SSE streaming
+      elapsedMinutes = 0,     // current session elapsed time
+      sessionMaxMinutes = 15, // session duration limit
     } = body;
+
+    // ── Subscription gate: check access on NEW sessions (no messages yet) ──
+    if (messages.length === 0 && !generateSummary) {
+      const feature = type === 'devils-advocate' ? 'oral_devil' : 'oral_exam';
+      const sub = await getSubscriptionInfo(user.id);
+      if (!sub.canAccess(feature as any)) {
+        const limitLabel = type === 'devils-advocate' ? "Devil's Advocate" : 'Oral Exam';
+        return NextResponse.json({
+          error: `FREE_TRIAL_LIMIT`,
+          message: sub.trialExpired
+            ? `Your free trial has ended. Subscribe to continue using ${limitLabel} sessions.`
+            : `You've used your free trial ${limitLabel} session. Subscribe for unlimited access.`,
+          upgradeUrl: '/subscribe',
+        }, { status: 403 });
+      }
+      // Increment usage for trial users at session start
+      if (sub.isTrial) {
+        await incrementTrialUsage(user.id, feature as 'oral_devil' | 'oral_exam');
+      }
+    }
 
     // Build unit context
     let unitContext = 'Covering all 9 ATP units of the Kenya School of Law curriculum.';
@@ -211,6 +255,21 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         ...messages.map((m: any) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
       ];
 
+      // Inject session timing context
+      const remaining = Math.max(0, sessionMaxMinutes - elapsedMinutes);
+      if (elapsedMinutes > 0 && messages.length > 0) {
+        const timeCtx = remaining <= 0
+          ? `[SESSION TIME IS UP. You MUST end the session now. Say something like: "Time's up, Counsel. That concludes our debate. Let me generate your session summary." Do NOT ask any new questions.]`
+          : remaining <= 2
+          ? `[SESSION TIMING: ${Math.round(elapsedMinutes)} minutes elapsed, ~${Math.round(remaining)} minutes remaining. Begin wrapping up — ask one final question or make a closing challenge.]`
+          : `[SESSION TIMING: ${Math.round(elapsedMinutes)} minutes elapsed, ~${Math.round(remaining)} minutes remaining.]`;
+        apiMessages.push({ role: 'system' as const, content: timeCtx });
+      }
+
+      // Determine response length hint — randomize to encourage variety
+      const lengthRoll = Math.random();
+      const maxTokens = lengthRoll < 0.3 ? 150 : lengthRoll < 0.7 ? 400 : 700;
+
       // If no messages, generate opening challenge
       if (messages.length === 0) {
         apiMessages.push({
@@ -225,7 +284,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
           model: 'gpt-4o-mini',
           messages: apiMessages,
           temperature: 0.8,
-          max_tokens: 800,
+          max_tokens: maxTokens,
           stream: true,
         });
 
@@ -234,10 +293,12 @@ Be specific and reference actual moments from the conversation. Keep it conversa
           async start(controller) {
             try {
               // Send initial metadata
+              const remaining = Math.max(0, sessionMaxMinutes - elapsedMinutes);
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'metadata',
                 examType: 'devils-advocate',
                 voice: 'onyx',
+                sessionEnded: remaining <= 0,
               })}\n\n`));
 
               let fullContent = '';
@@ -282,7 +343,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
           model: 'gpt-4o-mini',
           messages: apiMessages,
           temperature: 0.8,
-          max_tokens: 800,
+          max_tokens: maxTokens,
         });
 
         const response = completion.choices[0]?.message?.content || 'I challenge you to state your position.';
@@ -306,6 +367,21 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         ...messages.map((m: any) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
       ];
 
+      // Inject session timing context
+      const examRemaining = Math.max(0, sessionMaxMinutes - elapsedMinutes);
+      if (elapsedMinutes > 0 && messages.length > 0) {
+        const timeCtx = examRemaining <= 0
+          ? `[SESSION TIME IS UP. End the session now. Say: "${currentPanelist.name}: Thank you, Counsel. That concludes today's examination." Do NOT ask new questions.]`
+          : examRemaining <= 2
+          ? `[SESSION TIMING: ${Math.round(elapsedMinutes)} minutes elapsed, ~${Math.round(examRemaining)} minutes remaining. Ask one final question and prepare to close.]`
+          : `[SESSION TIMING: ${Math.round(elapsedMinutes)} minutes elapsed, ~${Math.round(examRemaining)} minutes remaining.]`;
+        apiMessages.push({ role: 'system' as const, content: timeCtx });
+      }
+
+      // Vary response length
+      const examLengthRoll = Math.random();
+      const examMaxTokens = examLengthRoll < 0.3 ? 120 : examLengthRoll < 0.7 ? 350 : 550;
+
       // Opening question if no messages
       if (messages.length === 0) {
         apiMessages.push({
@@ -326,7 +402,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
           model: 'gpt-4o-mini',
           messages: apiMessages,
           temperature: 0.8,
-          max_tokens: 600,
+          max_tokens: examMaxTokens,
           stream: true,
         });
 
@@ -346,6 +422,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
                   voice: currentPanelist.voice,
                 },
                 nextPanelistIndex,
+                sessionEnded: examRemaining <= 0,
               })}\n\n`));
 
               let fullContent = '';
@@ -390,7 +467,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
           model: 'gpt-4o-mini',
           messages: apiMessages,
           temperature: 0.8,
-          max_tokens: 600,
+          max_tokens: examMaxTokens,
         });
 
         const response = completion.choices[0]?.message?.content || `${currentPanelist.name}: Let us begin. State your understanding of the first principle.`;

@@ -7,7 +7,7 @@ import {
   Mic, MicOff, Volume2, VolumeX, Play, Square, Send, ArrowLeft,
   Loader2, Swords, Users, Zap, Shield, Flame, BookOpen, ChevronRight,
   RotateCcw, BarChart3, MessageSquare, Settings, StopCircle,
-  CheckCircle, AlertCircle, Clock, Sparkles,
+  CheckCircle, AlertCircle, Clock, Sparkles, Download, Timer,
 } from 'lucide-react';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 
@@ -83,6 +83,25 @@ export default function OralExamsPage() {
   const [isMuted, setIsMuted] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
 
+  // ---- Session timer state ----
+  const SESSION_MAX_MINUTES = 15;
+  const ANSWER_TIME_LIMIT = 120; // seconds — 2 min per answer
+  const [sessionElapsedSec, setSessionElapsedSec] = useState(0);
+  const [answerElapsedSec, setAnswerElapsedSec] = useState(0);
+  const [answerWarningShown, setAnswerWarningShown] = useState(false);
+  const [sessionTimeUp, setSessionTimeUp] = useState(false);
+  const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const answerTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ---- Session recording state ----
+  const [sessionRecordingBlob, setSessionRecordingBlob] = useState<Blob | null>(null);
+  const [isSavingSession, setIsSavingSession] = useState(false);
+  const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
+  const sessionRecorderRef = useRef<MediaRecorder | null>(null);
+  const sessionAudioChunksRef = useRef<Blob[]>([]);
+  const sessionStreamRef = useRef<MediaStream | null>(null);
+  const endSessionRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
   // ---- Refs ----
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -104,6 +123,124 @@ export default function OralExamsPage() {
       el.style.height = Math.min(el.scrollHeight, 160) + 'px';
     }
   }, [textInput]);
+
+  // ---- Session timer — runs while session is active ----
+  useEffect(() => {
+    if (phase === 'active') {
+      sessionTimerRef.current = setInterval(() => {
+        setSessionElapsedSec(prev => {
+          const next = prev + 1;
+          if (next >= SESSION_MAX_MINUTES * 60 && !sessionTimeUp) {
+            setSessionTimeUp(true);
+          }
+          return next;
+        });
+      }, 1000);
+    } else {
+      if (sessionTimerRef.current) { clearInterval(sessionTimerRef.current); sessionTimerRef.current = null; }
+    }
+    return () => { if (sessionTimerRef.current) clearInterval(sessionTimerRef.current); };
+  }, [phase, sessionTimeUp]);
+
+  // ---- Answer timer — resets each time AI speaks, ticks while waiting for user ----
+  useEffect(() => {
+    // Start counting when AI finishes speaking and it's user's turn
+    if (phase === 'active' && !isLoading && !isStreaming && !isPlayingAudio && messages.length > 0) {
+      setAnswerElapsedSec(0);
+      setAnswerWarningShown(false);
+      answerTimerRef.current = setInterval(() => {
+        setAnswerElapsedSec(prev => {
+          const next = prev + 1;
+          if (next === 90 && !answerWarningShown) {
+            // 90 seconds — show soft warning
+            setAnswerWarningShown(true);
+          }
+          return next;
+        });
+      }, 1000);
+    } else {
+      if (answerTimerRef.current) { clearInterval(answerTimerRef.current); answerTimerRef.current = null; }
+    }
+    return () => { if (answerTimerRef.current) clearInterval(answerTimerRef.current); };
+  }, [phase, isLoading, isStreaming, isPlayingAudio, messages.length, answerWarningShown]);
+
+  // ---- Start session recording (microphone captures full session audio) ----
+  const startSessionRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      sessionStreamRef.current = stream;
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      sessionRecorderRef.current = recorder;
+      sessionAudioChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) sessionAudioChunksRef.current.push(e.data);
+      };
+      recorder.start(1000); // chunk every second
+    } catch (err) {
+      console.warn('Session recording not available:', err);
+    }
+  }, []);
+
+  const stopSessionRecording = useCallback(() => {
+    return new Promise<Blob | null>((resolve) => {
+      const recorder = sessionRecorderRef.current;
+      if (!recorder || recorder.state === 'inactive') {
+        resolve(null);
+        return;
+      }
+      recorder.onstop = () => {
+        const blob = new Blob(sessionAudioChunksRef.current, { type: 'audio/webm' });
+        setSessionRecordingBlob(blob);
+        sessionStreamRef.current?.getTracks().forEach(t => t.stop());
+        resolve(blob);
+      };
+      recorder.stop();
+    });
+  }, []);
+
+  // ---- Save session to backend ----
+  const saveSession = useCallback(async (summaryContent?: string, summaryScore?: number | null) => {
+    if (isSavingSession || messages.length < 2) return;
+    setIsSavingSession(true);
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/oral-exams/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          type: examType,
+          mode,
+          unitId: selectedUnit || undefined,
+          durationSeconds: sessionElapsedSec,
+          exchangeCount: messages.length,
+          score: summaryScore || null,
+          summary: summaryContent || null,
+          transcript: messages.map(m => ({ role: m.role, content: m.content, panelist: m.panelist?.name })),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSavedSessionId(data.id);
+      }
+    } catch (err) {
+      console.error('Failed to save session:', err);
+    } finally {
+      setIsSavingSession(false);
+    }
+  }, [isSavingSession, messages, getIdToken, examType, mode, selectedUnit, sessionElapsedSec]);
+
+  // ---- Download session recording ----
+  const downloadRecording = useCallback(() => {
+    if (!sessionRecordingBlob) return;
+    const url = URL.createObjectURL(sessionRecordingBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ynai-${examType}-session-${new Date().toISOString().split('T')[0]}.webm`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [sessionRecordingBlob, examType]);
 
   /* ================================================================
      API HELPERS
@@ -267,6 +404,8 @@ export default function OralExamsPage() {
         feedbackMode,
         unitId: selectedUnit || undefined,
         stream: enableStreaming,
+        elapsedMinutes: sessionElapsedSec / 60,
+        sessionMaxMinutes: SESSION_MAX_MINUTES,
         messages: updatedMessages.map(m => ({
           role: m.role,
           content: m.content,
@@ -295,7 +434,18 @@ export default function OralExamsPage() {
           body: JSON.stringify(payload),
         });
 
-        if (!response.ok) throw new Error('Stream failed');
+        if (!response.ok) {
+          // Check for subscription limit error
+          if (response.status === 403) {
+            const errData = await response.json();
+            if (errData.error === 'FREE_TRIAL_LIMIT') {
+              setError(errData.message);
+              setIsStreaming(false);
+              return;
+            }
+          }
+          throw new Error('Stream failed');
+        }
         if (!response.body) throw new Error('No response body');
 
         const reader = response.body.getReader();
@@ -345,6 +495,11 @@ export default function OralExamsPage() {
                   // Play TTS after streaming completes
                   const voice = metadata?.panelist?.voice || metadata?.voice || 'onyx';
                   await playTTS(aiMsg.content, voice);
+
+                  // If AI signaled session end, auto-trigger summary
+                  if (metadata?.sessionEnded) {
+                    setTimeout(() => endSessionRef.current(), 2000);
+                  }
                 }
 
                 if (data.type === 'error') {
@@ -386,7 +541,7 @@ export default function OralExamsPage() {
       setIsStreaming(false);
       setStreamingContent('');
     }
-  }, [messages, examType, mode, feedbackMode, selectedUnit, panelistCount, currentPanelistIndex, isLoading, isStreaming, enableStreaming, authFetchJSON, playTTS, getIdToken]);
+  }, [messages, examType, mode, feedbackMode, selectedUnit, panelistCount, currentPanelistIndex, isLoading, isStreaming, enableStreaming, authFetchJSON, playTTS, getIdToken, sessionElapsedSec]);
 
   /* ================================================================
      START SESSION
@@ -397,6 +552,15 @@ export default function OralExamsPage() {
     setIsLoading(true);
     setError(null);
     setCurrentPanelistIndex(0);
+    setSessionElapsedSec(0);
+    setSessionTimeUp(false);
+    setAnswerElapsedSec(0);
+    setAnswerWarningShown(false);
+    setSessionRecordingBlob(null);
+    setSavedSessionId(null);
+
+    // Start session recording
+    await startSessionRecording();
 
     try {
       const payload: any = {
@@ -405,6 +569,8 @@ export default function OralExamsPage() {
         feedbackMode,
         unitId: selectedUnit || undefined,
         messages: [],
+        elapsedMinutes: 0,
+        sessionMaxMinutes: SESSION_MAX_MINUTES,
       };
 
       if (examType === 'examiner') {
@@ -413,6 +579,14 @@ export default function OralExamsPage() {
       }
 
       const data = await authFetchJSON('/api/oral-exams', payload);
+
+      // Check for subscription limit
+      if (data.error === 'FREE_TRIAL_LIMIT') {
+        setError(data.message);
+        setPhase('setup');
+        await stopSessionRecording();
+        return;
+      }
 
       const aiMsg: Message = {
         id: `a-${Date.now()}`,
@@ -429,13 +603,20 @@ export default function OralExamsPage() {
 
       const voice = data.panelist?.voice || data.voice || 'onyx';
       await playTTS(data.content, voice);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Start error:', err);
-      setError('Failed to start session. Please try again.');
+      // Handle 403 from authFetchJSON
+      if (err.message?.includes('403') || err.message?.includes('FREE_TRIAL_LIMIT')) {
+        setError('Your free trial session limit has been reached. Subscribe for unlimited access.');
+        setPhase('setup');
+      } else {
+        setError('Failed to start session. Please try again.');
+      }
+      await stopSessionRecording();
     } finally {
       setIsLoading(false);
     }
-  }, [examType, mode, feedbackMode, selectedUnit, panelistCount, authFetchJSON, playTTS]);
+  }, [examType, mode, feedbackMode, selectedUnit, panelistCount, authFetchJSON, playTTS, startSessionRecording, stopSessionRecording]);
 
   /* ================================================================
      END SESSION — get summary
@@ -443,12 +624,17 @@ export default function OralExamsPage() {
   const endSession = useCallback(async () => {
     if (messages.length < 2) {
       setPhase('setup');
+      await stopSessionRecording();
       return;
     }
 
     setIsLoading(true);
     setError(null);
     stopAudio();
+
+    // Stop session recording
+    await stopSessionRecording();
+
     try {
       const data = await authFetchJSON('/api/oral-exams', {
         type: examType,
@@ -460,6 +646,9 @@ export default function OralExamsPage() {
 
       setSummary({ content: data.content, score: data.score });
       setPhase('summary');
+
+      // Save session to backend
+      await saveSession(data.content, data.score);
     } catch (err) {
       console.error('Summary error:', err);
       setError('Failed to generate summary. Please try again.');
@@ -467,7 +656,10 @@ export default function OralExamsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, examType, mode, feedbackMode, authFetchJSON, stopAudio]);
+  }, [messages, examType, mode, feedbackMode, authFetchJSON, stopAudio, stopSessionRecording, saveSession]);
+
+  // Keep ref in sync so sendMessage can call it without circular dep
+  useEffect(() => { endSessionRef.current = endSession; }, [endSession]);
 
   /* ================================================================
      HANDLE VOICE SEND
@@ -918,9 +1110,9 @@ export default function OralExamsPage() {
               <div className="text-xs text-muted-foreground">Your Responses</div>
             </div>
             <div className="rounded-xl bg-gradient-to-br from-muted/30 to-transparent p-4 text-center">
-              <Clock className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
-              <div className="text-xl font-bold">{messages.length}</div>
-              <div className="text-xs text-muted-foreground">Total Exchanges</div>
+              <Timer className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
+              <div className="text-xl font-bold">{fmtDuration(sessionElapsedSec)}</div>
+              <div className="text-xs text-muted-foreground">Duration</div>
             </div>
             <div className="rounded-xl bg-gradient-to-br from-muted/30 to-transparent p-4 text-center">
               <Sparkles className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
@@ -928,6 +1120,29 @@ export default function OralExamsPage() {
               <div className="text-xs text-muted-foreground">Difficulty</div>
             </div>
           </div>
+
+          {/* Session Recording Download */}
+          {sessionRecordingBlob && (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Mic className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Session Recording</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(sessionRecordingBlob.size / (1024 * 1024)).toFixed(1)} MB &middot; Available for download
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={downloadRecording}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                <Download className="w-4 h-4" /> Download
+              </button>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3">
@@ -942,6 +1157,7 @@ export default function OralExamsPage() {
                 setPhase('setup');
                 setMessages([]);
                 setSummary(null);
+                setSessionRecordingBlob(null);
               }}
               className="flex-1 py-3 rounded-xl border border-border/30 hover:bg-muted/30 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
             >
@@ -1000,6 +1216,19 @@ export default function OralExamsPage() {
           </div>
         </div>
 
+        {/* Session Timer */}
+        <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full font-mono text-sm ${
+          sessionTimeUp 
+            ? 'bg-red-500/15 text-red-500 animate-pulse'
+            : sessionElapsedSec >= (SESSION_MAX_MINUTES - 2) * 60
+            ? 'bg-amber-500/15 text-amber-500'
+            : 'bg-muted/30 text-muted-foreground'
+        }`}>
+          <Timer className="w-3.5 h-3.5" />
+          <span>{fmtDuration(sessionElapsedSec)}</span>
+          <span className="text-xs opacity-60">/ {SESSION_MAX_MINUTES}:00</span>
+        </div>
+
         <div className="flex items-center gap-2">
           {/* Panelist indicators (examiner) */}
           {examType === 'examiner' && (
@@ -1051,6 +1280,29 @@ export default function OralExamsPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+        {/* Answer time warning */}
+        {answerElapsedSec >= 90 && !isLoading && !isStreaming && !isPlayingAudio && (
+          <div className={`mx-auto max-w-md rounded-lg px-4 py-3 text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-2 ${
+            answerElapsedSec >= ANSWER_TIME_LIMIT
+              ? 'border border-red-500/30 bg-red-500/10 text-red-500'
+              : 'border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+          }`}>
+            <Clock className="w-4 h-4 shrink-0" />
+            {answerElapsedSec >= ANSWER_TIME_LIMIT
+              ? 'Time to respond has passed. Please answer or the session will move on.'
+              : `You have ${ANSWER_TIME_LIMIT - answerElapsedSec} seconds to respond. Take your time, but don't overthink it.`
+            }
+          </div>
+        )}
+
+        {/* Session time-up warning */}
+        {sessionTimeUp && (
+          <div className="mx-auto max-w-md rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500 flex items-center gap-2 animate-pulse">
+            <Timer className="w-4 h-4 shrink-0" />
+            Session time is up. The examiner will wrap up shortly.
+          </div>
+        )}
+
         {error && (
           <div className="mx-auto max-w-md rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" /> {error}

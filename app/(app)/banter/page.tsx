@@ -462,12 +462,12 @@ export default function BanterPage() {
     <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-background pb-20">
 
       {/* ── Roast ribbon (top bar - click to switch to roast view) ── */}
-      <div className="shrink-0">
+      <div className="shrink-0 sticky top-0 z-10">
         <button
           onClick={switchToRoast}
-          className="w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-card/30 border-b border-border/10 text-xs text-muted-foreground hover:text-foreground hover:bg-card/50 transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-rose-500/10 via-orange-500/8 to-amber-500/10 border-b border-rose-500/15 text-xs font-medium text-rose-600 dark:text-rose-400 hover:text-foreground hover:from-rose-500/20 hover:via-orange-500/15 hover:to-amber-500/20 transition-all"
         >
-          <MessageCircle className="h-3 w-3" />
+          <MessageCircle className="h-3.5 w-3.5" />
           Enter Roast Zone - trade legal burns with the AI
         </button>
       </div>

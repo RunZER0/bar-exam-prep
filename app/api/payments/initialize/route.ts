@@ -68,15 +68,20 @@ export const POST = withAuth(async (req: NextRequest, user) => {
       return NextResponse.json({ error: 'Failed to initialize payment' }, { status: 500 });
     }
 
-    // Record the pending transaction
-    await db.insert(paymentTransactions).values({
-      userId: user.id,
-      paystackReference: reference,
-      plan: plan as any,
-      amount,
-      currency: 'KES',
-      status: 'pending',
-    });
+    // Record the pending transaction (non-blocking — webhook handles activation regardless)
+    try {
+      await db.insert(paymentTransactions).values({
+        userId: user.id,
+        paystackReference: reference,
+        plan: plan as any,
+        amount,
+        currency: 'KES',
+        status: 'pending',
+      });
+    } catch (dbErr) {
+      // Don't block the payment flow — Paystack already accepted the transaction
+      console.error('[Paystack] Failed to record pending txn (non-fatal):', dbErr);
+    }
 
     return NextResponse.json({
       authorization_url: data.data.authorization_url,

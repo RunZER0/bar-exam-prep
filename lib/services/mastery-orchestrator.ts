@@ -99,11 +99,22 @@ export class MasteryOrchestrator {
         
         const isResit = profile?.examPath === 'APRIL_2026';
         const failedUnits = (profile?.weakAreas || []) as string[];
+        const strongAreas = (profile?.strongAreas || []) as string[];
+        const studyPace = (profile?.studyPace || 'moderate') as string;
+        const professionalExposure = (profile?.professionalExposure || 'STUDENT') as string;
+        const learningStyle = (profile?.learningStyle || 'mixed') as string;
         const isPathA = isResit;
+
+        // Extract extended snapshot from goals jsonb
+        const snapshot = (profile?.goals || {}) as Record<string, unknown>;
+        const coverageTarget = (snapshot.coverageTarget || 'full_calendar') as string;
+        const weekendStudyHours = Number(snapshot.weekendStudyHours || 0);
+        const confidenceLevel = Number(snapshot.confidenceLevel || 5);
         
         const { term, weekInTerm, absoluteWeek } = getCurrentTermAndWeek();
         
         console.log(`[MasteryOrchestrator] User: ${userId} | Path: ${isPathA ? 'A (Surgical Strike)' : 'B (Paced Build)'} | Term ${term}, Week ${weekInTerm} (Abs: ${absoluteWeek})`);
+        console.log(`[MasteryOrchestrator] Profile signals — weakAreas: [${failedUnits.join(', ')}] | strongAreas: [${strongAreas.join(', ')}] | pace: ${studyPace} | exposure: ${professionalExposure} | coverage: ${coverageTarget} | learning: ${learningStyle} | weekendHrs: ${weekendStudyHours}`);
 
         // 2. Fetch real syllabus from DB
         const syllabus = await db.select().from(syllabusNodes).orderBy(asc(syllabusNodes.weekNumber));
@@ -161,6 +172,27 @@ export class MasteryOrchestrator {
             const hyBacklog = backlog.filter(n => n.isHighYield || n.isDraftingNode);
             const stdBacklog = backlog.filter(n => !n.isHighYield && !n.isDraftingNode);
             queue.push(...hyBacklog, ...stdBacklog);
+
+            // PERSONALIZATION: Sort entire Path B queue using profile signals
+            // Weak areas get highest priority, strong areas get deprioritized
+            const unitPriority = (unitCode: string): number => {
+                const code = unitCode.toLowerCase();
+                const isWeak = failedUnits.some(f => code === f.toLowerCase() || code === f.replace('-', '').toLowerCase());
+                const isStrong = strongAreas.some(s => code === s.toLowerCase() || code === s.replace('-', '').toLowerCase());
+                if (isWeak) return 0;  // Highest priority — user struggles here
+                if (isStrong) return 2; // Lowest priority — user is comfortable
+                return 1; // Normal priority
+            };
+
+            queue.sort((a, b) => {
+                const pa = unitPriority(a.unitCode);
+                const pb = unitPriority(b.unitCode);
+                if (pa !== pb) return pa - pb;
+                // Within same priority band: high-yield first, then by week
+                if (a.isHighYield !== b.isHighYield) return a.isHighYield ? -1 : 1;
+                return a.weekNumber - b.weekNumber;
+            });
+            console.log(`[MasteryOrchestrator] Path B queue sorted — weak-first prioritization applied (${failedUnits.length} weak, ${strongAreas.length} strong areas)`);
         }
 
         // 4a. Fetch micro-skill practice items for queued units
@@ -236,22 +268,63 @@ export class MasteryOrchestrator {
         const allUnitCodes = [...new Set(queue.map(n => n.unitCode))];
         
         if (allUnitCodes.length > MAX_UNITS_PER_DAY) {
-            // Deterministic daily seed from date string
+            // Deterministic daily seed from date + userId (user-specific rotation)
             const dateSeed = todayStr.split('-').reduce((s, p) => s + parseInt(p), 0);
-            // Rotate which units are selected each day
-            const sortedUnits = allUnitCodes.sort();
-            const startIdx = dateSeed % sortedUnits.length;
+            const userSeed = userId.split('').reduce((s, c) => s + c.charCodeAt(0), 0);
+            const combinedSeed = dateSeed * 31 + userSeed; // Mix user identity so different users rotate differently
+
+            // Separate weak, normal, strong unit pools for smarter selection
+            const weakUnits = allUnitCodes.filter(u => failedUnits.some(f => u.toLowerCase() === f.toLowerCase() || u.toLowerCase() === f.replace('-', '').toLowerCase()));
+            const strongUnits = allUnitCodes.filter(u => strongAreas.some(s => u.toLowerCase() === s.toLowerCase() || u.toLowerCase() === s.replace('-', '').toLowerCase()));
+            const normalUnits = allUnitCodes.filter(u => !weakUnits.includes(u) && !strongUnits.includes(u));
+
             const todaysUnits = new Set<string>();
-            for (let i = 0; i < MAX_UNITS_PER_DAY; i++) {
-                todaysUnits.add(sortedUnits[(startIdx + i) % sortedUnits.length]);
+
+            // Always include weak units first (up to MAX_UNITS_PER_DAY)
+            for (const wu of weakUnits) {
+                if (todaysUnits.size >= MAX_UNITS_PER_DAY) break;
+                todaysUnits.add(wu);
             }
+
+            // Fill remaining slots from normal units using user-specific rotation
+            if (todaysUnits.size < MAX_UNITS_PER_DAY && normalUnits.length > 0) {
+                const sortedNormal = normalUnits.sort();
+                const startIdx = combinedSeed % sortedNormal.length;
+                for (let i = 0; i < sortedNormal.length && todaysUnits.size < MAX_UNITS_PER_DAY; i++) {
+                    todaysUnits.add(sortedNormal[(startIdx + i) % sortedNormal.length]);
+                }
+            }
+
+            // Last resort: fill from strong units if still have room
+            if (todaysUnits.size < MAX_UNITS_PER_DAY && strongUnits.length > 0) {
+                const sortedStrong = strongUnits.sort();
+                const startIdx = combinedSeed % sortedStrong.length;
+                for (let i = 0; i < sortedStrong.length && todaysUnits.size < MAX_UNITS_PER_DAY; i++) {
+                    todaysUnits.add(sortedStrong[(startIdx + i) % sortedStrong.length]);
+                }
+            }
+
             queue = queue.filter(n => todaysUnits.has(n.unitCode));
-            console.log(`[MasteryOrchestrator] Daily unit focus (${todayStr}): ${[...todaysUnits].join(', ')} (${allUnitCodes.length} total available)`);
+            console.log(`[MasteryOrchestrator] Daily unit focus (${todayStr}, user-seeded): ${[...todaysUnits].join(', ')} (${allUnitCodes.length} total: ${weakUnits.length} weak, ${normalUnits.length} normal, ${strongUnits.length} strong)`);
         }
 
-        // 4c. Hold total backlog count, then cap the queue for today
+        // 4c. Adjust queue cap based on coverage target + study pace + weekend boost
+        // Coverage target multiplier: tighter deadline = more tasks
+        const coverageMultiplier = coverageTarget === '4_weeks' ? 1.7
+            : coverageTarget === '8_weeks' ? 1.3
+            : coverageTarget === '16_weeks' ? 1.0
+            : 0.7; // full_calendar — relaxed
+        const paceMultiplier = studyPace === 'intensive' ? 1.25 : studyPace === 'relaxed' ? 0.67 : 1.0;
+
+        // Weekend boost: if user said they study more on weekends, increase cap on Sat/Sun
+        const eatDay = getEATDate().getDay(); // 0=Sun, 6=Sat
+        const isWeekend = eatDay === 0 || eatDay === 6;
+        const weekendBoost = isWeekend && weekendStudyHours >= 4 ? 1.3 : isWeekend && weekendStudyHours >= 2 ? 1.15 : 1.0;
+
+        const adjustedCap = Math.round(DAILY_QUEUE_CAP * coverageMultiplier * paceMultiplier * weekendBoost);
         const totalBacklogCount = queue.length;
-        queue = queue.slice(0, DAILY_QUEUE_CAP);
+        queue = queue.slice(0, adjustedCap);
+        console.log(`[MasteryOrchestrator] Queue capped at ${adjustedCap} items (coverage: ${coverageTarget} ×${coverageMultiplier}, pace: ${studyPace} ×${paceMultiplier}${isWeekend ? `, weekend boost ×${weekendBoost}` : ''}, backlog: ${totalBacklogCount})`);
 
         // 5. Build response with node progress phase info + micro-skill items
         const progressMap = new Map(progress.map(p => [p.nodeId, p]));
@@ -293,10 +366,22 @@ export class MasteryOrchestrator {
                 completionPct: syllabus.length > 0 
                     ? Math.round((masteredNodeIds.size / syllabus.length) * 100) 
                     : 0,
-                pacing: isPathA ? 'Accelerated' : 'Standard',
+                pacing: isPathA ? 'Accelerated' : studyPace === 'intensive' ? 'Intensive' : studyPace === 'relaxed' ? 'Relaxed' : 'Standard',
                 totalBacklog: totalBacklogCount,
-                cappedAt: DAILY_QUEUE_CAP,
+                cappedAt: adjustedCap,
                 focusUnits: focusUnitCodes,
+                personalization: {
+                    weakAreas: failedUnits,
+                    strongAreas,
+                    studyPace,
+                    professionalExposure,
+                    examPath: isPathA ? 'APRIL_2026_RESIT' : 'NOVEMBER_2026_FIRST',
+                    coverageTarget,
+                    learningStyle,
+                    weekendStudyHours,
+                    confidenceLevel,
+                    isWeekend: getEATDate().getDay() === 0 || getEATDate().getDay() === 6,
+                },
             }
         };
     }

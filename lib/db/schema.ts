@@ -59,11 +59,14 @@ export const users = pgTable('users', {
   // Subscription
   subscriptionPlan: subscriptionPlanEnum('subscription_plan').default('free_trial').notNull(),
   subscriptionStatus: subscriptionStatusEnum('subscription_status').default('trialing').notNull(),
+  subscriptionTier: text('subscription_tier').default('free_trial').notNull(), // light | standard | premium | custom
+  billingPeriod: text('billing_period').default('monthly'),
+  customFeatures: text('custom_features'), // JSON array of PremiumFeature keys for custom tier
   trialEndsAt: timestamp('trial_ends_at'),
   subscriptionEndsAt: timestamp('subscription_ends_at'),
   paystackCustomerId: text('paystack_customer_id'),
   paystackSubscriptionCode: text('paystack_subscription_code'),
-  // Trial usage counters
+  // Trial usage counters (legacy — kept for backward compat, new system uses feature_usage table)
   trialDraftingUsed: integer('trial_drafting_used').default(0).notNull(),
   trialOralDevilUsed: integer('trial_oral_devil_used').default(0).notNull(),
   trialOralExamUsed: integer('trial_oral_exam_used').default(0).notNull(),
@@ -1628,6 +1631,48 @@ export const paymentTransactions = pgTable('payment_transactions', {
 export const paymentTransactionsRelations = relations(paymentTransactions, ({ one }) => ({
   user: one(users, {
     fields: [paymentTransactions.userId],
+    references: [users.id],
+  }),
+}));
+
+// ═══════════════════════════════════════
+// M8: Weekly Feature Usage Tracking
+// ═══════════════════════════════════════
+export const featureUsage = pgTable('feature_usage', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  feature: text('feature').notNull(),
+  weekStart: timestamp('week_start').notNull(),
+  usageCount: integer('usage_count').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const featureUsageRelations = relations(featureUsage, ({ one }) => ({
+  user: one(users, {
+    fields: [featureUsage.userId],
+    references: [users.id],
+  }),
+}));
+
+// ═══════════════════════════════════════
+// M8: Add-on Passes
+// ═══════════════════════════════════════
+export const addonPasses = pgTable('addon_passes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  feature: text('feature').notNull(),
+  quantity: integer('quantity').default(1).notNull(),
+  remaining: integer('remaining').default(1).notNull(),
+  paystackReference: text('paystack_reference'),
+  price: integer('price').notNull(),
+  purchasedAt: timestamp('purchased_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at'),
+});
+
+export const addonPassesRelations = relations(addonPasses, ({ one }) => ({
+  user: one(users, {
+    fields: [addonPasses.userId],
     references: [users.id],
   }),
 }));

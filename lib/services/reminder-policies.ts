@@ -472,17 +472,22 @@ export async function evaluatePolicies(
     // Send notifications if requested
     if (sendNotifications) {
       if (hasEmail && policy.emailTemplate) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://ynai.co.ke';
         const result = await sendNotificationEmail(userId, policy.emailTemplate as any, {
           userName: ctx.displayName || 'Student',
-          sessionTopic: 'Your next topic',
-          estimatedMinutes: '30',
-          sessionUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://barexamprep.co.ke'}/dashboard`,
-          lastTopic: 'Previous topic',
-          comebackUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://barexamprep.co.ke'}/dashboard`,
+          // Real context — the AI agent uses these to write personalized copy
+          sessionTopic: ctx.pendingSessionsCount > 0 ? 'Your queued topics' : 'Continue where you left off',
+          estimatedMinutes: '25',
+          sessionUrl: `${appUrl}/dashboard`,
+          lastTopic: 'your recent topic',
+          currentStreak: String(ctx.currentStreak || 0),
+          comebackUrl: `${appUrl}/dashboard`,
           daysRemaining: String(ctx.daysUntilExam || 30),
           masteryPercent: String(Math.round(ctx.overallMastery * 100)),
-          focusAreas: '<li>Focus area 1</li><li>Focus area 2</li>',
-          dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://barexamprep.co.ke'}/dashboard`,
+          weakSkillCount: String(ctx.weakSkillCount || 0),
+          hoursSinceLastSession: String(Math.round(ctx.hoursSinceLastSession)),
+          sessionsThisWeek: String(ctx.sessionsThisWeek),
+          dashboardUrl: `${appUrl}/dashboard`,
         });
         if (result.success) emailsSent++;
       }

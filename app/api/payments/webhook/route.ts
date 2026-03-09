@@ -11,6 +11,7 @@ import { db } from '@/lib/db';
 import { paymentTransactions, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { activateSubscription, cancelSubscription } from '@/lib/services/subscription';
+import type { SubscriptionTier, BillingPeriod } from '@/lib/constants/pricing';
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 
@@ -45,10 +46,12 @@ export async function POST(req: NextRequest) {
         const txn = event.data;
         const reference = txn.reference;
         const plan = txn.metadata?.plan;
+        const tier = (txn.metadata?.tier || 'light') as SubscriptionTier;
+        const period = (txn.metadata?.period || 'monthly') as BillingPeriod;
         const userId = txn.metadata?.userId;
 
-        if (!plan || !userId) {
-          console.warn('[Webhook] charge.success missing plan or userId in metadata');
+        if (!userId) {
+          console.warn('[Webhook] charge.success missing userId in metadata');
           break;
         }
 
@@ -64,11 +67,12 @@ export async function POST(req: NextRequest) {
         // Activate subscription
         await activateSubscription(
           userId,
-          plan,
+          tier,
+          period,
           String(txn.customer?.customer_code || ''),
         );
 
-        console.log(`[Webhook] Activated ${plan} for user ${userId}`);
+        console.log(`[Webhook] Activated ${tier}/${period} for user ${userId}`);
         break;
       }
 

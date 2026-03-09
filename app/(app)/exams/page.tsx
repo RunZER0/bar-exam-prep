@@ -11,6 +11,7 @@ import {
   PenTool, CheckCircle, Sparkles, GraduationCap, Timer,
   FileQuestion, Edit3, ChevronRight, Target, Zap, Award, ArrowLeft,
 } from 'lucide-react';
+import PremiumGate from '@/components/PremiumGate';
 
 const ICON_MAP: Record<string, any> = {
   Gavel, Scale, FileText, Shield, Building, Briefcase,
@@ -175,6 +176,7 @@ export default function ExamsPage() {
   const config = selectedPaper ? PAPER_SIZES[selectedType][selectedPaper] : null;
 
   return (
+    <PremiumGate feature="cle_exam">
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-10">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
@@ -485,5 +487,6 @@ export default function ExamsPage() {
         </div>
       </AnimatedModal>
     </div>
+    </PremiumGate>
   );
 }

@@ -337,7 +337,7 @@ async function ingestUrls(urls: string[], enrich: boolean): Promise<{ inserted: 
       if (enrich && openai) {
         try {
           const response = await openai.responses.create({
-            model: 'gpt-4o-mini',
+            model: 'gpt-5.2-mini',
             instructions: `Retrieve information about this legal authority URL. Return JSON with: title, citation, court, year, sourceType (CASE or STATUTE), summary (200 words max). URL: ${trimmedUrl}`,
             input: `Get metadata for: ${trimmedUrl}`,
             tools: [{ type: 'web_search_preview' }],

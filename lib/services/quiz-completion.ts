@@ -11,10 +11,9 @@ import { db } from '@/lib/db';
 import { weeklyRankings, preloadedContent, studyRecommendations, quizHistory, studyStreaks, userProfiles } from '@/lib/db/schema';
 import { eq, and, gte, desc, sql, lte } from 'drizzle-orm';
 import { ATP_UNITS, TOPICS_BY_UNIT } from '@/lib/constants/legal-content';
-import { generateObject } from 'ai';
-import { google } from '@ai-sdk/google';
 import { z } from 'zod';
 import { generateRecommendations, UserStudyState, ActivityType } from './study-guide-algorithm';
+import OpenAI from 'openai';
 
 const PRELOAD_BATCH_SIZE = 5;
 const CACHE_DURATION_HOURS = 24;
@@ -179,15 +178,28 @@ Requirements:
 4. Provide clear explanations referencing relevant laws
 5. Questions should be different from typical practice questions
 
-Generate professional, exam-quality questions.`;
+Generate professional, exam-quality questions.
 
-    const { object } = await generateObject({
-      model: google('gemini-2.0-flash'),
-      schema: QuestionSchema,
-      prompt,
+Return a JSON object with a "questions" array. Each question object has:
+- "question": string
+- "options": array of 4 strings
+- "correctIndex": number (0-3)
+- "explanation": string
+- "difficulty": "easy" | "medium" | "hard"`;
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-5.2-mini',
+      messages: [
+        { role: 'system', content: 'You are a Kenya bar exam question generator. Return valid JSON only.' },
+        { role: 'user', content: prompt },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
     });
 
-    return object;
+    const parsed = JSON.parse(completion.choices[0]?.message?.content || '{"questions":[]}');
+    return parsed;
   } catch (error) {
     console.error('Error generating preload content:', error);
     // Return fallback content

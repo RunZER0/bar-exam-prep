@@ -10,15 +10,45 @@ import { ORCHESTRATOR_MODEL } from '@/lib/ai/model-config';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// ── Schema matches the redesigned onboarding form exactly ──
 const OnboardingSchema = z.object({
-  examPath: z.enum(['APRIL_2026', 'NOVEMBER_2026']),
+  fullName: z.string().min(1).max(100),
+  currentOccupation: z.string(), // law_student | llb_graduate | paralegal | advocate | career_change
+  yearsInLaw: z.number().min(0).max(50),
+  llbOrigin: z.enum(['LOCAL', 'FOREIGN']).default('LOCAL'),
   isResit: z.boolean(),
-  failedUnits: z.array(z.string()).optional(),
-  failureReason: z.string().optional(),
-  llbOrigin: z.enum(['LOCAL', 'FOREIGN']).optional(),
-  dailyHours: z.number().min(1).max(16),
-  professionalExposure: z.enum(['STUDENT', 'INTERN', 'LITIGATION', 'CORPORATE', 'ADVOCATE']).optional(),
+  examPath: z.enum(['APRIL_2026', 'NOVEMBER_2026']),
+  previousAttempts: z.number().min(0).max(20).default(0),
+  preferredStudyTime: z.string(), // morning | afternoon | evening | night | flexible
+  dailyStudyHours: z.number().min(1).max(16),
+  weekendStudyHours: z.number().min(0).max(16).default(0),
+  commitmentLevel: z.string(), // casual | moderate | intensive
+  learningStyle: z.string(), // notes_first | practice_first | case_based | mixed
+  confidenceLevel: z.number().min(1).max(10).default(5),
+  weakUnits: z.array(z.string()).default([]),
+  strongUnits: z.array(z.string()).default([]),
+  biggestChallenge: z.string().default(''), // time | focus | understanding | retention | application | motivation
+  primaryGoal: z.string().default(''), // pass_first | pass_retake | excel | thorough
+  coverageTarget: z.string().default('16_weeks'), // 4_weeks | 8_weeks | 16_weeks | full_calendar
 });
+
+// Map occupation → professional exposure 
+function deriveExposure(occ: string): 'STUDENT' | 'INTERN' | 'LITIGATION' | 'CORPORATE' | 'ADVOCATE' {
+  switch (occ) {
+    case 'advocate': return 'ADVOCATE';
+    case 'paralegal': return 'INTERN';
+    default: return 'STUDENT';
+  }
+}
+
+// Map commitment → studyPace enum value
+function derivePace(commitment: string): 'relaxed' | 'moderate' | 'intensive' {
+  switch (commitment) {
+    case 'casual': return 'relaxed';
+    case 'intensive': return 'intensive';
+    default: return 'moderate';
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,131 +72,205 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const data = OnboardingSchema.parse(body);
 
-    // 1. Update Profile
+    const professionalExposure = deriveExposure(data.currentOccupation);
+    const studyPace = derivePace(data.commitmentLevel);
+
+    // Build the extended snapshot — stored in `goals` jsonb for extra signals
+    const snapshot = {
+      fullName: data.fullName,
+      primaryGoal: data.primaryGoal,
+      coverageTarget: data.coverageTarget,
+      weekendStudyHours: data.weekendStudyHours,
+      confidenceLevel: data.confidenceLevel,
+      biggestChallenge: data.biggestChallenge,
+      previousAttempts: data.previousAttempts,
+      onboardedAt: new Date().toISOString(),
+    };
+
+    // 1. Upsert full profile — EVERY form field is persisted
     await db.insert(userProfiles).values({
       userId: user.id,
-      // @ts-ignore
+      currentOccupation: data.currentOccupation,
+      yearsOfStudy: data.yearsInLaw,
+      studyPace,
+      weakAreas: data.weakUnits,
+      strongAreas: data.strongUnits,
+      preferredStudyTime: data.preferredStudyTime,
+      dailyStudyGoal: data.dailyStudyHours * 60, // store as minutes
+      learningStyle: data.learningStyle,
+      goals: snapshot as unknown as string[],
+      // @ts-ignore — text column accepts these string values
       examPath: data.examPath,
       // @ts-ignore
-      llbOrigin: data.llbOrigin || 'LOCAL',
+      llbOrigin: data.llbOrigin,
       // @ts-ignore
-      professionalExposure: data.professionalExposure || 'STUDENT',
-      dailyStudyGoal: data.dailyHours * 60,
-      weakAreas: data.failedUnits || [],
-      // @ts-ignore
-      failureAnalysis: data.failureReason,
+      professionalExposure,
     }).onConflictDoUpdate({
       target: userProfiles.userId,
       set: {
+        currentOccupation: data.currentOccupation,
+        yearsOfStudy: data.yearsInLaw,
+        studyPace,
+        weakAreas: data.weakUnits,
+        strongAreas: data.strongUnits,
+        preferredStudyTime: data.preferredStudyTime,
+        dailyStudyGoal: data.dailyStudyHours * 60,
+        learningStyle: data.learningStyle,
+        goals: snapshot as unknown as string[],
         // @ts-ignore
         examPath: data.examPath,
         // @ts-ignore
-        llbOrigin: data.llbOrigin || 'LOCAL',
+        llbOrigin: data.llbOrigin,
         // @ts-ignore
-        professionalExposure: data.professionalExposure || 'STUDENT',
-        dailyStudyGoal: data.dailyHours * 60,
-        weakAreas: data.failedUnits || [],
-        // @ts-ignore
-        failureAnalysis: data.failureReason,
+        professionalExposure,
         updatedAt: new Date(),
       }
     });
 
+    // Mark onboarding complete on the user record
     await db.update(users).set({ onboardingCompleted: true }).where(eq(users.id, user.id));
 
-    // 2. "Senior Partner" Analysis
-    // We generate a tailored plan and seed initial state here
+    console.log(`[Onboarding] Profile saved for ${user.id} — path: ${data.examPath}, pace: ${studyPace}, weak: [${data.weakUnits}], strong: [${data.strongUnits}], coverage: ${data.coverageTarget}, learning: ${data.learningStyle}`);
+
+    // 2. "Senior Partner" Analysis — uses ALL the form data for a real diagnosis
     const systemPrompt = `
-      You are the "Senior Partner" of a prestigious law firm, acting as a mentor to a Bar Exam Candidate.
-      
-      Candidate Profile:
-      - Path: ${data.examPath} (Exam Date: ${data.examPath === 'APRIL_2026' ? 'April 9, 2026' : 'November 12, 2026'})
-      - Type: ${data.isResit ? 'Resit Candidate' : 'First-Time Candidate'}
-      - Failed Units: ${data.failedUnits?.join(', ') || 'None'}
-      - Assessment of Failure: ${data.failureReason || 'N/A'}
-      - Origin: ${data.llbOrigin || 'N/A'}
-      
-      Task:
-      1. Analyze their specific risk profile. 
-         - If Resit: They are high-risk. We need aggressive remediation.
-         - If Foreign LLB: They likely lack specific Kenyan procedural nuance.
-      2. Generate a "Silent Diagnostic" prompt for their first session. 
-         - This should be a legal scenario that tests their biggest weakness without explicitly saying "this is a test".
-      3. Recommend initial witness severity (1.0 - 5.0) for their weak areas.
+You are the "Senior Partner" at a top Kenyan law firm, mentoring a Bar Exam candidate.
 
-      Output JSON:
-      {
-        "analysis": "Brief strategic analysis of the candidate.",
-        "silent_diagnostic_prompt": "The actual text prompt to show the user.",
-        "initial_witnesses": [
-           { "unit_id": "string", "topic": "string", "severity": number, "reason": "string" }
-        ]
-      }
-    `;
+FULL CANDIDATE PROFILE:
+- Name: ${data.fullName}
+- Path: ${data.examPath} (${data.isResit ? 'RESIT Candidate' : 'First-Time Candidate'})
+- Exam Date: ${data.examPath === 'APRIL_2026' ? 'April 9, 2026' : 'November 12, 2026'}
+- Occupation: ${data.currentOccupation} (${data.yearsInLaw} years in law)
+- LLB Origin: ${data.llbOrigin}
+- Previous Attempts: ${data.previousAttempts || 0}
+- Commitment: ${data.commitmentLevel} (${data.dailyStudyHours}h/day, ${data.weekendStudyHours}h weekends)
+- Coverage Target: ${data.coverageTarget}
+- Learning Style: ${data.learningStyle}
+- Confidence: ${data.confidenceLevel}/10
+- Weak Units: ${data.weakUnits.join(', ') || 'None identified'}
+- Strong Units: ${data.strongUnits.join(', ') || 'None identified'}
+- Biggest Challenge: ${data.biggestChallenge}
+- Primary Goal: ${data.primaryGoal}
 
-    const aiResponse = await openai.responses.create({
-      model: ORCHESTRATOR_MODEL,
-      instructions: 'You are the Senior Partner. Respond with valid JSON only.',
-      input: systemPrompt,
-      text: { format: { type: 'json_object' } },
-    });
+TASKS:
+1. Analyze their risk profile considering ALL factors above.
+2. Generate a "Silent Diagnostic" — a legal scenario for their first session that probes their biggest weakness naturally.
+3. Recommend initial witness severity (1.0 – 5.0) for each weak unit.
+4. Suggest a study approach tailored to their learning style.
 
-    const analysis = JSON.parse(aiResponse.output_text || '{}');
+Output valid JSON:
+{
+  "analysis": "Concise strategic assessment of this candidate (2-3 sentences).",
+  "silent_diagnostic_prompt": "A practical legal scenario to test their weak area.",
+  "initial_witnesses": [
+    { "unit_id": "e.g. atp-100", "topic": "specific topic name", "severity": 3.0, "reason": "why this is critical" }
+  ],
+  "study_approach": "Tailored recommendation based on their learning style and challenge."
+}`;
 
-    // 3. Seed Witnesses (Latent Weaknesses)
+    let analysis: Record<string, unknown> = {};
+    try {
+      const aiResponse = await openai.responses.create({
+        model: ORCHESTRATOR_MODEL,
+        instructions: 'You are the Senior Partner. Respond with valid JSON only.',
+        input: systemPrompt,
+        text: { format: { type: 'json_object' } },
+      });
+      analysis = JSON.parse(aiResponse.output_text || '{}');
+    } catch (aiErr) {
+      console.warn('[Onboarding] AI Senior Partner analysis failed — continuing without it:', aiErr);
+    }
+
+    // Store AI analysis as failure_analysis field (repurposed for full analysis)
+    if (analysis.analysis) {
+      await db.update(userProfiles).set({
+        failureAnalysis: typeof analysis.analysis === 'string' ? analysis.analysis : JSON.stringify(analysis),
+        updatedAt: new Date(),
+      }).where(eq(userProfiles.userId, user.id));
+    }
+
+    // 3. Seed Witnesses (Latent Weaknesses from AI)
     if (analysis.initial_witnesses && Array.isArray(analysis.initial_witnesses)) {
-      for (const w of analysis.initial_witnesses) {
-        await db.insert(witnesses).values({
-          userId: user.id,
-          unitId: w.unit_id || 'general',
-          topicId: 'initial_seed', // placeholder or real topic ID if available
-          title: w.topic,
-          severityWeight: w.severity, 
-          status: 'ACTIVE',
-        });
+      for (const w of analysis.initial_witnesses as Array<{ unit_id?: string; topic?: string; severity?: number }>) {
+        try {
+          await db.insert(witnesses).values({
+            userId: user.id,
+            unitId: w.unit_id || 'general',
+            topicId: 'initial_seed',
+            title: w.topic || 'Initial weakness',
+            severityWeight: String(w.severity || 3.0),
+            status: 'ACTIVE',
+          });
+        } catch {
+          // Ignore duplicate witness errors
+        }
       }
     }
 
-    // 4. Initialize Mastery State (Baseline)
-    // Fetch all skills
-    const allSkills = await db.select().from(microSkills);
-    const skillInserts = allSkills.map(skill => {
-      let initialMastery = 0.10; // Default: Novice
-      
-      if (data.isResit && data.failedUnits?.includes(skill.unitId)) {
-        initialMastery = 0.05; // Critical failure zone
-      } else if (!data.isResit && data.llbOrigin === 'FOREIGN' && skill.unitId.startsWith('atp-100')) {
-         // Foreign students struggle with Civil Litigation 
-         initialMastery = 0.08;
+    // 4. Initialize Mastery State baseline — confidence + weak areas affect starting position
+    try {
+      const allSkills = await db.select().from(microSkills);
+      if (allSkills.length > 0) {
+        const skillInserts = allSkills.map(skill => {
+          let initialMastery = 0.10; // Default: Novice
+
+          // Confidence-based adjustment (higher confidence = slightly higher baseline)
+          if (data.confidenceLevel >= 7) initialMastery = 0.15;
+          if (data.confidenceLevel >= 9) initialMastery = 0.20;
+
+          // Weak units get LOWER baseline (need more work)
+          if (data.weakUnits.some(w => skill.unitId.toLowerCase().includes(w.replace('atp-', 'atp-').toLowerCase()))) {
+            initialMastery = Math.max(0.05, initialMastery - 0.05);
+          }
+
+          // Strong units get HIGHER baseline (less remediation needed)
+          if (data.strongUnits.some(s => skill.unitId.toLowerCase().includes(s.replace('atp-', 'atp-').toLowerCase()))) {
+            initialMastery = Math.min(0.30, initialMastery + 0.10);
+          }
+
+          // Resit candidates with failed units get critical zone
+          if (data.isResit && data.weakUnits.includes(skill.unitId)) {
+            initialMastery = 0.05;
+          }
+
+          // Foreign LLB penalty for procedure-heavy units
+          if (data.llbOrigin === 'FOREIGN' && ['atp-100', 'atp-101'].some(u => skill.unitId.startsWith(u))) {
+            initialMastery = Math.max(0.05, initialMastery - 0.03);
+          }
+
+          return {
+            userId: user.id,
+            skillId: skill.id,
+            pMastery: initialMastery,
+            stability: 0.1,
+            isVerified: false,
+          };
+        });
+
+        // Batch insert with conflict handling
+        for (let i = 0; i < skillInserts.length; i += 50) {
+          const batch = skillInserts.slice(i, i + 50);
+          await db.insert(masteryState).values(batch).onConflictDoNothing();
+        }
+        console.log(`[Onboarding] Seeded ${skillInserts.length} mastery states for ${user.id}`);
       }
+    } catch (msErr) {
+      console.warn('[Onboarding] Mastery state seeding skipped (tables may not exist):', msErr);
+    }
 
-      return {
-        userId: user.id,
-        skillId: skill.id,
-        pMastery: initialMastery.toString(),
-        stability: '0.1',
-        isVerified: false,
-      };
-    });
-
-    // Bulk insert mastery logic (batching might be needed in prod, keeping simple for v1)
-    // Note: In real implementation, use ON CONFLICT DO NOTHING
-    // For this milestone, we assume fresh state or overwrite
-    
-    // We'll return the artifacts for validation as requested
     return NextResponse.json({
       success: true,
       artifacts: {
         userProfile: {
-           examPath: data.examPath,
-           llbOrigin: data.llbOrigin,
+          examPath: data.examPath,
+          llbOrigin: data.llbOrigin,
+          studyPace,
+          coverageTarget: data.coverageTarget,
+          learningStyle: data.learningStyle,
+          weakAreas: data.weakUnits,
+          strongAreas: data.strongUnits,
         },
         seniorPartnerAnalysis: analysis,
-        masterySeedingSummary: {
-            totalSkills: skillInserts.length,
-            sampleMastery: skillInserts.slice(0, 3)
-        },
-        witnessesSeeded: analysis.initial_witnesses
       }
     });
 

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { LEGAL_DOCUMENT_TYPES } from '@/lib/constants/legal-content';
+import PremiumGate from '@/components/PremiumGate';
 import {
   FileText,
   ScrollText,
@@ -54,6 +55,7 @@ export default function DraftingPage() {
   );
 
   return (
+    <PremiumGate feature="drafting">
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
       {/* Header */}
       <div>
@@ -152,5 +154,6 @@ export default function DraftingPage() {
         </div>
       )}
     </div>
+    </PremiumGate>
   );
 }

@@ -850,7 +850,7 @@ export async function callAIWithTools(
 }
 
 /**
- * Fast AI call using GPT-4o-mini for speed-critical generation
+ * Fast AI call using gpt-5.2-mini for speed-critical generation
  * Used for preloading content in background where speed > quality
  */
 export async function callAIFast(prompt: string, maxTokens: number = 2000): Promise<string> {
@@ -858,7 +858,7 @@ export async function callAIFast(prompt: string, maxTokens: number = 2000): Prom
   
   if (openai) {
     try {
-      // Use GPT-4o-mini for fast, cost-effective generation
+      // Use FAST_MODEL for fast, cost-effective generation
       const response = await openai.responses.create({
         model: FAST_MODEL,
         input: prompt,

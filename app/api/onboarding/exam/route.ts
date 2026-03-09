@@ -183,6 +183,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    // Primary check: users.onboardingCompleted flag (set by /api/onboarding POST)
+    if (!user.onboardingCompleted) {
+      return NextResponse.json({
+        examOnboardingComplete: false,
+        needsOnboarding: true,
+        message: 'Please complete your profile setup',
+      });
+    }
+
     // Check for exam profile
     const [result] = await db.select({
       profile: userExamProfiles,

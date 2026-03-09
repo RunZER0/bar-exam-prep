@@ -8,10 +8,13 @@ import {
   Loader2, Swords, Users, Zap, Shield, Flame, BookOpen, ChevronRight,
   RotateCcw, BarChart3, MessageSquare, Settings, StopCircle,
   CheckCircle, AlertCircle, Clock, Sparkles, Download, Timer,
+  FileText, ToggleLeft, ToggleRight,
 } from 'lucide-react';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 import TrialLimitReached from '@/components/TrialLimitReached';
 import AiThinkingIndicator from '@/components/AiThinkingIndicator';
+import PremiumGate, { usePremiumGate } from '@/components/PremiumGate';
+import FeatureLockedScreen from '@/components/FeatureLockedScreen';
 
 /* ================================================================
    TYPES
@@ -66,6 +69,7 @@ export default function OralExamsPage() {
   const [selectedUnit, setSelectedUnit] = useState<string>('');
   const [panelistCount, setPanelistCount] = useState(3);
   const [enableStreaming, setEnableStreaming] = useState(true);
+  const [autoRecord, setAutoRecord] = useState(true);
 
   // ---- Session state ----
   const [phase, setPhase] = useState<SessionPhase>('setup');
@@ -244,6 +248,107 @@ export default function OralExamsPage() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, [sessionRecordingBlob, examType]);
+
+  // ---- Download transcript as formatted text file ----
+  const downloadTranscript = useCallback(async () => {
+    if (messages.length === 0) return;
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const usable = pageW - margin * 2;
+    let y = margin;
+    let pageNum = 1;
+
+    const addHeader = () => {
+      doc.setFillColor(24, 24, 27);
+      doc.rect(0, 0, pageW, 28, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.setTextColor(255, 255, 255);
+      doc.text('YNAI', margin, 16);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(180, 180, 180);
+      doc.text('Session Transcript', margin, 23);
+      doc.text(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), pageW - margin, 16, { align: 'right' });
+      y = 38;
+    };
+
+    const addFooter = (pn: number) => {
+      doc.setFillColor(245, 245, 245);
+      doc.rect(0, pageH - 14, pageW, 14, 'F');
+      doc.setFontSize(7);
+      doc.setTextColor(140, 140, 140);
+      doc.text('Ynai — Empowering Future Advocates', margin, pageH - 6);
+      doc.text(`Page ${pn}`, pageW - margin, pageH - 6, { align: 'right' });
+    };
+
+    addHeader();
+
+    // Title
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(24, 24, 27);
+    const titleText = examType === 'devils-advocate' ? "Devil's Advocate Transcript" : 'Oral Panel Transcript';
+    doc.text(titleText, margin, y);
+    y += 7;
+
+    // Meta
+    const unit = selectedUnit ? ATP_UNITS.find(u => u.id === selectedUnit) : null;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Mode: ${mode.charAt(0).toUpperCase() + mode.slice(1)}${unit ? ` | Unit: ${unit.name}` : ''} | Duration: ${fmtDuration(sessionElapsedSec)} | Exchanges: ${messages.length}`, margin, y);
+    y += 6;
+    doc.setDrawColor(230, 230, 230);
+    doc.line(margin, y, pageW - margin, y);
+    y += 8;
+
+    // Transcript body
+    for (const msg of messages) {
+      if (y > pageH - 30) {
+        addFooter(pageNum);
+        doc.addPage();
+        pageNum++;
+        addHeader();
+      }
+
+      // Speaker label
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      if (msg.role === 'user') {
+        doc.setTextColor(22, 101, 52); // green
+        doc.text('You', margin, y);
+      } else {
+        doc.setTextColor(30, 64, 175); // blue
+        const speaker = msg.panelist ? `${msg.panelist.avatar} ${msg.panelist.name}` : (examType === 'devils-advocate' ? 'Challenger' : 'Examiner');
+        doc.text(speaker, margin, y);
+      }
+      y += 5;
+
+      // Content
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(40, 40, 40);
+      const lines = doc.splitTextToSize(msg.content, usable);
+      for (const line of lines) {
+        if (y > pageH - 24) {
+          addFooter(pageNum);
+          doc.addPage();
+          pageNum++;
+          addHeader();
+        }
+        doc.text(line, margin, y);
+        y += 4.5;
+      }
+      y += 5; // gap between messages
+    }
+
+    addFooter(pageNum);
+    doc.save(`ynai-${examType}-transcript-${new Date().toISOString().split('T')[0]}.pdf`);
+  }, [messages, examType, mode, selectedUnit, sessionElapsedSec]);
 
   /* ================================================================
      API HELPERS
@@ -441,7 +546,7 @@ export default function OralExamsPage() {
           // Check for subscription limit error
           if (response.status === 403) {
             const errData = await response.json();
-            if (errData.error === 'FREE_TRIAL_LIMIT') {
+            if (errData.error === 'FREE_TRIAL_LIMIT' || errData.error === 'FEATURE_LIMIT') {
               setTrialLimitFeature(examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam');
               setIsStreaming(false);
               return;
@@ -562,8 +667,8 @@ export default function OralExamsPage() {
     setSessionRecordingBlob(null);
     setSavedSessionId(null);
 
-    // Start session recording
-    await startSessionRecording();
+    // Start session recording (if toggle is on)
+    if (autoRecord) await startSessionRecording();
 
     try {
       const payload: any = {
@@ -584,10 +689,10 @@ export default function OralExamsPage() {
       const data = await authFetchJSON('/api/oral-exams', payload);
 
       // Check for subscription limit
-      if (data.error === 'FREE_TRIAL_LIMIT') {
+      if (data.error === 'FREE_TRIAL_LIMIT' || data.error === 'FEATURE_LIMIT') {
         setTrialLimitFeature(examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam');
         setPhase('setup');
-        await stopSessionRecording();
+        if (autoRecord) await stopSessionRecording();
         return;
       }
 
@@ -609,17 +714,17 @@ export default function OralExamsPage() {
     } catch (err: any) {
       console.error('Start error:', err);
       // Handle 403 from authFetchJSON
-      if (err.message?.includes('403') || err.message?.includes('FREE_TRIAL_LIMIT')) {
+      if (err.message?.includes('403') || err.message?.includes('FREE_TRIAL_LIMIT') || err.message?.includes('FEATURE_LIMIT')) {
         setTrialLimitFeature(examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam');
         setPhase('setup');
       } else {
         setError('Failed to start session. Please try again.');
       }
-      await stopSessionRecording();
+      if (autoRecord) await stopSessionRecording();
     } finally {
       setIsLoading(false);
     }
-  }, [examType, mode, feedbackMode, selectedUnit, panelistCount, authFetchJSON, playTTS, startSessionRecording, stopSessionRecording]);
+  }, [examType, mode, feedbackMode, selectedUnit, panelistCount, authFetchJSON, playTTS, startSessionRecording, stopSessionRecording, autoRecord]);
 
   /* ================================================================
      END SESSION — get summary
@@ -627,7 +732,7 @@ export default function OralExamsPage() {
   const endSession = useCallback(async () => {
     if (messages.length < 2) {
       setPhase('setup');
-      await stopSessionRecording();
+      if (autoRecord) await stopSessionRecording();
       return;
     }
 
@@ -635,8 +740,8 @@ export default function OralExamsPage() {
     setError(null);
     stopAudio();
 
-    // Stop session recording
-    await stopSessionRecording();
+    // Stop session recording (if it was started)
+    if (autoRecord) await stopSessionRecording();
 
     try {
       const data = await authFetchJSON('/api/oral-exams', {
@@ -659,7 +764,7 @@ export default function OralExamsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, examType, mode, feedbackMode, authFetchJSON, stopAudio, stopSessionRecording, saveSession]);
+  }, [messages, examType, mode, feedbackMode, authFetchJSON, stopAudio, stopSessionRecording, saveSession, autoRecord]);
 
   // Keep ref in sync so sendMessage can call it without circular dep
   useEffect(() => { endSessionRef.current = endSession; }, [endSession]);
@@ -705,6 +810,25 @@ export default function OralExamsPage() {
     const sec = s % 60;
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
+
+  /* ================================================================
+     PREMIUM GATE CHECK
+     ================================================================ */
+  const oralGate = usePremiumGate('oral_exam');
+  const devilGate = usePremiumGate('oral_devil');
+
+  // If neither oral feature is accessible, show locked screen
+  if (!oralGate.isLoading && oralGate.isLocked && devilGate.isLocked) {
+    return (
+      <FeatureLockedScreen
+        feature="oral_exam"
+        tier={oralGate.tier}
+        used={oralGate.used}
+        limit={oralGate.limit}
+        addonRemaining={oralGate.addonRemaining}
+      />
+    );
+  }
 
   /* ================================================================
      RENDER — SETUP PHASE
@@ -945,6 +1069,36 @@ export default function OralExamsPage() {
                   </div>
                 </div>
 
+                {/* Auto-Record Toggle */}
+                <div className="space-y-3">
+                  <label className="text-sm font-medium">Session Recording</label>
+                  <button
+                    onClick={() => setAutoRecord(!autoRecord)}
+                    className={`w-full rounded-xl border-2 p-4 flex items-center justify-between transition-all ${
+                      autoRecord
+                        ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                        : 'border-border hover:border-primary/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Mic className={`w-5 h-5 ${autoRecord ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <div className="text-left">
+                        <div className="text-sm font-medium">Auto-Record Session</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {autoRecord
+                            ? 'Audio will be recorded and available for download after the session'
+                            : 'No audio recording — only text transcript will be saved'}
+                        </div>
+                      </div>
+                    </div>
+                    {autoRecord ? (
+                      <ToggleRight className="w-8 h-8 text-primary shrink-0" />
+                    ) : (
+                      <ToggleLeft className="w-8 h-8 text-muted-foreground shrink-0" />
+                    )}
+                  </button>
+                </div>
+
                 {/* Start Button */}
                 <button
                   onClick={startSession}
@@ -1143,6 +1297,29 @@ export default function OralExamsPage() {
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 <Download className="w-4 h-4" /> Download
+              </button>
+            </div>
+          )}
+
+          {/* Session Transcript Download */}
+          {messages.length > 0 && (
+            <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Session Transcript</p>
+                  <p className="text-xs text-muted-foreground">
+                    {messages.length} exchanges &middot; Full conversation as PDF
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={downloadTranscript}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 text-white text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                <Download className="w-4 h-4" /> Transcript
               </button>
             </div>
           )}

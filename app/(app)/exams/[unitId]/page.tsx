@@ -13,8 +13,11 @@ import {
   ArrowLeft, ArrowRight, Clock, CheckCircle2, XCircle, Loader2, BarChart3,
   RotateCcw, BookOpen, Lightbulb, ChevronDown, ChevronUp, Trophy, Target,
   Brain, TrendingUp, AlertTriangle, Sparkles, GraduationCap, FileText, Zap,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, Lock,
 } from 'lucide-react';
+import TrialLimitReached from '@/components/TrialLimitReached';
+import PremiumGate, { usePremiumGate } from '@/components/PremiumGate';
+import FeatureLockedScreen from '@/components/FeatureLockedScreen';
 
 // ============================================================
 // TYPES
@@ -117,6 +120,7 @@ export default function ExamSessionPage() {
   const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
   const [usedPreload, setUsedPreload] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState(false);
+  const [showFeatureGate, setShowFeatureGate] = useState(false);
   const [slideDirection, setSlideDirection] = useState<'right' | 'left'>('right');
   const [draftSaved, setDraftSaved] = useState(false);
   const autoSubmitRef = useRef(false);
@@ -173,6 +177,25 @@ export default function ExamSessionPage() {
         if (!token) throw new Error('Not authenticated');
         
         setAuthToken(token);
+
+        // ── CLE exam feature gate ──
+        const statusRes = await fetch('/api/payments/status', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          const canUse = statusData.canAccess?.cle_exam;
+          if (canUse === false) {
+            setShowFeatureGate(true);
+            setPhase('loading');
+            return;
+          }
+          // Increment CLE exam usage via dedicated endpoint
+          await fetch('/api/exams/record-usage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          }).catch(() => {});
+        }
         
         // 1. First, try to get preloaded questions (instant load!)
         const preloaded = await getPreloadedExam(unitId, examType, paperSize);
@@ -444,6 +467,22 @@ Respond with ONLY valid JSON:
   }, [answers, questions, unit, configMarks, examType, unitId, paperSize, getIdToken, onExamComplete]);
 
   // ============================================================
+  // PREMIUM GATE CHECK
+  // ============================================================
+  const examGate = usePremiumGate('cle_exam');
+  if (!examGate.isLoading && examGate.isLocked) {
+    return (
+      <FeatureLockedScreen
+        feature="cle_exam"
+        tier={examGate.tier}
+        used={examGate.used}
+        limit={examGate.limit}
+        addonRemaining={examGate.addonRemaining}
+      />
+    );
+  }
+
+  // ============================================================
   // RENDER: Not found
   // ============================================================
   if (!unit) {
@@ -463,18 +502,30 @@ Respond with ONLY valid JSON:
   if (phase === 'loading') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="relative">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Sparkles className="h-5 w-5 text-primary animate-pulse" />
-          </div>
-        </div>
-        <div className="text-center">
-          <p className="font-medium text-lg">Preparing your exam…</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            {unit.name} · CLE Standard · {config.questions} questions
-          </p>
-        </div>
+        {showFeatureGate ? (
+          <TrialLimitReached
+            feature="cle_exam"
+            onDismiss={() => {
+              setShowFeatureGate(false);
+              router.push('/exams');
+            }}
+          />
+        ) : (
+          <>
+            <div className="relative">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="font-medium text-lg">Preparing your exam…</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {unit.name} · CLE Standard · {config.questions} questions
+              </p>
+            </div>
+          </>
+        )}
         {error && (
           <div className="text-center">
             <p className="text-sm text-destructive">{error}</p>

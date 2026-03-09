@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { microSkills, witnesses, syllabusNodes } from '@/lib/db/schema';
+import { users, microSkills, witnesses, syllabusNodes } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { verifyIdToken } from '@/lib/firebase/admin';
 import { NarrativeNoteRenderer } from '@/lib/services/narrative-renderer';
 import { AssessmentGenerator } from '@/lib/services/assessment-generator';
 import { CheckpointGenerator } from '@/lib/services/checkpoint-generator';
+import { neon } from '@neondatabase/serverless';
+
+const rawSql = neon(process.env.DATABASE_URL!);
 
 /**
  * GET /api/mastery/content
- * Returns study content.  Supports progressive loading:
- *   ?phase=narrative  → returns narrative slides immediately (fast)
- *   ?phase=extras     → returns checkpoints + assessment stack (slow, called 2nd)
- *   (no phase)        → legacy full response with everything
+ * Returns study content using PRE-BUILT notes (cost-saving overhaul).
+ * 
+ * Pre-built notes: 3 versions per syllabus node in the database.
+ * Each user is assigned a random version (1-3) on first access, then sees
+ * the same version consistently. Checkpoints & assessments are still AI-generated
+ * live because they need variety.
+ * 
+ * Supports progressive loading:
+ *   ?phase=narrative  → returns pre-built narrative slides immediately (FAST - no AI call)
+ *   ?phase=extras     → returns AI-generated checkpoints + assessment stack
+ *   (no phase)        → full response with everything
  */
 export async function GET(req: NextRequest) {
     try {
@@ -21,6 +32,23 @@ export async function GET(req: NextRequest) {
 
         if (!contentId) {
             return NextResponse.json({ error: 'Missing contentId' }, { status: 400 });
+        }
+
+        // === AUTH: Get user ID for version tracking ===
+        let userId: string | null = null;
+        let dbUserId: string | null = null;
+        try {
+            const authHeader = req.headers.get('authorization');
+            if (authHeader?.startsWith('Bearer ')) {
+                const token = authHeader.split('Bearer ')[1];
+                const decoded = await verifyIdToken(token);
+                userId = decoded.uid;
+                // Get DB user ID
+                const [u] = await db.select({ id: users.id }).from(users).where(eq(users.firebaseUid, decoded.uid)).limit(1);
+                dbUserId = u?.id || null;
+            }
+        } catch {
+            // Auth is optional for content — continue without version tracking
         }
 
         // 1. Fetch Topic Details & Context
@@ -66,7 +94,7 @@ export async function GET(req: NextRequest) {
 
         /* ========== PHASE: EXTRAS ONLY ========== */
         if (phase === 'extras') {
-            // Generate checkpoints + assessment (called after narrative is displayed)
+            // Checkpoints + assessment are STILL AI-generated live (variety matters here)
             const sectionCount = parseInt(req.nextUrl.searchParams.get('sectionCount') || '4');
             const [checkpoints, stack] = await Promise.all([
                 CheckpointGenerator.generate(topicName, sectionCount, { unitCode }).catch(e => {
@@ -81,29 +109,115 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ checkpoints, stack });
         }
 
-        // 2. Generate Narrative (Mentor pulls authority context from DB automatically)
+        // ═══════════════════════════════════════════════════════════
+        // 2. FETCH PRE-BUILT NARRATIVE (no AI call — instant!)
+        // ═══════════════════════════════════════════════════════════
         let narrative = "";
-        try {
-            const generated = await NarrativeNoteRenderer.generateNarrative(topicName);
-            narrative = generated || "";
-        } catch (e) {
-            console.error("[mastery/content] Narrative generation failed:", e);
-            narrative = `### Generation Error\n\nThe Mentor could not generate a narrative for **${topicName}** at this time.\n\n> Please try again or contact support.`;
+        let usedPrebuilt = false;
+
+        if (type === 'SYLLABUS') {
+            try {
+                // Determine which version this user gets (1-3 for Mastery Hub)
+                let assignedVersion: number | null = null;
+
+                if (dbUserId) {
+                    // Check if user already has an assigned version for this node
+                    const [existing] = await rawSql`
+                        SELECT mastery_version FROM user_note_versions
+                        WHERE user_id = ${dbUserId}::uuid AND node_id = ${contentId}::uuid
+                    `;
+                    if (existing?.mastery_version) {
+                        assignedVersion = existing.mastery_version;
+                    }
+                }
+
+                if (!assignedVersion) {
+                    // Randomly assign version 1-3
+                    assignedVersion = Math.floor(Math.random() * 3) + 1;
+
+                    // Persist the assignment so user always sees the same version
+                    if (dbUserId) {
+                        try {
+                            await rawSql`
+                                INSERT INTO user_note_versions (user_id, node_id, mastery_version, mastery_read_at)
+                                VALUES (${dbUserId}::uuid, ${contentId}::uuid, ${assignedVersion}, NOW())
+                                ON CONFLICT (user_id, node_id) DO UPDATE SET
+                                    mastery_version = COALESCE(user_note_versions.mastery_version, ${assignedVersion}),
+                                    mastery_read_at = NOW(),
+                                    updated_at = NOW()
+                            `;
+                        } catch (e) {
+                            console.warn('[mastery/content] Version tracking write failed (non-critical):', e);
+                        }
+                    }
+                }
+
+                // Fetch the pre-built notes for this version
+                const [prebuilt] = await rawSql`
+                    SELECT narrative_markdown, sections_json, authorities_json, personality
+                    FROM prebuilt_notes
+                    WHERE node_id = ${contentId}::uuid 
+                      AND version_number = ${assignedVersion}
+                      AND is_active = true
+                    LIMIT 1
+                `;
+
+                if (prebuilt?.narrative_markdown) {
+                    narrative = prebuilt.narrative_markdown;
+                    usedPrebuilt = true;
+                    console.log(`[mastery/content] Pre-built v${assignedVersion} for node ${contentId} (${topicName})`);
+                }
+            } catch (e) {
+                console.warn('[mastery/content] Pre-built notes fetch failed, falling back to AI:', e);
+            }
+        }
+
+        // Fallback: Generate with AI if no pre-built notes available
+        if (!usedPrebuilt) {
+            try {
+                const generated = await NarrativeNoteRenderer.generateNarrative(topicName);
+                narrative = generated || "";
+                console.log(`[mastery/content] AI-generated fallback for: ${topicName}`);
+            } catch (e) {
+                console.error("[mastery/content] Narrative generation failed:", e);
+                narrative = `### Generation Error\n\nThe Mentor could not generate a narrative for **${topicName}** at this time.\n\n> Please try again or contact support.`;
+            }
         }
         
-        // 4. Split Narrative for Carousel
-        let sections = narrative.split('###').filter(s => s.trim().length > 0).map(s => '### ' + s);
-        if (sections.length === 0) sections = [narrative];
+        // 3. Split Narrative for Carousel (with examTips extraction for structured rendering)
+        const rawSections = narrative.split(/(?=^### )/m).filter(s => s.trim().length > 0);
+        if (rawSections.length === 0) rawSections.push(narrative);
+
+        const parsedSections = rawSections.map((s: string, i: number) => {
+            const titleMatch = s.match(/^###\s+(.+)/m);
+            const examTipMatch = s.match(/\*{1,2}Exam\s+(?:Tip|pitfall):\*{1,2}\s*(.+)/i);
+            const examTips = examTipMatch ? examTipMatch[1].trim() : undefined;
+            const content = examTips
+                ? s.replace(/\*{1,2}Exam\s+(?:Tip|pitfall):\*{1,2}\s*.+/i, '').trim()
+                : s.trim();
+            return {
+                id: `section-${i}`,
+                title: titleMatch ? titleMatch[1].trim() : `Section ${i + 1}`,
+                content,
+                ...(examTips && { examTips }),
+            };
+        });
+
+        // Keep raw sections for legacy compatibility
+        let sections = rawSections;
 
         /* ========== PHASE: NARRATIVE ONLY (fast path) ========== */
         if (phase === 'narrative') {
-            const slides = sections.map(s => ({
+            const slides = parsedSections.map(s => ({
                 type: 'narrative' as const,
-                content: s,
+                content: s.content,
+                title: s.title,
+                examTips: s.examTips,
                 style: sessionStyle,
             }));
             return NextResponse.json({
                 narrativeSections: sections,
+                parsedSections,
                 slides,
                 isDrafting,
                 unitCode,
@@ -111,11 +225,12 @@ export async function GET(req: NextRequest) {
                 sectionCount: sections.length,
                 stack: null,       // not yet loaded
                 partial: true,     // signal to client: extras coming
+                prebuilt: usedPrebuilt,
             });
         }
 
         /* ========== LEGACY: FULL RESPONSE ========== */
-        // 3. Generate Assessment + Checkpoints in parallel
+        // 4. Generate Assessment + Checkpoints in parallel (STILL AI-generated for variety)
         let stack = null;
         let checkpoints: any[] = [];
         try {
@@ -131,19 +246,21 @@ export async function GET(req: NextRequest) {
         }
 
         type SlideItem = 
-            | { type: 'narrative'; content: string; style: string }
+            | { type: 'narrative'; content: string; title?: string; examTips?: string; style: string }
             | { type: 'checkpoint'; checkpoint: any };
 
         const interleaved: SlideItem[] = [];
         let cpIdx = 0;
 
-        for (let i = 0; i < sections.length; i++) {
+        for (let i = 0; i < parsedSections.length; i++) {
             interleaved.push({
                 type: 'narrative',
-                content: sections[i],
+                content: parsedSections[i].content,
+                title: parsedSections[i].title,
+                examTips: parsedSections[i].examTips,
                 style: sessionStyle,
             });
-            if ((i + 1) % 2 === 0 && i < sections.length - 1 && cpIdx < checkpoints.length) {
+            if ((i + 1) % 2 === 0 && i < parsedSections.length - 1 && cpIdx < checkpoints.length) {
                 interleaved.push({ type: 'checkpoint', checkpoint: checkpoints[cpIdx] });
                 cpIdx++;
             }
@@ -151,10 +268,12 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({
             narrativeSections: sections,
+            parsedSections,
             slides: interleaved,
             isDrafting,
             unitCode,
             stack,
+            prebuilt: usedPrebuilt,
         });
 
     } catch (error) {

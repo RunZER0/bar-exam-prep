@@ -1,7 +1,7 @@
 /**
  * GET /api/payments/verify?reference=xxx
  *
- * Verify a Paystack transaction and activate subscription if successful.
+ * Verify a Paystack transaction and activate subscription / add-on if successful.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -9,7 +9,15 @@ import { withAuth } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
 import { paymentTransactions } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { activateSubscription } from '@/lib/services/subscription';
+import { activateSubscription, upgradeSubscription, addAddonPasses, getSubscriptionInfo } from '@/lib/services/subscription';
+import { ADDON_PACKS } from '@/lib/constants/pricing';
+import type { SubscriptionTier, BillingPeriod, PremiumFeature } from '@/lib/constants/pricing';
+import {
+  sendSubscriptionActivatedEmail,
+  sendTierUpgradedEmail,
+  sendAddonPurchasedEmail,
+  sendPaymentReceiptEmail,
+} from '@/lib/services/notification-service';
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 const PAYSTACK_BASE = 'https://api.paystack.co';
@@ -40,6 +48,7 @@ export const GET = withAuth(async (req: NextRequest, user) => {
     }
 
     const txn = data.data;
+    const meta = txn.metadata || {};
 
     // Update the transaction record
     await db.update(paymentTransactions).set({
@@ -50,17 +59,91 @@ export const GET = withAuth(async (req: NextRequest, user) => {
       metadata: txn.metadata,
     }).where(eq(paymentTransactions.paystackReference, reference));
 
-    // Activate subscription
-    const plan = txn.metadata?.plan || 'monthly';
-    await activateSubscription(
-      user.id,
-      plan,
-      String(txn.customer?.customer_code || ''),
-    );
+    const purchaseType = meta.purchaseType || 'subscription';
+
+    // ── Handle based on purchase type ──
+    if (purchaseType === 'addon' || purchaseType === 'addon_pack') {
+      // Add-on pass purchase
+      let feature: PremiumFeature;
+      let quantity: number;
+      let price: number;
+
+      if (purchaseType === 'addon_pack') {
+        const pack = ADDON_PACKS.find(p => p.id === meta.addonPack);
+        feature = pack?.feature || meta.feature;
+        quantity = pack?.quantity || meta.quantity || 1;
+        price = pack?.price || (txn.amount / 100);
+      } else {
+        feature = meta.feature;
+        quantity = meta.quantity || 1;
+        price = txn.amount / 100;
+      }
+
+      await addAddonPasses(user.id, feature, quantity, price, reference);
+
+      // Event-driven emails: addon purchase confirmation + payment receipt
+      const amountKES = txn.amount / 100;
+      sendAddonPurchasedEmail(user.id, feature, quantity, amountKES, reference).catch(console.error);
+      sendPaymentReceiptEmail(user.id, amountKES, `Add-on: ${quantity}x ${feature} passes`, reference, txn.channel).catch(console.error);
+
+      return NextResponse.json({
+        verified: true,
+        purchaseType,
+        feature,
+        quantity,
+        amount: txn.amount / 100,
+        currency: txn.currency,
+        channel: txn.channel,
+      });
+    }
+
+    // ── Subscription, Upgrade, or Custom ──
+    const tier = (meta.tier || 'light') as SubscriptionTier;
+    const period = (meta.period || 'monthly') as BillingPeriod;
+    const amountKES = txn.amount / 100;
+
+    if (purchaseType === 'upgrade') {
+      // Get current tier before upgrading for the email
+      const currentSub = await getSubscriptionInfo(user.id);
+      const previousTier = currentSub.tier;
+
+      await upgradeSubscription(user.id, tier, period);
+
+      // Event-driven emails: upgrade confirmation + payment receipt
+      sendTierUpgradedEmail(user.id, previousTier, tier).catch(console.error);
+      sendPaymentReceiptEmail(user.id, amountKES, `Upgrade to ${tier} (${period})`, reference, txn.channel).catch(console.error);
+    } else if (purchaseType === 'custom') {
+      // Custom package — pass selected features to activateSubscription
+      const customFeatures = meta.customFeatures || [];
+      await activateSubscription(
+        user.id,
+        'custom' as SubscriptionTier,
+        period,
+        String(txn.customer?.customer_code || ''),
+        undefined,
+        customFeatures,
+      );
+
+      sendSubscriptionActivatedEmail(user.id, 'custom' as SubscriptionTier, period, amountKES).catch(console.error);
+      sendPaymentReceiptEmail(user.id, amountKES, `Custom package (${period})`, reference, txn.channel).catch(console.error);
+    } else {
+      await activateSubscription(
+        user.id,
+        tier,
+        period,
+        String(txn.customer?.customer_code || ''),
+      );
+
+      // Event-driven emails: subscription activated + payment receipt
+      sendSubscriptionActivatedEmail(user.id, tier, period, amountKES).catch(console.error);
+      sendPaymentReceiptEmail(user.id, amountKES, `${tier} plan (${period})`, reference, txn.channel).catch(console.error);
+    }
 
     return NextResponse.json({
       verified: true,
-      plan,
+      purchaseType,
+      tier,
+      period,
       amount: txn.amount / 100,
       currency: txn.currency,
       channel: txn.channel,

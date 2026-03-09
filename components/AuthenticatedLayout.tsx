@@ -10,6 +10,7 @@ import FloatingChat from '@/components/FloatingChat';
 import EngagingLoader from '@/components/EngagingLoader';
 import { autonomousPreload } from '@/lib/services/autonomous-preload';
 import { NotificationProvider } from '@/contexts/NotificationContext';
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { NotificationToast } from '@/components/NotificationBell';
 
 export default function AuthenticatedLayout({
@@ -101,18 +102,20 @@ export default function AuthenticatedLayout({
   if (!user) return null;
 
   return (
-    <NotificationProvider>
-      <div className="min-h-screen bg-background">
-        <Sidebar />
-        <main className={`mt-14 md:mt-0 overflow-y-auto bg-background min-h-screen transition-all duration-300 ${mainMargin}`}>
-          <div className="min-h-full">
-            {children}
-          </div>
-        </main>
-        <FloatingChat />
-        <PWAInstallPrompt />
-        <NotificationToast />
-      </div>
-    </NotificationProvider>
+    <SubscriptionProvider>
+      <NotificationProvider>
+        <div className="min-h-screen bg-background">
+          <Sidebar />
+          <main className={`mt-14 md:mt-0 overflow-y-auto bg-background min-h-screen transition-all duration-300 ${mainMargin}`}>
+            <div className="min-h-full">
+              {children}
+            </div>
+          </main>
+          <FloatingChat />
+          <PWAInstallPrompt />
+          <NotificationToast />
+        </div>
+      </NotificationProvider>
+    </SubscriptionProvider>
   );
 }

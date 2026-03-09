@@ -7,13 +7,16 @@
  * when an authenticated user opens the app.
  * 
  * Handles:
- * - Daily reminder emails
+ * - Daily reminder emails (personalized with AI-planned unit)
+ * - Weekly progress report emails (Sundays)
+ * - Fun fact emails (Wednesdays & Saturdays)
+ * - Trial expiry warning emails (24h before expiry)
  * - Push notifications
  * - Cleanup tasks
  */
 
 import { NextResponse } from 'next/server';
-import { processReminderTick } from '@/lib/services/notification-service';
+import { processReminderTick, processWeeklyReports, processFunFactEmails, processTrialExpiryCheck } from '@/lib/services/notification-service';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import { headers } from 'next/headers';
 
@@ -62,8 +65,17 @@ export async function GET(request: Request) {
   try {
     const startTime = Date.now();
 
-    // Process reminders
+    // 1. Process daily reminders (personalized with AI-planned units)
     const reminderResult = await processReminderTick();
+
+    // 2. Process weekly reports (idempotent — only sends once per week per user)
+    const weeklyResult = await processWeeklyReports();
+
+    // 3. Process fun fact emails (only on Wednesdays & Saturdays, max once/week)
+    const funFactResult = await processFunFactEmails();
+
+    // 4. Check for expiring trials and send warning emails (event-driven)
+    const trialExpiryResult = await processTrialExpiryCheck();
 
     const duration = Date.now() - startTime;
 
@@ -72,6 +84,9 @@ export async function GET(request: Request) {
       timestamp: new Date().toISOString(),
       duration: `${duration}ms`,
       reminders: reminderResult,
+      weeklyReports: weeklyResult,
+      funFacts: funFactResult,
+      trialExpiry: trialExpiryResult,
     });
   } catch (error) {
     console.error('[cron/tick] Error:', error);

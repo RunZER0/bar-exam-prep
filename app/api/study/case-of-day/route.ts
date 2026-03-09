@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { withAuth, type AuthUser } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
+import { MINI_MODEL } from '@/lib/ai/model-config';
 
 const sql = neon(process.env.DATABASE_URL!);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -558,7 +559,7 @@ async function generateCaseAnalysis(caseInfo: { title: string; citation?: string
       : `Analyze this Kenyan case for a bar exam student. Case: "${caseInfo.title}" ${caseInfo.citation || ''}, ${caseInfo.court || ''} (${caseInfo.year || ''}).\n\nProvide JSON with: facts, issue, holding, ratio, significance, summary, keywords (array of 3-5 terms). Use your knowledge of Kenyan law.`;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: MINI_MODEL,
       messages: [
         { role: 'system', content: 'You are a Kenyan law expert. Return ONLY valid JSON, no markdown.' },
         { role: 'user', content: prompt },

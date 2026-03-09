@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import EngagingLoader from '@/components/EngagingLoader';
 import TrialLimitReached from '@/components/TrialLimitReached';
+import PremiumGate, { usePremiumGate } from '@/components/PremiumGate';
+import FeatureLockedScreen from '@/components/FeatureLockedScreen';
 import {
   ArrowLeft, FileText, PenLine, GraduationCap, Send, Loader2,
   Check, ChevronRight, ChevronLeft, Timer, TimerOff, RotateCcw,
@@ -79,11 +81,27 @@ export default function DraftingDocumentPage() {
   const [mode, setMode] = useState<PageMode>(null);
   const [showTrialLimit, setShowTrialLimit] = useState(false);
 
+  // Premium gate check
+  const draftGate = usePremiumGate('drafting');
+
   // Collapse sidebar when a mode is active, restore on unmount or back
   useEffect(() => {
     if (mode) setCollapsed(true);
     return () => setCollapsed(false);
   }, [mode, setCollapsed]);
+
+  // Show locked screen if no access
+  if (!draftGate.isLoading && draftGate.isLocked) {
+    return (
+      <FeatureLockedScreen
+        feature="drafting"
+        tier={draftGate.tier}
+        used={draftGate.used}
+        limit={draftGate.limit}
+        addonRemaining={draftGate.addonRemaining}
+      />
+    );
+  }
 
   if (!doc) {
     return (
@@ -182,14 +200,96 @@ function LearnModePanel({
   const [evaling, setEvaling] = useState(false);
   const [done, setDone] = useState<Set<number>>(new Set());
   const [lessonComplete, setLessonComplete] = useState(false);
+  const [loadingCheckpoint, setLoadingCheckpoint] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const cpTextarea = useAutoExpand(6);
+
+  // Generate a checkpoint question for the current section (LIVE with GPT-5.2)
+  const generateCheckpoint = useCallback(async (section: LearnSection, sectionIdx: number) => {
+    if (section.checkpoint) return; // Already has one
+    setLoadingCheckpoint(true);
+    try {
+      const token = await getIdToken();
+      const cpPrompt = [
+        'Generate ONE checkpoint question for a drafting lesson section.',
+        '',
+        'DOCUMENT TYPE: "' + doc.name + '"',
+        'SECTION TITLE: "' + section.title + '"',
+        'SECTION CONTENT (first 2000 chars): "' + section.content.slice(0, 2000) + '"',
+        '',
+        'Return ONLY valid JSON (no markdown fences):',
+        '{"question": "A practical task for the student", "type": "identify", "hint": "A helpful hint"}',
+        '',
+        'The question should be a realistic task: identify facts, draft a paragraph, explain a requirement, etc.',
+        'Make it specific to the content of this section under Kenyan law.',
+      ].join('\n');
+
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({
+          message: cpPrompt,
+          competencyType: 'drafting',
+          context: { documentType: doc.name, mode: 'checkpoint-generate' },
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        try {
+          const raw = data.response;
+          const m = raw.match(/\{[\s\S]*\}/);
+          const parsed = m ? JSON.parse(m[0]) : JSON.parse(raw);
+          setSections(prev => prev.map((s, i) =>
+            i === sectionIdx ? { ...s, checkpoint: parsed } : s
+          ));
+        } catch {
+          // Could not parse — section just won't have a checkpoint
+        }
+      }
+    } catch {
+      // Non-critical — section works without checkpoint
+    } finally {
+      setLoadingCheckpoint(false);
+    }
+  }, [doc, getIdToken]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const token = await getIdToken();
+
+        // ── STEP 1: Try fetching pre-built manual ──
+        let prebuiltSections: LearnSection[] | null = null;
+        try {
+          const manualRes = await fetch('/api/drafting/manual?documentId=' + encodeURIComponent(doc.id), {
+            headers: { Authorization: 'Bearer ' + token },
+          });
+          if (manualRes.ok) {
+            const manualData = await manualRes.json();
+            if (manualData.prebuilt && Array.isArray(manualData.sections)) {
+              prebuiltSections = manualData.sections.map((s: any, i: number) => ({
+                id: s.id || `section-${i + 1}`,
+                title: s.title || `Section ${i + 1}`,
+                content: s.content || '',
+                // No checkpoint — will be generated live per section
+              }));
+            }
+          }
+        } catch {
+          // Pre-built fetch failed — fall through to live generation
+        }
+
+        if (cancelled) return;
+
+        if (prebuiltSections && prebuiltSections.length > 0) {
+          // ── Pre-built manual found — use it ──
+          setSections(prebuiltSections);
+          setLoading(false);
+          return;
+        }
+
+        // ── STEP 2: Fallback — generate live (original behavior) ──
         const prompt = [
           'Generate a comprehensive step-by-step guide to drafting a "' + doc.name + '" under Kenyan law.',
           '',
@@ -229,7 +329,7 @@ function LearnModePanel({
         if (!res.ok) {
           if (res.status === 403) {
             const errData = await res.json();
-            if (errData.error === 'FREE_TRIAL_LIMIT') { onTrialLimit(); return; }
+            if (errData.error === 'FREE_TRIAL_LIMIT' || errData.error === 'FEATURE_LIMIT') { onTrialLimit(); return; }
           }
           throw new Error('fetch failed');
         }
@@ -257,6 +357,13 @@ function LearnModePanel({
     })();
     return () => { cancelled = true; };
   }, [doc, getIdToken]);
+
+  // Generate checkpoint for the current section (live with GPT-5.2)
+  useEffect(() => {
+    if (sections.length > 0 && sections[idx] && !sections[idx].checkpoint && !loading) {
+      generateCheckpoint(sections[idx], idx);
+    }
+  }, [idx, sections, loading, generateCheckpoint]);
 
   const evalCp = async () => {
     if (!cpAns.trim() || !sections[idx]?.checkpoint) return;
@@ -467,6 +574,15 @@ function LearnModePanel({
                   </div>
                 )}
 
+                {!hasCp && loadingCheckpoint && (
+                  <div className="mt-8 rounded-xl bg-muted/30 p-5 animate-pulse">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      <span className="text-sm text-muted-foreground">Preparing checkpoint question...</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between mt-8 pt-6 border-t border-border/20">
                   <Button variant="ghost" size="sm" onClick={() => nav(idx - 1)} disabled={idx === 0}>
                     <ChevronLeft className="h-4 w-4 mr-1" /> Previous
@@ -577,7 +693,7 @@ function PracticeModePanel({
       if (!res.ok) {
         if (res.status === 403) {
           const errData = await res.json();
-          if (errData.error === 'FREE_TRIAL_LIMIT') { onTrialLimit(); return; }
+          if (errData.error === 'FREE_TRIAL_LIMIT' || errData.error === 'FEATURE_LIMIT') { onTrialLimit(); return; }
         }
         throw new Error('fetch failed');
       }

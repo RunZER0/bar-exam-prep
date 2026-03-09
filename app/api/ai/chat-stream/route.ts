@@ -4,7 +4,8 @@ import OpenAI from 'openai';
 import { db } from '@/lib/db';
 import { chatHistory } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
-import { ORCHESTRATOR_MODEL } from '@/lib/ai/model-config';
+import { ORCHESTRATOR_MODEL, MINI_MODEL } from '@/lib/ai/model-config';
+import { getSubscriptionInfo, incrementFeatureUsage } from '@/lib/services/subscription';
 
 const getOpenAI = () => {
   if (!process.env.OPENAI_API_KEY) return null;
@@ -98,6 +99,30 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ error: 'Message required' }), { status: 400 });
     }
 
+    // ── Subscription gate for premium streaming features ──
+    const gatedTypes: Record<string, string> = { clarification: 'clarify', research: 'research' };
+    const premiumFeature = gatedTypes[competencyType];
+    let clarifyModel: string | null = null;
+    if (premiumFeature) {
+      const sub = await getSubscriptionInfo(user.id);
+      if (!sub.canAccess(premiumFeature as any)) {
+        const fu = sub.featureUsage[premiumFeature as keyof typeof sub.featureUsage];
+        return new Response(JSON.stringify({
+          error: 'FEATURE_LIMIT',
+          message: sub.trialExpired
+            ? 'Your free trial has ended. Subscribe to continue.'
+            : `You've used ${fu?.used ?? 0}/${fu?.limit ?? 0} sessions this week. Upgrade or buy an add-on pass.`,
+          upgradeUrl: '/subscribe',
+          feature: premiumFeature,
+          tier: sub.tier,
+        }), { status: 403 });
+      }
+      await incrementFeatureUsage(user.id, premiumFeature as any);
+      if (premiumFeature === 'clarify') {
+        clarifyModel = sub.clarifyModel;
+      }
+    }
+
     // Build system prompt
     const personality = PERSONALITIES[competencyType] || PERSONALITIES.general;
     const smartModelAddendum = useSmartModel
@@ -144,12 +169,12 @@ export async function POST(req: NextRequest) {
       messages.push({ role: 'user', content: userContent });
     }
 
-    // Stream the response — use smartest model for floating chat, or vision model for images
-    const selectedModel = useSmartModel
-      ? ORCHESTRATOR_MODEL
-      : hasImageData
-      ? 'gpt-4o'
-      : 'gpt-4o-mini';
+    // Stream the response — use tier-based model for clarify, smart model for floating chat, mini for others
+    const selectedModel = clarifyModel
+      ? clarifyModel
+      : useSmartModel
+        ? ORCHESTRATOR_MODEL
+        : MINI_MODEL;
 
     const stream = await openai.chat.completions.create({
       model: selectedModel,

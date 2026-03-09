@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/middleware';
-import { getSubscriptionInfo, incrementTrialUsage } from '@/lib/services/subscription';
+import { getSubscriptionInfo, incrementFeatureUsage } from '@/lib/services/subscription';
 import { 
   generateDraftingResponse, 
   generateResearchResponse,
@@ -81,21 +81,27 @@ export const POST = withAuth(async (req: NextRequest, user) => {
     let aiResponse;
     let sources;
 
-    // ── Subscription gate for drafting ──
-    if (competencyType === 'drafting') {
+    // ── Subscription gate for premium features ──
+    // Exam generation (context.examGeneration) is gated separately as 'cle_exam' on the exam page
+    const gatedTypes: Record<string, string> = { drafting: 'drafting', research: 'research', clarification: 'clarify' };
+    const premiumFeature = (context?.examGeneration) ? null : gatedTypes[competencyType];
+    if (premiumFeature) {
       const sub = await getSubscriptionInfo(user.id);
-      if (!sub.canAccess('drafting')) {
+      if (!sub.canAccess(premiumFeature as any)) {
+        const labels: Record<string, string> = { drafting: 'Legal Drafting', research: 'Research', clarify: 'Clarification' };
+        const label = labels[premiumFeature] || premiumFeature;
+        const fu = sub.featureUsage[premiumFeature as keyof typeof sub.featureUsage];
         return NextResponse.json({
-          error: 'FREE_TRIAL_LIMIT',
+          error: 'FEATURE_LIMIT',
           response: sub.trialExpired
-            ? 'Your free trial has ended. Subscribe to continue using Legal Drafting.'
-            : `You've used all ${sub.usage.draftingLimit} free trial drafting documents. Subscribe for unlimited access.`,
+            ? `Your free trial has ended. Subscribe to continue using ${label}.`
+            : `You've used ${fu?.used ?? 0}/${fu?.limit ?? 0} ${label} sessions this week. Upgrade or buy an add-on pass.`,
           upgradeUrl: '/subscribe',
+          feature: premiumFeature,
+          tier: sub.tier,
         }, { status: 403 });
       }
-      if (sub.isTrial) {
-        await incrementTrialUsage(user.id, 'drafting');
-      }
+      await incrementFeatureUsage(user.id, premiumFeature as any);
     }
 
     switch (competencyType) {

@@ -341,7 +341,21 @@ export default function FloatingChat() {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed');
+      if (!response.ok) {
+        if (response.status === 403) {
+          const errData = await response.json().catch(() => ({}));
+          if (errData.error === 'FEATURE_LIMIT') {
+            setMessages(prev => prev.map(m =>
+              m.id === aiMsgId
+                ? { ...m, content: `${errData.message || 'Weekly limit reached.'} [Upgrade or buy a pass →](/subscribe)`, isStreaming: false }
+                : m
+            ));
+            setIsLoading(false);
+            return;
+          }
+        }
+        throw new Error('Failed');
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();

@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
   ChevronRight, ChevronLeft, CheckCircle2, Sparkles,
-  GraduationCap, BookOpen, Scale, Target, Clock, Brain,
-  Flame, Calendar, Lightbulb, Trophy, Users, Briefcase,
-  FileText, AlertCircle, Zap, Heart, Rocket
+  GraduationCap, BookOpen, Target, Clock, Brain,
+  Flame, Calendar, Lightbulb, Trophy, Briefcase,
+  FileText, AlertCircle, Zap, Rocket, MapPin, Globe
 } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 
 // ============================================================
@@ -51,11 +52,11 @@ interface OnboardingData {
   weakUnits: string[];
   strongUnits: string[];
   biggestChallenge: string;
+  // Background
+  llbOrigin: string;
   // Goals & Timeline
   primaryGoal: string;
-  targetExamDate: string;
-  // Final
-  wantsMentorship: boolean | null;
+  coverageTarget: string;
 }
 
 const ONBOARDING_STEPS: OnboardingStep[] = [
@@ -85,7 +86,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
       { id: 'law_student', label: 'Law Student', description: 'Currently pursuing LLB', icon: GraduationCap, emoji: '📚' },
       { id: 'llb_graduate', label: 'LLB Graduate', description: 'Completed LLB, preparing for bar', icon: BookOpen, emoji: '🎓' },
       { id: 'paralegal', label: 'Paralegal', description: 'Working in legal practice', icon: FileText, emoji: '📋' },
-      { id: 'advocate', label: 'Advocate', description: 'Already admitted, seeking refresher', icon: Scale, emoji: '⚖️' },
+      { id: 'advocate', label: 'Advocate', description: 'Already admitted, seeking refresher', icon: Briefcase, emoji: '⚖️' },
       { id: 'career_change', label: 'Career Changer', description: 'New to legal field', icon: Briefcase, emoji: '🔄' },
     ],
   },
@@ -99,6 +100,18 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
       { id: '1-2', label: '1-2 years', emoji: '📖' },
       { id: '3-4', label: '3-4 years', emoji: '📚' },
       { id: '5+', label: '5+ years', emoji: '🏆' },
+    ],
+  },
+  // ===== LEGAL BACKGROUND =====
+  {
+    id: 'llborigin',
+    question: 'Where did you study law?',
+    subtitle: 'This helps us calibrate content for Kenyan-specific procedures.',
+    type: 'single',
+    field: 'llbOrigin',
+    options: [
+      { id: 'LOCAL', label: 'Kenya (Local LLB)', description: 'Studied at a Kenyan university', emoji: '🇰🇪', icon: MapPin },
+      { id: 'FOREIGN', label: 'Outside Kenya', description: 'Foreign LLB — may need extra Kenyan procedure coverage', emoji: '🌍', icon: Globe },
     ],
   },
   // ===== BAR EXAM EXPERIENCE =====
@@ -181,14 +194,14 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: 'learningstyle',
     question: 'How do you learn best?',
-    subtitle: 'We\'ll prioritize content in your preferred format.',
+    subtitle: 'We\'ll tailor how content is delivered to you.',
     type: 'single',
     field: 'learningStyle',
     options: [
-      { id: 'reading', label: 'Reading', description: 'Text-based learning', emoji: '📖', icon: BookOpen },
-      { id: 'practice', label: 'Practice', description: 'Hands-on exercises & quizzes', emoji: '✍️', icon: FileText },
-      { id: 'visual', label: 'Visual', description: 'Diagrams & structured notes', emoji: '👁️', icon: Lightbulb },
-      { id: 'mixed', label: 'Mixed', description: 'Combination of styles', emoji: '🎯', icon: Brain },
+      { id: 'notes_first', label: 'Reading & Notes', description: 'Detailed written notes and case analysis', emoji: '📖', icon: BookOpen },
+      { id: 'practice_first', label: 'Practice & Testing', description: 'Jump into quizzes, exams, and exercises early', emoji: '✍️', icon: FileText },
+      { id: 'case_based', label: 'Case-Based Learning', description: 'Learn through real Kenyan cases and scenarios', emoji: '⚖️', icon: Lightbulb },
+      { id: 'mixed', label: 'Balanced Mix', description: 'Combine notes, practice, and cases equally', emoji: '🎯', icon: Brain },
     ],
   },
   // ===== SELF ASSESSMENT =====
@@ -241,7 +254,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
       { id: 'focus', label: 'Staying focused', emoji: '🎯', icon: Target },
       { id: 'understanding', label: 'Understanding concepts', emoji: '🤯', icon: Brain },
       { id: 'retention', label: 'Remembering what I learn', emoji: '💭', icon: Lightbulb },
-      { id: 'application', label: 'Applying law to facts', emoji: '⚖️', icon: Scale },
+      { id: 'application', label: 'Applying law to facts', emoji: '⚖️', icon: Brain },
       { id: 'motivation', label: 'Staying motivated', emoji: '😓', icon: Flame },
     ],
   },
@@ -258,24 +271,18 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
       { id: 'thorough', label: 'Thorough preparation', emoji: '📚', icon: BookOpen },
     ],
   },
+  // ===== SYLLABUS PACING =====
   {
-    id: 'examdate',
-    question: 'When is your target exam date?',
-    subtitle: 'We\'ll work backwards to create your perfect schedule.',
-    type: 'date',
-    field: 'targetExamDate',
-    inputProps: { min: new Date().toISOString().split('T')[0] },
-  },
-  // ===== FINAL =====
-  {
-    id: 'mentorship',
-    question: 'Would you like AI mentorship?',
-    subtitle: 'Our AI tutor will guide you daily with personalized tasks and motivation.',
+    id: 'coveragetarget',
+    question: 'How quickly do you want to cover the syllabus?',
+    subtitle: 'This sets your daily task volume. Tighter deadlines = more tasks per day.',
     type: 'single',
-    field: 'wantsMentorship',
+    field: 'coverageTarget',
     options: [
-      { id: 'true', label: 'Yes, guide me!', description: 'Leave it to us - we\'ll prepare you', emoji: '🤝', icon: Heart },
-      { id: 'false', label: 'Self-directed', description: 'I\'ll set my own pace', emoji: '🗺️', icon: Rocket },
+      { id: '4_weeks', label: 'Lightning Sprint (4 weeks)', description: '20+ tasks/day — maximum intensity', emoji: '⚡', icon: Zap },
+      { id: '8_weeks', label: 'Focused Push (8 weeks)', description: '15 tasks/day — aggressive but sustainable', emoji: '🔥', icon: Flame },
+      { id: '16_weeks', label: 'Steady Pace (16 weeks)', description: '12 tasks/day — balanced approach', emoji: '📚', icon: BookOpen },
+      { id: 'full_calendar', label: 'Full Academic Calendar', description: '8 tasks/day — follow the KSL weekly outline', emoji: '📅', icon: Calendar },
     ],
   },
   {
@@ -314,9 +321,9 @@ export default function OnboardingPage() {
     weakUnits: [],
     strongUnits: [],
     biggestChallenge: '',
+    llbOrigin: '',
     primaryGoal: '',
-    targetExamDate: '',
-    wantsMentorship: null,
+    coverageTarget: '',
   });
 
   // Filter steps based on skip conditions
@@ -343,7 +350,7 @@ export default function OnboardingPage() {
     const field = currentStep.field;
     
     // Handle boolean fields
-    if (field === 'hasAttemptedBar' || field === 'wantsMentorship') {
+    if (field === 'hasAttemptedBar') {
       setFormData(prev => ({ ...prev, [field]: optionId === 'true' }));
     } else {
       setFormData(prev => ({ ...prev, [field]: optionId }));
@@ -396,14 +403,27 @@ export default function OnboardingPage() {
     try {
       const token = await getIdToken();
       
-      // Transform data for API
+      // Transform data for API — send EVERYTHING the form collected
+      const isResit = formData.hasAttemptedBar === true;
       const apiData = {
-        ...formData,
+        fullName: formData.fullName,
+        currentOccupation: formData.currentOccupation,
         yearsInLaw: parseInt(formData.yearsInLaw.replace('+', '')) || 0,
+        llbOrigin: formData.llbOrigin || 'LOCAL',
+        isResit,
+        examPath: isResit ? 'APRIL_2026' : 'NOVEMBER_2026',
+        previousAttempts: parseInt(formData.previousAttempts.replace('+', '')) || 0,
+        preferredStudyTime: formData.preferredStudyTime,
         dailyStudyHours: parseInt(formData.dailyStudyHours.replace('+', '')) || 2,
         weekendStudyHours: parseInt(formData.weekendStudyHours.replace('+', '').split('-')[0]) || 0,
+        commitmentLevel: formData.commitmentLevel,
+        learningStyle: formData.learningStyle,
         confidenceLevel: parseInt(formData.confidenceLevel.split('-')[0]) || 5,
-        previousAttempts: parseInt(formData.previousAttempts.replace('+', '')) || 0,
+        weakUnits: formData.weakUnits,
+        strongUnits: formData.strongUnits,
+        biggestChallenge: formData.biggestChallenge,
+        primaryGoal: formData.primaryGoal,
+        coverageTarget: formData.coverageTarget,
       };
       
       await fetch('/api/onboarding', {
@@ -415,12 +435,8 @@ export default function OnboardingPage() {
         body: JSON.stringify(apiData),
       });
       
-      // Navigate to tutor dashboard if they opted for mentorship, else to Mastery Hub
-      if (formData.wantsMentorship) {
-        router.push('/tutor');
-      } else {
-        router.push('/mastery');
-      }
+      // Always go to mastery hub — the whole platform IS the AI mentor
+      router.push('/mastery');
     } catch (error) {
       console.error('Onboarding error:', error);
       setIsSubmitting(false);
@@ -458,7 +474,7 @@ export default function OnboardingPage() {
               <>
                 <div className="relative">
                   <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center animate-pulse-slow">
-                    <Scale className="w-12 h-12 text-primary" />
+                    <Logo size="xl" showText={false} />
                   </div>
                   <Sparkles className="absolute -top-2 -right-2 w-8 h-8 text-yellow-500 animate-bounce" style={{ left: '60%' }} />
                 </div>
@@ -513,8 +529,9 @@ export default function OnboardingPage() {
                   {[
                     { label: 'Commitment', value: formData.commitmentLevel || 'Moderate', emoji: '🎯' },
                     { label: 'Daily Hours', value: formData.dailyStudyHours ? `${formData.dailyStudyHours}h` : '2h', emoji: '⏱️' },
+                    { label: 'Weekends', value: formData.weekendStudyHours ? `${formData.weekendStudyHours}h/day` : 'Off', emoji: '📅' },
                     { label: 'Focus Areas', value: formData.weakUnits.length > 0 ? `${formData.weakUnits.length} units` : 'All units', emoji: '📚' },
-                    { label: 'AI Mentorship', value: formData.wantsMentorship ? 'Enabled' : 'Self-directed', emoji: '🤖' },
+                    { label: 'Coverage Pace', value: formData.coverageTarget?.replace('_', ' ') || 'Standard', emoji: '⚡' },
                   ].map((item, i) => (
                     <div key={i} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
                       <span className="flex items-center gap-2">

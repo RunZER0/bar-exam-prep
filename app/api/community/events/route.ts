@@ -4,6 +4,7 @@ import { communityEvents, eventParticipants, users, weeklyRankings } from '@/lib
 import { eq, desc, and, count, gte, lte, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import OpenAI from 'openai';
+import { MINI_MODEL } from '@/lib/ai/model-config';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -133,7 +134,7 @@ async function ensureActiveChallenges(): Promise<void> {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: MINI_MODEL,
       messages: [
         {
           role: 'system',
@@ -285,7 +286,7 @@ function localValidate(title: string, description: string, questions: any[]): { 
 async function reviewChallengeAsync(eventId: string, title: string, description: string, questions: any[]): Promise<void> {
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: MINI_MODEL,
       messages: [
         {
           role: 'system',
@@ -542,7 +543,7 @@ Student Answer: ${item.userAnswer || '(No answer provided)'}`;
           }).join('\n\n');
 
           const gradingCompletion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
+            model: MINI_MODEL,
             messages: [
               {
                 role: 'system',

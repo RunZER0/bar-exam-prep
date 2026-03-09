@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import TrialLimitReached from '@/components/TrialLimitReached';
+import PremiumGate from '@/components/PremiumGate';
 import { 
   MessageCircleQuestion, Send, Image, Mic, MicOff, 
   X, FileText, Paperclip, StopCircle, Sparkles, Loader2
@@ -36,6 +38,7 @@ export default function ClarifyPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [sessionId] = useState(() => crypto.randomUUID()); // Session for context awareness
+  const [featureLimitHit, setFeatureLimitHit] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -276,7 +279,20 @@ export default function ClarifyPage() {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed');
+      if (!response.ok) {
+        if (response.status === 403) {
+          try {
+            const errData = await response.json();
+            if (errData.error === 'FEATURE_LIMIT') {
+              setMessages(prev => prev.filter(m => m.id !== aiMsgId));
+              setFeatureLimitHit(true);
+              setIsLoading(false);
+              return;
+            }
+          } catch {}
+        }
+        throw new Error('Failed');
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -326,7 +342,15 @@ export default function ClarifyPage() {
   };
 
   return (
+    <PremiumGate feature="clarify">
     <div className="flex flex-col h-[calc(100vh-4rem)] md:h-screen">
+      {featureLimitHit && (
+        <TrialLimitReached
+          feature="clarify"
+          onDismiss={() => setFeatureLimitHit(false)}
+        />
+      )}
+
       {/* Header */}
       <div className="shrink-0 border-b border-border/20 bg-gradient-to-r from-violet-500/5 via-background to-purple-500/5 px-6 py-4">
         <div className="flex items-center gap-4 max-w-4xl mx-auto">
@@ -538,5 +562,6 @@ export default function ClarifyPage() {
         </div>
       </div>
     </div>
+    </PremiumGate>
   );
 }

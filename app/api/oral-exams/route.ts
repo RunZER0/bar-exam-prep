@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, type AuthUser } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
-import { getSubscriptionInfo, incrementTrialUsage } from '@/lib/services/subscription';
+import { getSubscriptionInfo, incrementFeatureUsage } from '@/lib/services/subscription';
+import { MINI_MODEL } from '@/lib/ai/model-config';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -189,18 +190,19 @@ async function handlePost(req: NextRequest, user: AuthUser): Promise<Response> {
       const sub = await getSubscriptionInfo(user.id);
       if (!sub.canAccess(feature as any)) {
         const limitLabel = type === 'devils-advocate' ? "Devil's Advocate" : 'Oral Exam';
+        const fu = sub.featureUsage[feature as keyof typeof sub.featureUsage];
         return NextResponse.json({
-          error: `FREE_TRIAL_LIMIT`,
+          error: 'FEATURE_LIMIT',
           message: sub.trialExpired
             ? `Your free trial has ended. Subscribe to continue using ${limitLabel} sessions.`
-            : `You've used your free trial ${limitLabel} session. Subscribe for unlimited access.`,
+            : `You've used ${fu?.used ?? 0}/${fu?.limit ?? 0} ${limitLabel} sessions this week. Upgrade or buy an add-on pass.`,
           upgradeUrl: '/subscribe',
+          feature,
+          tier: sub.tier,
         }, { status: 403 });
       }
-      // Increment usage for trial users at session start
-      if (sub.isTrial) {
-        await incrementTrialUsage(user.id, feature as 'oral_devil' | 'oral_exam');
-      }
+      // Increment usage for ALL users (trial and paid) at session start
+      await incrementFeatureUsage(user.id, feature as any);
     }
 
     // Build unit context
@@ -234,7 +236,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
       ];
 
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: MINI_MODEL,
         messages: summaryMessages,
         temperature: 0.7,
         max_completion_tokens: 2000,
@@ -281,7 +283,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
       if (stream) {
         // STREAMING mode
         const streamResponse = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+          model: MINI_MODEL,
           messages: apiMessages,
           temperature: 0.8,
           max_completion_tokens: maxTokens,
@@ -340,7 +342,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
       } else {
         // NON-STREAMING mode (existing)
         const completion = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+          model: MINI_MODEL,
           messages: apiMessages,
           temperature: 0.8,
           max_completion_tokens: maxTokens,
@@ -399,7 +401,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
       if (stream) {
         // STREAMING mode
         const streamResponse = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+          model: MINI_MODEL,
           messages: apiMessages,
           temperature: 0.8,
           max_completion_tokens: examMaxTokens,
@@ -464,7 +466,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
       } else {
         // NON-STREAMING mode (existing)
         const completion = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+          model: MINI_MODEL,
           messages: apiMessages,
           temperature: 0.8,
           max_completion_tokens: examMaxTokens,

@@ -244,6 +244,155 @@ export async function GET(req: NextRequest) {
 
     // === END CACHE CHECK — Generate fresh notes ===
 
+    // ═══════════════════════════════════════════════════════════
+    // PRE-BUILT NOTES: Try to find matching pre-built notes first
+    // Maps micro-skill → syllabus node by fuzzy name matching
+    // ═══════════════════════════════════════════════════════════
+    try {
+      // Search for a matching syllabus node by skill name
+      const searchTerm = `%${skillName.split(/\s+/).slice(0, 4).join('%')}%`;
+      // Multi-tier matching: exact name → ILIKE contains → fuzzy word match
+      const exactName = skillName.trim();
+      let matchingNodes = await rawSql`
+        SELECT id, topic_name, subtopic_name, unit_code,
+          CASE 
+            WHEN topic_name = ${exactName} OR subtopic_name = ${exactName} THEN 1
+            WHEN topic_name ILIKE ${exactName} OR subtopic_name ILIKE ${exactName} THEN 2
+            WHEN topic_name ILIKE ${'%' + exactName + '%'} OR subtopic_name ILIKE ${'%' + exactName + '%'} THEN 3
+            ELSE 4
+          END as match_rank
+        FROM syllabus_nodes
+        WHERE (topic_name ILIKE ${'%' + exactName + '%'} OR subtopic_name ILIKE ${'%' + exactName + '%'})
+          AND unit_code = ${skill.unitId}
+        ORDER BY match_rank ASC
+        LIMIT 1
+      `;
+
+      // Fallback: fuzzy word matching
+      if (matchingNodes.length === 0) {
+        matchingNodes = await rawSql`
+          SELECT id, topic_name, subtopic_name, unit_code
+          FROM syllabus_nodes
+          WHERE (topic_name ILIKE ${searchTerm} OR subtopic_name ILIKE ${searchTerm})
+            AND unit_code = ${skill.unitId}
+          LIMIT 1
+        `;
+      }
+
+      if (matchingNodes.length > 0) {
+        const nodeId = matchingNodes[0].id;
+
+        // Get DB user ID for version tracking
+        let dbUserId: string | null = null;
+        try {
+          const [u] = await rawSql`SELECT id FROM users WHERE firebase_uid = ${userId} LIMIT 1`;
+          dbUserId = u?.id || null;
+        } catch { /* non-critical */ }
+
+        // Determine assigned version (1-3 for mastery)
+        let assignedVersion: number | null = null;
+        if (dbUserId) {
+          const [existing] = await rawSql`
+            SELECT mastery_version FROM user_note_versions
+            WHERE user_id = ${dbUserId}::uuid AND node_id = ${nodeId}::uuid
+          `;
+          if (existing?.mastery_version) assignedVersion = existing.mastery_version;
+        }
+
+        if (!assignedVersion) {
+          assignedVersion = Math.floor(Math.random() * 3) + 1;
+          if (dbUserId) {
+            try {
+              await rawSql`
+                INSERT INTO user_note_versions (user_id, node_id, mastery_version, mastery_read_at)
+                VALUES (${dbUserId}::uuid, ${nodeId}::uuid, ${assignedVersion}, NOW())
+                ON CONFLICT (user_id, node_id) DO UPDATE SET
+                  mastery_version = COALESCE(user_note_versions.mastery_version, ${assignedVersion}),
+                  mastery_read_at = NOW(),
+                  updated_at = NOW()
+              `;
+            } catch { /* non-critical */ }
+          }
+        }
+
+        // Fetch pre-built notes
+        const [prebuilt] = await rawSql`
+          SELECT narrative_markdown, sections_json, authorities_json, personality
+          FROM prebuilt_notes
+          WHERE node_id = ${nodeId}::uuid 
+            AND version_number = ${assignedVersion}
+            AND is_active = true
+          LIMIT 1
+        `;
+
+        if (prebuilt?.narrative_markdown) {
+          // Convert pre-built markdown into sections format expected by UI
+          const mdSections = prebuilt.narrative_markdown
+            .split(/(?=^### )/m)
+            .filter((s: string) => s.trim().length > 0);
+
+          const sections: NotesSection[] = mdSections.map((s: string, i: number) => {
+            const titleMatch = s.match(/^###\s+(.+)/m);
+            // Extract exam tip if present (catch **Exam Tip:** and *Exam pitfall:* variants)
+            const examTipMatch = s.match(/\*{1,2}Exam\s+(?:Tip|pitfall):\*{1,2}\s*(.+)/i);
+            const examTips = examTipMatch ? examTipMatch[1].trim() : undefined;
+            const content = examTips
+              ? s.replace(/\*{1,2}Exam\s+(?:Tip|pitfall):\*{1,2}\s*.+/i, '').trim()
+              : s.trim();
+            return {
+              id: `prebuilt-${i}`,
+              title: titleMatch ? titleMatch[1].trim() : `Section ${i + 1}`,
+              content,
+              source: `Pre-built v${assignedVersion} (${prebuilt.personality || 'authoritative'})`,
+              ...(examTips && { examTips }),
+            };
+          });
+
+          // Parse authorities from pre-built JSON
+          let authorities: NotesResponse['authorities'] = [];
+          if (prebuilt.authorities_json) {
+            try {
+              const authData = typeof prebuilt.authorities_json === 'string' 
+                ? JSON.parse(prebuilt.authorities_json) 
+                : prebuilt.authorities_json;
+              authorities = (authData || []).map((a: any) => ({
+                id: a.id || a.title,
+                type: a.type || 'CASE',
+                title: a.title,
+                citation: a.citation,
+                url: a.url,
+                snippet: a.snippet,
+              }));
+            } catch { /* use empty */ }
+          }
+
+          // Check if user has "learned" stamp
+          const [stamp] = await rawSql`
+            SELECT learned_at FROM user_note_stamps WHERE user_id = ${userId} AND skill_id = ${skillId}
+          `;
+
+          console.log(`[Notes] Pre-built v${assignedVersion} served for skill: ${skillId} (node: ${nodeId})`);
+          return NextResponse.json({
+            skillId: skill.id,
+            skillName,
+            unitId: skill.unitId,
+            sections,
+            authorities,
+            cached: true,
+            prebuilt: true,
+            learned: stamp ? true : false,
+            learnedAt: stamp?.learned_at || null,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('[Notes] Pre-built lookup failed, falling back to AI:', e);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // FALLBACK: Original AI generation (only if no pre-built notes exist)
+    // ═══════════════════════════════════════════════════════════
+
     const sections: NotesSection[] = [];
     const authorities: NotesResponse['authorities'] = [];
     const authorityKeys = new Set<string>();

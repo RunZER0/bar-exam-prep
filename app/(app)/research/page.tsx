@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import TrialLimitReached from '@/components/TrialLimitReached';
+import PremiumGate from '@/components/PremiumGate';
 import {
   Search,
   Loader2,
@@ -68,7 +70,8 @@ export default function ResearchPage() {
   const [copied, setCopied] = useState(false);
   const topicFilter = 'general';
   const [webSearchEnabled, setWebSearchEnabled] = useState(true);
-  const [attachments, setAttachments] = useState<Array<{ id: string; file: File; preview?: string }>>([]);
+  const [attachments, setAttachments] = useState<Array<{ id: string; file: File; preview?: string }>>([]); 
+  const [featureLimitHit, setFeatureLimitHit] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -143,7 +146,20 @@ Question: ${userMessage}`
         }),
       });
 
-      if (!res.ok) throw new Error('Failed');
+      if (!res.ok) {
+        if (res.status === 403) {
+          try {
+            const errData = await res.json();
+            if (errData.error === 'FEATURE_LIMIT') {
+              setMessages(prev => prev.filter(m => m.id !== aiMsgId));
+              setFeatureLimitHit(true);
+              setSending(false);
+              return;
+            }
+          } catch {}
+        }
+        throw new Error('Failed');
+      }
 
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
@@ -216,7 +232,15 @@ Question: ${userMessage}`
   const hasMessages = messages.length > 0;
 
   return (
+    <PremiumGate feature="research">
     <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen">
+      {featureLimitHit && (
+        <TrialLimitReached
+          feature="research"
+          onDismiss={() => setFeatureLimitHit(false)}
+        />
+      )}
+
       {/* Top bar */}
       <div className="border-b border-border/20 px-4 md:px-6 py-3 flex items-center justify-between shrink-0 bg-gradient-to-r from-teal-500/5 via-background to-cyan-500/5">
         <div className="flex items-center gap-3">
@@ -398,5 +422,6 @@ Question: ${userMessage}`
         </p>
       </div>
     </div>
+    </PremiumGate>
   );
 }

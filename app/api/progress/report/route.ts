@@ -12,8 +12,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
+import { userProfiles } from '@/lib/db/schema';
 
 /* ── Helper: run a query safely, return [] on failure ── */
 async function safeQuery(query: ReturnType<typeof sql>) {
@@ -240,8 +241,11 @@ export const GET = withAuth(async (req: NextRequest, user) => {
     const avgSessionMinutes = totalSessions > 0 ? Math.round(totalMinutesStudied / totalSessions) : 0;
     const daysActive = activityChart.filter(d => d.minutes > 0 || d.questions > 0).length;
 
-    // Projection
-    const examDate = new Date('2026-04-15');
+    // Projection — use actual exam date from user's profile
+    const [profile] = await db.select({ examPath: userProfiles.examPath })
+      .from(userProfiles).where(eq(userProfiles.userId, user.id)).limit(1);
+    const examDateStr = profile?.examPath === 'APRIL_2026' ? '2026-04-09' : '2026-11-12';
+    const examDate = new Date(examDateStr);
     const daysUntilExam = Math.max(0, Math.ceil((examDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
     const totalSkills = num(mastery.total_skills);
     const touchedSkills = totalSkills - num(mastery.untouched_skills);

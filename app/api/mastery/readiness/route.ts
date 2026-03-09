@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
+import { users, userProfiles } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
@@ -205,8 +205,11 @@ async function calculateReadiness(
   userId: string,
   filterUnitId?: string | null
 ): Promise<ReadinessResponse> {
-  // Calculate exam phase from user profile or default
-  const examDate = new Date('2026-04-15');
+  // Determine exam date from user profile (resit = April, first-timer = November)
+  const [profile] = await db.select({ examPath: userProfiles.examPath })
+    .from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+  const examDateStr = profile?.examPath === 'APRIL_2026' ? '2026-04-09' : '2026-11-12';
+  const examDate = new Date(examDateStr);
   const now = new Date();
   const daysUntilExam = Math.ceil((examDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   
@@ -367,7 +370,7 @@ async function calculateReadiness(
       drafting: { score: draftingScore, trend: 'stable', hasData: draftingAttempts > 0 },
     },
     units,
-    examDate: '2026-04-15',
+    examDate: examDateStr,
     daysUntilExam,
     examPhase,
     evidenceSummary: {

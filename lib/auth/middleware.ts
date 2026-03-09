@@ -3,6 +3,7 @@ import { getFirebaseAdmin } from '@/lib/firebase/admin';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { sendWelcomeEmail } from '@/lib/services/notification-service';
 
 export interface AuthUser {
   id: string;
@@ -59,6 +60,13 @@ export async function verifyAuth(request: NextRequest): Promise<AuthUser | null>
       trialEndsAt: isAdmin ? null : trialEnd,
       subscriptionEndsAt: isAdmin ? new Date('2099-12-31') : null,
     }).returning();
+
+    // Send welcome email (non-blocking)
+    if (!isAdmin) {
+      sendWelcomeEmail(newUser.id).catch(err =>
+        console.error('[auth] Welcome email failed (non-fatal):', err)
+      );
+    }
 
     return {
       id: newUser.id,

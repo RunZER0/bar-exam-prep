@@ -1,7 +1,7 @@
 /**
  * GET /api/payments/status
  *
- * Returns the current user's subscription status, plan, trial info, and usage limits.
+ * Returns the current user's subscription status, tier, feature usage, and limits.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -11,7 +11,20 @@ import { getSubscriptionInfo } from '@/lib/services/subscription';
 export const GET = withAuth(async (_req: NextRequest, user) => {
   const info = await getSubscriptionInfo(user.id);
 
+  // Serialize feature usage for JSON
+  const featureUsage: Record<string, any> = {};
+  for (const [key, val] of Object.entries(info.featureUsage)) {
+    featureUsage[key] = {
+      used: val.used,
+      limit: val.limit,
+      addonRemaining: val.addonRemaining,
+      canUse: val.canUse,
+    };
+  }
+
   return NextResponse.json({
+    tier: info.tier,
+    billingPeriod: info.billingPeriod,
     plan: info.plan,
     status: info.status,
     isActive: info.isActive,
@@ -19,6 +32,8 @@ export const GET = withAuth(async (_req: NextRequest, user) => {
     trialExpired: info.trialExpired,
     trialEndsAt: info.trialEndsAt?.toISOString() || null,
     subscriptionEndsAt: info.subscriptionEndsAt?.toISOString() || null,
+    daysRemaining: info.daysRemaining,
+    clarifyModel: info.clarifyModel,
     canAccess: {
       mastery: info.canAccess('mastery'),
       study: info.canAccess('study'),
@@ -26,7 +41,11 @@ export const GET = withAuth(async (_req: NextRequest, user) => {
       drafting: info.canAccess('drafting'),
       oral_devil: info.canAccess('oral_devil'),
       oral_exam: info.canAccess('oral_exam'),
+      cle_exam: info.canAccess('cle_exam'),
+      research: info.canAccess('research'),
+      clarify: info.canAccess('clarify'),
     },
+    featureUsage,
     usage: info.usage,
   });
 });

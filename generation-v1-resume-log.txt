@@ -1,0 +1,2221 @@
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ  YNAI Pre-Built Notes Generator                  Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+≡ƒôï Ensuring database tables exist...
+  Γ£à Tables ready
+
+≡ƒôÜ Found 297 syllabus nodes to process
+
+≡ƒÄ» Generating 1 versions per node (v1: The Senior Counsel)
+≡ƒôè Total notes to generate: up to 297
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+[1/297] ≡ƒôû ATP100 Week 1: Overview of the Course: Introduction, expectations, ground rules
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[2/297] ≡ƒôû ATP101 Week 1: Introduction to Criminal Litigation: Criminal Procedure Code overview, criminal law principles
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[3/297] ≡ƒôû ATP102 Week 1: Introduction to Succession Law: Historical background, commencement of LSA
+  ≡ƒôÄ Found 11 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[4/297] ≡ƒôû ATP103 Week 1: Introduction to Legal Writing: Overview, expectations, ground rules
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[5/297] ≡ƒôû ATP104 Week 1: Overview of the Course: Introduction, expectations, learning outcomes
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[6/297] ≡ƒôû ATP105 Week 1: Introduction to Professional Ethics: Defining ethics and profession; relevance to modern practice
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[7/297] ≡ƒôû ATP106 Week 1: General Introduction and Overview: Introduction, course contents, tools
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[8/297] ≡ƒôû ATP107 Week 1: Introduction to Conveyancing: Definition, nature, scope, conceptual framework
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[9/297] ≡ƒôû ATP108 Week 1: Companies ΓÇô Formation and Basics: Types of companies; incorporation procedure; execution of documents
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[10/297] ≡ƒôû ATP100 Week 2: Taking of Instructions in Civil Litigation: Client interview and conferencing
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[11/297] ≡ƒôû ATP101 Week 2: Jurisdiction and Structure of Courts: Magistrates courts, tribunals, High Court
+  ≡ƒôÄ Found 3 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[12/297] ≡ƒôû ATP102 Week 2: Legal Framework of Succession: Relationship between LSA and other laws
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[13/297] ≡ƒôû ATP103 Week 2: Qualities of Good Legal Writing: Plain English vs legalese
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[14/297] ≡ƒôû ATP104 Week 2: Introduction to Trial Advocacy: UN Basic Principles, key skills, legal research
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[15/297] ≡ƒôû ATP105 Week 2: Law as a Profession in Kenya: Evolution of legal profession; regulatory framework; senior bar
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[16/297] ≡ƒôû ATP106 Week 2: Introduction to Office Administration: Historical background, office defined, types of offices
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[17/297] ≡ƒôû ATP107 Week 2: Historical and Legal Framework: History of conveyancing in UK from 1535
+  ≡ƒôÄ Found 2 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[18/297] ≡ƒôû ATP108 Week 2: Companies ΓÇô Statutory Compliance: Statutory returns, notices, appointments, annual returns
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[19/297] ≡ƒôû ATP100 Week 3: Taking of Instructions in Civil Litigation: Legal opinion and pre-litigation considerations
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[20/297] ≡ƒôû ATP101 Week 3: Jurisdiction and Structure of Courts: Court of Appeal, Supreme Court, ICC
+  ≡ƒôÄ Found 3 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[21/297] ≡ƒôû ATP102 Week 3: Legal Framework of Succession: Marriage Act, customary law, conveyancing, co-ownership, exemptions
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[22/297] ≡ƒôû ATP103 Week 3: Introduction to Legal Writing: Gender-neutral language, bias-free language
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[23/297] ≡ƒôû ATP104 Week 3: Introduction to Trial Advocacy: History: Greek, Roman, England, Kenya
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[24/297] ≡ƒôû ATP105 Week 3: The Law Society of Kenya: Establishment, objects, governance, role in democracy
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[25/297] ≡ƒôû ATP106 Week 3: Introduction to Office Administration: Nature of a law firm, office organization
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[26/297] ≡ƒôû ATP107 Week 3: Historical and Legal Framework: Evolution in Kenya: pre and post colonization
+  ≡ƒôÄ Found 2 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[27/297] ≡ƒôû ATP108 Week 3: Companies ΓÇô Resolutions, Meetings and Shares: Resolutions, share capital, shareholder agreements
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[28/297] ≡ƒôû ATP100 Week 4: Taking of Instructions in Civil Litigation: Demand letter drafting
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[29/297] ≡ƒôû ATP101 Week 4: Arrests: Arrest without warrant
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[30/297] ≡ƒôû ATP102 Week 4: Testate Succession ΓÇô Wills and Codicils: Definition, physical requirements, types of wills
+  ≡ƒôÄ Found 7 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[31/297] ≡ƒôû ATP103 Week 4: Introduction to Legal Writing: Advanced qualities and strategic word choice
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[32/297] ≡ƒôû ATP104 Week 4: Introduction to Trial Advocacy: Formal sources of law; courts, tribunals, ADR
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[33/297] ≡ƒôû ATP105 Week 4: Professional Practice and Ethical Conduct: Overriding values: independence, integrity, confidentiality
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[34/297] ≡ƒôû ATP106 Week 4: Front Office Services: Office location, layout, types of offices
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[35/297] ≡ƒôû ATP107 Week 4: Historical and Legal Framework: Categories of land, tenure, estates and interests
+  ≡ƒôÄ Found 2 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[36/297] ≡ƒôû ATP108 Week 4: Companies ΓÇô Charges and Beneficial Ownership: Company charges, registration, beneficial ownership
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[37/297] ≡ƒôû ATP100 Week 5: Courts and Jurisdiction: Constitutional and statutory jurisdiction, forum vs venue
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[38/297] ≡ƒôû ATP101 Week 5: Arrests: Arrest with warrant; rights of arrested persons
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[39/297] ≡ƒôû ATP102 Week 5: Testate Succession ΓÇô Wills and Codicils: Execution, concurrent wills, capacity
+  ≡ƒôÄ Found 7 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[40/297] ≡ƒôû ATP103 Week 5: Process of Effective Writing: Psychology of writing, outlines, drafting, revising, editing
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[41/297] ≡ƒôû ATP104 Week 5: Qualities of a Good Trial Lawyer: Clarity, honesty, judgment, objectivity, courage
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[42/297] ≡ƒôû ATP105 Week 5: Professional Practice and Ethical Conduct: SOPPEC overview: Standards 1-12
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[43/297] ≡ƒôû ATP106 Week 5: Front Office Services: Customer service management, ICT in service delivery
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[44/297] ≡ƒôû ATP107 Week 5: Pre-Contract Stage and Client Interview: Instructions, parties, power of attorney, due diligence
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[45/297] ≡ƒôû ATP108 Week 5: Partnerships ΓÇô Forms and Incorporation: Types of partnerships; statutory compliance
+  ≡ƒôÄ Found 4 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[46/297] ≡ƒôû ATP100 Week 6: The Overriding Objective in Civil Litigation: Concept, application, and sanctions
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[47/297] ≡ƒôû ATP101 Week 6: Identification Parades: Conduct and procedures of ID parades
+  ≡ƒôÄ Found 4 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[48/297] ≡ƒôû ATP102 Week 6: Drawing of Valid Wills: Drafting practice: will structure and content
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[49/297] ≡ƒôû ATP103 Week 6: Paragraphing: Function, unity, coherence, topic and concluding sentences
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[50/297] ≡ƒôû ATP104 Week 6: Qualities of a Good Trial Lawyer: Alertness, tenacity, sincerity, humanity
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[51/297] ≡ƒôû ATP105 Week 6: Fidelity to the Law: Officers of court; duty of candour; limits of zealous advocacy
+  ≡ƒôÄ Found 8 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[52/297] ≡ƒôû ATP106 Week 6: Standards, Policies and Procedures: Standards, policies, systems applicable in law offices
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[53/297] ≡ƒôû ATP107 Week 6: The Contract Stage: Law of contract basics; parts of sale agreement
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[54/297] ≡ƒôû ATP108 Week 6: Partnerships ΓÇô Deed, Property and Dissolution: Partnership deed drafting; property; dissolution
+  ≡ƒôÄ Found 4 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[55/297] ≡ƒôû ATP100 Week 7: Parties to a Suit: Joinder, mis-joinder, third party
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[56/297] ≡ƒôû ATP101 Week 7: Identification Parades: Production of ID parade evidence
+  ≡ƒôÄ Found 4 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[57/297] ≡ƒôû ATP102 Week 7: Drawing of Valid Wills: Who may not be left out; drafting codicils
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[58/297] ≡ƒôû ATP103 Week 7: Sentences and Voice in Legal Writing: Active/passive voice, action verbs, sentence length
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[59/297] ≡ƒôû ATP104 Week 7: General Ethical Duties of Trial Lawyers: Duties to client, opposing counsel, witnesses
+  ≡ƒôÄ Found 7 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[60/297] ≡ƒôû ATP105 Week 7: Role of a Lawyer in Kenyan Society: LSK and politics; administration of justice; mentorship
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[61/297] ≡ƒôû ATP106 Week 7: Information and Communication Technology: Automation, computer literacy, document management
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[62/297] ≡ƒôû ATP107 Week 7: The Contract Stage: Conditions of sale, deposit, completion, professional undertakings
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[63/297] ≡ƒôû ATP108 Week 7: Mergers and Take-overs ΓÇô Framework: Legal framework; term sheet; due diligence
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[64/297] ≡ƒôû ATP100 Week 8: Parties to a Suit: Interested party, interpleader, amicus curiae
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[65/297] ≡ƒôû ATP101 Week 8: Preparation of Files for Trial: Police/Prosecution file contents
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[66/297] ≡ƒôû ATP102 Week 8: Revocation, Alteration and Revival of Wills: Express revocation, by marriage, by destruction
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[67/297] ≡ƒôû ATP103 Week 8: Transitions: Generic, orienting, and substantive transitions
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[68/297] ≡ƒôû ATP104 Week 8: General Ethical Duties of Trial Lawyers: Duty to court and administration of justice
+  ≡ƒôÄ Found 7 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[69/297] ≡ƒôû ATP105 Week 8: Role of a Lawyer in Kenyan Society: AML obligations; victim representation; pro bono
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[70/297] ≡ƒôû ATP106 Week 8: Record Management: Filing systems, modern technology in records, disposal
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[71/297] ≡ƒôû ATP107 Week 8: Other Forms of Disposition: Auction, off-plan, sub-lease, sectional, community land
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[72/297] ≡ƒôû ATP108 Week 8: Mergers ΓÇô Notification and Thresholds: Disclosure, notifiable mergers, CAK thresholds, COMESA
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[73/297] ≡ƒôû ATP100 Week 9: Parties to a Suit: Representative suits and persons of unsound mind
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[74/297] ≡ƒôû ATP101 Week 9: Preparation of Files for Trial: Advocates file and court file
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[75/297] ≡ƒôû ATP102 Week 9: Revocation, Alteration and Revival of Wills: Alteration by other wills/codicils, revival
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[76/297] ≡ƒôû ATP103 Week 9: Advanced Legal Research and Analysis: Research skills applied to legal writing
+  ≡ƒôÄ Found 11 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[77/297] ≡ƒôû ATP104 Week 9: Conflict of Interest in Trial Advocacy: Cab Rank rule, voluntary disqualification
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[78/297] ≡ƒôû ATP105 Week 9: Confidentiality and Privilege: Duty of confidentiality; advocate-client privilege
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[79/297] ≡ƒôû ATP106 Week 9: Supply Chain Management: Stock control, procurement, disposal
+  ≡ƒôÄ Found 13 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[80/297] ≡ƒôû ATP107 Week 9: Transfer and Registration: Voluntary transfers, requirements, transfer forms
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[81/297] ≡ƒôû ATP108 Week 9: Take-overs ΓÇô Listed Companies: Listed company take-over procedures
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[82/297] ≡ƒôû ATP100 Week 10: Commencement of Suits: Pleadings: Plaint, Statement of Claim, OS, Petition
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[83/297] ≡ƒôû ATP101 Week 10: Complaint and Charge: Methods and rules of framing charges
+  ≡ƒôÄ Found 12 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[84/297] ≡ƒôû ATP102 Week 10: Proof of Wills: Proof of oral and written wills
+  ≡ƒôÄ Found 2 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[85/297] ≡ƒôû ATP103 Week 10: Case Briefs: Elements and purpose of case briefing
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[86/297] ≡ƒôû ATP104 Week 10: Conflict of Interest in Trial Advocacy: Compelled disqualification scenarios
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[87/297] ≡ƒôû ATP105 Week 10: Professional Undertakings: Definition, four elements, due diligence, liability
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[88/297] ≡ƒôû ATP106 Week 10: Safety, Security and Disaster Management: Continuity planning, disaster recovery
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[89/297] ≡ƒôû ATP107 Week 10: Transfer and Registration: Freehold, leasehold, charge transfers; sectional properties
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[90/297] ≡ƒôû ATP108 Week 10: Take-overs ΓÇô Minority Rights: Rights of minorities; defenses to take-overs
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[91/297] ≡ƒôû ATP100 Week 11: Commencement of Suits: Defence, counter-claim, affidavits, service of process
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[92/297] ≡ƒôû ATP101 Week 11: Complaint and Charge: Defects in drafting: duplicity, lack of ingredients
+  ≡ƒôÄ Found 12 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[93/297] ≡ƒôû ATP102 Week 11: Objection to Wills: Propounding, grounds for objection, procedure
+  ≡ƒôÄ Found 2 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[94/297] ≡ƒôû ATP103 Week 11: Case Analysis: Case briefs vs case analysis, analytical frameworks
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[95/297] ≡ƒôû ATP104 Week 11: Conflict of Interest in Trial Advocacy: Judicial officers: voluntary recusal, disqualification upon application
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[96/297] ≡ƒôû ATP105 Week 11: Professional Undertakings: Consequences of breach; enforcement procedure
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[97/297] ≡ƒôû ATP106 Week 11: Discrimination and Sexual Harassment: Types, ingredients for charge, addressing discrimination
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[98/297] ≡ƒôû ATP107 Week 11: Completion Documents: Land Control Board consent, spousal consent, clearance certificates
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[99/297] ≡ƒôû ATP108 Week 11: Share Transfers: Share transfer process and documentation
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[100/297] ≡ƒôû ATP100 Week 12: Interlocutory Applications: Injunctions (Order 40), Mareva, Anton Piller
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[101/297] ≡ƒôû ATP101 Week 12: Complaint and Charge: Capital, alternative charges, conspiracy, attempts
+  ≡ƒôÄ Found 12 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[102/297] ≡ƒôû ATP102 Week 12: Application for Reasonable Provision (Testate): Dependants S.26-30, procedure
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[103/297] ≡ƒôû ATP103 Week 12: Introduction to Legal Drafting: Definition, stages of drafting a legal document
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[104/297] ≡ƒôû ATP104 Week 12: Conflict of Interest ΓÇô Judicial Officers: Recusal upon application by a party
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[105/297] ≡ƒôû ATP105 Week 12: Conflict of Interest: Defining conflict; Rule 8 Advocates Practice Rules; common situations
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[106/297] ≡ƒôû ATP106 Week 12: HR Planning and Management: Strategic HRM, HR planning, ICT in HR
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[107/297] ≡ƒôû ATP107 Week 12: Transmissions / Involuntary Transfers: Death, court attachment, vesting orders, insolvency
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[108/297] ≡ƒôû ATP108 Week 12: Insolvency/Bankruptcy ΓÇô Applications: Debtor and creditor applications; discharge
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[109/297] ≡ƒôû ATP100 Week 13: Interlocutory Applications: Discovery, inspection, summary procedure
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[110/297] ≡ƒôû ATP101 Week 13: Complaint and Charge: Joinder of persons/counts, amendment, motion to quash
+  ≡ƒôÄ Found 12 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2907 words, 12 sections, 8 authorities cited, $0.0379
+
+[111/297] ≡ƒôû ATP102 Week 13: Intestate Succession: Citations, dependents, effect of marriages
+  ≡ƒôÄ Found 7 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2322 words, 9 sections, 8 authorities cited, $0.0300
+
+[112/297] ≡ƒôû ATP103 Week 13: Drafting Letters and Correspondence: Format, body of letter, letters to client
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2074 words, 9 sections, 3 authorities cited, $0.0252
+
+[113/297] ≡ƒôû ATP104 Week 13: Court Etiquette: Dress, punctuality, introductions, mode of address
+  ≡ƒôÄ Found 15 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1883 words, 8 sections, 6 authorities cited, $0.0251
+
+[114/297] ≡ƒôû ATP105 Week 13: Conflict of Interest: Test for disqualification; IBA Guidelines
+  ≡ƒôÄ Found 10 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2040 words, 8 sections, 8 authorities cited, $0.0259
+
+[115/297] ≡ƒôû ATP106 Week 13: Job Analysis and Design: Methods of job analysis, competency modelling
+  ≡ƒôÄ Found 12 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2097 words, 9 sections, 10 authorities cited, $0.0296
+
+[116/297] ≡ƒôû ATP107 Week 13: Leases and Tenancies: Definition, essentials, types of tenancies
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2355 words, 10 sections, 5 authorities cited, $0.0281
+
+[117/297] ≡ƒôû ATP108 Week 13: Bankruptcy ΓÇô Alternatives: Voluntary arrangement, summary instalment order, no asset procedure
+  ≡ƒôÄ Found 8 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1916 words, 8 sections, 6 authorities cited, $0.0250
+
+[118/297] ≡ƒôû ATP100 Week 14: Interlocutory Applications: Striking out, vacation, leave applications
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1989 words, 8 sections, 2 authorities cited, $0.0240
+
+[119/297] ≡ƒôû ATP101 Week 14: Plea and Plea Bargain: Nature of plea, equivocal/unequivocal plea
+  ≡ƒôÄ Found 9 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2396 words, 8 sections, 8 authorities cited, $0.0289
+
+[120/297] ≡ƒôû ATP102 Week 14: Intestate Succession: Woman under S.3(5), definition of children
+  ≡ƒôÄ Found 7 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2021 words, 8 sections, 8 authorities cited, $0.0268
+
+[121/297] ≡ƒôû ATP103 Week 14: Drafting Demand Letters: Demand letter structure and content
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2307 words, 10 sections, 4 authorities cited, $0.0267
+
+[122/297] ≡ƒôû ATP104 Week 14: Court Etiquette: Behaviour, witnesses, terminology, humour
+  ≡ƒôÄ Found 15 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2157 words, 9 sections, 8 authorities cited, $0.0286
+
+[123/297] ≡ƒôû ATP105 Week 14: Bias and Judicial Recusal: Grounds for recusal; test for bias
+  ≡ƒôÄ Found 10 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2466 words, 11 sections, 8 authorities cited, $0.0334
+
+[124/297] ≡ƒôû ATP106 Week 14: Recruitment and Selection: Sources, process, selection tools, scientific selection
+  ≡ƒôÄ Found 5 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2616 words, 10 sections, 10 authorities cited, $0.0303
+
+[125/297] ≡ƒôû ATP107 Week 14: Leases and Tenancies: Registration, covenants, rights of lessor/lessee
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2243 words, 9 sections, 2 authorities cited, $0.0262
+
+[126/297] ≡ƒôû ATP108 Week 14: Corporate Insolvency ΓÇô Liquidation: Members vs creditors voluntary; court liquidation
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2346 words, 10 sections, 9 authorities cited, $0.0314
+
+[127/297] ≡ƒôû ATP100 Week 15: Pre-Trial Process: Framing issues, discovery, case conferencing
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2235 words, 8 sections, 9 authorities cited, $0.0265
+
+[128/297] ≡ƒôû ATP101 Week 15: Plea and Plea Bargain: Plea agreements, autrefois acquit/convict, pardon
+  ≡ƒôÄ Found 9 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2527 words, 11 sections, 7 authorities cited, $0.0307
+
+[129/297] ≡ƒôû ATP102 Week 15: Protection of Estate: Intermeddling: definition and remedies
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1751 words, 8 sections, 10 authorities cited, $0.0243
+
+[130/297] ≡ƒôû ATP103 Week 15: Drafting Legal Opinions: Preparing to write, writing process, points of content
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2140 words, 10 sections, 2 authorities cited, $0.0264
+
+[131/297] ≡ƒôû ATP104 Week 15: Dimensions, Rules and Psychology of Advocacy: Trial as search for truth; rules of advocacy
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2132 words, 9 sections, 7 authorities cited, $0.0244
+
+[132/297] ≡ƒôû ATP105 Week 15: Competence and Diligence: Professional negligence; CPD; professional indemnity
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2022 words, 7 sections, 7 authorities cited, $0.0242
+
+[133/297] ≡ƒôû ATP106 Week 15: Placement, Socialization and Induction: Principles of placement, forms of induction
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1971 words, 8 sections, 5 authorities cited, $0.0228
+
+[134/297] ≡ƒôû ATP107 Week 15: Controlled Tenancies and Determination: Rent Acts regime; assignments; determination of leases
+  ≡ƒôÄ Found 2 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2414 words, 11 sections, 0 authorities cited, $0.0286
+
+[135/297] ≡ƒôû ATP108 Week 15: Corporate Insolvency ΓÇô Alternatives: Administration; company voluntary arrangement (CVA)
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2433 words, 11 sections, 9 authorities cited, $0.0333
+
+[136/297] ≡ƒôû ATP100 Week 16: Hearing of Suits: Attendance, order of proceedings, examination of witnesses
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1666 words, 6 sections, 7 authorities cited, $0.0192
+
+[137/297] ≡ƒôû ATP101 Week 16: Bail and Bond: Police bond, anticipatory bail, bail pending trial
+  ≡ƒôÄ Found 9 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2233 words, 9 sections, 2 authorities cited, $0.0285
+
+[138/297] ≡ƒôû ATP102 Week 16: Intestate Succession ΓÇô Distribution: Distribution of estate under intestacy
+  ≡ƒôÄ Found 7 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2479 words, 10 sections, 8 authorities cited, $0.0304
+
+[139/297] ≡ƒôû ATP103 Week 16: Drafting Legal Opinions: Style, format, office memorandum
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2122 words, 10 sections, 9 authorities cited, $0.0269
+
+[140/297] ≡ƒôû ATP104 Week 16: Dimensions, Rules and Psychology of Advocacy: Being likeable, sympathy rule, preparation
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1490 words, 6 sections, 2 authorities cited, $0.0181
+
+[141/297] ≡ƒôû ATP105 Week 16: Professional Fee ΓÇô Retainer: Defining retainer; types; letter of engagement
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2329 words, 8 sections, 7 authorities cited, $0.0318
+
+[142/297] ≡ƒôû ATP106 Week 16: Placement, Socialization and Induction: Socialization in the workplace, legal framework
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2040 words, 8 sections, 9 authorities cited, $0.0236
+
+[143/297] ≡ƒôû ATP107 Week 16: Remedies and Relief: Forfeiture, distress for rent, recovery, injunctions
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1526 words, 7 sections, 4 authorities cited, $0.0193
+
+[144/297] ≡ƒôû ATP108 Week 16: Financial Services Regulation: Financial regulation, key players, digital payments
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2251 words, 9 sections, 10 authorities cited, $0.0302
+
+[145/297] ≡ƒôû ATP100 Week 17: Hearing of Suits: Making submissions, withdrawal, discontinuance
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1896 words, 8 sections, 5 authorities cited, $0.0210
+
+[146/297] ≡ƒôû ATP101 Week 17: Bail and Bond: Sureties, forfeitures, recognizance, securities
+  ≡ƒôÄ Found 9 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2169 words, 10 sections, 7 authorities cited, $0.0274
+
+[147/297] ≡ƒôû ATP102 Week 17: Intestate Succession ΓÇô Special Cases: Community land, nominations, Islamic law
+  ≡ƒôÄ Found 7 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1761 words, 7 sections, 11 authorities cited, $0.0227
+
+[148/297] ≡ƒôû ATP103 Week 17: Drafting Contracts: Employment contracts, lease agreements
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2416 words, 10 sections, 10 authorities cited, $0.0296
+
+[149/297] ≡ƒôû ATP104 Week 17: Preparation for Trial ΓÇô Pre-Trial Advocacy: Client interview, research, demand letter
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1627 words, 6 sections, 0 authorities cited, $0.0194
+
+[150/297] ≡ƒôû ATP105 Week 17: Professional Fee ΓÇô Remuneration: Undercutting; overcharging; bill of costs
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2824 words, 13 sections, 0 authorities cited, $0.0392
+
+[151/297] ≡ƒôû ATP106 Week 17: Training and Development: Conceptual framework, methods, role in legal practice
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2166 words, 8 sections, 0 authorities cited, $0.0339
+
+[152/297] ≡ƒôû ATP107 Week 17: Introduction to Charges: Definition, types: formal/informal, equitable/legal, priority
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2162 words, 8 sections, 3 authorities cited, $0.0248
+
+[153/297] ≡ƒôû ATP108 Week 17: National Payment Systems Act: CBK authority, PSP authorization, risk management
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2388 words, 10 sections, 16 authorities cited, $0.0335
+
+[154/297] ≡ƒôû ATP100 Week 18: Rulings, Orders, Judgements and Decrees: Writing and delivery; extraction of orders
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1652 words, 6 sections, 7 authorities cited, $0.0193
+
+[155/297] ≡ƒôû ATP101 Week 18: Pre-Trial Conferencing: Accused meeting, prosecution communication, witness statements
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1697 words, 7 sections, 3 authorities cited, $0.0201
+
+[156/297] ≡ƒôû ATP103 Week 18: Drafting Contracts: Sale of goods contracts, key clauses
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2070 words, 11 sections, 0 authorities cited, $0.0246
+
+[157/297] ≡ƒôû ATP104 Week 18: Preparation for Trial ΓÇô Pre-Trial Advocacy: Pre-trial case analysis: objectives, case theory
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1694 words, 7 sections, 0 authorities cited, $0.0203
+
+[158/297] ≡ƒôû ATP105 Week 18: Taxation of Bills of Costs: Principles of taxation; instruction fees; disbursements
+  ≡ƒôÄ Found 7 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1596 words, 6 sections, 0 authorities cited, $0.0266
+
+[159/297] ≡ƒôû ATP106 Week 18: Training and Development: Approaches and factors limiting training
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2232 words, 9 sections, 0 authorities cited, $0.0339
+
+[160/297] ≡ƒôû ATP107 Week 18: Charges ΓÇô Form and Content: Basic requirements, parts of charge document, execution
+  ≡ƒôÄ Found 7 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2250 words, 9 sections, 3 authorities cited, $0.0265
+
+[161/297] ≡ƒôû ATP108 Week 18: Data Protection: Principles of data processing; data subject rights; ODPC
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2507 words, 13 sections, 10 authorities cited, $0.0315
+
+[162/297] ≡ƒôû ATP100 Week 19: Rulings, Orders, Judgements and Decrees: Contents of rulings and judgments
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2195 words, 9 sections, 1 authorities cited, $0.0241
+
+[163/297] ≡ƒôû ATP101 Week 19: Trial Process: Right to fair hearing, opening statement, examination
+  ≡ƒôÄ Found 15 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2068 words, 7 sections, 8 authorities cited, $0.0346
+
+[164/297] ≡ƒôû ATP102 Week 19: Jurisdiction on Succession Matters: Magistrates Courts, HC original and appellate, CA
+  ≡ƒôÄ Found 3 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1905 words, 7 sections, 5 authorities cited, $0.0230
+
+[165/297] ≡ƒôû ATP103 Week 19: Drafting Affidavits vs Statutory Declarations: Points of content, format, writing process
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1703 words, 8 sections, 3 authorities cited, $0.0223
+
+[166/297] ≡ƒôû ATP104 Week 19: Preparation for Trial ΓÇô Pre-Trial Advocacy: Good/bad facts analysis; practical approach
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1817 words, 8 sections, 0 authorities cited, $0.0218
+
+[167/297] ≡ƒôû ATP105 Week 19: Fiduciary Duty: Champerty; trusts; misappropriation; client accounts
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2010 words, 8 sections, 4 authorities cited, $0.0226
+
+[168/297] ≡ƒôû ATP106 Week 19: Career Development and Management: Stages, planning process, impact on legal practice
+  ≡ƒôÄ Found 8 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1581 words, 7 sections, 8 authorities cited, $0.0215
+
+[169/297] ≡ƒôû ATP107 Week 19: Remedies of the Chargee: Action for money, receiver, leasing, possession, power of sale
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2236 words, 8 sections, 3 authorities cited, $0.0256
+
+[170/297] ≡ƒôû ATP108 Week 19: Commercial Arrangements ΓÇô JV and Distribution: Joint venture and distributorship agreements
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2330 words, 12 sections, 4 authorities cited, $0.0324
+
+[171/297] ≡ƒôû ATP100 Week 20: Remedies upon Judgment: Stay of execution, payment in instalments
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2505 words, 10 sections, 4 authorities cited, $0.0290
+
+[172/297] ≡ƒôû ATP101 Week 20: Trial Process: Production of exhibits, trial within a trial
+  ≡ƒôÄ Found 15 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2234 words, 9 sections, 8 authorities cited, $0.0343
+
+[173/297] ≡ƒôû ATP103 Week 20: Drafting Affidavits vs Statutory Declarations: Distinguishing features, evidentiary use
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1819 words, 8 sections, 1 authorities cited, $0.0229
+
+[174/297] ≡ƒôû ATP104 Week 20: The Opening Statement: Meaning, statutory basis, objectives
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1835 words, 7 sections, 6 authorities cited, $0.0212
+
+[175/297] ≡ƒôû ATP105 Week 20: The Advocate's Lien: Types: retaining, specific, statutory; limitations
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2159 words, 8 sections, 6 authorities cited, $0.0232
+
+[176/297] ≡ƒôû ATP106 Week 20: Career Development and Management: Emerging trends, legal framework
+  ≡ƒôÄ Found 8 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1615 words, 6 sections, 10 authorities cited, $0.0214
+
+[177/297] ≡ƒôû ATP107 Week 20: Remedies of the Chargor: Equity of redemption, notice, variation, discharge
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1815 words, 6 sections, 5 authorities cited, $0.0213
+
+[178/297] ≡ƒôû ATP108 Week 20: Commercial Arrangements ΓÇô Franchise, Guarantee, Trust: Franchise, guarantee, and trust deed agreements
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2200 words, 10 sections, 9 authorities cited, $0.0306
+
+[179/297] ≡ƒôû ATP100 Week 21: Execution of Decrees and Orders: Garnishee proceedings, execution against Government
+  ≡ƒôÄ Found 3 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2581 words, 10 sections, 5 authorities cited, $0.0305
+
+[180/297] ≡ƒôû ATP101 Week 21: Trial Process and Sentencing: Judgment, victim impact, mitigation, sentencing
+  ≡ƒôÄ Found 15 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1837 words, 7 sections, 0 authorities cited, $0.0322
+
+[181/297] ≡ƒôû ATP103 Week 21: Drafting Deed Polls: Format, points of content, writing process
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1532 words, 7 sections, 0 authorities cited, $0.0190
+
+[182/297] ≡ƒôû ATP104 Week 21: The Opening Statement: Techniques for effective opening
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2112 words, 8 sections, 6 authorities cited, $0.0233
+
+[183/297] ≡ƒôû ATP105 Week 21: The Advocate's Lien: Enforcing liens; no lien before taxation
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1596 words, 6 sections, 6 authorities cited, $0.0179
+
+[184/297] ≡ƒôû ATP106 Week 21: Internal Mobility and Separation: Promotion, transfer, demotion, termination
+  ≡ƒôÄ Found 10 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2667 words, 10 sections, 10 authorities cited, $0.0351
+
+[185/297] ≡ƒôû ATP107 Week 21: Sale by Chargee: Notices, duty of care, application of proceeds
+  ≡ƒôÄ Found 15 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2645 words, 11 sections, 14 authorities cited, $0.0335
+
+[186/297] ≡ƒôû ATP108 Week 21: MPSR Security Rights ΓÇô Creation: Creation of security rights in movable property
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2004 words, 9 sections, 3 authorities cited, $0.0235
+
+[187/297] ≡ƒôû ATP100 Week 22: Execution of Decrees and Orders: Notice to show cause, specific property
+  ≡ƒôÄ Found 3 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1752 words, 7 sections, 7 authorities cited, $0.0220
+
+[188/297] ≡ƒôû ATP101 Week 22: Revision: Criminal revision procedures
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1853 words, 7 sections, 5 authorities cited, $0.0224
+
+[189/297] ≡ƒôû ATP103 Week 22: Drafting Sessions: Practical group drafting exercises
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2144 words, 10 sections, 5 authorities cited, $0.0266
+
+[190/297] ≡ƒôû ATP105 Week 22: Touting, Marketing, and Advertising: Prohibition of touting; permissible advertising
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1851 words, 7 sections, 3 authorities cited, $0.0213
+
+[191/297] ≡ƒôû ATP106 Week 22: Internal Mobility and Separation: Forms of separation, intervention by ELRC
+  ≡ƒôÄ Found 10 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2108 words, 9 sections, 7 authorities cited, $0.0287
+
+[192/297] ≡ƒôû ATP107 Week 22: Easements and Analogous Rights: Entry order, access order, easements, profits, covenants
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1916 words, 7 sections, 2 authorities cited, $0.0215
+
+[193/297] ≡ƒôû ATP108 Week 22: Security Rights ΓÇô Perfection: Perfection of security rights
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2136 words, 11 sections, 8 authorities cited, $0.0278
+
+[194/297] ≡ƒôû ATP100 Week 23: Review: Nature, scope, grounds, procedure for review
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2019 words, 8 sections, 5 authorities cited, $0.0229
+
+[195/297] ≡ƒôû ATP101 Week 23: Revision: Revision practice and procedure
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1882 words, 8 sections, 4 authorities cited, $0.0229
+
+[196/297] ≡ƒôû ATP103 Week 23: Introduction to Legislative Drafting: Role of drafter, legislative process, challenges
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2168 words, 9 sections, 2 authorities cited, $0.0262
+
+[197/297] ≡ƒôû ATP104 Week 23: Examination-in-Chief: Meaning, statutory basis, case law
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1851 words, 8 sections, 7 authorities cited, $0.0215
+
+[198/297] ≡ƒôû ATP105 Week 23: Practicing Certificate and CPDs: S.9(c), S.34 Advocates Act; consequences of acting without
+  ≡ƒôÄ Found 8 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2020 words, 7 sections, 17 authorities cited, $0.0268
+
+[199/297] ≡ƒôû ATP106 Week 23: Conceptual Framework of Accounting: Definition, objectives, principles, IFRS1
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1581 words, 6 sections, 3 authorities cited, $0.0185
+
+[200/297] ≡ƒôû ATP107 Week 23: Cautions, Inhibitions and Restrictions: Definition, procedure for lodging and removing
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2169 words, 8 sections, 2 authorities cited, $0.0259
+
+[201/297] ≡ƒôû ATP108 Week 23: Security Rights ΓÇô Registration and Priorities: Registration effect; third parties; priorities
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2245 words, 10 sections, 8 authorities cited, $0.0291
+
+[202/297] ≡ƒôû ATP100 Week 24: Appeals: Right of appeal, time limits, parties
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1968 words, 8 sections, 10 authorities cited, $0.0233
+
+[203/297] ≡ƒôû ATP101 Week 24: Appellate Jurisdiction: Right of appeal; appeal from Magistrates to High Court
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2731 words, 11 sections, 2 authorities cited, $0.0309
+
+[204/297] ≡ƒôû ATP103 Week 24: Introduction to Legislative Drafting: Qualities of a good draftsperson
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2086 words, 10 sections, 2 authorities cited, $0.0254
+
+[205/297] ≡ƒôû ATP104 Week 24: Examination-in-Chief: Objectives and techniques
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2199 words, 9 sections, 9 authorities cited, $0.0244
+
+[206/297] ≡ƒôû ATP105 Week 24: Conduct in Other Sectors: Judicial officers; AG; ODPP; county attorneys; in-house counsel
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2207 words, 8 sections, 14 authorities cited, $0.0322
+
+[207/297] ≡ƒôû ATP106 Week 24: Book Keeping and End Year Adjustments: Accounting equation, T accounts, journalizing
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2309 words, 11 sections, 11 authorities cited, $0.0305
+
+[208/297] ≡ƒôû ATP107 Week 24: Taxation on Instruments: Stamp duty computation, CGT, VAT, land rent/rates
+  ≡ƒôÄ Found 7 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2309 words, 9 sections, 2 authorities cited, $0.0327
+
+[209/297] ≡ƒôû ATP108 Week 24: Security Rights ΓÇô Enforcement: Enforcement of security rights
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2230 words, 11 sections, 6 authorities cited, $0.0292
+
+[210/297] ≡ƒôû ATP100 Week 25: Appeals: Appeals: High Court to Court of Appeal to Supreme Court
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2180 words, 9 sections, 6 authorities cited, $0.0264
+
+[211/297] ≡ƒôû ATP101 Week 25: Appellate Jurisdiction: Appeal from HC to CA to Supreme Court
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1697 words, 7 sections, 4 authorities cited, $0.0196
+
+[212/297] ≡ƒôû ATP102 Week 25: Petition for Grant of Letters of Administration: Who may take out grants, petitions
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1930 words, 8 sections, 2 authorities cited, $0.0263
+
+[213/297] ≡ƒôû ATP103 Week 25: Key Reference Legislations: Tools for the drafter, drafting instructions
+  ≡ƒôÄ Found 10 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2093 words, 8 sections, 11 authorities cited, $0.0277
+
+[214/297] ≡ƒôû ATP104 Week 25: Examination-in-Chief: Lay and expert witnesses; presentation of exhibits
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2378 words, 10 sections, 18 authorities cited, $0.0263
+
+[215/297] ≡ƒôû ATP105 Week 25: Contempt of Court: Civil vs criminal contempt; sources of power to punish
+  ≡ƒôÄ Found 4 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2521 words, 10 sections, 7 authorities cited, $0.0326
+
+[216/297] ≡ƒôû ATP106 Week 25: Book Keeping and End Year Adjustments: Trial balance, end year adjustments, error correction
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2244 words, 9 sections, 7 authorities cited, $0.0288
+
+[217/297] ≡ƒôû ATP107 Week 25: Compulsory Acquisition: Process, valuation for compensation
+  ≡ƒôÄ Found 5 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1915 words, 7 sections, 1 authorities cited, $0.0239
+
+[218/297] ≡ƒôû ATP108 Week 25: Taxation ΓÇô Classification: Introduction to taxation in commerce; classification
+  ≡ƒôÄ Found 7 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2004 words, 6 sections, 2 authorities cited, $0.0301
+
+[219/297] ≡ƒôû ATP100 Week 26: Appeals: Documents of appeal, stay pending appeal
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2859 words, 10 sections, 7 authorities cited, $0.0321
+
+[220/297] ≡ƒôû ATP101 Week 26: Specialized Prosecutors: ODPP, specialized prosecution units
+  ≡ƒôÄ Found 8 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2254 words, 10 sections, 5 authorities cited, $0.0277
+
+[221/297] ≡ƒôû ATP102 Week 26: Petition for Grant of Letters of Administration: Gazettement, simple grant procedure
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2221 words, 10 sections, 0 authorities cited, $0.0296
+
+[222/297] ≡ƒôû ATP103 Week 26: Key Reference Legislations: Designing a legislative solution, policy process
+  ≡ƒôÄ Found 10 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2123 words, 10 sections, 7 authorities cited, $0.0282
+
+[223/297] ≡ƒôû ATP104 Week 26: Cross-Examination: Meaning, statutory basis, objectives
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2273 words, 9 sections, 5 authorities cited, $0.0270
+
+[224/297] ≡ƒôû ATP105 Week 26: Contempt of Court: Elements; procedure; abuse of power; drafting application
+  ≡ƒôÄ Found 4 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2397 words, 11 sections, 6 authorities cited, $0.0317
+
+[225/297] ≡ƒôû ATP106 Week 26: Bank Reconciliation Statements: Meaning, causes of differences, steps, benefits
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2036 words, 8 sections, 7 authorities cited, $0.0269
+
+[226/297] ≡ƒôû ATP107 Week 26: Allocation: Pre-requisites, allocation process, prescription
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1874 words, 7 sections, 5 authorities cited, $0.0217
+
+[227/297] ≡ƒôû ATP108 Week 26: Taxation ΓÇô Types of Income Tax: Types of income tax provisions
+  ≡ƒôÄ Found 7 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1629 words, 6 sections, 2 authorities cited, $0.0255
+
+[228/297] ≡ƒôû ATP100 Week 27: Procedure in Judicial Review: Stages under CPR; Fair Administrative Action Act
+  ≡ƒôÄ Found 11 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2389 words, 11 sections, 9 authorities cited, $0.0312
+
+[229/297] ≡ƒôû ATP101 Week 27: Private Prosecutions: Private prosecution procedures
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2299 words, 11 sections, 1 authorities cited, $0.0309
+
+[230/297] ≡ƒôû ATP102 Week 27: Objections to Grants: Who may file, reasons, timing, process
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2270 words, 9 sections, 5 authorities cited, $0.0275
+
+[231/297] ≡ƒôû ATP103 Week 27: Structure of a Bill: Preliminary provisions, substantive provisions
+  ≡ƒôÄ Found 10 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2448 words, 11 sections, 0 authorities cited, $0.0308
+
+[232/297] ≡ƒôû ATP104 Week 27: Cross-Examination: Techniques generally and for lay witnesses
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1882 words, 7 sections, 5 authorities cited, $0.0217
+
+[233/297] ≡ƒôû ATP105 Week 27: Law as a Business: Establishing law firms; types; multi-disciplinary practice
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1823 words, 7 sections, 5 authorities cited, $0.0211
+
+[234/297] ≡ƒôû ATP106 Week 27: Preparation of Final Accounts: Comprehensive income statement for sole trader
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1975 words, 9 sections, 0 authorities cited, $0.0229
+
+[235/297] ≡ƒôû ATP107 Week 27: Change of User and Extension of User: Application, provisional approval, survey, titling
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1851 words, 7 sections, 7 authorities cited, $0.0249
+
+[236/297] ≡ƒôû ATP108 Week 27: Taxation ΓÇô Planning, Avoidance, and CGT: Tax planning vs avoidance vs evasion; CGT computation
+  ≡ƒôÄ Found 7 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1569 words, 6 sections, 2 authorities cited, $0.0252
+
+[237/297] ≡ƒôû ATP100 Week 28: Procedure in Judicial Review: Remedies under judicial review; service
+  ≡ƒôÄ Found 11 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1681 words, 6 sections, 8 authorities cited, $0.0224
+
+[238/297] ≡ƒôû ATP101 Week 28: Inquests: Inquest procedures and documentation
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1936 words, 8 sections, 0 authorities cited, $0.0238
+
+[239/297] ≡ƒôû ATP102 Week 28: Objections to Grants: Cohabitee, donation mortis causa, S.68 grounds
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2387 words, 9 sections, 10 authorities cited, $0.0283
+
+[240/297] ≡ƒôû ATP103 Week 28: Structure of a Bill: Miscellaneous and final provisions
+  ≡ƒôÄ Found 10 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2889 words, 12 sections, 8 authorities cited, $0.0347
+
+[241/297] ≡ƒôû ATP104 Week 28: Cross-Examination: Techniques for lay witnesses (advanced)
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1994 words, 9 sections, 9 authorities cited, $0.0230
+
+[242/297] ≡ƒôû ATP105 Week 28: Advocates Disciplinary Process: Disciplinary Tribunal; professional misconduct; penalties
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2350 words, 9 sections, 3 authorities cited, $0.0325
+
+[243/297] ≡ƒôû ATP106 Week 28: Preparation of Final Accounts: Balance sheet / statement of financial position
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1507 words, 6 sections, 0 authorities cited, $0.0181
+
+[244/297] ≡ƒôû ATP107 Week 28: Extension and Renewal of Leases: Application, approval, new lease preparation
+  ≡ƒôÄ Found 13 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2362 words, 10 sections, 15 authorities cited, $0.0333
+
+[245/297] ≡ƒôû ATP108 Week 28: Tax Dispute Resolution: Dispute resolution mechanisms; objections; appeals
+  ≡ƒôÄ Found 15 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1891 words, 7 sections, 16 authorities cited, $0.0297
+
+[246/297] ≡ƒôû ATP100 Week 29: Constitutional Litigation: Determining constitutional questions; locus standi
+  ≡ƒôÄ Found 10 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2407 words, 10 sections, 0 authorities cited, $0.0335
+
+[247/297] ≡ƒôû ATP101 Week 29: Extradition Proceedings: Extradition law and procedure
+  ≡ƒôÄ Found 6 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2651 words, 12 sections, 0 authorities cited, $0.0390
+
+[248/297] ≡ƒôû ATP102 Week 29: Grants ΓÇô Hearing and Determination: Contested and non-contested hearings
+  ≡ƒôÄ Found 2 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1721 words, 7 sections, 1 authorities cited, $0.0206
+
+[249/297] ≡ƒôû ATP103 Week 29: The Legislative Sentence: Words and expressions in legislative drafting; syntax
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2185 words, 10 sections, 0 authorities cited, $0.0272
+
+[250/297] ≡ƒôû ATP104 Week 29: Cross-Examination: Techniques for expert witnesses
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1973 words, 9 sections, 11 authorities cited, $0.0228
+
+[251/297] ≡ƒôû ATP105 Week 29: Social Media and Outside Interests: Appropriate/inappropriate social media use
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2030 words, 9 sections, 7 authorities cited, $0.0267
+
+[252/297] ≡ƒôû ATP106 Week 29: Partnership Accounts: Partners capital and current accounts; balance sheet
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1847 words, 7 sections, 11 authorities cited, $0.0235
+
+[253/297] ≡ƒôû ATP107 Week 29: Ministry of Lands: Departments and roles in land administration
+  ≡ƒôÄ Found 10 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1957 words, 8 sections, 6 authorities cited, $0.0269
+
+[254/297] ≡ƒôû ATP108 Week 29: Tax Procedures Act: Tax returns, assessment, collection, recovery, penalties
+  ≡ƒôÄ Found 6 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2495 words, 10 sections, 0 authorities cited, $0.0275
+
+[255/297] ≡ƒôû ATP100 Week 30: Constitutional Litigation: Jurisdiction in Constitution Litigation
+  ≡ƒôÄ Found 10 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1919 words, 8 sections, 8 authorities cited, $0.0256
+
+[256/297] ≡ƒôû ATP101 Week 30: Miscellaneous Applications: Freezing accounts, search, confiscation, summons
+  ≡ƒôÄ Found 10 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2191 words, 9 sections, 8 authorities cited, $0.0300
+
+[257/297] ≡ƒôû ATP102 Week 30: Grants ΓÇô Complex Applications: Multiple applicants, foreign domicile
+  ≡ƒôÄ Found 2 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2671 words, 10 sections, 4 authorities cited, $0.0319
+
+[258/297] ≡ƒôû ATP103 Week 30: The Legislative Sentence: Time in legislation
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1811 words, 7 sections, 2 authorities cited, $0.0215
+
+[259/297] ≡ƒôû ATP104 Week 30: Re-Examination: Meaning, statutory basis, objectives, techniques
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2204 words, 9 sections, 2 authorities cited, $0.0258
+
+[260/297] ≡ƒôû ATP105 Week 30: Techno Ethics, AI, and Legal Professionals: AI risks: bias, hallucination; IBA Report 2024
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1935 words, 8 sections, 16 authorities cited, $0.0285
+
+[261/297] ≡ƒôû ATP106 Week 30: Advocates Accounts: Income account, client accounts, cashbook
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2440 words, 10 sections, 0 authorities cited, $0.0321
+
+[262/297] ≡ƒôû ATP107 Week 30: National Land Commission: Conversion, public auction, tenders, public rights of way
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1956 words, 8 sections, 8 authorities cited, $0.0271
+
+[263/297] ≡ƒôû ATP108 Week 30: Revision ΓÇô Past Paper Analysis: Analysis of past paper questions (Companies & Partnerships)
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1566 words, 7 sections, 1 authorities cited, $0.0215
+
+[264/297] ≡ƒôû ATP100 Week 31: Constitutional Litigation: Practice rules, non-compliance, remedies
+  ≡ƒôÄ Found 10 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    ΓÅ│ Retrying in 5s...
+    Γ¥î Attempt 1 failed: Generated content too short (0 chars)
+  Γ£ì v1 (The Senior Counsel) attempt 2...
+    Γ£à 2573 words, 11 sections, 8 authorities cited, $0.0347
+
+[265/297] ≡ƒôû ATP101 Week 31: Habeas Corpus: Habeas corpus procedure and practice
+  ≡ƒôÄ Found 2 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2397 words, 10 sections, 0 authorities cited, $0.0292
+
+[266/297] ≡ƒôû ATP102 Week 31: Confirmation of Grants: Pleadings for confirmation, hearing
+  ≡ƒôÄ Found 3 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1470 words, 6 sections, 8 authorities cited, $0.0187
+
+[267/297] ≡ƒôû ATP103 Week 31: Amending Legislation: Drafting amending legislation
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2008 words, 9 sections, 7 authorities cited, $0.0234
+
+[268/297] ≡ƒôû ATP104 Week 31: The Closing Argument: Meaning, statutory basis, objectives, techniques
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1789 words, 7 sections, 3 authorities cited, $0.0211
+
+[269/297] ≡ƒôû ATP105 Week 31: Anti-Money Laundering: Client due diligence; suspicious transactions; privilege limits
+  ≡ƒôÄ Found 5 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2452 words, 10 sections, 1 authorities cited, $0.0299
+
+[270/297] ≡ƒôû ATP106 Week 31: Advocates Accounts: Comprehensive statements; compliance with client money rules
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2552 words, 9 sections, 8 authorities cited, $0.0327
+
+[271/297] ≡ƒôû ATP107 Week 31: Environmental Management: NEMA, EIA licence, environmental audit
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2072 words, 9 sections, 0 authorities cited, $0.0330
+
+[272/297] ≡ƒôû ATP108 Week 31: Revision ΓÇô Past Paper Analysis: Analysis of past paper questions (M&A & Insolvency)
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1789 words, 9 sections, 1 authorities cited, $0.0242
+
+[273/297] ≡ƒôû ATP100 Week 32: Costs: Costs inter partes, taxation process, bills of costs
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2115 words, 8 sections, 4 authorities cited, $0.0248
+
+[274/297] ≡ƒôû ATP101 Week 32: Judicial Review in Criminal Matters: Judicial review of criminal proceedings
+  ≡ƒôÄ Found 12 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2371 words, 10 sections, 2 authorities cited, $0.0348
+
+[275/297] ≡ƒôû ATP102 Week 32: Reasonable Provision (Intestate): Application for reasonable provision by dependants
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2758 words, 10 sections, 1 authorities cited, $0.0306
+
+[276/297] ≡ƒôû ATP103 Week 32: Penal Provisions: Drafting offences and penalties
+  ≡ƒôÄ Found 5 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2083 words, 9 sections, 1 authorities cited, $0.0253
+
+[277/297] ≡ƒôû ATP104 Week 32: Objections and Skeleton Arguments: Preliminary and trial objections; drafting skeleton arguments
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2191 words, 9 sections, 12 authorities cited, $0.0247
+
+[278/297] ≡ƒôû ATP105 Week 32: Reflection and Revision: Comprehensive review of Term 1-3 concepts
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2729 words, 12 sections, 3 authorities cited, $0.0302
+
+[279/297] ≡ƒôû ATP106 Week 32: Cash Flow Statements: Purpose, direct and indirect methods, analysis
+  ≡ƒôÄ Found 8 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2008 words, 8 sections, 9 authorities cited, $0.0259
+
+[280/297] ≡ƒôû ATP107 Week 32: Contemporary Issues in Conveyancing: Replacement of lost titles, rectification
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1770 words, 7 sections, 2 authorities cited, $0.0203
+
+[281/297] ≡ƒôû ATP108 Week 32: Revision ΓÇô Past Paper Analysis: Analysis of past paper questions (MPSR & Tax)
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1669 words, 7 sections, 1 authorities cited, $0.0234
+
+[282/297] ≡ƒôû ATP100 Week 33: Procedures Before Tribunals: Business Premises Rent, Rent, Environmental
+  ≡ƒôÄ Found 6 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2764 words, 12 sections, 13 authorities cited, $0.0322
+
+[283/297] ≡ƒôû ATP101 Week 33: Procedures in Special Courts: Children's court, anti-corruption, courts-martial, traffic
+  ≡ƒôÄ Found 6 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2566 words, 11 sections, 3 authorities cited, $0.0307
+
+[284/297] ≡ƒôû ATP102 Week 33: Confirmation of Grants (continued): Complex confirmation scenarios
+  ≡ƒôÄ Found 3 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1842 words, 8 sections, 7 authorities cited, $0.0222
+
+[285/297] ≡ƒôû ATP103 Week 33: Delegated Legislation: Drafting delegated legislation
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2538 words, 10 sections, 8 authorities cited, $0.0307
+
+[286/297] ≡ƒôû ATP104 Week 33: Appellate Advocacy, Contempt, and ADR: Appellate skills; contempt of court; ADR
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1600 words, 6 sections, 2 authorities cited, $0.0187
+
+[287/297] ≡ƒôû ATP105 Week 33: Reflection and Revision: Exam preparation and ethical dilemma practice
+  ≡ƒôÄ Found 0 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1824 words, 7 sections, 3 authorities cited, $0.0210
+
+[288/297] ≡ƒôû ATP106 Week 33: Cost Accounting and Budgeting: Cost classification, statements, types of budgets
+  ≡ƒôÄ Found 8 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2282 words, 10 sections, 12 authorities cited, $0.0300
+
+[289/297] ≡ƒôû ATP107 Week 33: Contemporary Issues in Conveyancing: Electronic land registration (NLIMS/Ardhi Sasa), reforms
+  ≡ƒôÄ Found 1 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1725 words, 7 sections, 0 authorities cited, $0.0213
+
+[290/297] ≡ƒôû ATP108 Week 33: Revision ΓÇô Past Paper Analysis: Comprehensive revision for written examination
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1419 words, 6 sections, 0 authorities cited, $0.0200
+
+[291/297] ≡ƒôû ATP102 Week 34: Revocation and Annulment of Grants: Grounds and procedure for revocation
+  ≡ƒôÄ Found 6 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2649 words, 10 sections, 3 authorities cited, $0.0326
+
+[292/297] ≡ƒôû ATP102 Week 35: Limited Grants: Types, purpose, procedure
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1903 words, 8 sections, 12 authorities cited, $0.0242
+
+[293/297] ≡ƒôû ATP102 Week 36: Limited Grants and Civil Claims: Procedure for civil claims against estates
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2102 words, 8 sections, 13 authorities cited, $0.0262
+
+[294/297] ≡ƒôû ATP102 Week 37: Foreign Succession: Moveable and immoveable property in foreign jurisdictions
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1876 words, 8 sections, 0 authorities cited, $0.0270
+
+[295/297] ≡ƒôû ATP102 Week 38: Powers and Duties of Personal Representatives: PR duties and obligations
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 2294 words, 9 sections, 16 authorities cited, $0.0314
+
+[296/297] ≡ƒôû ATP102 Week 39: Estate Accounts: Preparation and filing of estate accounts
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ  YNAI Pre-Built Notes Generator                  Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+≡ƒôï Ensuring database tables exist...
+  Γ£à Tables ready
+
+≡ƒôÜ Found 297 syllabus nodes to process
+
+≡ƒÄ» Generating 5 versions per node (v1: The Senior Counsel, v2: The Practical Mentor, v3: The Case Analyst, v4: The Structured Guide, v5: The Deep Dive)
+≡ƒôè Total notes to generate: up to 1485
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+[1/297] ≡ƒôû ATP100 Week 1: Overview of the Course: Introduction, expectations, ground rules
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+  Γ£ì v2 (The Practical Mentor) attempt 1...
+    Γ£à 1606 words, 7 sections, 8 authorities cited, $0.0325
+  Γ£ì v3 (The Case Analyst) attempt 1...
+    Γ£à 1239 words, 5 sections, 15 authorities cited, $0.0283
+  Γ£ì v4 (The Structured Guide) attempt 1...
+    Γ£à 1628 words, 7 sections, 5 authorities cited, $0.0336
+  Γ£ì v5 (The Deep Dive) attempt 1...
+    Γ¥î Attempt 1 failed: Connection error.
+    ΓÅ│ Retrying in 5s...
+  Γ£ì v5 (The Deep Dive) attempt 2...
+    ΓÅ│ Retrying in 5s...
+    Γ¥î Attempt 2 failed: Connection error.
+  Γ£ì v5 (The Deep Dive) attempt 3...
+    Γ¥î Attempt 3 failed: Connection error.
+Γ¥î Fatal error: NeonDbError: Error connecting to database: TypeError: fetch failed
+    at mr.execute (C:\Users\victo\Desktop\Bar Exam Prep\node_modules\@neondatabase\serverless\index.js:1294:95)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async main (C:\Users\victo\Desktop\Bar Exam Prep\scripts\generate-prebuilt-notes.ts:608:13) {
+  severity: undefined,
+  code: undefined,
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: undefined,
+  line: undefined,
+  routine: undefined,
+  sourceError: TypeError: fetch failed
+      at node:internal/deps/undici/undici:15845:13
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async mr.execute (C:\Users\victo\Desktop\Bar Exam Prep\node_modules\@neondatabase\serverless\index.js:1294:4)
+      at async main (C:\Users\victo\Desktop\Bar Exam Prep\scripts\generate-prebuilt-notes.ts:608:13) {
+    [cause]: ConnectTimeoutError: Connect Timeout Error (attempted addresses: 98.91.36.187:443, 54.86.249.90:443, 44.211.114.173:443, timeout: 10000ms)
+        at onConnectTimeout (node:internal/deps/undici/undici:1690:23)
+        at Immediate._onImmediate (node:internal/deps/undici/undici:1656:35)
+        at process.processImmediate (node:internal/timers:504:21) {
+      code: 'UND_ERR_CONNECT_TIMEOUT'
+    }
+  }
+}
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ  YNAI Pre-Built Notes Generator                  Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+≡ƒôï Ensuring database tables exist...
+  Γ£à Tables ready
+
+≡ƒôÜ Found 297 syllabus nodes to process
+
+≡ƒÄ» Generating 1 versions per node (v1: The Senior Counsel)
+≡ƒôè Total notes to generate: up to 297
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+[1/297] ≡ƒôû ATP100 Week 1: Overview of the Course: Introduction, expectations, ground rules
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[2/297] ≡ƒôû ATP101 Week 1: Introduction to Criminal Litigation: Criminal Procedure Code overview, criminal law principles
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[3/297] ≡ƒôû ATP102 Week 1: Introduction to Succession Law: Historical background, commencement of LSA
+  ≡ƒôÄ Found 11 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[4/297] ≡ƒôû ATP103 Week 1: Introduction to Legal Writing: Overview, expectations, ground rules
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[5/297] ≡ƒôû ATP104 Week 1: Overview of the Course: Introduction, expectations, learning outcomes
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[6/297] ≡ƒôû ATP105 Week 1: Introduction to Professional Ethics: Defining ethics and profession; relevance to modern practice
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[7/297] ≡ƒôû ATP106 Week 1: General Introduction and Overview: Introduction, course contents, tools
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[8/297] ≡ƒôû ATP107 Week 1: Introduction to Conveyancing: Definition, nature, scope, conceptual framework
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[9/297] ≡ƒôû ATP108 Week 1: Companies ΓÇô Formation and Basics: Types of companies; incorporation procedure; execution of documents
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[10/297] ≡ƒôû ATP100 Week 2: Taking of Instructions in Civil Litigation: Client interview and conferencing
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[11/297] ≡ƒôû ATP101 Week 2: Jurisdiction and Structure of Courts: Magistrates courts, tribunals, High Court
+  ≡ƒôÄ Found 3 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[12/297] ≡ƒôû ATP102 Week 2: Legal Framework of Succession: Relationship between LSA and other laws
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[13/297] ≡ƒôû ATP103 Week 2: Qualities of Good Legal Writing: Plain English vs legalese
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[14/297] ≡ƒôû ATP104 Week 2: Introduction to Trial Advocacy: UN Basic Principles, key skills, legal research
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[15/297] ≡ƒôû ATP105 Week 2: Law as a Profession in Kenya: Evolution of legal profession; regulatory framework; senior bar
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[16/297] ≡ƒôû ATP106 Week 2: Introduction to Office Administration: Historical background, office defined, types of offices
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[17/297] ≡ƒôû ATP107 Week 2: Historical and Legal Framework: History of conveyancing in UK from 1535
+  ≡ƒôÄ Found 2 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[18/297] ≡ƒôû ATP108 Week 2: Companies ΓÇô Statutory Compliance: Statutory returns, notices, appointments, annual returns
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[19/297] ≡ƒôû ATP100 Week 3: Taking of Instructions in Civil Litigation: Legal opinion and pre-litigation considerations
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[20/297] ≡ƒôû ATP101 Week 3: Jurisdiction and Structure of Courts: Court of Appeal, Supreme Court, ICC
+  ≡ƒôÄ Found 3 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[21/297] ≡ƒôû ATP102 Week 3: Legal Framework of Succession: Marriage Act, customary law, conveyancing, co-ownership, exemptions
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[22/297] ≡ƒôû ATP103 Week 3: Introduction to Legal Writing: Gender-neutral language, bias-free language
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[23/297] ≡ƒôû ATP104 Week 3: Introduction to Trial Advocacy: History: Greek, Roman, England, Kenya
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[24/297] ≡ƒôû ATP105 Week 3: The Law Society of Kenya: Establishment, objects, governance, role in democracy
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[25/297] ≡ƒôû ATP106 Week 3: Introduction to Office Administration: Nature of a law firm, office organization
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[26/297] ≡ƒôû ATP107 Week 3: Historical and Legal Framework: Evolution in Kenya: pre and post colonization
+  ≡ƒôÄ Found 2 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[27/297] ≡ƒôû ATP108 Week 3: Companies ΓÇô Resolutions, Meetings and Shares: Resolutions, share capital, shareholder agreements
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[28/297] ≡ƒôû ATP100 Week 4: Taking of Instructions in Civil Litigation: Demand letter drafting
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[29/297] ≡ƒôû ATP101 Week 4: Arrests: Arrest without warrant
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[30/297] ≡ƒôû ATP102 Week 4: Testate Succession ΓÇô Wills and Codicils: Definition, physical requirements, types of wills
+  ≡ƒôÄ Found 7 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[31/297] ≡ƒôû ATP103 Week 4: Introduction to Legal Writing: Advanced qualities and strategic word choice
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[32/297] ≡ƒôû ATP104 Week 4: Introduction to Trial Advocacy: Formal sources of law; courts, tribunals, ADR
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[33/297] ≡ƒôû ATP105 Week 4: Professional Practice and Ethical Conduct: Overriding values: independence, integrity, confidentiality
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[34/297] ≡ƒôû ATP106 Week 4: Front Office Services: Office location, layout, types of offices
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[35/297] ≡ƒôû ATP107 Week 4: Historical and Legal Framework: Categories of land, tenure, estates and interests
+  ≡ƒôÄ Found 2 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[36/297] ≡ƒôû ATP108 Week 4: Companies ΓÇô Charges and Beneficial Ownership: Company charges, registration, beneficial ownership
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[37/297] ≡ƒôû ATP100 Week 5: Courts and Jurisdiction: Constitutional and statutory jurisdiction, forum vs venue
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[38/297] ≡ƒôû ATP101 Week 5: Arrests: Arrest with warrant; rights of arrested persons
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[39/297] ≡ƒôû ATP102 Week 5: Testate Succession ΓÇô Wills and Codicils: Execution, concurrent wills, capacity
+  ≡ƒôÄ Found 7 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[40/297] ≡ƒôû ATP103 Week 5: Process of Effective Writing: Psychology of writing, outlines, drafting, revising, editing
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[41/297] ≡ƒôû ATP104 Week 5: Qualities of a Good Trial Lawyer: Clarity, honesty, judgment, objectivity, courage
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[42/297] ≡ƒôû ATP105 Week 5: Professional Practice and Ethical Conduct: SOPPEC overview: Standards 1-12
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[43/297] ≡ƒôû ATP106 Week 5: Front Office Services: Customer service management, ICT in service delivery
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[44/297] ≡ƒôû ATP107 Week 5: Pre-Contract Stage and Client Interview: Instructions, parties, power of attorney, due diligence
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[45/297] ≡ƒôû ATP108 Week 5: Partnerships ΓÇô Forms and Incorporation: Types of partnerships; statutory compliance
+  ≡ƒôÄ Found 4 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[46/297] ≡ƒôû ATP100 Week 6: The Overriding Objective in Civil Litigation: Concept, application, and sanctions
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[47/297] ≡ƒôû ATP101 Week 6: Identification Parades: Conduct and procedures of ID parades
+  ≡ƒôÄ Found 4 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[48/297] ≡ƒôû ATP102 Week 6: Drawing of Valid Wills: Drafting practice: will structure and content
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[49/297] ≡ƒôû ATP103 Week 6: Paragraphing: Function, unity, coherence, topic and concluding sentences
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[50/297] ≡ƒôû ATP104 Week 6: Qualities of a Good Trial Lawyer: Alertness, tenacity, sincerity, humanity
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[51/297] ≡ƒôû ATP105 Week 6: Fidelity to the Law: Officers of court; duty of candour; limits of zealous advocacy
+  ≡ƒôÄ Found 8 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[52/297] ≡ƒôû ATP106 Week 6: Standards, Policies and Procedures: Standards, policies, systems applicable in law offices
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[53/297] ≡ƒôû ATP107 Week 6: The Contract Stage: Law of contract basics; parts of sale agreement
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[54/297] ≡ƒôû ATP108 Week 6: Partnerships ΓÇô Deed, Property and Dissolution: Partnership deed drafting; property; dissolution
+  ≡ƒôÄ Found 4 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[55/297] ≡ƒôû ATP100 Week 7: Parties to a Suit: Joinder, mis-joinder, third party
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[56/297] ≡ƒôû ATP101 Week 7: Identification Parades: Production of ID parade evidence
+  ≡ƒôÄ Found 4 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[57/297] ≡ƒôû ATP102 Week 7: Drawing of Valid Wills: Who may not be left out; drafting codicils
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[58/297] ≡ƒôû ATP103 Week 7: Sentences and Voice in Legal Writing: Active/passive voice, action verbs, sentence length
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[59/297] ≡ƒôû ATP104 Week 7: General Ethical Duties of Trial Lawyers: Duties to client, opposing counsel, witnesses
+  ≡ƒôÄ Found 7 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[60/297] ≡ƒôû ATP105 Week 7: Role of a Lawyer in Kenyan Society: LSK and politics; administration of justice; mentorship
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[61/297] ≡ƒôû ATP106 Week 7: Information and Communication Technology: Automation, computer literacy, document management
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[62/297] ≡ƒôû ATP107 Week 7: The Contract Stage: Conditions of sale, deposit, completion, professional undertakings
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[63/297] ≡ƒôû ATP108 Week 7: Mergers and Take-overs ΓÇô Framework: Legal framework; term sheet; due diligence
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[64/297] ≡ƒôû ATP100 Week 8: Parties to a Suit: Interested party, interpleader, amicus curiae
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[65/297] ≡ƒôû ATP101 Week 8: Preparation of Files for Trial: Police/Prosecution file contents
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[66/297] ≡ƒôû ATP102 Week 8: Revocation, Alteration and Revival of Wills: Express revocation, by marriage, by destruction
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[67/297] ≡ƒôû ATP103 Week 8: Transitions: Generic, orienting, and substantive transitions
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[68/297] ≡ƒôû ATP104 Week 8: General Ethical Duties of Trial Lawyers: Duty to court and administration of justice
+  ≡ƒôÄ Found 7 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[69/297] ≡ƒôû ATP105 Week 8: Role of a Lawyer in Kenyan Society: AML obligations; victim representation; pro bono
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[70/297] ≡ƒôû ATP106 Week 8: Record Management: Filing systems, modern technology in records, disposal
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[71/297] ≡ƒôû ATP107 Week 8: Other Forms of Disposition: Auction, off-plan, sub-lease, sectional, community land
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[72/297] ≡ƒôû ATP108 Week 8: Mergers ΓÇô Notification and Thresholds: Disclosure, notifiable mergers, CAK thresholds, COMESA
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[73/297] ≡ƒôû ATP100 Week 9: Parties to a Suit: Representative suits and persons of unsound mind
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[74/297] ≡ƒôû ATP101 Week 9: Preparation of Files for Trial: Advocates file and court file
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[75/297] ≡ƒôû ATP102 Week 9: Revocation, Alteration and Revival of Wills: Alteration by other wills/codicils, revival
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[76/297] ≡ƒôû ATP103 Week 9: Advanced Legal Research and Analysis: Research skills applied to legal writing
+  ≡ƒôÄ Found 11 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[77/297] ≡ƒôû ATP104 Week 9: Conflict of Interest in Trial Advocacy: Cab Rank rule, voluntary disqualification
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[78/297] ≡ƒôû ATP105 Week 9: Confidentiality and Privilege: Duty of confidentiality; advocate-client privilege
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[79/297] ≡ƒôû ATP106 Week 9: Supply Chain Management: Stock control, procurement, disposal
+  ≡ƒôÄ Found 13 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[80/297] ≡ƒôû ATP107 Week 9: Transfer and Registration: Voluntary transfers, requirements, transfer forms
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[81/297] ≡ƒôû ATP108 Week 9: Take-overs ΓÇô Listed Companies: Listed company take-over procedures
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[82/297] ≡ƒôû ATP100 Week 10: Commencement of Suits: Pleadings: Plaint, Statement of Claim, OS, Petition
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[83/297] ≡ƒôû ATP101 Week 10: Complaint and Charge: Methods and rules of framing charges
+  ≡ƒôÄ Found 12 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[84/297] ≡ƒôû ATP102 Week 10: Proof of Wills: Proof of oral and written wills
+  ≡ƒôÄ Found 2 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[85/297] ≡ƒôû ATP103 Week 10: Case Briefs: Elements and purpose of case briefing
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[86/297] ≡ƒôû ATP104 Week 10: Conflict of Interest in Trial Advocacy: Compelled disqualification scenarios
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[87/297] ≡ƒôû ATP105 Week 10: Professional Undertakings: Definition, four elements, due diligence, liability
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[88/297] ≡ƒôû ATP106 Week 10: Safety, Security and Disaster Management: Continuity planning, disaster recovery
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[89/297] ≡ƒôû ATP107 Week 10: Transfer and Registration: Freehold, leasehold, charge transfers; sectional properties
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[90/297] ≡ƒôû ATP108 Week 10: Take-overs ΓÇô Minority Rights: Rights of minorities; defenses to take-overs
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[91/297] ≡ƒôû ATP100 Week 11: Commencement of Suits: Defence, counter-claim, affidavits, service of process
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[92/297] ≡ƒôû ATP101 Week 11: Complaint and Charge: Defects in drafting: duplicity, lack of ingredients
+  ≡ƒôÄ Found 12 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[93/297] ≡ƒôû ATP102 Week 11: Objection to Wills: Propounding, grounds for objection, procedure
+  ≡ƒôÄ Found 2 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[94/297] ≡ƒôû ATP103 Week 11: Case Analysis: Case briefs vs case analysis, analytical frameworks
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[95/297] ≡ƒôû ATP104 Week 11: Conflict of Interest in Trial Advocacy: Judicial officers: voluntary recusal, disqualification upon application
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[96/297] ≡ƒôû ATP105 Week 11: Professional Undertakings: Consequences of breach; enforcement procedure
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[97/297] ≡ƒôû ATP106 Week 11: Discrimination and Sexual Harassment: Types, ingredients for charge, addressing discrimination
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[98/297] ≡ƒôû ATP107 Week 11: Completion Documents: Land Control Board consent, spousal consent, clearance certificates
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[99/297] ≡ƒôû ATP108 Week 11: Share Transfers: Share transfer process and documentation
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[100/297] ≡ƒôû ATP100 Week 12: Interlocutory Applications: Injunctions (Order 40), Mareva, Anton Piller
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[101/297] ≡ƒôû ATP101 Week 12: Complaint and Charge: Capital, alternative charges, conspiracy, attempts
+  ≡ƒôÄ Found 12 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[102/297] ≡ƒôû ATP102 Week 12: Application for Reasonable Provision (Testate): Dependants S.26-30, procedure
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[103/297] ≡ƒôû ATP103 Week 12: Introduction to Legal Drafting: Definition, stages of drafting a legal document
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[104/297] ≡ƒôû ATP104 Week 12: Conflict of Interest ΓÇô Judicial Officers: Recusal upon application by a party
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[105/297] ≡ƒôû ATP105 Week 12: Conflict of Interest: Defining conflict; Rule 8 Advocates Practice Rules; common situations
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[106/297] ≡ƒôû ATP106 Week 12: HR Planning and Management: Strategic HRM, HR planning, ICT in HR
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[107/297] ≡ƒôû ATP107 Week 12: Transmissions / Involuntary Transfers: Death, court attachment, vesting orders, insolvency
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[108/297] ≡ƒôû ATP108 Week 12: Insolvency/Bankruptcy ΓÇô Applications: Debtor and creditor applications; discharge
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[109/297] ≡ƒôû ATP100 Week 13: Interlocutory Applications: Discovery, inspection, summary procedure
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[110/297] ≡ƒôû ATP101 Week 13: Complaint and Charge: Joinder of persons/counts, amendment, motion to quash
+  ≡ƒôÄ Found 12 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[111/297] ≡ƒôû ATP102 Week 13: Intestate Succession: Citations, dependents, effect of marriages
+  ≡ƒôÄ Found 7 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[112/297] ≡ƒôû ATP103 Week 13: Drafting Letters and Correspondence: Format, body of letter, letters to client
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[113/297] ≡ƒôû ATP104 Week 13: Court Etiquette: Dress, punctuality, introductions, mode of address
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[114/297] ≡ƒôû ATP105 Week 13: Conflict of Interest: Test for disqualification; IBA Guidelines
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[115/297] ≡ƒôû ATP106 Week 13: Job Analysis and Design: Methods of job analysis, competency modelling
+  ≡ƒôÄ Found 12 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[116/297] ≡ƒôû ATP107 Week 13: Leases and Tenancies: Definition, essentials, types of tenancies
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[117/297] ≡ƒôû ATP108 Week 13: Bankruptcy ΓÇô Alternatives: Voluntary arrangement, summary instalment order, no asset procedure
+  ≡ƒôÄ Found 8 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[118/297] ≡ƒôû ATP100 Week 14: Interlocutory Applications: Striking out, vacation, leave applications
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[119/297] ≡ƒôû ATP101 Week 14: Plea and Plea Bargain: Nature of plea, equivocal/unequivocal plea
+  ≡ƒôÄ Found 9 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[120/297] ≡ƒôû ATP102 Week 14: Intestate Succession: Woman under S.3(5), definition of children
+  ≡ƒôÄ Found 7 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[121/297] ≡ƒôû ATP103 Week 14: Drafting Demand Letters: Demand letter structure and content
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[122/297] ≡ƒôû ATP104 Week 14: Court Etiquette: Behaviour, witnesses, terminology, humour
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[123/297] ≡ƒôû ATP105 Week 14: Bias and Judicial Recusal: Grounds for recusal; test for bias
+  ≡ƒôÄ Found 10 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[124/297] ≡ƒôû ATP106 Week 14: Recruitment and Selection: Sources, process, selection tools, scientific selection
+  ≡ƒôÄ Found 5 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[125/297] ≡ƒôû ATP107 Week 14: Leases and Tenancies: Registration, covenants, rights of lessor/lessee
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[126/297] ≡ƒôû ATP108 Week 14: Corporate Insolvency ΓÇô Liquidation: Members vs creditors voluntary; court liquidation
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[127/297] ≡ƒôû ATP100 Week 15: Pre-Trial Process: Framing issues, discovery, case conferencing
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[128/297] ≡ƒôû ATP101 Week 15: Plea and Plea Bargain: Plea agreements, autrefois acquit/convict, pardon
+  ≡ƒôÄ Found 9 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[129/297] ≡ƒôû ATP102 Week 15: Protection of Estate: Intermeddling: definition and remedies
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[130/297] ≡ƒôû ATP103 Week 15: Drafting Legal Opinions: Preparing to write, writing process, points of content
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[131/297] ≡ƒôû ATP104 Week 15: Dimensions, Rules and Psychology of Advocacy: Trial as search for truth; rules of advocacy
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[132/297] ≡ƒôû ATP105 Week 15: Competence and Diligence: Professional negligence; CPD; professional indemnity
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[133/297] ≡ƒôû ATP106 Week 15: Placement, Socialization and Induction: Principles of placement, forms of induction
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[134/297] ≡ƒôû ATP107 Week 15: Controlled Tenancies and Determination: Rent Acts regime; assignments; determination of leases
+  ≡ƒôÄ Found 2 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[135/297] ≡ƒôû ATP108 Week 15: Corporate Insolvency ΓÇô Alternatives: Administration; company voluntary arrangement (CVA)
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[136/297] ≡ƒôû ATP100 Week 16: Hearing of Suits: Attendance, order of proceedings, examination of witnesses
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[137/297] ≡ƒôû ATP101 Week 16: Bail and Bond: Police bond, anticipatory bail, bail pending trial
+  ≡ƒôÄ Found 9 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[138/297] ≡ƒôû ATP102 Week 16: Intestate Succession ΓÇô Distribution: Distribution of estate under intestacy
+  ≡ƒôÄ Found 7 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[139/297] ≡ƒôû ATP103 Week 16: Drafting Legal Opinions: Style, format, office memorandum
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[140/297] ≡ƒôû ATP104 Week 16: Dimensions, Rules and Psychology of Advocacy: Being likeable, sympathy rule, preparation
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[141/297] ≡ƒôû ATP105 Week 16: Professional Fee ΓÇô Retainer: Defining retainer; types; letter of engagement
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[142/297] ≡ƒôû ATP106 Week 16: Placement, Socialization and Induction: Socialization in the workplace, legal framework
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[143/297] ≡ƒôû ATP107 Week 16: Remedies and Relief: Forfeiture, distress for rent, recovery, injunctions
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[144/297] ≡ƒôû ATP108 Week 16: Financial Services Regulation: Financial regulation, key players, digital payments
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[145/297] ≡ƒôû ATP100 Week 17: Hearing of Suits: Making submissions, withdrawal, discontinuance
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[146/297] ≡ƒôû ATP101 Week 17: Bail and Bond: Sureties, forfeitures, recognizance, securities
+  ≡ƒôÄ Found 9 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[147/297] ≡ƒôû ATP102 Week 17: Intestate Succession ΓÇô Special Cases: Community land, nominations, Islamic law
+  ≡ƒôÄ Found 7 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[148/297] ≡ƒôû ATP103 Week 17: Drafting Contracts: Employment contracts, lease agreements
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[149/297] ≡ƒôû ATP104 Week 17: Preparation for Trial ΓÇô Pre-Trial Advocacy: Client interview, research, demand letter
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[150/297] ≡ƒôû ATP105 Week 17: Professional Fee ΓÇô Remuneration: Undercutting; overcharging; bill of costs
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[151/297] ≡ƒôû ATP106 Week 17: Training and Development: Conceptual framework, methods, role in legal practice
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[152/297] ≡ƒôû ATP107 Week 17: Introduction to Charges: Definition, types: formal/informal, equitable/legal, priority
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[153/297] ≡ƒôû ATP108 Week 17: National Payment Systems Act: CBK authority, PSP authorization, risk management
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[154/297] ≡ƒôû ATP100 Week 18: Rulings, Orders, Judgements and Decrees: Writing and delivery; extraction of orders
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[155/297] ≡ƒôû ATP101 Week 18: Pre-Trial Conferencing: Accused meeting, prosecution communication, witness statements
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[156/297] ≡ƒôû ATP103 Week 18: Drafting Contracts: Sale of goods contracts, key clauses
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[157/297] ≡ƒôû ATP104 Week 18: Preparation for Trial ΓÇô Pre-Trial Advocacy: Pre-trial case analysis: objectives, case theory
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[158/297] ≡ƒôû ATP105 Week 18: Taxation of Bills of Costs: Principles of taxation; instruction fees; disbursements
+  ≡ƒôÄ Found 7 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[159/297] ≡ƒôû ATP106 Week 18: Training and Development: Approaches and factors limiting training
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[160/297] ≡ƒôû ATP107 Week 18: Charges ΓÇô Form and Content: Basic requirements, parts of charge document, execution
+  ≡ƒôÄ Found 7 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[161/297] ≡ƒôû ATP108 Week 18: Data Protection: Principles of data processing; data subject rights; ODPC
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[162/297] ≡ƒôû ATP100 Week 19: Rulings, Orders, Judgements and Decrees: Contents of rulings and judgments
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[163/297] ≡ƒôû ATP101 Week 19: Trial Process: Right to fair hearing, opening statement, examination
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[164/297] ≡ƒôû ATP102 Week 19: Jurisdiction on Succession Matters: Magistrates Courts, HC original and appellate, CA
+  ≡ƒôÄ Found 3 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[165/297] ≡ƒôû ATP103 Week 19: Drafting Affidavits vs Statutory Declarations: Points of content, format, writing process
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[166/297] ≡ƒôû ATP104 Week 19: Preparation for Trial ΓÇô Pre-Trial Advocacy: Good/bad facts analysis; practical approach
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[167/297] ≡ƒôû ATP105 Week 19: Fiduciary Duty: Champerty; trusts; misappropriation; client accounts
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[168/297] ≡ƒôû ATP106 Week 19: Career Development and Management: Stages, planning process, impact on legal practice
+  ≡ƒôÄ Found 8 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[169/297] ≡ƒôû ATP107 Week 19: Remedies of the Chargee: Action for money, receiver, leasing, possession, power of sale
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[170/297] ≡ƒôû ATP108 Week 19: Commercial Arrangements ΓÇô JV and Distribution: Joint venture and distributorship agreements
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[171/297] ≡ƒôû ATP100 Week 20: Remedies upon Judgment: Stay of execution, payment in instalments
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[172/297] ≡ƒôû ATP101 Week 20: Trial Process: Production of exhibits, trial within a trial
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[173/297] ≡ƒôû ATP103 Week 20: Drafting Affidavits vs Statutory Declarations: Distinguishing features, evidentiary use
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[174/297] ≡ƒôû ATP104 Week 20: The Opening Statement: Meaning, statutory basis, objectives
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[175/297] ≡ƒôû ATP105 Week 20: The Advocate's Lien: Types: retaining, specific, statutory; limitations
+  ≡ƒôÄ Found 0 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[176/297] ≡ƒôû ATP106 Week 20: Career Development and Management: Emerging trends, legal framework
+  ≡ƒôÄ Found 8 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[177/297] ≡ƒôû ATP107 Week 20: Remedies of the Chargor: Equity of redemption, notice, variation, discharge
+  ≡ƒôÄ Found 1 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[178/297] ≡ƒôû ATP108 Week 20: Commercial Arrangements ΓÇô Franchise, Guarantee, Trust: Franchise, guarantee, and trust deed agreements
+  ≡ƒôÄ Found 14 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[179/297] ≡ƒôû ATP100 Week 21: Execution of Decrees and Orders: Garnishee proceedings, execution against Government
+  ≡ƒôÄ Found 3 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[180/297] ≡ƒôû ATP101 Week 21: Trial Process and Sentencing: Judgment, victim impact, mitigation, sentencing
+  ≡ƒôÄ Found 15 authority sources
+  ΓÅ¡ v1 (The Senior Counsel) ΓÇö already exists, skipping
+
+[181/297] ≡ƒôû ATP103 Week 21: Drafting Deed Polls: Format, points of content, writing process
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ  YNAI Pre-Built Notes Generator                  Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+≡ƒôï Ensuring database tables exist...
+  Γ£à Tables ready
+
+≡ƒôÜ Found 34 syllabus nodes to process
+
+  ≡ƒöì Filtered to 2 nodes for weeks: 39, 40
+
+≡ƒÄ» Generating 1 versions per node (v1: The Senior Counsel)
+≡ƒôè Total notes to generate: up to 2
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+[1/2] ≡ƒôû ATP102 Week 39: Estate Accounts: Preparation and filing of estate accounts
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1728 words, 6 sections, 8 authorities cited, $0.0400
+
+[2/2] ≡ƒôû ATP102 Week 40: Estate Accounts (continued): Audit and approval of accounts
+  ≡ƒôÄ Found 14 authority sources
+  Γ£ì v1 (The Senior Counsel) attempt 1...
+    Γ£à 1861 words, 7 sections, 1 authorities cited, $0.0438
+
+ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+≡ƒôè GENERATION SUMMARY
+ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+  Γ£à Generated: 2
+  ΓÅ¡ Skipped:   0
+  Γ¥î Failed:    0
+  ≡ƒÆ░ Total cost: $0.08
+  ≡ƒôª Coverage:   2/2 (100.0%)
+
+  ≡ƒôÜ Database totals: 300 notes / 297 nodes
+  ≡ƒôè 5-version coverage: 300/1485 (20.2%)
+ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ

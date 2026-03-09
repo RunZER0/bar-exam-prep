@@ -3,6 +3,9 @@ import { verifyAuth } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
 import { users, studyStreaks, practiceSessions, userResponses } from '@/lib/db/schema';
 import { eq, desc, gte, and, sql } from 'drizzle-orm';
+import { sendStreakMilestoneEmail } from '@/lib/services/notification-service';
+
+const STREAK_MILESTONES = [7, 14, 30, 60, 100];
 
 export async function GET(request: NextRequest) {
   try {
@@ -150,6 +153,37 @@ export async function POST(request: NextRequest) {
         questionsAnswered: questions,
         sessionsCompleted: sessions,
       });
+
+      // New day logged — check if this creates a streak milestone
+      // Count consecutive days backwards from today
+      const recentDays = await db
+        .select({ date: studyStreaks.date })
+        .from(studyStreaks)
+        .where(eq(studyStreaks.userId, dbUser.id))
+        .orderBy(desc(studyStreaks.date))
+        .limit(120);
+
+      let streak = 0;
+      const todayDate = new Date();
+      todayDate.setHours(0, 0, 0, 0);
+
+      for (let i = 0; i < recentDays.length; i++) {
+        const expected = new Date(todayDate);
+        expected.setDate(expected.getDate() - i);
+        const rowDate = new Date(recentDays[i].date);
+        rowDate.setHours(0, 0, 0, 0);
+
+        if (rowDate.getTime() === expected.getTime()) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+
+      // Fire streak milestone email if they hit a milestone
+      if (STREAK_MILESTONES.includes(streak)) {
+        sendStreakMilestoneEmail(dbUser.id, streak).catch(console.error);
+      }
     }
 
     return NextResponse.json({ success: true });

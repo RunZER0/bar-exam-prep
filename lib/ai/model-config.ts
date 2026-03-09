@@ -5,6 +5,8 @@
  * - ORCHESTRATOR: GPT-5.2 (High-Reasoning) - Queue management, path selection
  * - MENTOR: GPT-5.2 (Mentorship Tone) - Narrative notes, instructional content
  * - AUDITOR: Claude 4.5 Sonnet - Redline engine, cascading failure analysis
+ * 
+ * MINIMUM MODEL FLOOR: gpt-5.2-mini — nothing below this anywhere in the system.
  */
 
 // === Model Assignments (Hard-Locked) ===
@@ -18,6 +20,9 @@ export const GRADING_MODEL = process.env.GRADING_MODEL || 'gpt-5.2';
 
 // === Fast Operations ===
 export const FAST_MODEL = process.env.OPENAI_FAST_MODEL || 'gpt-5.2';
+
+// === Minimum Floor Model (replaces ALL gpt-4o-mini / gpt-4o references) ===
+export const MINI_MODEL = process.env.MINI_MODEL || 'gpt-5.2-mini';
 
 // === API Key Getters ===
 export function getOpenAIKey(): string | undefined {

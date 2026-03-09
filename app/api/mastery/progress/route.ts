@@ -6,10 +6,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
+import { users, syllabusNodes } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import { MasteryOrchestrator } from '@/lib/services/mastery-orchestrator';
+import { sendMasteryMilestoneEmail } from '@/lib/services/notification-service';
 
 export async function POST(req: NextRequest) {
   try {
@@ -46,6 +47,19 @@ export async function POST(req: NextRequest) {
       score: score ?? undefined,
       passed: passed ?? (phase === 'NOTE' || phase === 'EXHIBIT' ? true : undefined),
     });
+
+    // Event-driven: Send mastery milestone email when a topic is mastered
+    if (phase === 'MASTERY' && (passed === true || passed === undefined)) {
+      // Look up the node's topic name and unit for the email
+      const [node] = await db.select({ topicName: syllabusNodes.topicName, unitCode: syllabusNodes.unitCode })
+        .from(syllabusNodes)
+        .where(eq(syllabusNodes.id, nodeId))
+        .limit(1);
+
+      if (node) {
+        sendMasteryMilestoneEmail(user.id, node.topicName, node.unitCode).catch(console.error);
+      }
+    }
 
     return NextResponse.json(result);
 

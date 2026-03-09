@@ -371,7 +371,7 @@ export default function InteractiveStudyNotes({
 }: InteractiveStudyNotesProps) {
   const { getIdToken } = useAuth();
   const slides = useMemo(
-    () => sections.slice(0, Math.max(1, Math.min(sections.length, 10))),
+    () => sections.slice(0, Math.max(1, Math.min(sections.length, 15))),
     [sections]
   );
   const [slideIndex, setSlideIndex] = useState(0);

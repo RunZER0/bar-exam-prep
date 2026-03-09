@@ -35,8 +35,8 @@ export const GET = withAuth(async (_req: NextRequest, user) => {
     daysRemaining: info.daysRemaining,
     clarifyModel: info.clarifyModel,
     canAccess: {
-      mastery: info.canAccess('mastery'),
-      study: info.canAccess('study'),
+      mastery: info.canAccess('mastery_hub'),
+      study: info.canAccess('study_hub'),
       quizzes: info.canAccess('quizzes'),
       drafting: info.canAccess('drafting'),
       oral_devil: info.canAccess('oral_devil'),

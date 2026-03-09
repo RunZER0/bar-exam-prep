@@ -246,13 +246,17 @@ export async function GET(req: NextRequest) {
 
     // ═══════════════════════════════════════════════════════════
     // PRE-BUILT NOTES: Try to find matching pre-built notes first
-    // Maps micro-skill → syllabus node by fuzzy name matching
+    // Maps micro-skill → syllabus node by multi-tier fuzzy matching
+    // Unit codes normalized: atp-100 ↔ ATP100
     // ═══════════════════════════════════════════════════════════
     try {
-      // Search for a matching syllabus node by skill name
-      const searchTerm = `%${skillName.split(/\s+/).slice(0, 4).join('%')}%`;
-      // Multi-tier matching: exact name → ILIKE contains → fuzzy word match
       const exactName = skillName.trim();
+      // Strip common prefixes like "Case: " for better matching
+      const cleanName = exactName.replace(/^Case:\s*/i, '').trim();
+      const unitNorm = `UPPER(REPLACE(unit_code, '-', ''))`;
+      const skillUnitNorm = skill.unitId.toUpperCase().replace(/-/g, '');
+      
+      // Tier 1: Skill name contained IN node name (original direction)
       let matchingNodes = await rawSql`
         SELECT id, topic_name, subtopic_name, unit_code,
           CASE 
@@ -263,20 +267,51 @@ export async function GET(req: NextRequest) {
           END as match_rank
         FROM syllabus_nodes
         WHERE (topic_name ILIKE ${'%' + exactName + '%'} OR subtopic_name ILIKE ${'%' + exactName + '%'})
-          AND unit_code = ${skill.unitId}
+          AND UPPER(REPLACE(unit_code, '-', '')) = ${skillUnitNorm}
         ORDER BY match_rank ASC
         LIMIT 1
       `;
 
-      // Fallback: fuzzy word matching
+      // Tier 2: Node topic_name contained IN skill name (reverse direction)
+      // e.g. skill "Courts and Jurisdiction Analysis" contains node topic "Courts and Jurisdiction"
       if (matchingNodes.length === 0) {
         matchingNodes = await rawSql`
           SELECT id, topic_name, subtopic_name, unit_code
           FROM syllabus_nodes
-          WHERE (topic_name ILIKE ${searchTerm} OR subtopic_name ILIKE ${searchTerm})
-            AND unit_code = ${skill.unitId}
+          WHERE UPPER(REPLACE(unit_code, '-', '')) = ${skillUnitNorm}
+            AND LENGTH(topic_name) >= 4
+            AND (${exactName} ILIKE '%' || topic_name || '%'
+              OR ${cleanName} ILIKE '%' || topic_name || '%')
+          ORDER BY LENGTH(topic_name) DESC
           LIMIT 1
         `;
+      }
+
+      // Tier 3: Fuzzy word matching (first 4 words of skill name)
+      if (matchingNodes.length === 0) {
+        const searchTerm = `%${skillName.split(/\s+/).slice(0, 4).join('%')}%`;
+        matchingNodes = await rawSql`
+          SELECT id, topic_name, subtopic_name, unit_code
+          FROM syllabus_nodes
+          WHERE (topic_name ILIKE ${searchTerm} OR subtopic_name ILIKE ${searchTerm})
+            AND UPPER(REPLACE(unit_code, '-', '')) = ${skillUnitNorm}
+          LIMIT 1
+        `;
+      }
+      
+      // Tier 4: Individual significant words (≥5 chars) matching subtopic
+      if (matchingNodes.length === 0) {
+        const sigWords = cleanName.split(/[\s,&:]+/).filter(w => w.length >= 5).slice(0, 3);
+        if (sigWords.length > 0) {
+          const wordPattern = `%${sigWords.join('%')}%`;
+          matchingNodes = await rawSql`
+            SELECT id, topic_name, subtopic_name, unit_code
+            FROM syllabus_nodes
+            WHERE (subtopic_name ILIKE ${wordPattern} OR topic_name ILIKE ${wordPattern})
+              AND UPPER(REPLACE(unit_code, '-', '')) = ${skillUnitNorm}
+            LIMIT 1
+          `;
+        }
       }
 
       if (matchingNodes.length > 0) {

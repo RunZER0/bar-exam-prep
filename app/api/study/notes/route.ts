@@ -68,7 +68,7 @@ async function handlePost(req: NextRequest, user: AuthUser) {
                 ELSE 4
               END as match_rank
             FROM syllabus_nodes
-            WHERE unit_code = ${unitId}
+            WHERE UPPER(REPLACE(unit_code, '-', '')) = UPPER(REPLACE(${unitId}, '-', ''))
               AND (
                 topic_name ILIKE ${'%' + exactName + '%'} 
                 OR subtopic_name ILIKE ${'%' + exactName + '%'}
@@ -97,24 +97,48 @@ async function handlePost(req: NextRequest, user: AuthUser) {
       if (exactMatches.length > 0) {
         matchedNodeId = exactMatches[0].id;
       } else {
-        // Tier 4: Fuzzy word matching (fallback)
-        const searchWords = topicName.split(/[\s:,&]+/).filter((w: string) => w.length > 3).slice(0, 5);
-        if (searchWords.length > 0) {
-          const pattern = `%${searchWords.join('%')}%`;
-          const fuzzyMatches = unitId
-            ? await rawSql`
-                SELECT id FROM syllabus_nodes
-                WHERE (topic_name ILIKE ${pattern} OR subtopic_name ILIKE ${pattern})
-                  AND unit_code = ${unitId}
-                LIMIT 1
-              `
-            : await rawSql`
-                SELECT id FROM syllabus_nodes
-                WHERE topic_name ILIKE ${pattern} OR subtopic_name ILIKE ${pattern}
-                LIMIT 1
-              `;
-          if (fuzzyMatches.length > 0) {
-            matchedNodeId = fuzzyMatches[0].id;
+        // Tier 3: Reverse match — node topic_name contained in the search term
+        const cleanName = exactName.replace(/^Case:\s*/i, '').trim();
+        const reverseMatches = unitId
+          ? await rawSql`
+              SELECT id FROM syllabus_nodes
+              WHERE UPPER(REPLACE(unit_code, '-', '')) = UPPER(REPLACE(${unitId}, '-', ''))
+                AND LENGTH(topic_name) >= 4
+                AND (${exactName} ILIKE '%' || topic_name || '%'
+                  OR ${cleanName} ILIKE '%' || topic_name || '%')
+              ORDER BY LENGTH(topic_name) DESC
+              LIMIT 1
+            `
+          : await rawSql`
+              SELECT id FROM syllabus_nodes
+              WHERE LENGTH(topic_name) >= 4
+                AND (${exactName} ILIKE '%' || topic_name || '%'
+                  OR ${cleanName} ILIKE '%' || topic_name || '%')
+              ORDER BY LENGTH(topic_name) DESC
+              LIMIT 1
+            `;
+        if (reverseMatches.length > 0) {
+          matchedNodeId = reverseMatches[0].id;
+        } else {
+          // Tier 4: Fuzzy word matching (last resort)
+          const searchWords = topicName.split(/[\s:,&]+/).filter((w: string) => w.length > 3).slice(0, 5);
+          if (searchWords.length > 0) {
+            const pattern = `%${searchWords.join('%')}%`;
+            const fuzzyMatches = unitId
+              ? await rawSql`
+                  SELECT id FROM syllabus_nodes
+                  WHERE (topic_name ILIKE ${pattern} OR subtopic_name ILIKE ${pattern})
+                    AND UPPER(REPLACE(unit_code, '-', '')) = UPPER(REPLACE(${unitId}, '-', ''))
+                  LIMIT 1
+                `
+              : await rawSql`
+                  SELECT id FROM syllabus_nodes
+                  WHERE topic_name ILIKE ${pattern} OR subtopic_name ILIKE ${pattern}
+                  LIMIT 1
+                `;
+            if (fuzzyMatches.length > 0) {
+              matchedNodeId = fuzzyMatches[0].id;
+            }
           }
         }
       }

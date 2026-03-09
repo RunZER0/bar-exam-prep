@@ -33,12 +33,12 @@ interface TrialLimitReachedProps {
 }
 
 // Find the minimum tier that unlocks a feature with more capacity
-function getRecommendedTier(feature: PremiumFeature, currentTier: SubscriptionTier): SubscriptionTier {
-  const tiers: SubscriptionTier[] = ['light', 'standard', 'premium'];
-  const currentIdx = tiers.indexOf(currentTier);
+function getRecommendedTier(feature: PremiumFeature, currentTier: SubscriptionTier): Exclude<SubscriptionTier, 'custom'> {
+  const tiers = ['light', 'standard', 'premium'] as const;
+  const currentIdx = tiers.indexOf(currentTier as typeof tiers[number]);
 
   for (let i = Math.max(currentIdx + 1, 0); i < tiers.length; i++) {
-    if (WEEKLY_LIMITS[tiers[i]][feature] > (WEEKLY_LIMITS[currentTier]?.[feature] ?? 0)) {
+    if (WEEKLY_LIMITS[tiers[i]][feature] > (WEEKLY_LIMITS[currentTier as Exclude<SubscriptionTier, 'custom'>]?.[feature] ?? 0)) {
       return tiers[i];
     }
   }
@@ -58,6 +58,7 @@ function FeatureGate({
   const meta = PREMIUM_FEATURE_META[feature];
   const recommendedTier = getRecommendedTier(feature, currentTier);
   const tierMeta = TIER_META[recommendedTier];
+  const recommendedLimit = WEEKLY_LIMITS[recommendedTier][feature];
   const addonPrice = ADDON_PRICES[feature];
   const isTrial = currentTier === 'free_trial';
 
@@ -128,7 +129,7 @@ function FeatureGate({
               <div>
                 <p className="text-sm font-semibold">{isTrial ? 'Subscribe' : 'Upgrade'} to {tierMeta.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  Get {WEEKLY_LIMITS[recommendedTier][feature]} {meta.label.toLowerCase()} per week
+                  Get {recommendedLimit} {meta.label.toLowerCase()} per week
                 </p>
               </div>
             </div>

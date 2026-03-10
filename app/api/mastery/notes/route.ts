@@ -245,77 +245,53 @@ export async function GET(req: NextRequest) {
     // === END CACHE CHECK — Generate fresh notes ===
 
     // ═══════════════════════════════════════════════════════════
-    // PRE-BUILT NOTES: Try to find matching pre-built notes first
-    // Maps micro-skill → syllabus node by multi-tier fuzzy matching
-    // Unit codes normalized: atp-100 ↔ ATP100
+    // PRE-BUILT NOTES: skill_node_map direct lookup (430/430 mapped)
+    // Falls back to fuzzy text matching only if map entry missing
     // ═══════════════════════════════════════════════════════════
     try {
-      const exactName = skillName.trim();
-      // Strip common prefixes like "Case: " for better matching
-      const cleanName = exactName.replace(/^Case:\s*/i, '').trim();
-      const unitNorm = `UPPER(REPLACE(unit_code, '-', ''))`;
-      const skillUnitNorm = skill.unitId.toUpperCase().replace(/-/g, '');
+      // Primary: Direct lookup via skill_node_map table
+      let matchedNodeId: string | null = null;
       
-      // Tier 1: Skill name contained IN node name (original direction)
-      let matchingNodes = await rawSql`
-        SELECT id, topic_name, subtopic_name, unit_code,
-          CASE 
-            WHEN topic_name = ${exactName} OR subtopic_name = ${exactName} THEN 1
-            WHEN topic_name ILIKE ${exactName} OR subtopic_name ILIKE ${exactName} THEN 2
-            WHEN topic_name ILIKE ${'%' + exactName + '%'} OR subtopic_name ILIKE ${'%' + exactName + '%'} THEN 3
-            ELSE 4
-          END as match_rank
-        FROM syllabus_nodes
-        WHERE (topic_name ILIKE ${'%' + exactName + '%'} OR subtopic_name ILIKE ${'%' + exactName + '%'})
-          AND UPPER(REPLACE(unit_code, '-', '')) = ${skillUnitNorm}
-        ORDER BY match_rank ASC
+      const [mapEntry] = await rawSql`
+        SELECT node_id FROM skill_node_map
+        WHERE skill_id = ${skillId}::uuid
+        ORDER BY confidence DESC
         LIMIT 1
       `;
-
-      // Tier 2: Node topic_name contained IN skill name (reverse direction)
-      // e.g. skill "Courts and Jurisdiction Analysis" contains node topic "Courts and Jurisdiction"
-      if (matchingNodes.length === 0) {
-        matchingNodes = await rawSql`
-          SELECT id, topic_name, subtopic_name, unit_code
-          FROM syllabus_nodes
-          WHERE UPPER(REPLACE(unit_code, '-', '')) = ${skillUnitNorm}
-            AND LENGTH(topic_name) >= 4
-            AND (${exactName} ILIKE '%' || topic_name || '%'
-              OR ${cleanName} ILIKE '%' || topic_name || '%')
-          ORDER BY LENGTH(topic_name) DESC
-          LIMIT 1
-        `;
-      }
-
-      // Tier 3: Fuzzy word matching (first 4 words of skill name)
-      if (matchingNodes.length === 0) {
-        const searchTerm = `%${skillName.split(/\s+/).slice(0, 4).join('%')}%`;
-        matchingNodes = await rawSql`
-          SELECT id, topic_name, subtopic_name, unit_code
-          FROM syllabus_nodes
-          WHERE (topic_name ILIKE ${searchTerm} OR subtopic_name ILIKE ${searchTerm})
-            AND UPPER(REPLACE(unit_code, '-', '')) = ${skillUnitNorm}
-          LIMIT 1
-        `;
-      }
       
-      // Tier 4: Individual significant words (≥5 chars) matching subtopic
-      if (matchingNodes.length === 0) {
-        const sigWords = cleanName.split(/[\s,&:]+/).filter(w => w.length >= 5).slice(0, 3);
-        if (sigWords.length > 0) {
-          const wordPattern = `%${sigWords.join('%')}%`;
-          matchingNodes = await rawSql`
-            SELECT id, topic_name, subtopic_name, unit_code
-            FROM syllabus_nodes
-            WHERE (subtopic_name ILIKE ${wordPattern} OR topic_name ILIKE ${wordPattern})
-              AND UPPER(REPLACE(unit_code, '-', '')) = ${skillUnitNorm}
-            LIMIT 1
-          `;
+      if (mapEntry?.node_id) {
+        matchedNodeId = mapEntry.node_id;
+        console.log(`[Notes] skill_node_map hit for skill: ${skillId}`);
+      }
+
+      // Fallback: fuzzy text matching (for any skills not yet in map)
+      if (!matchedNodeId) {
+        const exactName = skillName.trim();
+        const cleanName = exactName.replace(/^Case:\s*/i, '').trim();
+        const skillUnitNorm = skill.unitId.toUpperCase().replace(/-/g, '');
+
+        const fuzzyMatches = await rawSql`
+          SELECT id FROM syllabus_nodes
+          WHERE UPPER(REPLACE(unit_code, '-', '')) = ${skillUnitNorm}
+            AND (
+              topic_name ILIKE ${'%' + exactName + '%'}
+              OR subtopic_name ILIKE ${'%' + exactName + '%'}
+              OR (LENGTH(topic_name) >= 4 AND ${cleanName} ILIKE '%' || topic_name || '%')
+            )
+          ORDER BY 
+            CASE WHEN topic_name ILIKE ${exactName} OR subtopic_name ILIKE ${exactName} THEN 1
+                 WHEN topic_name ILIKE ${'%' + exactName + '%'} THEN 2
+                 ELSE 3 END
+          LIMIT 1
+        `;
+        if (fuzzyMatches.length > 0) {
+          matchedNodeId = fuzzyMatches[0].id;
+          console.log(`[Notes] Fuzzy fallback matched for skill: ${skillId}`);
         }
       }
 
-      if (matchingNodes.length > 0) {
-        const nodeId = matchingNodes[0].id;
+      if (matchedNodeId) {
+        const nodeId = matchedNodeId;
 
         // Get DB user ID for version tracking
         let dbUserId: string | null = null;

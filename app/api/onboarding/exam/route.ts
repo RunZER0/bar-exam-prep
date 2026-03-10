@@ -33,8 +33,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get user
-    const [user] = await db.select().from(users)
+    // Get user — explicit columns to avoid missing-column crashes
+    const [user] = await db
+      .select({ id: users.id, firebaseUid: users.firebaseUid, onboardingCompleted: users.onboardingCompleted })
+      .from(users)
       .where(eq(users.firebaseUid, decodedToken.uid))
       .limit(1);
 
@@ -174,8 +176,18 @@ export async function GET(req: NextRequest) {
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await verifyIdToken(token);
     
-    // Get user
-    const [user] = await db.select().from(users)
+    // Get user — use explicit column selection to avoid crashing if newer schema
+    // columns haven't been migrated yet (subscription_tier, billing_period, etc.)
+    const [user] = await db
+      .select({
+        id: users.id,
+        firebaseUid: users.firebaseUid,
+        email: users.email,
+        displayName: users.displayName,
+        role: users.role,
+        onboardingCompleted: users.onboardingCompleted,
+      })
+      .from(users)
       .where(eq(users.firebaseUid, decodedToken.uid))
       .limit(1);
 

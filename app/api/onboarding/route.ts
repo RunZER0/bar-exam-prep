@@ -60,10 +60,19 @@ export async function POST(req: NextRequest) {
     const decodedToken = await verifyIdToken(token);
     const firebaseUid = decodedToken.uid;
 
-    // Get DB user
-    const user = await db.query.users.findFirst({
-      where: eq(users.firebaseUid, firebaseUid),
-    });
+    // Get DB user (explicit columns to survive missing migration columns)
+    const [user] = await db
+      .select({
+        id: users.id,
+        firebaseUid: users.firebaseUid,
+        email: users.email,
+        displayName: users.displayName,
+        role: users.role,
+        onboardingCompleted: users.onboardingCompleted,
+      })
+      .from(users)
+      .where(eq(users.firebaseUid, firebaseUid))
+      .limit(1);
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });

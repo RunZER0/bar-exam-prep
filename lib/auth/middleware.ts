@@ -28,9 +28,19 @@ export async function verifyAuth(request: NextRequest): Promise<AuthUser | null>
     const decodedToken = await auth.verifyIdToken(token);
 
     // Get or create user in database
-    const existingUser = await db.query.users.findFirst({
-      where: eq(users.firebaseUid, decodedToken.uid),
-    });
+    // Use explicit column selection to avoid crashing if newer schema columns
+    // (subscription_tier, billing_period, custom_features) haven't been migrated yet.
+    const [existingUser] = await db
+      .select({
+        id: users.id,
+        firebaseUid: users.firebaseUid,
+        email: users.email,
+        displayName: users.displayName,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.firebaseUid, decodedToken.uid))
+      .limit(1);
 
     if (existingUser) {
       return {

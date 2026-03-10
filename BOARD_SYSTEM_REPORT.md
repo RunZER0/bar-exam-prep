@@ -934,32 +934,43 @@ Static marketing and legal pages. Zero AI cost.
 | **Standard** | 700 | 2,000 | 16,000 | $15.38 |
 | **Premium** | 850 | 2,500 | 20,000 | $19.23 |
 
-**Weekly Feature Limits (Premium features gated per tier):**
+**Feature Limits (Premium features gated per tier):**
 
 | Feature | Free Trial | Light | Standard | Premium | Custom |
 |---------|-----------|-------|----------|---------|--------|
-| Legal Drafting | 3/week | 3/week | 4/week | 6/week | 3/week* |
-| Oral Exams | 2/week | 2/week | 4/week | 6/week | 3/week* |
-| Devil's Advocate | 2/week | 2/week | 4/week | 6/week | 3/week* |
-| CLE Exams | 0 | 3/week | 4/week | 6/week | 3/week* |
-| Legal Research | 0 | 2/week | 4/week | 6/week | 3/week* |
-| Get Clarification | 0 | 3/week | 4/week | 6/week | 3/week* |
+| Legal Drafting | 2/day* | 3/week | 4/week | 6/week | configurable† |
+| Oral Exams | 2/day* | 2/week | 4/week | 6/week | configurable† |
+| Devil's Advocate | 2/day* | 2/week | 4/week | 6/week | configurable† |
+| CLE Exams | 2/day* | 3/week | 4/week | 6/week | configurable† |
+| Legal Research | 2/day* | 2/week | 4/week | 6/week | configurable† |
+| Get Clarification | 2/day* | 3/week | 4/week | 6/week | configurable† |
 | Clarify AI Model | GPT-4o Mini | GPT-4o Mini | GPT-4o Mini | **GPT-5.2** | GPT-4o Mini |
 | Add-on passes | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Drafting daily cap | — | 2 attempts/day per doc | 2 attempts/day per doc | 2 attempts/day per doc | 2 attempts/day per doc |
+| Drafting daily cap | 2/day per doc | 2/day per doc | 2/day per doc | 2/day per doc | 2/day per doc |
+| Trial duration | 3 days | — | — | — | — |
 
-*\*Custom: 3/week per selected feature only. Users pick à la carte.*
+*\*Free Trial: 2 sessions per feature per DAY (daily reset, not weekly). All 6 premium features unlocked during trial.*  
+*†Custom: Users select which features and how many sessions/week per feature (1–50). Price = per-session rate × sessions × weeks.*
 
-**Custom Package Pricing (per feature, KES):**
+**Custom Package Builder — Per-Session Pricing (KES):**
 
-| Feature | Weekly | Monthly | Annual |
-|---------|--------|---------|--------|
-| Legal Drafting | 120 | 350 | 2,800 |
-| Oral Examination | 100 | 300 | 2,400 |
-| Devil's Advocate | 100 | 300 | 2,400 |
-| CLE Exams | 85 | 250 | 2,000 |
-| Legal Research | 100 | 300 | 2,400 |
-| Get Clarification | 70 | 200 | 1,600 |
+| Feature | Per Session | Example: 3/week × 4 weeks |
+|---------|------------|---------------------------|
+| Legal Drafting | 40 | 480 |
+| Oral Examination | 35 | 420 |
+| Devil's Advocate | 35 | 420 |
+| CLE Exams | 30 | 360 |
+| Legal Research | 35 | 420 |
+| Get Clarification | 25 | 300 |
+
+**Custom Duration Discounts:**
+
+| Duration | Discount |
+|----------|----------|
+| 1–2 Weeks | 0% |
+| 1 Month (4 weeks) | 5% |
+| 2 Months (8 weeks) | 10% |
+| 3 Months (12 weeks) | 15% |
 
 **Add-on Pass Pricing (KES):**
 
@@ -1026,11 +1037,13 @@ The two most expensive per-user call sites — study notes generation ($0.060/ca
 
 **Impact:** Mastery Hub session cost reduced by 46% — from $0.251 (corrected) to $0.138. This single strategy absorbed the entire impact of the pricing correction and still came out cheaper.
 
-#### ✅ Action 2: 3-Tier Pricing with Weekly Limits (IMPLEMENTED)
+#### ✅ Action 2: 3-Tier Pricing with Weekly/Daily Limits (IMPLEMENTED)
 
-Replaced the single-tier pricing with Light ($11.54) / Standard ($15.38) / Premium ($19.23) monthly tiers plus a **Custom à-la-carte builder**. Premium features (Drafting, Oral Exams, Devil's Advocate, CLE Exams, Research, Clarify) are gated by **weekly usage limits** per tier (3/2→4→6), preventing unlimited consumption of expensive AI features. Users can also **buy add-on passes** for extra sessions or **build custom packages** selecting only the features they need.
+Replaced the single-tier pricing with Light ($11.54) / Standard ($15.38) / Premium ($19.23) monthly tiers plus a **Custom à-la-carte builder**. Premium features (Drafting, Oral Exams, Devil's Advocate, CLE Exams, Research, Clarify) are gated by **weekly usage limits** per tier (2–3→4→6), preventing unlimited consumption of expensive AI features.
 
-**Light**: 2–3/week per feature · **Standard**: 4/week all features · **Premium**: 6/week all features + GPT-5.2 for clarify · **Custom**: 3/week per selected feature
+**Free Trial**: ALL 6 premium features unlocked at **2 sessions per feature per day** (daily reset, 3-day trial). This lets trial users experience every feature without generating runaway costs.  
+**Light**: 2–3/week per feature · **Standard**: 4/week all features · **Premium**: 6/week all features + GPT-5.2 for clarify  
+**Custom**: Per-session pricing — users pick features, sessions/week, and duration (1 week to 3 months with up to 15% discount)
 
 **Impact:** Moderate users on Standard tier now generate +$2.00/month margin (was -$2.53 loss). Weekly limits cap heavy user costs significantly. Feature locking screens proactively gate premium feature tabs when usage is exhausted or subscription tier doesn't include the feature.
 

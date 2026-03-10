@@ -132,6 +132,47 @@ export default function BanterPage() {
     return ((await res.json()).response as string).replace(/\u2014/g, '-');
   }, [getIdToken]);
 
+  /* ── Streaming API helper for content — text appears character by character ── */
+  const banterFetchStreaming = useCallback(async (
+    body: Record<string, unknown>,
+    onChunk: (text: string) => void,
+  ): Promise<string> => {
+    const token = await getIdToken();
+    const res = await fetch('/api/ai/banter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ ...body, stream: true }),
+    });
+    if (!res.ok) throw new Error('fetch failed');
+
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    let accumulated = '';
+
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value, { stream: true });
+        const lines = text.split('\n');
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'chunk') {
+              accumulated += data.content;
+              onChunk(accumulated.replace(/\u2014/g, '-'));
+            } else if (data.type === 'done') {
+              accumulated = data.content || accumulated;
+              onChunk(accumulated);
+            }
+          } catch { /* skip partial */ }
+        }
+      }
+    }
+    return accumulated.replace(/\u2014/g, '-');
+  }, [getIdToken]);
+
   /* ── Pick next category ── */
   const pickCategory = useCallback((): CategoryId => {
     if (activeCat) return activeCat;
@@ -148,7 +189,47 @@ export default function BanterPage() {
     return weights[weights.length - 1].id as CategoryId;
   }, [activeCat, prefs.likedCategories]);
 
-  /* ── Load one content item ── */
+  /* ── Load one content item (streaming — text appears word by word) ── */
+  const loadContentStreaming = useCallback(async (category?: CategoryId): Promise<ContentItem> => {
+    const cat = category || pickCategory();
+    const previousContent = history.length > 0 ? history[history.length - 1].content : undefined;
+
+    const itemId = cat + '-' + Date.now();
+    // Create the item immediately so UI can show streaming text
+    const item: ContentItem = {
+      id: itemId,
+      category: cat,
+      content: '',
+      rating: null,
+      shown: false,
+    };
+
+    // Show the card immediately and stream text into it
+    setFadeIn(false);
+    setTimeout(() => {
+      setCurrentItem({ ...item, shown: true });
+      setFadeIn(true);
+    }, 80);
+
+    const finalContent = await banterFetchStreaming(
+      {
+        type: 'content',
+        category: cat,
+        preferences: { highRated: prefs.highRated, likedCategories: prefs.likedCategories },
+        previousContent: previousContent?.slice(0, 200),
+      },
+      (streamedText) => {
+        // Update the current item with streamed text
+        setCurrentItem(prev => prev && prev.id === itemId ? { ...prev, content: streamedText } : prev);
+      },
+    );
+
+    const finalItem = { ...item, content: finalContent, shown: true };
+    setCurrentItem(finalItem);
+    return finalItem;
+  }, [banterFetchStreaming, pickCategory, history, prefs]);
+
+  /* ── Load one content item (non-streaming fallback for prefetch) ── */
   const loadContent = useCallback(async (category?: CategoryId): Promise<ContentItem> => {
     const cat = category || pickCategory();
     const previousContent = history.length > 0 ? history[history.length - 1].content : undefined;
@@ -261,8 +342,7 @@ export default function BanterPage() {
 
     setContentLoading(true);
     try {
-      const item = await loadContent();
-      showItem(item);
+      await loadContentStreaming();
       prefetchNext();
     } catch {} finally {
       setContentLoading(false);
@@ -276,8 +356,7 @@ export default function BanterPage() {
     setContentLoading(true);
     prefetchRef.current = null;
     try {
-      const item = await loadContent(catId || undefined);
-      showItem(item);
+      await loadContentStreaming(catId || undefined);
       prefetchNext();
     } catch {} finally {
       setContentLoading(false);

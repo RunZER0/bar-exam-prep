@@ -296,6 +296,8 @@ export default function QuizzesPage() {
     if (mode.id === 'smartdrill') {
       return `Generate ${count} varied questions about Kenyan law${unitInfo ? ` specifically on ${unitInfo.name} covering ${unitInfo.statutes.join(', ')}` : ' across all ATP units'}.
 
+These are for POSTGRADUATE Kenya School of Law bar exam candidates. Make them CHALLENGING - not textbook definitions.
+
 Create a MIX of these question types:
 1. **MCQ** (multiple choice) — standard 4-option questions
 2. **Ordering** — give 4-5 items the student must arrange in the correct order (e.g., steps in a procedure, hierarchy of courts, chronological order of events)
@@ -333,9 +335,11 @@ Format as a JSON array with these fields:
 
 Rules:
 - Aim for roughly 40% MCQ, 30% ordering, 30% text-entry
+- Use realistic fact patterns and procedural scenarios - NOT textbook definitions
 - EVERY explanation MUST cite a specific legal source
 - For ordering: "correctOrder" is the array of original indices in the correct sequence
 - For text-entry: "acceptableAnswers" lists all acceptable answer variations (case-insensitive matching will be used)
+- Questions must be at CLE bar exam standard - these students have LLB degrees
 - Output ONLY the JSON array`;
     }
 
@@ -343,6 +347,7 @@ Rules:
 
 ${difficultyInstruction ? `Difficulty: ${difficultyInstruction}.` : ''}
 ${topicInstruction}
+${unitInfo ? `Focus on: ${unitInfo.name}. Key statutes: ${unitInfo.statutes.join(', ')}.` : 'Cover a MIX of ATP units: Civil Litigation, Criminal Litigation, Conveyancing, Probate, Commercial Transactions, Legal Ethics, Family Law, Legal Writing, Oral Advocacy.'}
 
 Format as a JSON array:
 [
@@ -356,8 +361,13 @@ Format as a JSON array:
 ]
 
 Rules:
-- Make questions engaging, mixing straightforward recall with practical scenarios
-- Include questions about statutes, case law, legal principles, and procedures
+- These are for POSTGRADUATE Kenya School of Law bar exam candidates - make them CHALLENGING
+- Use realistic fact patterns, client scenarios, and procedural problems - NOT textbook definitions
+- Test APPLICATION of law: "A client comes to you with..." or "During cross-examination, opposing counsel..."
+- Include procedural questions: filing deadlines, court fees, service requirements, limitation periods
+- Reference SPECIFIC statute sections, constitutional articles, and case names
+- Distractors must be plausible legal answers requiring careful analysis to eliminate
+- NEVER ask questions a secondary school student could answer - these students have LLB degrees
 - The "correct" field is the 0-based index of the correct option
 - EVERY explanation MUST cite a specific legal source (e.g., "Section 107(1) of the Evidence Act, Cap 80", "Article 50(2)(a) of the Constitution of Kenya 2010", "Republic v Mbugua [2019] eKLR")
 - No vague references like "according to the law" - be specific

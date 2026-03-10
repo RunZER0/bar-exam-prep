@@ -197,3 +197,265 @@
   ≡ƒöì Fetching authority context...
   Γ£ô Authorities found
   v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2644 words, 140 total marks (150580ms, 3611+8222 tokens)
+    Γ£ô Saved to database (24/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Contracts & Agreements ΓåÆ Shareholders Agreement (shareholders-agreement)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2240 words, 140 total marks (179416ms, 3767+7332 tokens)
+    Γ£ô Saved to database (25/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Conveyancing Documents ΓåÆ Transfer Instrument (transfer-instrument)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2441 words, 140 total marks (193567ms, 2568+7953 tokens)
+    Γ£ô Saved to database (26/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Conveyancing Documents ΓåÆ Charge Instrument (charge-instrument)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2170 words, 140 total marks (136262ms, 2834+7867 tokens)
+    Γ£ô Saved to database (27/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Conveyancing Documents ΓåÆ Discharge of Charge (discharge-of-charge)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2060 words, 140 total marks (112714ms, 2483+7211 tokens)
+    Γ£ô Saved to database (28/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Conveyancing Documents ΓåÆ Consent to Transfer (consent-to-transfer)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2144 words, 140 total marks (143320ms, 2380+7565 tokens)
+    Γ£ô Saved to database (29/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Company/Corporate Documents ΓåÆ Memorandum & Articles of Association (memorandum-articles)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2065 words, 140 total marks (104310ms, 3057+7566 tokens)
+    Γ£ô Saved to database (30/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Company/Corporate Documents ΓåÆ Board Resolution (board-resolution)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2208 words, 140 total marks (129127ms, 3503+7546 tokens)
+    Γ£ô Saved to database (31/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Company/Corporate Documents ΓåÆ Shareholder Resolution (shareholder-resolution)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+  ΓÜá JSON parse failed (attempt 1/3): SyntaxError: Bad escaped character in JSON at position 17715 (line 73 column 111)
+    Γ£ô Generated 7 sessions, 7 exercises, ~2175 words, 140 total marks (88171ms, 3620+7189 tokens)
+    Γ£ô Saved to database (32/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Company/Corporate Documents ΓåÆ Minutes of Meeting (minutes)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~1978 words, 140 total marks (106754ms, 3040+7469 tokens)
+    Γ£ô Saved to database (33/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Legal Opinions & Memoranda ΓåÆ Legal Opinion (legal-opinion)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2204 words, 140 total marks (165637ms, 2785+9244 tokens)
+    Γ£ô Saved to database (34/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Legal Opinions & Memoranda ΓåÆ Legal Memorandum (legal-memorandum)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~1428 words, 140 total marks (103707ms, 2788+6651 tokens)
+    Γ£ô Saved to database (35/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Legal Opinions & Memoranda ΓåÆ Client Advisory Letter (client-advisory)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~1754 words, 140 total marks (146085ms, 2872+7018 tokens)
+    Γ£ô Saved to database (36/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Criminal Practice Documents ΓåÆ Charge Sheet (charge-sheet)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~1701 words, 140 total marks (108360ms, 2750+7256 tokens)
+    Γ£ô Saved to database (37/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Criminal Practice Documents ΓåÆ Bail/Bond Application (bail-bond-application)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2361 words, 140 total marks (226317ms, 2202+15632 tokens)
+    Γ£ô Saved to database (38/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Criminal Practice Documents ΓåÆ Plea Bargain Agreement (plea-bargain)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2511 words, 140 total marks (103434ms, 2668+8928 tokens)
+    Γ£ô Saved to database (39/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Criminal Practice Documents ΓåÆ Mitigation (mitigation)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~1721 words, 140 total marks (103011ms, 2190+7042 tokens)
+    Γ£ô Saved to database (40/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Notices & Correspondence ΓåÆ Demand Letter (demand-letter)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2342 words, 140 total marks (90400ms, 2439+7602 tokens)
+    Γ£ô Saved to database (41/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Notices & Correspondence ΓåÆ Notice to Admit Facts (notice-to-admit)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2162 words, 140 total marks (88720ms, 2692+8063 tokens)
+    Γ£ô Saved to database (42/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Notices & Correspondence ΓåÆ Notice of Appeal (notice-of-appeal)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2296 words, 140 total marks (78832ms, 2684+7813 tokens)
+    Γ£ô Saved to database (43/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Notices & Correspondence ΓåÆ Statutory Notice (statutory-notice)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~1858 words, 140 total marks (99249ms, 2782+7678 tokens)
+    Γ£ô Saved to database (44/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Judgments & Court Orders ΓåÆ Judgment (judgment)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~1662 words, 140 total marks (109910ms, 3712+7175 tokens)
+    Γ£ô Saved to database (45/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Judgments & Court Orders ΓåÆ Ruling (ruling)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~1745 words, 140 total marks (107957ms, 3785+6484 tokens)
+    Γ£ô Saved to database (46/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Judgments & Court Orders ΓåÆ Decree (decree)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2183 words, 140 total marks (149064ms, 4009+7642 tokens)
+    Γ£ô Saved to database (47/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Judgments & Court Orders ΓåÆ Court Order (court-order)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2543 words, 140 total marks (111782ms, 3831+8322 tokens)
+    Γ£ô Saved to database (48/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Judgments & Court Orders ΓåÆ Consent Order (consent-order)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2281 words, 140 total marks (119315ms, 3381+7059 tokens)
+    Γ£ô Saved to database (49/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Judgments & Court Orders ΓåÆ Injunction Order (injunction-order)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2250 words, 140 total marks (174071ms, 3285+10468 tokens)
+    Γ£ô Saved to database (50/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä Judgments & Court Orders ΓåÆ Garnishee Order (garnishee-order)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2224 words, 140 total marks (134437ms, 3845+7631 tokens)
+    Γ£ô Saved to database (51/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä ADR & Arbitration Documents ΓåÆ Arbitration Agreement (arbitration-agreement)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2161 words, 140 total marks (89714ms, 2697+7108 tokens)
+    Γ£ô Saved to database (52/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä ADR & Arbitration Documents ΓåÆ Statement of Claim (Arbitration) (statement-of-claim-arb)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2424 words, 140 total marks (154259ms, 2325+8980 tokens)
+    Γ£ô Saved to database (53/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä ADR & Arbitration Documents ΓåÆ Arbitral Award (arbitral-award)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2245 words, 140 total marks (118949ms, 2227+7962 tokens)
+    Γ£ô Saved to database (54/55)
+
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+≡ƒôä ADR & Arbitration Documents ΓåÆ Mediation Agreement (mediation-agreement)
+  ≡ƒöì Fetching authority context...
+  Γ£ô Authorities found
+  v1 (The Structured Instructor)...
+    Γ£ô Generated 7 sessions, 7 exercises, ~2203 words, 140 total marks (128017ms, 2292+7498 tokens)
+    Γ£ô Saved to database (55/55)
+
+ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+  GENERATION COMPLETE
+ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+  Documents processed: 55
+  Manuals generated:   54
+  Skipped (existing):  1
+  Failed:              0
+  Total time:          8384.9s
+  Database total:      55 active manuals
+ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ

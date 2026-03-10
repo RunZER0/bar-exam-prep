@@ -14,9 +14,15 @@ import { eq, sql } from 'drizzle-orm';
 // GET - Get user's community profile
 export const GET = withAuth(async (req: NextRequest, user) => {
   try {
-    const dbUser = await db.query.users.findFirst({
-      where: eq(users.firebaseUid, user.firebaseUid),
-    });
+    const [dbUser] = await db.select({
+      id: users.id,
+      firebaseUid: users.firebaseUid,
+      email: users.email,
+      displayName: users.displayName,
+      communityUsername: users.communityUsername,
+      communityBio: users.communityBio,
+      communityJoinedAt: users.communityJoinedAt,
+    }).from(users).where(eq(users.firebaseUid, user.firebaseUid)).limit(1);
 
     if (!dbUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -55,9 +61,10 @@ export const POST = withAuth(async (req: NextRequest, user) => {
     }
 
     // Check if taken
-    const existing = await db.query.users.findFirst({
-      where: eq(users.communityUsername, clean),
-    });
+    const [existing] = await db.select({
+      id: users.id,
+      firebaseUid: users.firebaseUid,
+    }).from(users).where(eq(users.communityUsername, clean)).limit(1);
 
     if (existing && existing.firebaseUid !== user.firebaseUid) {
       return NextResponse.json({ error: 'Username already taken', taken: true }, { status: 409 });
@@ -93,9 +100,10 @@ export const PUT = withAuth(async (req: NextRequest, user) => {
       return NextResponse.json({ available: false, reason: 'Invalid characters' });
     }
 
-    const existing = await db.query.users.findFirst({
-      where: eq(users.communityUsername, clean),
-    });
+    const [existing] = await db.select({
+      id: users.id,
+      firebaseUid: users.firebaseUid,
+    }).from(users).where(eq(users.communityUsername, clean)).limit(1);
 
     const available = !existing || existing.firebaseUid === user.firebaseUid;
     return NextResponse.json({ available, reason: available ? null : 'Already taken' });

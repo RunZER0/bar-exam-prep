@@ -2,13 +2,20 @@
  * Legal Banter API — personalised, sequential entertainment
  *
  * POST /api/ai/banter
- *   body: { type: 'greeting' | 'content' | 'roast', category?, userName?, preferences?, message? }
- *   returns: { response: string }
+ *   body: { type: 'greeting' | 'content' | 'roast', category?, userName?, preferences?, message?, stream? }
+ *   returns: { response: string } OR SSE stream if stream=true
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/middleware';
 import { isAIConfigured, callAIFast } from '@/lib/ai/guardrails';
+import OpenAI from 'openai';
+import { MINI_MODEL } from '@/lib/ai/model-config';
+
+const getOpenAI = () => {
+  if (!process.env.OPENAI_API_KEY) return null;
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+};
 
 const CATEGORY_PROMPTS: Record<string, string> = {
   jokes:
@@ -77,6 +84,55 @@ ${basePrompt}${prefContext}${avoidContext}
 Be genuinely entertaining and factual. When mentioning real cases, ensure they actually happened.
 NEVER use em dashes. Use regular hyphens (-) only.`;
 
+      // Streaming mode — return SSE stream
+      if (body.stream) {
+        const openai = getOpenAI();
+        if (!openai) {
+          return NextResponse.json({ response: 'AI services are currently unavailable.' }, { status: 503 });
+        }
+
+        const stream = await openai.chat.completions.create({
+          model: MINI_MODEL,
+          messages: [{ role: 'user', content: prompt }],
+          stream: true,
+          temperature: 0.9,
+          max_completion_tokens: 600,
+        });
+
+        const encoder = new TextEncoder();
+        let fullContent = '';
+
+        const readable = new ReadableStream({
+          async start(controller) {
+            try {
+              for await (const chunk of stream) {
+                const delta = chunk.choices[0]?.delta?.content;
+                if (delta) {
+                  fullContent += delta;
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: delta })}\n\n`));
+                }
+              }
+              // Replace em dashes in final content
+              const cleaned = fullContent.replace(/\u2014/g, '-');
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', content: cleaned })}\n\n`));
+              controller.close();
+            } catch {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error' })}\n\n`));
+              controller.close();
+            }
+          },
+        });
+
+        return new Response(readable, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            Connection: 'keep-alive',
+          },
+        });
+      }
+
+      // Non-streaming fallback
       const response = await callAIFast(prompt, 600);
       return NextResponse.json({ response });
     }

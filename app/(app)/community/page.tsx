@@ -300,8 +300,9 @@ export default function CommunityPage() {
           setUsername(data.suggestedUsername || '');
           setShowUsernameSetup(true);
         }
-        setUsernameChecked(true);
       }
+      // Always mark as checked — even if API fails, let the page load
+      setUsernameChecked(true);
     } catch {
       setUsernameChecked(true);
     }

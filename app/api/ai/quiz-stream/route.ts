@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { verifyAuth } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
-import { ORCHESTRATOR_MODEL } from '@/lib/ai/model-config';
+import { MINI_MODEL } from '@/lib/ai/model-config';
 
 const getOpenAI = () => {
   if (!process.env.OPENAI_API_KEY) return null;
@@ -13,7 +13,7 @@ const getOpenAI = () => {
  * Streams individual questions as SSE events so the UI can show the first question
  * instantly while the rest generate in the background.
  *
- * Uses GPT-5.2 (ORCHESTRATOR_MODEL) for fast, high-quality generation.
+ * Uses gpt-5.2-mini (MINI_MODEL) for fast, cost-effective generation.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -37,13 +37,22 @@ export async function POST(req: NextRequest) {
     // We ask the model to output questions as a JSON array, streamed
     // We parse out individual objects as they arrive
     const stream = await openai.chat.completions.create({
-      model: ORCHESTRATOR_MODEL,
+      model: MINI_MODEL,
       messages: [
         {
           role: 'system',
-          content: `You are a quiz question generator for the Kenya Bar Examination (ATP Programme).
+          content: `You are an expert quiz question generator for the Kenya Bar Examination (ATP Programme — Kenya School of Law).
 You must output ONLY a JSON array — no markdown, no extra text.
-Start outputting immediately — every character counts for speed.`,
+Start outputting immediately — every character counts for speed.
+
+CRITICAL DIFFICULTY REQUIREMENTS:
+- These questions are for POSTGRADUATE law students preparing for the Kenya Bar Exam, NOT undergraduates or beginners.
+- Questions MUST test application, analysis, and synthesis — NOT mere recall of definitions.
+- Use realistic fact patterns, client scenarios, and procedural dilemmas that a pupil advocate would face.
+- Reference SPECIFIC sections, articles, rules, and case law — never ask vague conceptual questions.
+- Distractors must be plausible legal answers that require careful reasoning to eliminate.
+- Include questions on procedure, evidence, ethics, and drafting — not just substantive law.
+- Think CLE exam standard: if a question could appear in a secondary school test, it is TOO EASY.`,
         },
         { role: 'user', content: prompt },
       ],

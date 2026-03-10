@@ -311,7 +311,8 @@ export async function GET(req: NextRequest) {
         }
 
         if (!assignedVersion) {
-          assignedVersion = Math.floor(Math.random() * 3) + 1;
+          // Use version 1 — currently the only generated version
+          assignedVersion = 1;
           if (dbUserId) {
             try {
               await rawSql`

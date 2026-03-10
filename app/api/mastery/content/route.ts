@@ -132,8 +132,8 @@ export async function GET(req: NextRequest) {
                 }
 
                 if (!assignedVersion) {
-                    // Randomly assign version 1-3
-                    assignedVersion = Math.floor(Math.random() * 3) + 1;
+                    // Use version 1 — currently the only generated version
+                    assignedVersion = 1;
 
                     // Persist the assignment so user always sees the same version
                     if (dbUserId) {

@@ -14,13 +14,16 @@ import {
   BASIC_FEATURES,
   PREMIUM_FEATURE_META,
   PREMIUM_FEATURES,
-  CUSTOM_FEATURE_PRICES,
-  CUSTOM_WEEKLY_LIMIT,
+  CUSTOM_PER_SESSION_PRICE,
+  CUSTOM_DURATION_OPTIONS,
+  CUSTOM_MIN_SESSIONS,
+  CUSTOM_MAX_SESSIONS,
   formatPrice,
-  calculateCustomPrice,
+  calculateCustomPackagePrice,
   type SubscriptionTier,
   type BillingPeriod,
   type PremiumFeature,
+  type CustomPackageSelection,
 } from '@/lib/constants/pricing';
 
 const TIERS: (Exclude<SubscriptionTier, 'custom' | 'free_trial'>)[] = ['light', 'standard', 'premium'];
@@ -42,16 +45,36 @@ export default function PricingPage() {
   const [showComparison, setShowComparison] = useState(false);
   const [showCustomBuilder, setShowCustomBuilder] = useState(false);
   const [selectedCustomFeatures, setSelectedCustomFeatures] = useState<PremiumFeature[]>([]);
+  const [customSessions, setCustomSessions] = useState<Record<string, number>>({});
+  const [customDurationId, setCustomDurationId] = useState('1m');
+
+  const customDuration = CUSTOM_DURATION_OPTIONS.find(d => d.id === customDurationId) || CUSTOM_DURATION_OPTIONS[2];
+
+  const customSelections: CustomPackageSelection[] = useMemo(
+    () => selectedCustomFeatures.map(f => ({
+      feature: f,
+      sessionsPerWeek: customSessions[f] || 3,
+    })),
+    [selectedCustomFeatures, customSessions],
+  );
 
   const customPrice = useMemo(
-    () => calculateCustomPrice(selectedCustomFeatures, period),
-    [selectedCustomFeatures, period],
+    () => calculateCustomPackagePrice(customSelections, customDuration.weeks, customDuration.discount),
+    [customSelections, customDuration],
   );
 
   const toggleCustomFeature = (f: PremiumFeature) => {
-    setSelectedCustomFeatures(prev =>
-      prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f],
-    );
+    setSelectedCustomFeatures(prev => {
+      if (prev.includes(f)) return prev.filter(x => x !== f);
+      // Default to 3 sessions/week when adding
+      if (!customSessions[f]) setCustomSessions(s => ({ ...s, [f]: 3 }));
+      return [...prev, f];
+    });
+  };
+
+  const updateSessions = (f: PremiumFeature, val: number) => {
+    const clamped = Math.max(CUSTOM_MIN_SESSIONS, Math.min(CUSTOM_MAX_SESSIONS, val));
+    setCustomSessions(s => ({ ...s, [f]: clamped }));
   };
 
   const handleSelect = (tier: string) => {
@@ -59,8 +82,8 @@ export default function PricingPage() {
   };
 
   const handleCustomContinue = () => {
-    const features = selectedCustomFeatures.join(',');
-    window.location.href = `/subscribe?plan=custom&period=${period}&features=${features}`;
+    const featuresParam = customSelections.map(s => `${s.feature}:${s.sessionsPerWeek}`).join(',');
+    window.location.href = `/subscribe?plan=custom&duration=${customDurationId}&features=${featuresParam}`;
   };
 
   return (
@@ -209,7 +232,7 @@ export default function PricingPage() {
               <div className="text-left">
                 <h3 className="text-lg font-bold">Build Your Own Package</h3>
                 <p className="text-sm text-muted-foreground">
-                  Pick only the premium features you need &mdash; basic features always included
+                  Pick features, choose session quantities &amp; duration &mdash; pay only for what you need
                 </p>
               </div>
             </div>
@@ -221,98 +244,177 @@ export default function PricingPage() {
 
           {showCustomBuilder && (
             <div className="px-6 pb-6 border-t border-border/30">
-              <p className="text-xs text-muted-foreground mt-4 mb-5">
-                Select the features you want. Each gives you {CUSTOM_WEEKLY_LIMIT} sessions per week. Basic features (Mastery Hub, Study, Quizzes, etc.) are always included free.
-              </p>
+              {/* Duration picker */}
+              <div className="mt-5 mb-6">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Duration</p>
+                <div className="flex flex-wrap gap-2">
+                  {CUSTOM_DURATION_OPTIONS.map(d => (
+                    <button
+                      key={d.id}
+                      onClick={() => setCustomDurationId(d.id)}
+                      className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all border ${
+                        customDurationId === d.id
+                          ? 'border-violet-500 bg-violet-500/10 text-violet-700 dark:text-violet-300 ring-2 ring-violet-500/20'
+                          : 'border-border/50 text-muted-foreground hover:border-border hover:text-foreground'
+                      }`}
+                    >
+                      {d.label}
+                      {d.discount > 0 && (
+                        <span className="ml-1.5 text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-semibold">
+                          -{Math.round(d.discount * 100)}%
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
+              {/* Feature selection with session controls */}
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Select Features &amp; Sessions/Week</p>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
                 {PREMIUM_FEATURES.map(feature => {
                   const fMeta = PREMIUM_FEATURE_META[feature];
                   const selected = selectedCustomFeatures.includes(feature);
-                  const featurePrice = CUSTOM_FEATURE_PRICES[feature][period];
+                  const sessions = customSessions[feature] || 3;
+                  const perSession = CUSTOM_PER_SESSION_PRICE[feature];
+                  const featureTotal = perSession * sessions * customDuration.weeks * (1 - customDuration.discount);
 
                   return (
-                    <button
+                    <div
                       key={feature}
-                      onClick={() => toggleCustomFeature(feature)}
-                      className={`relative rounded-xl border p-4 text-left transition-all ${
+                      className={`relative rounded-xl border p-4 transition-all ${
                         selected
                           ? 'border-violet-500 bg-violet-500/5 ring-2 ring-violet-500/20'
                           : 'border-border/50 hover:border-border'
                       }`}
                     >
-                      {/* Selection indicator */}
-                      <div className={`absolute top-3 right-3 h-5 w-5 rounded-full flex items-center justify-center transition-all ${
-                        selected ? 'bg-violet-500' : 'border-2 border-muted-foreground/30'
-                      }`}>
-                        {selected && <Check className="h-3 w-3 text-white" />}
-                      </div>
+                      {/* Toggle header */}
+                      <button
+                        onClick={() => toggleCustomFeature(feature)}
+                        className="w-full text-left"
+                      >
+                        <div className={`absolute top-3 right-3 h-5 w-5 rounded-full flex items-center justify-center transition-all ${
+                          selected ? 'bg-violet-500' : 'border-2 border-muted-foreground/30'
+                        }`}>
+                          {selected && <Check className="h-3 w-3 text-white" />}
+                        </div>
 
-                      <div className="text-xl mb-2">{fMeta.emoji}</div>
-                      <h4 className="font-semibold text-sm mb-0.5">{fMeta.label}</h4>
-                      <p className="text-xs text-muted-foreground mb-2">{fMeta.description}</p>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-sm font-bold">{formatPrice(featurePrice)}</span>
-                        <span className="text-xs text-muted-foreground">/{PERIODS.find(p => p.id === period)?.shortLabel}</span>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        {CUSTOM_WEEKLY_LIMIT} sessions/week
-                      </p>
-                    </button>
+                        <div className="text-xl mb-1.5">{fMeta.emoji}</div>
+                        <h4 className="font-semibold text-sm mb-0.5">{fMeta.label}</h4>
+                        <p className="text-xs text-muted-foreground mb-1">{fMeta.description}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {formatPrice(perSession)}/session
+                        </p>
+                      </button>
+
+                      {/* Session count stepper (only when selected) */}
+                      {selected && (
+                        <div className="mt-3 pt-3 border-t border-border/30">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">Sessions/week</span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => updateSessions(feature, sessions - 1)}
+                                disabled={sessions <= CUSTOM_MIN_SESSIONS}
+                                className="h-7 w-7 rounded-md bg-muted hover:bg-muted/80 flex items-center justify-center text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                              >
+                                −
+                              </button>
+                              <input
+                                type="number"
+                                min={CUSTOM_MIN_SESSIONS}
+                                max={CUSTOM_MAX_SESSIONS}
+                                value={sessions}
+                                onChange={e => updateSessions(feature, parseInt(e.target.value) || CUSTOM_MIN_SESSIONS)}
+                                className="w-12 h-7 text-center text-sm font-semibold rounded-md border border-border/50 bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                              <button
+                                onClick={() => updateSessions(feature, sessions + 1)}
+                                disabled={sessions >= CUSTOM_MAX_SESSIONS}
+                                className="h-7 w-7 rounded-md bg-muted hover:bg-muted/80 flex items-center justify-center text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-xs text-right text-violet-600 dark:text-violet-400 font-medium mt-1">
+                            {formatPrice(Math.round(featureTotal))} for {customDuration.label.toLowerCase()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
 
               {/* Custom package summary */}
-              <div className="bg-muted/30 rounded-xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium mb-1">
-                    Your Custom Package
-                    {selectedCustomFeatures.length > 0 && (
-                      <span className="text-muted-foreground font-normal ml-1">
-                        ({selectedCustomFeatures.length} feature{selectedCustomFeatures.length !== 1 ? 's' : ''})
-                      </span>
-                    )}
-                  </p>
-                  {selectedCustomFeatures.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Select at least one feature above</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedCustomFeatures.map(f => (
-                        <span key={f} className="text-xs bg-violet-500/10 text-violet-600 dark:text-violet-400 px-2 py-0.5 rounded-full font-medium">
-                          {PREMIUM_FEATURE_META[f].emoji} {PREMIUM_FEATURE_META[f].label}
+              <div className="bg-muted/30 rounded-xl p-5">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium mb-1">
+                      Your Custom Package
+                      {selectedCustomFeatures.length > 0 && (
+                        <span className="text-muted-foreground font-normal ml-1">
+                          &bull; {customDuration.label}
+                          {customDuration.discount > 0 && (
+                            <span className="text-emerald-600 dark:text-emerald-400 ml-1">
+                              ({Math.round(customDuration.discount * 100)}% off)
+                            </span>
+                          )}
                         </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-4 shrink-0">
-                  <div className="text-right">
-                    <span className="text-xs text-muted-foreground block">Total</span>
-                    <span className="text-xl font-bold">
-                      {customPrice > 0 ? formatPrice(customPrice) : '—'}
-                    </span>
-                    {customPrice > 0 && (
-                      <span className="text-xs text-muted-foreground"> /{PERIODS.find(p => p.id === period)?.shortLabel}</span>
+                      )}
+                    </p>
+                    {selectedCustomFeatures.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">Select at least one feature above</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {customSelections.map(s => (
+                          <span key={s.feature} className="text-xs bg-violet-500/10 text-violet-600 dark:text-violet-400 px-2 py-0.5 rounded-full font-medium">
+                            {PREMIUM_FEATURE_META[s.feature].emoji} {PREMIUM_FEATURE_META[s.feature].label} &times;{s.sessionsPerWeek}/wk
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
-                  <button
-                    onClick={handleCustomContinue}
-                    disabled={selectedCustomFeatures.length === 0}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-                  >
-                    Continue <ArrowRight className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="text-right">
+                      <span className="text-xs text-muted-foreground block">Total</span>
+                      <span className="text-xl font-bold">
+                        {customPrice > 0 ? formatPrice(customPrice) : '—'}
+                      </span>
+                      {customPrice > 0 && (
+                        <span className="text-xs text-muted-foreground block">for {customDuration.label.toLowerCase()}</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleCustomContinue}
+                      disabled={selectedCustomFeatures.length === 0}
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                    >
+                      Continue <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
+
+                {/* Per-session breakdown (when features selected) */}
+                {customSelections.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-border/30">
+                    <p className="text-[10px] text-muted-foreground">
+                      {customSelections.map(s => {
+                        const perSession = CUSTOM_PER_SESSION_PRICE[s.feature];
+                        return `${PREMIUM_FEATURE_META[s.feature].label}: ${s.sessionsPerWeek} × ${formatPrice(perSession)} × ${customDuration.weeks}wk`;
+                      }).join(' + ')}
+                      {customDuration.discount > 0 && ` − ${Math.round(customDuration.discount * 100)}% discount`}
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Value comparison note */}
-              {selectedCustomFeatures.length >= 4 && customPrice > 0 && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-3 flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Tip: The {customPrice >= TIER_PRICES.premium[period] ? 'Premium' : customPrice >= TIER_PRICES.standard[period] ? 'Standard' : 'Light'} tier might be better value with more sessions per feature!
-                </p>
-              )}
+              {/* Basic features note */}
+              <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5">
+                <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                Basic features (Mastery Hub, Study Hub, Quizzes, Community, etc.) are always included &mdash; no extra charge.
+              </p>
             </div>
           )}
         </div>
@@ -365,7 +467,7 @@ export default function PricingPage() {
                       </td>
                     ))}
                     <td className="text-center p-3 text-violet-600 dark:text-violet-400 font-semibold">
-                      {CUSTOM_WEEKLY_LIMIT}/wk
+                      Custom
                     </td>
                   </tr>
                 ))}
@@ -430,7 +532,7 @@ export default function PricingPage() {
           <div>
             <h3 className="font-semibold mb-2">Is there a free trial?</h3>
             <p className="text-muted-foreground text-sm">
-              Yes! Every new account gets a 3-day free trial with limited premium access (3 drafts, 2 oral exams, 2 Devil&apos;s Advocate). No card required.
+              Yes! Every new account gets a 3-day free trial with access to all premium features &mdash; 2 sessions per feature per day. No card required.
             </p>
           </div>
           <div>
@@ -442,7 +544,7 @@ export default function PricingPage() {
           <div>
             <h3 className="font-semibold mb-2">What is a custom package?</h3>
             <p className="text-muted-foreground text-sm">
-              If you only need specific premium features (e.g., just Legal Research and Oral Exams), you can build a custom package instead of paying for a full tier. Each feature gets {CUSTOM_WEEKLY_LIMIT} sessions per week, and basic features are always included.
+              Instead of a fixed tier, you can pick exactly which premium features you want, set how many sessions per week for each, and choose a duration (1 week to 3 months). Longer durations get discounts up to 15%. Basic features are always included free.
             </p>
           </div>
           <div>

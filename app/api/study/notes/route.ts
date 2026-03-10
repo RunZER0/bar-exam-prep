@@ -168,8 +168,8 @@ async function handlePost(req: NextRequest, user: AuthUser) {
       }
 
       if (!assignedVersion) {
-        // No prior assignment — give them a Study Hub-only version (4 or 5)
-        assignedVersion = Math.random() < 0.5 ? 4 : 5;
+        // Use version 1 — currently the only generated version
+        assignedVersion = 1;
       }
 
       // Persist the study version assignment

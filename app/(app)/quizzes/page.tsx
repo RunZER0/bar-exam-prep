@@ -376,7 +376,7 @@ Rules:
       },
       body: JSON.stringify({
         message: buildPrompt(count),
-        competencyType: 'research',
+        competencyType: 'study',
         context: {
           topicArea: unitInfo?.name || 'General Kenyan Law',
           quizMode: mode.id,
@@ -398,7 +398,7 @@ Rules:
   };
 
   /* ── Streaming quiz fetch — first question shows instantly ── */
-  const fetchQuestionsStreaming = async (count: number, onFirstQuestion: () => void) => {
+  const fetchQuestionsStreaming = async (count: number, onFirstQuestion: () => void): Promise<number> => {
     const token = await getIdToken();
     const res = await fetch('/api/ai/quiz-stream', {
       method: 'POST',
@@ -416,7 +416,7 @@ Rules:
 
     const reader = res.body?.getReader();
     const decoder = new TextDecoder();
-    let firstSent = false;
+    let questionCount = 0;
 
     if (reader) {
       while (true) {
@@ -430,8 +430,8 @@ Rules:
             const data = JSON.parse(line.slice(6));
             if (data.type === 'question' && data.question) {
               setQuestions((prev) => [...prev, data.question]);
-              if (!firstSent) {
-                firstSent = true;
+              questionCount++;
+              if (questionCount === 1) {
                 onFirstQuestion();
               }
             }
@@ -440,8 +440,7 @@ Rules:
       }
     }
 
-    // If no questions came through streaming, try to return false
-    return firstSent;
+    return questionCount;
   };
 
   const startQuiz = useCallback(async () => {
@@ -479,25 +478,68 @@ Rules:
       }
 
       // Use streaming API — first question shows instantly, rest arrive in background
-      const streamed = await fetchQuestionsStreaming(effectiveCount, () => {
+      const streamedCount = await fetchQuestionsStreaming(effectiveCount, () => {
         // Called when the very first question arrives
         setLoading(false);
       });
 
-      // If streaming didn't work, fall back to batch
-      if (!streamed) {
+      // If streaming delivered too few questions (< 3), supplement with batch fallback
+      if (streamedCount === 0) {
+        // No questions at all — try batch
         const qs = await fetchQuestions(effectiveCount);
         setQuestions(qs);
         setLoading(false);
+      } else if (streamedCount < 3) {
+        // Partial streaming — supplement with batch (don't replace, append)
+        try {
+          const supplement = await fetchQuestions(Math.max(effectiveCount - streamedCount, 5));
+          setQuestions((prev) => [...prev, ...supplement]);
+        } catch { /* at least we have some questions */ }
+        setLoading(false);
       }
     } catch {
-      setQuestions([{
-        question: 'What is the supreme law of Kenya?',
-        options: ['A) Penal Code', 'B) Constitution of Kenya 2010', 'C) Judicature Act', 'D) Civil Procedure Act'],
-        correct: 1,
-        explanation: 'The Constitution of Kenya 2010 is the supreme law of the Republic.',
-        questionType: 'mcq',
-      }]);
+      setQuestions([
+        {
+          question: 'What is the supreme law of Kenya?',
+          options: ['A) Penal Code', 'B) Constitution of Kenya 2010', 'C) Judicature Act', 'D) Civil Procedure Act'],
+          correct: 1,
+          explanation: 'Article 2(1) of the Constitution of Kenya 2010 provides that the Constitution is the supreme law of the Republic and binds all persons and all State organs.',
+          questionType: 'mcq',
+          difficulty: 'easy',
+        },
+        {
+          question: 'Under the Constitution of Kenya 2010, the Bill of Rights is found in which Chapter?',
+          options: ['A) Chapter Three', 'B) Chapter Four', 'C) Chapter Five', 'D) Chapter Six'],
+          correct: 1,
+          explanation: 'The Bill of Rights is contained in Chapter Four (Articles 19–59) of the Constitution of Kenya 2010.',
+          questionType: 'mcq',
+          difficulty: 'easy',
+        },
+        {
+          question: 'Which court has original jurisdiction to hear and determine disputes relating to the election of a President?',
+          options: ['A) High Court', 'B) Court of Appeal', 'C) Supreme Court', 'D) Employment and Labour Relations Court'],
+          correct: 2,
+          explanation: 'Article 163(3)(a) of the Constitution gives the Supreme Court exclusive original jurisdiction in presidential election petitions.',
+          questionType: 'mcq',
+          difficulty: 'medium',
+        },
+        {
+          question: 'What is the standard of proof in criminal cases in Kenya?',
+          options: ['A) Balance of probabilities', 'B) Beyond reasonable doubt', 'C) Prima facie evidence', 'D) Preponderance of evidence'],
+          correct: 1,
+          explanation: 'Section 107 of the Evidence Act (Cap 80) and established Kenyan case law require proof beyond reasonable doubt in criminal cases.',
+          questionType: 'mcq',
+          difficulty: 'easy',
+        },
+        {
+          question: 'Under the Law of Contract Act (Cap 23), what is the age of contractual capacity in Kenya?',
+          options: ['A) 16 years', 'B) 18 years', 'C) 21 years', 'D) 25 years'],
+          correct: 1,
+          explanation: 'Section 2 of the Age of Majority Act (Cap 33) read with Section 11 of the Law of Contract Act provides that the age of majority and contractual capacity is 18 years.',
+          questionType: 'mcq',
+          difficulty: 'medium',
+        },
+      ]);
       setLoading(false);
     }
   }, [getIdToken, mode, selectedUnit, userPerformance, effectiveCount, isInfinityMode]);

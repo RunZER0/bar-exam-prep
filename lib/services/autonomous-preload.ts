@@ -220,8 +220,11 @@ class AutonomousPreloadService {
 
     console.log('[AutonomousPreload] Running all preload tasks');
 
-    // Fire daily cron tick (idempotent — only processes reminders once per day)
-    this.triggerDailyCron(token);
+    // NOTE: Do NOT trigger cron tick from here. On Render free tier (0.1 CPU),
+    // processReminderTick processes 100 users with 5+ DB queries + OpenAI calls each,
+    // creating a 10-30 min background task that starves ALL other API requests.
+    // Use an external cron service (cron-job.org, GitHub Actions) to hit /api/cron/tick instead.
+    // this.triggerDailyCron(token);
     
     // Sort by priority
     const sortedTasks = [...PRELOAD_TASKS].sort((a, b) => a.priority - b.priority);

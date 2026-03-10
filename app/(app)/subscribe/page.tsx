@@ -32,13 +32,16 @@ import {
   PREMIUM_FEATURES,
   ADDON_PRICES,
   ADDON_PACKS,
-  CUSTOM_FEATURE_PRICES,
-  CUSTOM_WEEKLY_LIMIT,
+  CUSTOM_PER_SESSION_PRICE,
+  CUSTOM_DURATION_OPTIONS,
+  CUSTOM_MIN_SESSIONS,
+  CUSTOM_MAX_SESSIONS,
   formatPrice,
-  calculateCustomPrice,
+  calculateCustomPackagePrice,
   type SubscriptionTier,
   type BillingPeriod,
   type PremiumFeature,
+  type CustomPackageSelection,
 } from '@/lib/constants/pricing';
 
 const TIER_ICONS: Record<string, typeof Zap> = { Zap, Crown, Rocket, Sparkles, Settings };
@@ -56,16 +59,21 @@ export default function SubscribePage() {
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>('standard');
   const [selectedPeriod, setSelectedPeriod] = useState<BillingPeriod>('monthly');
   const [selectedCustomFeatures, setSelectedCustomFeatures] = useState<PremiumFeature[]>([]);
+  const [customSessions, setCustomSessions] = useState<Record<string, number>>({});
+  const [customDurationId, setCustomDurationId] = useState('1m');
   const [processing, setProcessing] = useState(false);
   const [step, setStep] = useState<'plan' | 'payment' | 'confirm' | 'addon'>('plan');
   const [error, setError] = useState<string | null>(null);
   const [currentSub, setCurrentSub] = useState<any>(null);
   const [showAddons, setShowAddons] = useState(false);
 
+  const customDuration = CUSTOM_DURATION_OPTIONS.find(d => d.id === customDurationId) || CUSTOM_DURATION_OPTIONS[2];
+
   // Parse plan/period/features from URL params
   useEffect(() => {
     const plan = searchParams.get('plan');
     const period = searchParams.get('period');
+    const duration = searchParams.get('duration');
     const features = searchParams.get('features');
     if (plan && ['light', 'standard', 'premium', 'custom'].includes(plan)) {
       setSelectedTier(plan as SubscriptionTier);
@@ -73,20 +81,54 @@ export default function SubscribePage() {
     if (period && ['weekly', 'monthly', 'annual'].includes(period)) {
       setSelectedPeriod(period as BillingPeriod);
     }
+    if (duration && CUSTOM_DURATION_OPTIONS.some(d => d.id === duration)) {
+      setCustomDurationId(duration);
+    }
     if (features) {
-      const parsed = features.split(',').filter(f =>
-        PREMIUM_FEATURES.includes(f as PremiumFeature)
-      ) as PremiumFeature[];
-      if (parsed.length > 0) setSelectedCustomFeatures(parsed);
+      // Support both "drafting:5,oral_exam:3" and legacy "drafting,oral_exam"
+      const featureList: PremiumFeature[] = [];
+      const sessionsMap: Record<string, number> = {};
+      for (const part of features.split(',')) {
+        const [featureId, countStr] = part.split(':');
+        if (PREMIUM_FEATURES.includes(featureId as PremiumFeature)) {
+          featureList.push(featureId as PremiumFeature);
+          sessionsMap[featureId] = parseInt(countStr) || 3;
+        }
+      }
+      if (featureList.length > 0) {
+        setSelectedCustomFeatures(featureList);
+        setCustomSessions(sessionsMap);
+      }
     }
   }, [searchParams]);
 
+  const customSelections: CustomPackageSelection[] = useMemo(
+    () => selectedCustomFeatures.map(f => ({
+      feature: f,
+      sessionsPerWeek: customSessions[f] || 3,
+    })),
+    [selectedCustomFeatures, customSessions],
+  );
+
   const customPrice = useMemo(
-    () => calculateCustomPrice(selectedCustomFeatures, selectedPeriod),
-    [selectedCustomFeatures, selectedPeriod],
+    () => calculateCustomPackagePrice(customSelections, customDuration.weeks, customDuration.discount),
+    [customSelections, customDuration],
   );
 
   const effectivePrice = selectedTier === 'custom' ? customPrice : TIER_PRICES[selectedTier][selectedPeriod];
+
+  const toggleCustomFeature = (f: PremiumFeature) => {
+    setSelectedCustomFeatures(prev => {
+      if (prev.includes(f)) return prev.filter(x => x !== f);
+      if (!customSessions[f]) setCustomSessions(s => ({ ...s, [f]: 3 }));
+      return [...prev, f];
+    });
+  };
+
+  const updateSessions = (f: PremiumFeature, val: number) => {
+    const clamped = Math.max(CUSTOM_MIN_SESSIONS, Math.min(CUSTOM_MAX_SESSIONS, val));
+    setCustomSessions(s => ({ ...s, [f]: clamped }));
+  };
 
   // Check for addon query param
   useEffect(() => {
@@ -170,7 +212,11 @@ export default function SubscribePage() {
         body: JSON.stringify({
           tier: selectedTier,
           period: selectedPeriod,
-          ...(selectedTier === 'custom' && { customFeatures: selectedCustomFeatures }),
+          ...(selectedTier === 'custom' && {
+            customFeatures: selectedCustomFeatures,
+            customSelections: customSelections.map(s => ({ feature: s.feature, sessionsPerWeek: s.sessionsPerWeek })),
+            customDuration: customDurationId,
+          }),
           callbackUrl: `${window.location.origin}/subscribe`,
         }),
       });
@@ -417,50 +463,102 @@ export default function SubscribePage() {
 
               {selectedTier === 'custom' && (
                 <div className="px-5 pb-5 border-t border-border/30 bg-card">
-                  <p className="text-xs text-muted-foreground mt-4 mb-4">
-                    Each feature gives you {CUSTOM_WEEKLY_LIMIT} sessions/week. Basic features always included.
-                  </p>
+                  {/* Duration picker */}
+                  <div className="mt-4 mb-4">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Duration</p>
+                    <div className="flex flex-wrap gap-2">
+                      {CUSTOM_DURATION_OPTIONS.map(d => (
+                        <button
+                          key={d.id}
+                          onClick={() => setCustomDurationId(d.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                            customDurationId === d.id
+                              ? 'border-violet-500 bg-violet-500/10 text-violet-700 dark:text-violet-300 ring-1 ring-violet-500/20'
+                              : 'border-border/50 text-muted-foreground hover:border-border'
+                          }`}
+                        >
+                          {d.label}
+                          {d.discount > 0 && (
+                            <span className="ml-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                              -{Math.round(d.discount * 100)}%
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Features &amp; Sessions/Week</p>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2.5 mb-4">
                     {PREMIUM_FEATURES.map(feature => {
                       const fMeta = PREMIUM_FEATURE_META[feature];
                       const selected = selectedCustomFeatures.includes(feature);
-                      const featurePrice = CUSTOM_FEATURE_PRICES[feature][selectedPeriod];
+                      const sessions = customSessions[feature] || 3;
+                      const perSession = CUSTOM_PER_SESSION_PRICE[feature];
                       return (
-                        <button
+                        <div
                           key={feature}
-                          onClick={() => setSelectedCustomFeatures(prev =>
-                            prev.includes(feature) ? prev.filter(x => x !== feature) : [...prev, feature]
-                          )}
-                          className={`relative rounded-xl border p-3.5 text-left transition-all ${
+                          className={`relative rounded-xl border p-3.5 transition-all ${
                             selected
                               ? 'border-violet-500 bg-violet-500/5 ring-1 ring-violet-500/20'
                               : 'border-border/50 hover:border-border'
                           }`}
                         >
-                          <div className={`absolute top-2.5 right-2.5 h-4 w-4 rounded-full flex items-center justify-center ${
-                            selected ? 'bg-violet-500' : 'border-2 border-muted-foreground/30'
-                          }`}>
-                            {selected && <Check className="h-2.5 w-2.5 text-white" />}
-                          </div>
-                          <span className="text-lg">{fMeta.emoji}</span>
-                          <p className="font-semibold text-xs mt-1">{fMeta.label}</p>
-                          <p className="text-xs font-bold text-violet-600 dark:text-violet-400 mt-0.5">
-                            {formatPrice(featurePrice)}/{PERIODS.find(p => p.id === selectedPeriod)?.shortLabel}
-                          </p>
-                        </button>
+                          <button
+                            onClick={() => toggleCustomFeature(feature)}
+                            className="w-full text-left"
+                          >
+                            <div className={`absolute top-2.5 right-2.5 h-4 w-4 rounded-full flex items-center justify-center ${
+                              selected ? 'bg-violet-500' : 'border-2 border-muted-foreground/30'
+                            }`}>
+                              {selected && <Check className="h-2.5 w-2.5 text-white" />}
+                            </div>
+                            <span className="text-lg">{fMeta.emoji}</span>
+                            <p className="font-semibold text-xs mt-1">{fMeta.label}</p>
+                            <p className="text-[10px] text-muted-foreground">{formatPrice(perSession)}/session</p>
+                          </button>
+                          {selected && (
+                            <div className="mt-2 pt-2 border-t border-border/30 flex items-center justify-between">
+                              <span className="text-[10px] text-muted-foreground">Sessions/wk</span>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => updateSessions(feature, sessions - 1)}
+                                  disabled={sessions <= CUSTOM_MIN_SESSIONS}
+                                  className="h-6 w-6 rounded bg-muted text-xs font-bold disabled:opacity-30"
+                                >−</button>
+                                <input
+                                  type="number"
+                                  min={CUSTOM_MIN_SESSIONS}
+                                  max={CUSTOM_MAX_SESSIONS}
+                                  value={sessions}
+                                  onChange={e => updateSessions(feature, parseInt(e.target.value) || CUSTOM_MIN_SESSIONS)}
+                                  className="w-10 h-6 text-center text-xs font-semibold rounded border border-border/50 bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <button
+                                  onClick={() => updateSessions(feature, sessions + 1)}
+                                  disabled={sessions >= CUSTOM_MAX_SESSIONS}
+                                  className="h-6 w-6 rounded bg-muted text-xs font-bold disabled:opacity-30"
+                                >+</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
                   {selectedCustomFeatures.length > 0 && (
                     <div className="flex items-center justify-between bg-violet-500/5 rounded-xl p-3">
                       <div className="flex flex-wrap gap-1">
-                        {selectedCustomFeatures.map(f => (
-                          <span key={f} className="text-[10px] bg-violet-500/10 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded-full font-medium">
-                            {PREMIUM_FEATURE_META[f].emoji} {PREMIUM_FEATURE_META[f].label}
+                        {customSelections.map(s => (
+                          <span key={s.feature} className="text-[10px] bg-violet-500/10 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded-full font-medium">
+                            {PREMIUM_FEATURE_META[s.feature].emoji} {PREMIUM_FEATURE_META[s.feature].label} &times;{s.sessionsPerWeek}/wk
                           </span>
                         ))}
                       </div>
-                      <span className="text-sm font-bold shrink-0 ml-3">{formatPrice(customPrice)}</span>
+                      <div className="text-right shrink-0 ml-3">
+                        <span className="text-sm font-bold">{formatPrice(customPrice)}</span>
+                        <span className="text-[10px] text-muted-foreground block">{customDuration.label.toLowerCase()}</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -480,7 +578,7 @@ export default function SubscribePage() {
                 }`}
               >
                 {selectedTier === 'custom'
-                  ? (selectedCustomFeatures.length === 0 ? 'Select Features' : `Get Custom — ${formatPrice(customPrice)}`)
+                  ? (selectedCustomFeatures.length === 0 ? 'Select Features' : `Get Custom — ${formatPrice(customPrice)} / ${customDuration.label.toLowerCase()}`)
                   : (isUpgrade ? `Upgrade to ${TIER_META[selectedTier].name}` : `Get ${TIER_META[selectedTier].name}`)
                 }
                 <ArrowRight className="h-4 w-4" />
@@ -642,12 +740,17 @@ export default function SubscribePage() {
                   <p className="font-medium">
                     {selectedTier === 'custom' ? 'Custom Package' : `${TIER_META[selectedTier].name} Plan`}
                   </p>
-                  <p className="text-sm text-muted-foreground">Billed {selectedPeriod}ly</p>
-                  {selectedTier === 'custom' && selectedCustomFeatures.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {selectedTier === 'custom'
+                      ? `${customDuration.label}${customDuration.discount > 0 ? ` (${Math.round(customDuration.discount * 100)}% off)` : ''}`
+                      : `Billed ${selectedPeriod}ly`
+                    }
+                  </p>
+                  {selectedTier === 'custom' && customSelections.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1.5">
-                      {selectedCustomFeatures.map(f => (
-                        <span key={f} className="text-[10px] bg-violet-500/10 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded-full font-medium">
-                          {PREMIUM_FEATURE_META[f].emoji} {PREMIUM_FEATURE_META[f].label}
+                      {customSelections.map(s => (
+                        <span key={s.feature} className="text-[10px] bg-violet-500/10 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded-full font-medium">
+                          {PREMIUM_FEATURE_META[s.feature].emoji} {PREMIUM_FEATURE_META[s.feature].label} &times;{s.sessionsPerWeek}/wk
                         </span>
                       ))}
                     </div>

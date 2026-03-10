@@ -386,14 +386,28 @@ const KENYAN_LAW_FUN_FACTS = [
 ];
 
 /**
- * Get the user's next study unit and topic from the mastery system
+ * Get the user's next study unit and topic from the mastery system.
+ * Personalized to the user's weak areas and current progress.
  */
 async function getUserNextStudyInfo(userId: string): Promise<{
   unitName: string;
   topicName: string;
   progress: { mastered: number; total: number };
+  weakAreas: string[];
+  streakDays: number;
+  examPath: string;
+  lastStudiedTopic: string | null;
 } | null> {
   try {
+    // Get user's profile for personalization
+    const [profile] = await db.select({
+      weakAreas: userProfiles.weakAreas,
+      examPath: userProfiles.examPath,
+    }).from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+
+    const weakAreas = (profile?.weakAreas || []) as string[];
+    const examPath = (profile?.examPath || 'NOVEMBER_2026') as string;
+
     // Get total syllabus nodes
     const allNodes = await db.select({ id: syllabusNodes.id, unitCode: syllabusNodes.unitCode, topicName: syllabusNodes.topicName })
       .from(syllabusNodes)
@@ -401,11 +415,12 @@ async function getUserNextStudyInfo(userId: string): Promise<{
 
     if (allNodes.length === 0) return null;
 
-    // Get user's mastered nodes
+    // Get user's mastered nodes + last studied node
     const userProgress = await db.select({
       nodeId: nodeProgress.nodeId,
       phase: nodeProgress.phase,
       masteryPassed: nodeProgress.masteryPassed,
+      lastAttemptAt: nodeProgress.lastAttemptAt,
     })
       .from(nodeProgress)
       .where(eq(nodeProgress.userId, userId));
@@ -415,11 +430,47 @@ async function getUserNextStudyInfo(userId: string): Promise<{
     );
     const inProgressIds = new Set(userProgress.map(p => p.nodeId));
 
-    // Find next unmastered node (prefer nodes already in-progress, then untouched)
-    const inProgressNode = allNodes.find(n => inProgressIds.has(n.id) && !masteredIds.has(n.id));
-    const nextNode = inProgressNode || allNodes.find(n => !masteredIds.has(n.id));
+    // Find last studied topic for context
+    const lastStudied = userProgress
+      .filter(p => p.lastAttemptAt)
+      .sort((a, b) => new Date(b.lastAttemptAt!).getTime() - new Date(a.lastAttemptAt!).getTime())[0];
+    const lastStudiedNode = lastStudied ? allNodes.find(n => n.id === lastStudied.nodeId) : null;
+    const lastStudiedTopic = lastStudiedNode?.topicName || null;
+
+    // Find next unmastered node — prioritize weak areas for user-specific selection
+    const unmasteredNodes = allNodes.filter(n => !masteredIds.has(n.id));
+
+    let nextNode = null;
+
+    // First: try a node from the user's weak area that's already in-progress
+    if (weakAreas.length > 0) {
+      nextNode = unmasteredNodes.find(n => 
+        inProgressIds.has(n.id) &&
+        weakAreas.some(w => 
+          n.unitCode.toLowerCase() === w.toLowerCase() ||
+          n.unitCode.toLowerCase() === w.replace('-', '').toLowerCase()
+        )
+      );
+      // Then: any untouched node from weak areas
+      if (!nextNode) {
+        nextNode = unmasteredNodes.find(n =>
+          weakAreas.some(w => 
+            n.unitCode.toLowerCase() === w.toLowerCase() ||
+            n.unitCode.toLowerCase() === w.replace('-', '').toLowerCase()
+          )
+        );
+      }
+    }
+    
+    // Fallback: in-progress node, then first untouched
+    if (!nextNode) {
+      nextNode = unmasteredNodes.find(n => inProgressIds.has(n.id)) || unmasteredNodes[0];
+    }
 
     if (!nextNode) return null;
+
+    // Get streak
+    const streakDays = await getUserCurrentStreak(userId);
 
     // Resolve unit name
     const unit = ATP_UNITS.find(u => 
@@ -435,6 +486,10 @@ async function getUserNextStudyInfo(userId: string): Promise<{
         mastered: masteredIds.size,
         total: allNodes.length,
       },
+      weakAreas,
+      streakDays,
+      examPath,
+      lastStudiedTopic,
     };
   } catch (err) {
     console.error('[notification] Failed to get user study info:', err);
@@ -598,8 +653,17 @@ export async function processReminderTick(): Promise<{
 
     const unitName = studyInfo?.unitName || 'Your next unit';
     const topicName = studyInfo?.topicName || 'Continue where you left off';
+    const streakInfo = studyInfo?.streakDays 
+      ? `🔥 ${studyInfo.streakDays}-day streak` 
+      : '';
+    const weakAreasInfo = studyInfo?.weakAreas?.length 
+      ? `Focus areas: ${studyInfo.weakAreas.join(', ')}` 
+      : '';
+    const lastStudiedInfo = studyInfo?.lastStudiedTopic 
+      ? `Last studied: ${studyInfo.lastStudiedTopic}` 
+      : '';
     const progressSection = studyInfo?.progress
-      ? `<p style="color: #6b7280; font-size: 13px; margin: 12px 0;">📊 Progress: <strong>${studyInfo.progress.mastered}</strong> of <strong>${studyInfo.progress.total}</strong> topics mastered (${studyInfo.progress.total > 0 ? Math.round((studyInfo.progress.mastered / studyInfo.progress.total) * 100) : 0}%)</p>`
+      ? `<p style="color: #6b7280; font-size: 13px; margin: 12px 0;">📊 Progress: <strong>${studyInfo.progress.mastered}</strong> of <strong>${studyInfo.progress.total}</strong> topics mastered (${studyInfo.progress.total > 0 ? Math.round((studyInfo.progress.mastered / studyInfo.progress.total) * 100) : 0}%)${streakInfo ? ` · ${streakInfo}` : ''}</p>`
       : '';
 
     // Send email reminder
@@ -607,17 +671,22 @@ export async function processReminderTick(): Promise<{
       unitName,
       sessionTopic: topicName,
       estimatedMinutes: '25',
-      sessionUrl: `${appUrl}/dashboard`,
+      sessionUrl: `${appUrl}/mastery`,
       progressSection,
+      streakDays: String(studyInfo?.streakDays || 0),
+      weakAreas: weakAreasInfo,
+      lastStudied: lastStudiedInfo,
+      examPath: studyInfo?.examPath || '',
+      userName: user.displayName || 'Student',
     });
     if (emailResult.success) emailsSent++;
 
     // Send push notification
     const pushResult = await sendPushNotification(user.userId, {
       title: `📚 ${unitName}`,
-      body: `Today's topic: ${topicName}`,
+      body: `Today's topic: ${topicName}${studyInfo?.streakDays ? ` · 🔥 ${studyInfo.streakDays}-day streak` : ''}`,
       icon: '/icons/icon-192x192.png',
-      url: '/dashboard',
+      url: '/mastery',
       tag: 'daily-reminder',
     });
     if (pushResult.success) pushSent += pushResult.sent;

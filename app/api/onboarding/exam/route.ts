@@ -184,6 +184,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Primary check: users.onboardingCompleted flag (set by /api/onboarding POST)
+    // This is the ONLY gate — once the profile survey is done, never force full re-onboarding.
     if (!user.onboardingCompleted) {
       return NextResponse.json({
         examOnboardingComplete: false,
@@ -192,7 +193,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Check for exam profile
+    // Check for exam profile (optional — not required for onboarding completion)
     const [result] = await db.select({
       profile: userExamProfiles,
       cycle: examCycles,
@@ -203,10 +204,15 @@ export async function GET(req: NextRequest) {
       .limit(1);
 
     if (!result) {
+      // User completed profile onboarding but hasn't selected exam track yet.
+      // Do NOT redirect to full onboarding — just return minimal success.
       return NextResponse.json({
-        examOnboardingComplete: false,
-        needsOnboarding: true,
-        message: 'Please select your exam track (First-time or Resit)',
+        examOnboardingComplete: true,
+        needsOnboarding: false,
+        profile: null,
+        cycle: null,
+        countdown: null,
+        message: 'Profile complete. Exam track not yet selected.',
       });
     }
 

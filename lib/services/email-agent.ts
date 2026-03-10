@@ -174,7 +174,12 @@ CONTEXT:
 - Today's topic: ${d.sessionTopic}
 - Estimated session time: ~${d.estimatedMinutes || 25} minutes
 - ${d.progressSection ? `Progress info: ${d.progressSection}` : 'No progress data available'}
+- ${d.streakDays && d.streakDays !== '0' ? `Current streak: ${d.streakDays} consecutive study days` : 'No active study streak'}
+- ${d.weakAreas || 'No specific weak areas identified'}
+- ${d.lastStudied || 'First session'}
+- ${d.examPath ? `Exam track: ${d.examPath === 'APRIL_2026' ? 'April 2026 Resit' : 'November 2026 First-Time'}` : ''}
 - CTA button should link to: ${d.sessionUrl || baseUrl}
+- CRITICAL: Make this email UNIQUE to this specific student. Reference their name, their specific topic, their streak, and their progress numbers. Never use generic filler text.
 - Keep it short and action-oriented — they should feel pulled to start studying`;
 
     case 'MISSED_DAY':

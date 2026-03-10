@@ -138,13 +138,21 @@ export class MasteryOrchestrator {
 
         if (isPathA) {
             // PATH A: Surgical Strike — Only failed units, ALL unmastered nodes
-            const targetedNodes = syllabus.filter(node => 
-                failedUnits.some(f => 
-                    node.unitCode.toLowerCase() === f.toLowerCase() ||
-                    node.unitCode.toLowerCase() === f.replace('-', '').toLowerCase() ||
-                    node.unitCode.toLowerCase().replace(' ', '') === f.toLowerCase().replace('-', '')
-                ) && !masteredNodeIds.has(node.id)
-            );
+            // Fallback: if no weak areas specified, include ALL unmastered nodes (don't return empty queue)
+            const hasWeakAreas = failedUnits.length > 0;
+            const targetedNodes = hasWeakAreas
+                ? syllabus.filter(node => 
+                    failedUnits.some(f => 
+                        node.unitCode.toLowerCase() === f.toLowerCase() ||
+                        node.unitCode.toLowerCase() === f.replace('-', '').toLowerCase() ||
+                        node.unitCode.toLowerCase().replace(' ', '') === f.toLowerCase().replace('-', '')
+                    ) && !masteredNodeIds.has(node.id)
+                  )
+                : syllabus.filter(node => !masteredNodeIds.has(node.id)); // No weak areas → all unmastered
+            
+            if (!hasWeakAreas) {
+                console.log(`[MasteryOrchestrator] Path A but no weak areas specified — falling back to all ${targetedNodes.length} unmastered nodes`);
+            }
             
             // Sort: high-yield + drafting first, then by week
             const criticalNodes = targetedNodes.filter(n => n.isHighYield || n.isDraftingNode);

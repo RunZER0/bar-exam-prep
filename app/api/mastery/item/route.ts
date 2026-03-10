@@ -11,6 +11,7 @@ import { users } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import OpenAI from 'openai';
+import { ASSESSMENT_MODEL } from '@/lib/ai/model-config';
 
 interface ItemData {
   id: string;
@@ -282,7 +283,7 @@ This is a learning exercise, so ensure it tests understanding of the core princi
 
   try {
     const response = await openai.responses.create({
-      model: 'gpt-5.2',
+      model: ASSESSMENT_MODEL,
       instructions: systemPrompt,
       input: userPrompt,
     });

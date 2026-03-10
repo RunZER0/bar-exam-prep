@@ -9,6 +9,7 @@
 
 import OpenAI from 'openai';
 import { z } from 'zod';
+import { GRADING_MODEL } from '@/lib/ai/model-config';
 import { 
   WRITTEN_RUBRIC_DIMENSIONS, 
   ORAL_RUBRIC_DIMENSIONS, 
@@ -266,8 +267,6 @@ const getOpenAI = () => {
   }
   return _openai;
 };
-
-const GRADING_MODEL = process.env.GRADING_MODEL || 'gpt-5.2';
 
 /**
  * Grade a written response

@@ -565,7 +565,7 @@ async function generateCaseAnalysis(caseInfo: { title: string; citation?: string
         { role: 'user', content: prompt },
       ],
       temperature: 0.3,
-      max_tokens: 1500,
+      max_completion_tokens: 1500,
     });
 
     const text = completion.choices[0]?.message?.content?.trim() || '{}';

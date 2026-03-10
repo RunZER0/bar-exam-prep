@@ -21,6 +21,7 @@ import {
   type FeatureKey,
   WEEKLY_LIMITS,
   CUSTOM_WEEKLY_LIMIT,
+  FREE_TRIAL_DAILY_LIMIT,
   CLARIFY_MODEL,
   isPremiumFeature,
   getWeekStart,
@@ -128,10 +129,11 @@ export async function getSubscriptionInfo(userId: string): Promise<SubscriptionI
     daysRemaining = Math.ceil((subscriptionEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   }
 
-  // Get weekly feature usage
+  // Get weekly feature usage (paid users) or daily usage (trial users)
   const weekStart = getWeekStart(now);
   const weeklyUsage = await getWeeklyUsage(userId, weekStart);
   const addonCounts = await getAddonRemaining(userId);
+  const dailyUsage = isTrial ? await getDailyUsage(userId, now) : {};
 
   // Build per-feature usage info
   const premiumFeatures: PremiumFeature[] = ['drafting', 'oral_exam', 'oral_devil', 'cle_exam', 'research', 'clarify'];
@@ -147,16 +149,20 @@ export async function getSubscriptionInfo(userId: string): Promise<SubscriptionI
 
   for (const feature of premiumFeatures) {
     let limit: number;
+    let used: number;
+
     if (isTrial) {
-      limit = WEEKLY_LIMITS.free_trial[feature];
+      // Trial users: 2 sessions per feature PER DAY
+      limit = FREE_TRIAL_DAILY_LIMIT;
+      used = dailyUsage[feature] ?? 0;
     } else if (tier === 'custom') {
       limit = userCustomFeatures.includes(feature) ? CUSTOM_WEEKLY_LIMIT : 0;
+      used = weeklyUsage[feature] ?? 0;
     } else {
       limit = WEEKLY_LIMITS[tier]?.[feature] ?? 0;
+      used = weeklyUsage[feature] ?? 0;
     }
-    const used = isTrial
-      ? getTrialUsage(user, feature)
-      : (weeklyUsage[feature] ?? 0);
+
     const addonRemaining = addonCounts[feature] ?? 0;
     const canUse = (used < limit) || (addonRemaining > 0);
 
@@ -228,9 +234,16 @@ export async function incrementFeatureUsage(
   const tier = (user?.subscriptionTier || 'free_trial') as SubscriptionTier;
 
   if (tier === 'free_trial') {
-    // Use legacy trial counters
-    await incrementTrialUsage(userId, feature);
-    return { success: true, usedAddon: false };
+    // Trial user → use daily feature_usage table (2 per feature per day)
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const dailyUsage = await getDailyUsage(userId, new Date());
+    const currentCount = dailyUsage[feature] ?? 0;
+    if (currentCount < FREE_TRIAL_DAILY_LIMIT) {
+      await upsertDailyUsage(userId, feature, today);
+      return { success: true, usedAddon: false };
+    }
+    return { success: false, usedAddon: false };
   }
 
   // Paid user → use feature_usage table
@@ -432,6 +445,38 @@ async function upsertWeeklyUsage(userId: string, feature: string, weekStart: Dat
   await db.execute(
     sql`INSERT INTO feature_usage (user_id, feature, week_start, usage_count, created_at, updated_at)
         VALUES (${userId}, ${feature}, ${weekStart}, 1, NOW(), NOW())
+        ON CONFLICT (user_id, feature, week_start)
+        DO UPDATE SET usage_count = feature_usage.usage_count + 1, updated_at = NOW()`
+  );
+}
+
+/**
+ * Get daily feature usage for trial users.
+ * Uses the same feature_usage table but with a day-level granularity.
+ * The week_start column stores the start-of-day for daily tracking.
+ */
+async function getDailyUsage(userId: string, now: Date): Promise<Record<string, number>> {
+  const startOfDay = new Date(now);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+
+  const rows = await db.query.featureUsage.findMany({
+    where: and(
+      eq(featureUsage.userId, userId),
+      eq(featureUsage.weekStart, startOfDay),
+    ),
+  });
+
+  const result: Record<string, number> = {};
+  for (const row of rows) {
+    result[row.feature] = row.usageCount;
+  }
+  return result;
+}
+
+async function upsertDailyUsage(userId: string, feature: string, startOfDay: Date) {
+  await db.execute(
+    sql`INSERT INTO feature_usage (user_id, feature, week_start, usage_count, created_at, updated_at)
+        VALUES (${userId}, ${feature}, ${startOfDay}, 1, NOW(), NOW())
         ON CONFLICT (user_id, feature, week_start)
         DO UPDATE SET usage_count = feature_usage.usage_count + 1, updated_at = NOW()`
   );

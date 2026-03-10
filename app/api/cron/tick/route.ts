@@ -66,16 +66,40 @@ export async function GET(request: Request) {
     const startTime = Date.now();
 
     // 1. Process daily reminders (personalized with AI-planned units)
-    const reminderResult = await processReminderTick();
+    let reminderResult: { processed: number; emailsSent: number; pushSent: number; error?: string } = { processed: 0, emailsSent: 0, pushSent: 0 };
+    try {
+      reminderResult = await processReminderTick();
+    } catch (e) {
+      console.error('[cron/tick] processReminderTick failed:', e);
+      reminderResult.error = e instanceof Error ? e.message : 'Unknown error';
+    }
 
     // 2. Process weekly reports (idempotent — only sends once per week per user)
-    const weeklyResult = await processWeeklyReports();
+    let weeklyResult: { processed: number; emailsSent: number; error?: string } = { processed: 0, emailsSent: 0 };
+    try {
+      weeklyResult = await processWeeklyReports();
+    } catch (e) {
+      console.error('[cron/tick] processWeeklyReports failed:', e);
+      weeklyResult.error = e instanceof Error ? e.message : 'Unknown error';
+    }
 
     // 3. Process fun fact emails (only on Wednesdays & Saturdays, max once/week)
-    const funFactResult = await processFunFactEmails();
+    let funFactResult: { processed: number; emailsSent: number; error?: string } = { processed: 0, emailsSent: 0 };
+    try {
+      funFactResult = await processFunFactEmails();
+    } catch (e) {
+      console.error('[cron/tick] processFunFactEmails failed:', e);
+      funFactResult.error = e instanceof Error ? e.message : 'Unknown error';
+    }
 
     // 4. Check for expiring trials and send warning emails (event-driven)
-    const trialExpiryResult = await processTrialExpiryCheck();
+    let trialExpiryResult: { processed: number; emailsSent: number; error?: string } = { processed: 0, emailsSent: 0 };
+    try {
+      trialExpiryResult = await processTrialExpiryCheck();
+    } catch (e) {
+      console.error('[cron/tick] processTrialExpiryCheck failed:', e);
+      trialExpiryResult.error = e instanceof Error ? e.message : 'Unknown error';
+    }
 
     const duration = Date.now() - startTime;
 

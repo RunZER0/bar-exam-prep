@@ -369,7 +369,7 @@ export default function SubscribePage() {
                               </span>
                               {feature === 'clarify' && tier === 'premium' && (
                                 <span className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">
-                                  GPT-5.2
+                                  Advanced AI
                                 </span>
                               )}
                             </div>
@@ -544,10 +544,10 @@ export default function SubscribePage() {
                         </tr>
                       ))}
                       <tr className="bg-muted/20">
-                        <td className="p-3 font-medium">Clarify AI Model</td>
-                        <td className="text-center p-3 text-xs text-muted-foreground">GPT-4o Mini</td>
-                        <td className="text-center p-3 text-xs text-muted-foreground">GPT-4o Mini</td>
-                        <td className="text-center p-3 text-xs font-semibold text-amber-600 dark:text-amber-400">GPT-5.2</td>
+                        <td className="p-3 font-medium">Clarify AI Quality</td>
+                        <td className="text-center p-3 text-xs text-muted-foreground">Standard</td>
+                        <td className="text-center p-3 text-xs text-muted-foreground">Standard</td>
+                        <td className="text-center p-3 text-xs font-semibold text-amber-600 dark:text-amber-400">Advanced</td>
                       </tr>
                     </tbody>
                   </table>

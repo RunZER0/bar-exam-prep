@@ -172,7 +172,7 @@ export default function PricingPage() {
                         <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                         <span>{limits[feature]} {fMeta.label}</span>
                         {feature === 'clarify' && tier === 'premium' && (
-                          <span className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">GPT-5.2</span>
+                          <span className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">Advanced AI</span>
                         )}
                       </div>
                     );
@@ -370,11 +370,11 @@ export default function PricingPage() {
                   </tr>
                 ))}
                 <tr className="bg-muted/20">
-                  <td className="p-3 font-medium">Clarify AI Model</td>
-                  <td className="text-center p-3 text-xs text-muted-foreground">GPT-4o Mini</td>
-                  <td className="text-center p-3 text-xs text-muted-foreground">GPT-4o Mini</td>
-                  <td className="text-center p-3 text-xs font-semibold text-amber-600 dark:text-amber-400">GPT-5.2</td>
-                  <td className="text-center p-3 text-xs text-muted-foreground">GPT-4o Mini</td>
+                  <td className="p-3 font-medium">Clarify AI Quality</td>
+                  <td className="text-center p-3 text-xs text-muted-foreground">Standard</td>
+                  <td className="text-center p-3 text-xs text-muted-foreground">Standard</td>
+                  <td className="text-center p-3 text-xs font-semibold text-amber-600 dark:text-amber-400">Advanced</td>
+                  <td className="text-center p-3 text-xs text-muted-foreground">Standard</td>
                 </tr>
                 <tr className="bg-muted/20">
                   <td className="p-3 font-medium">Add-on Passes</td>

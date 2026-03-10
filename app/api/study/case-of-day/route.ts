@@ -683,21 +683,42 @@ async function handleGet(req: NextRequest, user: AuthUser) {
 
   // Auto-generate today's case if it doesn't exist
   if (date === today) {
-    await ensureTodaysCase(today);
+    try {
+      await ensureTodaysCase(today);
+    } catch (seedError) {
+      console.error('[CaseOfDay] ensureTodaysCase failed — falling back to latest:', seedError);
+      // Don't crash — we'll still try to serve whatever is available
+    }
   }
 
-  const [caseOfDay] = await sql`
-    SELECT * FROM case_of_the_day WHERE date = ${date}
-  `;
-
-  if (!caseOfDay) {
-    const [latest] = await sql`
-      SELECT * FROM case_of_the_day ORDER BY date DESC LIMIT 1
+  try {
+    const [caseOfDay] = await sql`
+      SELECT * FROM case_of_the_day WHERE date = ${date}
     `;
-    return NextResponse.json({ case: latest || null, isFallback: true });
-  }
 
-  return NextResponse.json({ case: caseOfDay, isFallback: false });
+    if (!caseOfDay) {
+      const [latest] = await sql`
+        SELECT * FROM case_of_the_day ORDER BY date DESC LIMIT 1
+      `;
+      return NextResponse.json({ case: latest || null, isFallback: true });
+    }
+
+    return NextResponse.json({ case: caseOfDay, isFallback: false });
+  } catch (queryError) {
+    console.error('[CaseOfDay] DB query failed — returning inline fallback:', queryError);
+
+    // Return an inline fallback case so the user always sees something
+    const dayIndex = Math.floor(new Date(today).getTime() / 86400000) % LANDMARK_CASES.length;
+    const fallback = LANDMARK_CASES[dayIndex];
+    return NextResponse.json({
+      case: {
+        id: 'inline-fallback',
+        date: today,
+        ...fallback,
+      },
+      isFallback: true,
+    });
+  }
 }
 
 export const GET = withAuth(handleGet);

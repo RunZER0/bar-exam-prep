@@ -58,12 +58,12 @@ export const TIER_PRICES: Record<Exclude<SubscriptionTier, 'custom'>, Record<Bil
 // 0 = not available
 export const WEEKLY_LIMITS: Record<Exclude<SubscriptionTier, 'custom'>, Record<PremiumFeature, number>> = {
   free_trial: {
-    drafting:   3,
+    drafting:   2,
     oral_exam:  2,
     oral_devil: 2,
-    cle_exam:   0,
-    research:   0,
-    clarify:    0,
+    cle_exam:   2,
+    research:   2,
+    clarify:    2,
   },
   light: {
     drafting:   3,
@@ -90,6 +90,10 @@ export const WEEKLY_LIMITS: Record<Exclude<SubscriptionTier, 'custom'>, Record<P
     clarify:    6,
   },
 };
+
+// ── Free Trial Daily Limit ──
+// Trial users get this many sessions of EACH premium feature PER DAY (not weekly)
+export const FREE_TRIAL_DAILY_LIMIT = 2;
 
 // ── Drafting Daily Attempt Cap ──
 // Each document gets this many attempts with feedback PER DAY (not rolling)
@@ -126,20 +130,46 @@ export const ADDON_PACKS: { id: string; name: string; feature: PremiumFeature; q
   { id: 'clarify_5',    name: '5 Extra Clarifications',    feature: 'clarify',    quantity: 5, price: 200 },
 ];
 
-// ── Custom Package: Per-Feature Prices (KES) ──
-// Users pick individual premium features; basic features always included.
-// Limits match Light tier (3/week per feature).
-export const CUSTOM_FEATURE_PRICES: Record<PremiumFeature, Record<BillingPeriod, number>> = {
-  drafting:   { weekly: 120, monthly: 350,  annual: 2_800 },
-  oral_exam:  { weekly: 100, monthly: 300,  annual: 2_400 },
-  oral_devil: { weekly: 100, monthly: 300,  annual: 2_400 },
-  cle_exam:   { weekly: 85,  monthly: 250,  annual: 2_000 },
-  research:   { weekly: 100, monthly: 300,  annual: 2_400 },
-  clarify:    { weekly: 70,  monthly: 200,  annual: 1_600 },
+// ── Custom Package: Per-Session Prices (KES) ──
+// Users pick which features, how many sessions per week, and for how long.
+// Price = per-session cost × sessions/week × weeks
+export const CUSTOM_PER_SESSION_PRICE: Record<PremiumFeature, number> = {
+  drafting:   40,
+  oral_exam:  35,
+  oral_devil: 35,
+  cle_exam:   30,
+  research:   35,
+  clarify:    25,
 };
 
-// Custom package limits = Light-tier limits for selected features
+// Duration options available for custom packages
+export const CUSTOM_DURATION_OPTIONS: { id: string; label: string; weeks: number; discount: number }[] = [
+  { id: '1w', label: '1 Week', weeks: 1, discount: 0 },
+  { id: '2w', label: '2 Weeks', weeks: 2, discount: 0 },
+  { id: '1m', label: '1 Month', weeks: 4, discount: 0.05 },
+  { id: '2m', label: '2 Months', weeks: 8, discount: 0.10 },
+  { id: '3m', label: '3 Months', weeks: 12, discount: 0.15 },
+];
+
+// Min/max sessions per week per feature
+export const CUSTOM_MIN_SESSIONS = 1;
+export const CUSTOM_MAX_SESSIONS = 50;
+
+// Legacy: still used by some code that only needs a default custom limit
 export const CUSTOM_WEEKLY_LIMIT = 3;
+
+// ── Legacy: CUSTOM_FEATURE_PRICES (backward compat) ──
+// Computed from per-session price × CUSTOM_WEEKLY_LIMIT sessions per week.
+// weekly = perSession × CUSTOM_WEEKLY_LIMIT, monthly = weekly × 3, annual = monthly × 8
+function buildLegacyCustomPrices(): Record<PremiumFeature, Record<BillingPeriod, number>> {
+  const result = {} as Record<PremiumFeature, Record<BillingPeriod, number>>;
+  for (const f of PREMIUM_FEATURES) {
+    const weekly = CUSTOM_PER_SESSION_PRICE[f] * CUSTOM_WEEKLY_LIMIT;
+    result[f] = { weekly, monthly: weekly * 3, annual: weekly * 3 * 8 };
+  }
+  return result;
+}
+export const CUSTOM_FEATURE_PRICES: Record<PremiumFeature, Record<BillingPeriod, number>> = buildLegacyCustomPrices();
 
 // ── Feature Display Metadata ──
 export const PREMIUM_FEATURE_META: Record<PremiumFeature, { label: string; emoji: string; description: string; route: string }> = {
@@ -255,14 +285,36 @@ export function getWeeklyLimit(
   tier: SubscriptionTier,
   feature: PremiumFeature,
   customFeatures?: PremiumFeature[],
+  customSessionsPerWeek?: Record<PremiumFeature, number>,
 ): number {
   if (tier === 'custom') {
-    return customFeatures?.includes(feature) ? CUSTOM_WEEKLY_LIMIT : 0;
+    if (!customFeatures?.includes(feature)) return 0;
+    return customSessionsPerWeek?.[feature] ?? CUSTOM_WEEKLY_LIMIT;
   }
   return WEEKLY_LIMITS[tier]?.[feature] ?? 0;
 }
 
 // ── Helper: Calculate total custom package price ──
+// Flexible formula: per-session cost × sessions/week × weeks × (1 - discount)
+export interface CustomPackageSelection {
+  feature: PremiumFeature;
+  sessionsPerWeek: number;
+}
+
+export function calculateCustomPackagePrice(
+  selections: CustomPackageSelection[],
+  durationWeeks: number,
+  discountPercent: number = 0,
+): number {
+  const subtotal = selections.reduce((sum, s) => {
+    const perSession = CUSTOM_PER_SESSION_PRICE[s.feature] || 0;
+    return sum + (perSession * s.sessionsPerWeek * durationWeeks);
+  }, 0);
+  return Math.round(subtotal * (1 - discountPercent));
+}
+
+// ── Legacy: Calculate custom price from feature list + billing period ──
+// (backward compat — used by pricing page, subscribe page, payments API)
 export function calculateCustomPrice(
   features: PremiumFeature[],
   period: BillingPeriod,

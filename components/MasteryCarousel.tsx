@@ -177,7 +177,7 @@ function StatutePanel({ citation, onClose, getIdToken }: { citation: ParsedCitat
                         message: citation.type === 'case'
                             ? `You are a Kenyan legal reference tool. The user clicked on this case citation: "${citation.fullMatch}".\n\nProvide:\n1. Full case name, court, and citation\n2. Brief facts (2-3 sentences)\n3. The key legal issue(s)\n4. The holding/ratio decidendi - what the court decided and why\n5. The principle of law established\n\nBe concise and accurate. If you are unsure of the exact details, state that clearly.`
                             : `You are a Kenyan legal reference tool. The user clicked on this citation: "${citation.fullMatch}".\n\nProvide the VERBATIM text of this statutory provision as it appears in Kenyan law:\n1. Full title of the Act/Regulation\n2. The specific Part/Section heading\n3. The verbatim section text with all sub-sections numbered (1),(2),(a),(b),(i),(ii)\n4. If you do not have the exact verbatim text, give the closest accurate paraphrase and note that.\n\nUse proper legal formatting.`,
-                        intent: 'study',
+                        competencyType: 'clarification',
                     }),
                 });
                 if (!res.ok) throw new Error();
@@ -876,7 +876,7 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
             const res = await fetch('/api/ai/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ message: `Rephrase the following legal text in simpler, clearer language while preserving all legal accuracy and meaning. Return ONLY the rephrased text.\n\n"${selectedText}"`, intent: 'study' }),
+                body: JSON.stringify({ message: `Rephrase the following legal text in simpler, clearer language while preserving all legal accuracy and meaning. Return ONLY the rephrased text.\n\n"${selectedText}"`, competencyType: 'clarification' }),
             });
             if (res.ok) {
                 const data = await res.json();

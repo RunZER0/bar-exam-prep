@@ -172,7 +172,7 @@ export function StatutePanel({ citation, onClose, getIdToken }: { citation: Pars
                         message: citation.type === 'case'
                             ? `You are a Kenyan legal reference tool. The user clicked on this case citation: "${citation.fullMatch}".\n\nProvide:\n1. Full case name, court, and citation\n2. Brief facts (2-3 sentences)\n3. The key legal issue(s)\n4. The holding/ratio decidendi\n5. The principle of law established\n\nBe concise and accurate.`
                             : `You are a Kenyan legal reference tool. The user clicked on this citation: "${citation.fullMatch}".\n\nProvide the VERBATIM text of this statutory provision as it appears in Kenyan law:\n1. Full title of the Act/Regulation\n2. The specific Part/Section heading\n3. The verbatim section text with all sub-sections\n4. If you do not have the exact verbatim text, note that.\n\nUse proper legal formatting.`,
-                        intent: 'study',
+                        competencyType: 'clarification',
                     }),
                 });
                 if (!res.ok) throw new Error();

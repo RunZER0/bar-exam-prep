@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { communityEvents, eventParticipants, users, weeklyRankings } from '@/lib/db/schema';
 import { eq, desc, and, count, gte, lte, sql } from 'drizzle-orm';
-import { verifyIdToken } from '@/lib/firebase/admin';
+import { verifyAuth, type AuthUser } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
 import { MINI_MODEL } from '@/lib/ai/model-config';
 
@@ -354,16 +354,9 @@ Respond in JSON only.`,
    ================================================================ */
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('Authorization');
-    let userId: string | null = null;
-
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      try {
-        const decodedToken = await verifyIdToken(token);
-        userId = decodedToken.uid;
-      } catch {}
-    }
+    // Use verifyAuth to get the DB UUID (not Firebase UID)
+    const authUser = await verifyAuth(req);
+    const userId: string | null = authUser?.id || null;
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
@@ -376,9 +369,26 @@ export async function GET(req: NextRequest) {
       _generatingDate = null; // Allow retry
     });
 
-    // Fetch all non-rejected events
+    // Fetch all non-rejected events — explicit column selection to avoid
+    // crashing if production DB is missing newer columns
     let allEvents = await db
-      .select()
+      .select({
+        id: communityEvents.id,
+        title: communityEvents.title,
+        description: communityEvents.description,
+        type: communityEvents.type,
+        status: communityEvents.status,
+        unitId: communityEvents.unitId,
+        rewards: communityEvents.rewards,
+        startsAt: communityEvents.startsAt,
+        endsAt: communityEvents.endsAt,
+        createdById: communityEvents.createdById,
+        isAgentCreated: communityEvents.isAgentCreated,
+        submitterName: communityEvents.submitterName,
+        reviewStatus: communityEvents.reviewStatus,
+        challengeContent: communityEvents.challengeContent,
+        createdAt: communityEvents.createdAt,
+      })
       .from(communityEvents)
       .orderBy(desc(communityEvents.createdAt));
 
@@ -399,7 +409,7 @@ export async function GET(req: NextRequest) {
       let isJoined = false;
       if (userId) {
         const participation = await db
-          .select()
+          .select({ id: eventParticipants.id })
           .from(eventParticipants)
           .where(and(
             eq(eventParticipants.eventId, event.id),
@@ -453,14 +463,12 @@ export async function GET(req: NextRequest) {
    ================================================================ */
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Use verifyAuth to get the DB UUID (not Firebase UID)
+    const authUser = await verifyAuth(req);
+    if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const token = authHeader.substring(7);
-    const decodedToken = await verifyIdToken(token);
-    const userId = decodedToken.uid;
+    const userId = authUser.id;
 
     const body = await req.json();
     const { action, eventId, score } = body;
@@ -472,12 +480,19 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Event ID and answers required' }, { status: 400 });
       }
 
-      const [event] = await db.select().from(communityEvents)
+      const [event] = await db.select({
+        id: communityEvents.id,
+        challengeContent: communityEvents.challengeContent,
+        status: communityEvents.status,
+      }).from(communityEvents)
         .where(eq(communityEvents.id, eventId)).limit(1);
       if (!event) return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
 
       // Must be a participant
-      const [participation] = await db.select().from(eventParticipants)
+      const [participation] = await db.select({
+        id: eventParticipants.id,
+        score: eventParticipants.score,
+      }).from(eventParticipants)
         .where(and(eq(eventParticipants.eventId, eventId), eq(eventParticipants.userId, userId))).limit(1);
       if (!participation) return NextResponse.json({ error: 'You must join the challenge first' }, { status: 400 });
 
@@ -624,7 +639,7 @@ Respond in JSON: {"grades": [{"questionNumber": 1, "pointsEarned": 7, "feedback"
         const weekEndDate = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
         const weekEndStr = weekEndDate.toISOString().split('T')[0];
 
-        const [existingRanking] = await db.select().from(weeklyRankings)
+        const [existingRanking] = await db.select({ id: weeklyRankings.id }).from(weeklyRankings)
           .where(and(eq(weeklyRankings.userId, userId), eq(weeklyRankings.weekStart, weekStartStr))).limit(1);
 
         if (existingRanking) {
@@ -646,7 +661,7 @@ Respond in JSON: {"grades": [{"questionNumber": 1, "pointsEarned": 7, "feedback"
         }
 
         // Recalculate ranks for the week
-        const allRankings = await db.select().from(weeklyRankings)
+        const allRankings = await db.select({ id: weeklyRankings.id, totalPoints: weeklyRankings.totalPoints }).from(weeklyRankings)
           .where(eq(weeklyRankings.weekStart, weekStartStr))
           .orderBy(desc(weeklyRankings.totalPoints));
 
@@ -738,7 +753,10 @@ Respond in JSON: {"grades": [{"questionNumber": 1, "pointsEarned": 7, "feedback"
     }
 
     const [event] = await db
-      .select().from(communityEvents)
+      .select({
+        id: communityEvents.id,
+        status: communityEvents.status,
+      }).from(communityEvents)
       .where(eq(communityEvents.id, eventId)).limit(1);
 
     if (!event) {
@@ -749,7 +767,7 @@ Respond in JSON: {"grades": [{"questionNumber": 1, "pointsEarned": 7, "feedback"
       if (event.status === 'completed') {
         return NextResponse.json({ error: 'Cannot join completed event' }, { status: 400 });
       }
-      const existing = await db.select().from(eventParticipants)
+      const existing = await db.select({ id: eventParticipants.id }).from(eventParticipants)
         .where(and(eq(eventParticipants.eventId, eventId), eq(eventParticipants.userId, userId))).limit(1);
       if (existing.length > 0) return NextResponse.json({ message: 'Already participating' });
 
@@ -760,7 +778,7 @@ Respond in JSON: {"grades": [{"questionNumber": 1, "pointsEarned": 7, "feedback"
     }
 
     if (action === 'submit') {
-      const [participation] = await db.select().from(eventParticipants)
+      const [participation] = await db.select({ id: eventParticipants.id }).from(eventParticipants)
         .where(and(eq(eventParticipants.eventId, eventId), eq(eventParticipants.userId, userId))).limit(1);
       if (!participation) return NextResponse.json({ error: 'Must join event first' }, { status: 400 });
 

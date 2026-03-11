@@ -117,6 +117,18 @@ SET trial_ends_at = created_at + INTERVAL '3 days'
 WHERE trial_ends_at IS NULL;
     `
   },
+  {
+    name: '0012_community_events_columns.sql',
+    sql: `
+-- Add missing columns to community_events that were applied locally via drizzle-kit push
+-- but never migrated to production.
+ALTER TABLE community_events ADD COLUMN IF NOT EXISTS is_agent_created BOOLEAN DEFAULT false NOT NULL;
+ALTER TABLE community_events ADD COLUMN IF NOT EXISTS submitter_name TEXT;
+ALTER TABLE community_events ADD COLUMN IF NOT EXISTS review_status TEXT DEFAULT 'approved';
+ALTER TABLE community_events ADD COLUMN IF NOT EXISTS review_feedback TEXT;
+ALTER TABLE community_events ADD COLUMN IF NOT EXISTS challenge_content JSONB;
+    `
+  },
 ];
 
 async function main() {

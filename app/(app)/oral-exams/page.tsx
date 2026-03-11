@@ -368,7 +368,14 @@ export default function OralExamsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) {
+      let errData: any = {};
+      try { errData = await res.json(); } catch { errData = { error: await res.text().catch(() => 'Request failed') }; }
+      const err: any = new Error(errData.message || errData.error || `Request failed (${res.status})`);
+      err.status = res.status;
+      err.data = errData;
+      throw err;
+    }
     return res.json();
   }, [authFetch]);
 
@@ -505,13 +512,40 @@ export default function OralExamsPage() {
     setMessages(updatedMessages);
     setTextInput('');
 
+    // Helper: check 403 feature-limit from response data
+    const handleFeatureLimit = (errData: any) => {
+      if (errData?.error === 'FREE_TRIAL_LIMIT' || errData?.error === 'FEATURE_LIMIT') {
+        const feat = examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam';
+        setTrialLimitFeature({ feature: feat as any, tier: errData.tier, used: errData.used, limit: errData.limit, addonRemaining: errData.addonRemaining });
+        return true;
+      }
+      return false;
+    };
+
+    // Helper: process a successful AI response (non-streaming or fallback)
+    const handleAIResponse = async (data: any) => {
+      if (handleFeatureLimit(data)) return;
+      const aiMsg: Message = {
+        id: `a-${Date.now()}`,
+        role: 'assistant',
+        content: data.content,
+        timestamp: new Date(),
+        panelist: data.panelist || undefined,
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      if (data.nextPanelistIndex !== undefined) {
+        setCurrentPanelistIndex(data.nextPanelistIndex);
+      }
+      const voice = data.panelist?.voice || data.voice || 'onyx';
+      await playTTS(data.content, voice);
+    };
+
     try {
-      const payload: any = {
+      const basePayload: any = {
         type: examType,
         mode,
         feedbackMode,
         unitId: selectedUnit || undefined,
-        stream: enableStreaming,
         elapsedMinutes: sessionElapsedSec / 60,
         sessionMaxMinutes: SESSION_MAX_MINUTES,
         messages: updatedMessages.map(m => ({
@@ -522,130 +556,148 @@ export default function OralExamsPage() {
       };
 
       if (examType === 'examiner') {
-        payload.panelistCount = panelistCount;
-        payload.currentPanelistIndex = currentPanelistIndex;
+        basePayload.panelistCount = panelistCount;
+        basePayload.currentPanelistIndex = currentPanelistIndex;
       }
 
+      let streamingSucceeded = false;
+
       if (enableStreaming) {
-        // -------- STREAMING MODE --------
-        setIsStreaming(true);
-        setStreamingContent('');
-        setStreamingPanelist(null);
+        // -------- STREAMING MODE (with auto-fallback) --------
+        try {
+          setIsStreaming(true);
+          setStreamingContent('');
+          setStreamingPanelist(null);
 
-        const token = await getIdToken();
-        const response = await fetch('/api/oral-exams', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
+          const token = await getIdToken();
+          const response = await fetch('/api/oral-exams', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ ...basePayload, stream: true }),
+          });
 
-        if (!response.ok) {
-          // Check for subscription limit error
-          if (response.status === 403) {
-            const errData = await response.json();
-            if (errData.error === 'FREE_TRIAL_LIMIT' || errData.error === 'FEATURE_LIMIT') {
-              const feat = examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam';
-              setTrialLimitFeature({ feature: feat as any, tier: errData.tier, used: errData.used, limit: errData.limit, addonRemaining: errData.addonRemaining });
-              setIsStreaming(false);
-              return;
+          if (!response.ok) {
+            if (response.status === 403) {
+              const errData = await response.json().catch(() => ({}));
+              if (handleFeatureLimit(errData)) { setIsStreaming(false); return; }
             }
+            // Non-403 server error — fall through to non-streaming fallback
+            console.warn('Streaming response failed with status', response.status, '— falling back to non-streaming');
+            throw new Error('FALLBACK');
           }
-          throw new Error('Stream failed');
-        }
-        if (!response.body) throw new Error('No response body');
+          if (!response.body) throw new Error('FALLBACK');
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let fullContent = '';
-        let metadata: any = null;
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let fullContent = '';
+          let metadata: any = null;
+          let streamError: string | null = null;
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                
-                if (data.type === 'metadata') {
-                  metadata = data;
-                  if (data.panelist) setStreamingPanelist(data.panelist);
-                  if (data.nextPanelistIndex !== undefined) {
-                    setCurrentPanelistIndex(data.nextPanelistIndex);
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  
+                  if (data.type === 'metadata') {
+                    metadata = data;
+                    if (data.panelist) setStreamingPanelist(data.panelist);
+                    if (data.nextPanelistIndex !== undefined) {
+                      setCurrentPanelistIndex(data.nextPanelistIndex);
+                    }
                   }
-                }
 
-                if (data.type === 'chunk') {
-                  fullContent += data.content;
-                  setStreamingContent(fullContent);
-                }
-
-                if (data.type === 'done') {
-                  // Stream complete — add final message
-                  const aiMsg: Message = {
-                    id: `a-${Date.now()}`,
-                    role: 'assistant',
-                    content: data.fullContent || fullContent,
-                    timestamp: new Date(),
-                    panelist: metadata?.panelist || undefined,
-                  };
-                  setMessages(prev => [...prev, aiMsg]);
-                  setStreamingContent('');
-                  setStreamingPanelist(null);
-                  setIsStreaming(false);
-
-                  // Play TTS after streaming completes
-                  const voice = metadata?.panelist?.voice || metadata?.voice || 'onyx';
-                  await playTTS(aiMsg.content, voice);
-
-                  // If AI signaled session end, auto-trigger summary
-                  if (metadata?.sessionEnded) {
-                    setTimeout(() => endSessionRef.current(), 2000);
+                  if (data.type === 'chunk') {
+                    fullContent += data.content;
+                    setStreamingContent(fullContent);
                   }
-                }
 
-                if (data.type === 'error') {
-                  throw new Error(data.error);
+                  if (data.type === 'done') {
+                    const aiMsg: Message = {
+                      id: `a-${Date.now()}`,
+                      role: 'assistant',
+                      content: data.fullContent || fullContent,
+                      timestamp: new Date(),
+                      panelist: metadata?.panelist || undefined,
+                    };
+                    setMessages(prev => [...prev, aiMsg]);
+                    setStreamingContent('');
+                    setStreamingPanelist(null);
+                    setIsStreaming(false);
+                    streamingSucceeded = true;
+
+                    const voice = metadata?.panelist?.voice || metadata?.voice || 'onyx';
+                    await playTTS(aiMsg.content, voice);
+
+                    if (metadata?.sessionEnded) {
+                      setTimeout(() => endSessionRef.current(), 2000);
+                    }
+                  }
+
+                  if (data.type === 'error') {
+                    streamError = data.error || 'Stream error';
+                  }
+                } catch {
+                  // Incomplete JSON chunk, continue
                 }
-              } catch (parseErr) {
-                // Incomplete JSON, continue
               }
             }
           }
+
+          // If stream completed but we never got a 'done' event and there IS accumulated content, use it
+          if (!streamingSucceeded && fullContent.trim()) {
+            const aiMsg: Message = {
+              id: `a-${Date.now()}`,
+              role: 'assistant',
+              content: fullContent,
+              timestamp: new Date(),
+              panelist: metadata?.panelist || undefined,
+            };
+            setMessages(prev => [...prev, aiMsg]);
+            streamingSucceeded = true;
+            const voice = metadata?.panelist?.voice || metadata?.voice || 'onyx';
+            await playTTS(aiMsg.content, voice);
+          }
+
+          if (streamError && !streamingSucceeded) {
+            throw new Error('FALLBACK');
+          }
+
+          setIsStreaming(false);
+          setStreamingContent('');
+          setStreamingPanelist(null);
+        } catch (streamErr: any) {
+          // Reset streaming state
+          setIsStreaming(false);
+          setStreamingContent('');
+          setStreamingPanelist(null);
+
+          if (streamErr?.message !== 'FALLBACK') {
+            console.warn('Streaming error, falling back to non-streaming:', streamErr);
+          }
+          // Fall through to non-streaming below
         }
-      } else {
-        // NON-STREAMING MODE (existing)
+      }
+
+      // -------- NON-STREAMING (primary or fallback) --------
+      if (!streamingSucceeded) {
         setIsLoading(true);
-        const data = await authFetchJSON('/api/oral-exams', payload);
-
-        const aiMsg: Message = {
-          id: `a-${Date.now()}`,
-          role: 'assistant',
-          content: data.content,
-          timestamp: new Date(),
-          panelist: data.panelist || undefined,
-        };
-        setMessages(prev => [...prev, aiMsg]);
-
-        if (data.nextPanelistIndex !== undefined) {
-          setCurrentPanelistIndex(data.nextPanelistIndex);
-        }
-
-        // Play TTS
-        const voice = data.panelist?.voice || data.voice || 'onyx';
-        await playTTS(data.content, voice);
+        const data = await authFetchJSON('/api/oral-exams', { ...basePayload, stream: false });
+        await handleAIResponse(data);
         setIsLoading(false);
       }
     } catch (err: any) {
       console.error('Send error:', err);
-      setError('Failed to get response. Please try again.');
+      setError('Connection issue — please try again.');
       setIsLoading(false);
       setIsStreaming(false);
       setStreamingContent('');
@@ -715,13 +767,15 @@ export default function OralExamsPage() {
       await playTTS(data.content, voice);
     } catch (err: any) {
       console.error('Start error:', err);
-      // Handle 403 from authFetchJSON
-      if (err.message?.includes('403') || err.message?.includes('FREE_TRIAL_LIMIT') || err.message?.includes('FEATURE_LIMIT')) {
+      // Handle 403 feature-limit from authFetchJSON (err.data populated by our improved authFetchJSON)
+      const errData = err.data || {};
+      if (err.status === 403 || errData.error === 'FEATURE_LIMIT' || errData.error === 'FREE_TRIAL_LIMIT'
+          || err.message?.includes('FEATURE_LIMIT') || err.message?.includes('FREE_TRIAL_LIMIT')) {
         const feat = examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam';
-        setTrialLimitFeature({ feature: feat as any });
+        setTrialLimitFeature({ feature: feat as any, tier: errData.tier, used: errData.used, limit: errData.limit, addonRemaining: errData.addonRemaining });
         setPhase('setup');
       } else {
-        setError('Failed to start session. Please try again.');
+        setError('Connection issue — please try again.');
       }
       if (autoRecord) await stopSessionRecording();
     } finally {

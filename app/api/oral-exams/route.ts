@@ -491,8 +491,20 @@ Be specific and reference actual moments from the conversation. Keep it conversa
 
     return NextResponse.json({ error: 'Invalid type. Use "devils-advocate" or "examiner".' }, { status: 400 });
   } catch (error: any) {
-    console.error('Oral exam error:', error);
-    return NextResponse.json({ error: 'Failed to process oral exam. Try again.' }, { status: 500 });
+    console.error('Oral exam error:', error?.message || error, error?.status, error?.code);
+    // Surface real error so the client can display something useful
+    const msg = error?.message || 'Unknown server error';
+    const isRateLimit = error?.status === 429 || error?.code === 'rate_limit_exceeded';
+    const isTimeout = msg.includes('timeout') || msg.includes('ETIMEDOUT') || error?.code === 'ETIMEDOUT';
+    const isModelErr = error?.code === 'model_not_found' || msg.includes('does not exist');
+    const friendlyMsg = isRateLimit
+      ? 'AI is momentarily busy — please wait a few seconds and try again.'
+      : isTimeout
+      ? 'The AI took too long to respond. Please try again.'
+      : isModelErr
+      ? 'AI model configuration error — please contact support.'
+      : `AI error: ${msg.slice(0, 120)}`;
+    return NextResponse.json({ error: friendlyMsg, code: error?.code || 'unknown', raw: msg.slice(0, 200) }, { status: isRateLimit ? 429 : 500 });
   }
 }
 

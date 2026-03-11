@@ -68,7 +68,7 @@ export default function OralExamsPage() {
   const [inputMode, setInputMode] = useState<InputMode>('voice');
   const [selectedUnit, setSelectedUnit] = useState<string>('');
   const [panelistCount, setPanelistCount] = useState(3);
-  const [enableStreaming, setEnableStreaming] = useState(true);
+  const [enableStreaming, setEnableStreaming] = useState(false);
   const [autoRecord, setAutoRecord] = useState(true);
 
   // ---- Session state ----
@@ -691,13 +691,38 @@ export default function OralExamsPage() {
       // -------- NON-STREAMING (primary or fallback) --------
       if (!streamingSucceeded) {
         setIsLoading(true);
-        const data = await authFetchJSON('/api/oral-exams', { ...basePayload, stream: false });
-        await handleAIResponse(data);
+
+        // Retry logic: try up to 2 times with a short delay
+        let lastErr: any = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const data = await authFetchJSON('/api/oral-exams', { ...basePayload, stream: false });
+            await handleAIResponse(data);
+            lastErr = null;
+            break;
+          } catch (retryErr: any) {
+            lastErr = retryErr;
+            console.warn(`Oral exam attempt ${attempt + 1} failed:`, retryErr?.data?.error || retryErr?.message);
+            // If it's a 403 feature limit, don't retry
+            const errData = retryErr?.data || {};
+            if (retryErr?.status === 403 || errData.error === 'FEATURE_LIMIT' || errData.error === 'FREE_TRIAL_LIMIT') {
+              const feat = examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam';
+              setTrialLimitFeature({ feature: feat as any, tier: errData.tier, used: errData.used, limit: errData.limit, addonRemaining: errData.addonRemaining });
+              lastErr = null;
+              break;
+            }
+            // Wait 1.5s before retry (only if we'll retry)
+            if (attempt < 1) await new Promise(r => setTimeout(r, 1500));
+          }
+        }
+        if (lastErr) throw lastErr;
         setIsLoading(false);
       }
     } catch (err: any) {
       console.error('Send error:', err);
-      setError('Connection issue — please try again.');
+      // Show actual server error message if available, not generic text
+      const serverMsg = err?.data?.error || err?.message || '';
+      setError(serverMsg || 'Connection issue — please try again.');
       setIsLoading(false);
       setIsStreaming(false);
       setStreamingContent('');
@@ -775,7 +800,8 @@ export default function OralExamsPage() {
         setTrialLimitFeature({ feature: feat as any, tier: errData.tier, used: errData.used, limit: errData.limit, addonRemaining: errData.addonRemaining });
         setPhase('setup');
       } else {
-        setError('Connection issue — please try again.');
+        const serverMsg = errData.error || err.message || '';
+        setError(serverMsg || 'Connection issue — please try again.');
       }
       if (autoRecord) await stopSessionRecording();
     } finally {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -55,6 +56,7 @@ const PERIODS: { id: BillingPeriod; label: string; shortLabel: string }[] = [
 
 export default function SubscribePage() {
   const { user, getIdToken } = useAuth();
+  const { refresh: refreshSubscription } = useSubscription();
   const searchParams = useSearchParams();
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>('standard');
   const [selectedPeriod, setSelectedPeriod] = useState<BillingPeriod>('monthly');
@@ -188,6 +190,8 @@ export default function SubscribePage() {
       });
       const data = await res.json();
       if (data.verified) {
+        // Refresh global subscription state so all gates unlock immediately
+        await refreshSubscription();
         setStep('confirm');
       } else {
         setError(data.message || 'Payment could not be verified. Please contact support.');
@@ -224,6 +228,7 @@ export default function SubscribePage() {
 
       // Handle free upgrade
       if (data.freeUpgrade) {
+        await refreshSubscription();
         setStep('confirm');
         setProcessing(false);
         return;

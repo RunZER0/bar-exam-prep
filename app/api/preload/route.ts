@@ -5,6 +5,7 @@ import { eq, and, desc, gte, lt, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import { ATP_UNITS, TOPICS_BY_UNIT, getUnitById } from '@/lib/constants/legal-content';
 import { callAIFast, generateFastJSON } from '@/lib/ai/guardrails';
+import { getSubscriptionInfo } from '@/lib/services/subscription';
 import crypto from 'crypto';
 
 const CACHE_DURATION_HOURS = 12; // Shorter cache for fresher content
@@ -378,6 +379,24 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { action, unitId, topicId, contentType = 'quiz', examType, paperSize } = body;
+
+    // ── Gate exam preloads behind subscription check ──
+    if (contentType === 'exam') {
+      // Look up DB user by Firebase UID to check subscription
+      const dbUser = await db.query.users.findFirst({
+        where: eq(users.firebaseUid, userId),
+        columns: { id: true },
+      });
+      if (dbUser) {
+        const sub = await getSubscriptionInfo(dbUser.id);
+        if (!sub.canAccess('cle_exam')) {
+          return NextResponse.json(
+            { error: 'FEATURE_LIMIT', message: 'CLE exam limit reached' },
+            { status: 403 }
+          );
+        }
+      }
+    }
 
     // --------------------------------------------------------
     // ACTION: preload - Preload specific content

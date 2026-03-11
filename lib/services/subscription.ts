@@ -184,8 +184,8 @@ export async function getSubscriptionInfo(userId: string): Promise<SubscriptionI
       return featureUsageMap[feature].canUse;
     }
 
-    // Unknown feature → allow (fail-open for basic stuff)
-    return true;
+    // Unknown feature → deny (fail-closed for safety)
+    return false;
   };
 
   // Legacy usage object

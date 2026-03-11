@@ -71,7 +71,7 @@ export default function ResearchPage() {
   const topicFilter = 'general';
   const [webSearchEnabled, setWebSearchEnabled] = useState(true);
   const [attachments, setAttachments] = useState<Array<{ id: string; file: File; preview?: string }>>([]); 
-  const [featureLimitHit, setFeatureLimitHit] = useState(false);
+  const [featureLimitHit, setFeatureLimitHit] = useState<{tier?: string; used?: number; limit?: number; addonRemaining?: number} | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -152,7 +152,7 @@ Question: ${userMessage}`
             const errData = await res.json();
             if (errData.error === 'FEATURE_LIMIT') {
               setMessages(prev => prev.filter(m => m.id !== aiMsgId));
-              setFeatureLimitHit(true);
+              setFeatureLimitHit({ tier: errData.tier, used: errData.used, limit: errData.limit, addonRemaining: errData.addonRemaining });
               setSending(false);
               return;
             }
@@ -237,7 +237,11 @@ Question: ${userMessage}`
       {featureLimitHit && (
         <TrialLimitReached
           feature="research"
-          onDismiss={() => setFeatureLimitHit(false)}
+          currentTier={featureLimitHit.tier as any}
+          used={featureLimitHit.used}
+          limit={featureLimitHit.limit}
+          addonRemaining={featureLimitHit.addonRemaining}
+          onDismiss={() => setFeatureLimitHit(null)}
         />
       )}
 

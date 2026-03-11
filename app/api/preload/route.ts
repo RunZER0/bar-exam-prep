@@ -390,10 +390,16 @@ export async function POST(req: NextRequest) {
       if (dbUser) {
         const sub = await getSubscriptionInfo(dbUser.id);
         if (!sub.canAccess('cle_exam')) {
-          return NextResponse.json(
-            { error: 'FEATURE_LIMIT', message: 'CLE exam limit reached' },
-            { status: 403 }
-          );
+          const fu = sub.featureUsage.cle_exam;
+          return NextResponse.json({
+            error: 'FEATURE_LIMIT',
+            message: sub.trialExpired
+              ? 'Your free trial has ended. Subscribe to continue taking CLE exams.'
+              : `You've used ${fu?.used ?? 0}/${fu?.limit ?? 0} CLE exam sessions this week. Upgrade or buy an add-on pass.`,
+            upgradeUrl: '/subscribe',
+            feature: 'cle_exam',
+            tier: sub.tier,
+          }, { status: 403 });
         }
       }
     }

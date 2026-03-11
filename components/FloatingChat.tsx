@@ -345,9 +345,10 @@ export default function FloatingChat() {
         if (response.status === 403) {
           const errData = await response.json().catch(() => ({}));
           if (errData.error === 'FEATURE_LIMIT') {
+            const friendlyMsg = errData.message || 'You\'ve reached your weekly limit for this feature.';
             setMessages(prev => prev.map(m =>
               m.id === aiMsgId
-                ? { ...m, content: `${errData.message || 'Weekly limit reached.'} [Upgrade or buy a pass →](/subscribe)`, isStreaming: false }
+                ? { ...m, content: `✨ ${friendlyMsg}\n\n[View plans & upgrade →](/subscribe)`, isStreaming: false }
                 : m
             ));
             setIsLoading(false);

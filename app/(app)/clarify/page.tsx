@@ -38,7 +38,7 @@ export default function ClarifyPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [sessionId] = useState(() => crypto.randomUUID()); // Session for context awareness
-  const [featureLimitHit, setFeatureLimitHit] = useState(false);
+  const [featureLimitHit, setFeatureLimitHit] = useState<{tier?: string; used?: number; limit?: number; addonRemaining?: number} | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -285,7 +285,7 @@ export default function ClarifyPage() {
             const errData = await response.json();
             if (errData.error === 'FEATURE_LIMIT') {
               setMessages(prev => prev.filter(m => m.id !== aiMsgId));
-              setFeatureLimitHit(true);
+              setFeatureLimitHit({ tier: errData.tier, used: errData.used, limit: errData.limit, addonRemaining: errData.addonRemaining });
               setIsLoading(false);
               return;
             }
@@ -347,7 +347,11 @@ export default function ClarifyPage() {
       {featureLimitHit && (
         <TrialLimitReached
           feature="clarify"
-          onDismiss={() => setFeatureLimitHit(false)}
+          currentTier={featureLimitHit.tier as any}
+          used={featureLimitHit.used}
+          limit={featureLimitHit.limit}
+          addonRemaining={featureLimitHit.addonRemaining}
+          onDismiss={() => setFeatureLimitHit(null)}
         />
       )}
 

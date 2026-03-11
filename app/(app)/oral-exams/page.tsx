@@ -82,7 +82,7 @@ export default function OralExamsPage() {
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [textInput, setTextInput] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [trialLimitFeature, setTrialLimitFeature] = useState<'oral_devil' | 'oral_exam' | null>(null);
+  const [trialLimitFeature, setTrialLimitFeature] = useState<{feature: 'oral_devil' | 'oral_exam'; tier?: string; used?: number; limit?: number; addonRemaining?: number} | null>(null);
 
   // ---- Voice state ----
   const [isRecording, setIsRecording] = useState(false);
@@ -547,7 +547,8 @@ export default function OralExamsPage() {
           if (response.status === 403) {
             const errData = await response.json();
             if (errData.error === 'FREE_TRIAL_LIMIT' || errData.error === 'FEATURE_LIMIT') {
-              setTrialLimitFeature(examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam');
+              const feat = examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam';
+              setTrialLimitFeature({ feature: feat as any, tier: errData.tier, used: errData.used, limit: errData.limit, addonRemaining: errData.addonRemaining });
               setIsStreaming(false);
               return;
             }
@@ -690,7 +691,8 @@ export default function OralExamsPage() {
 
       // Check for subscription limit
       if (data.error === 'FREE_TRIAL_LIMIT' || data.error === 'FEATURE_LIMIT') {
-        setTrialLimitFeature(examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam');
+        const feat = examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam';
+        setTrialLimitFeature({ feature: feat as any, tier: data.tier, used: data.used, limit: data.limit, addonRemaining: data.addonRemaining });
         setPhase('setup');
         if (autoRecord) await stopSessionRecording();
         return;
@@ -715,7 +717,8 @@ export default function OralExamsPage() {
       console.error('Start error:', err);
       // Handle 403 from authFetchJSON
       if (err.message?.includes('403') || err.message?.includes('FREE_TRIAL_LIMIT') || err.message?.includes('FEATURE_LIMIT')) {
-        setTrialLimitFeature(examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam');
+        const feat = examType === 'devils-advocate' ? 'oral_devil' : 'oral_exam';
+        setTrialLimitFeature({ feature: feat as any });
         setPhase('setup');
       } else {
         setError('Failed to start session. Please try again.');
@@ -1663,7 +1666,11 @@ export default function OralExamsPage() {
       {/* Trial limit modal */}
       {trialLimitFeature && (
         <TrialLimitReached
-          feature={trialLimitFeature}
+          feature={trialLimitFeature.feature as any}
+          currentTier={trialLimitFeature.tier as any}
+          used={trialLimitFeature.used}
+          limit={trialLimitFeature.limit}
+          addonRemaining={trialLimitFeature.addonRemaining}
           onDismiss={() => setTrialLimitFeature(null)}
         />
       )}

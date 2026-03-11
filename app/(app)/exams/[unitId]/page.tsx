@@ -120,7 +120,7 @@ export default function ExamSessionPage() {
   const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
   const [usedPreload, setUsedPreload] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState(false);
-  const [showFeatureGate, setShowFeatureGate] = useState(false);
+  const [showFeatureGate, setShowFeatureGate] = useState<{tier?: string; used?: number; limit?: number; addonRemaining?: number} | null>(null);
   const [slideDirection, setSlideDirection] = useState<'right' | 'left'>('right');
   const [draftSaved, setDraftSaved] = useState(false);
   const autoSubmitRef = useRef(false);
@@ -186,15 +186,22 @@ export default function ExamSessionPage() {
           const statusData = await statusRes.json();
           const canUse = statusData.canAccess?.cle_exam;
           if (canUse === false) {
-            setShowFeatureGate(true);
+            const fu = statusData.featureUsage?.cle_exam;
+            setShowFeatureGate({ tier: statusData.tier, used: fu?.used, limit: fu?.limit, addonRemaining: fu?.addonRemaining });
             setPhase('loading');
             return;
           }
           // Increment CLE exam usage via dedicated endpoint
-          await fetch('/api/exams/record-usage', {
+          const recordRes = await fetch('/api/exams/record-usage', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          }).catch(() => {});
+          });
+          if (recordRes.status === 403) {
+            const errData = await recordRes.json().catch(() => ({}));
+            setShowFeatureGate({ tier: errData.tier, used: errData.used, limit: errData.limit, addonRemaining: errData.addonRemaining });
+            setPhase('loading');
+            return;
+          }
         }
         
         // 1. First, try to get preloaded questions (instant load!)
@@ -505,8 +512,12 @@ Respond with ONLY valid JSON:
         {showFeatureGate ? (
           <TrialLimitReached
             feature="cle_exam"
+            currentTier={showFeatureGate.tier as any}
+            used={showFeatureGate.used}
+            limit={showFeatureGate.limit}
+            addonRemaining={showFeatureGate.addonRemaining}
             onDismiss={() => {
-              setShowFeatureGate(false);
+              setShowFeatureGate(null);
               router.push('/exams');
             }}
           />

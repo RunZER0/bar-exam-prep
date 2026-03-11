@@ -29,6 +29,11 @@ interface FeatureGateProps {
 interface TrialLimitReachedProps {
   feature: PremiumFeature;
   message?: string;
+  /** When provided from a 403 response, shows the correct tier context instead of always "trial" */
+  currentTier?: SubscriptionTier;
+  used?: number;
+  limit?: number;
+  addonRemaining?: number;
   onDismiss: () => void;
 }
 
@@ -193,12 +198,15 @@ function FeatureGate({
   );
 }
 
-// Default export: backward-compatible wrapper for the old TrialLimitReached interface
-export default function TrialLimitReached({ feature, message, onDismiss }: TrialLimitReachedProps) {
+// Default export: backward-compatible wrapper that forwards API response data
+export default function TrialLimitReached({ feature, message, currentTier, used, limit, addonRemaining, onDismiss }: TrialLimitReachedProps) {
   return (
     <FeatureGate
       feature={feature as PremiumFeature}
-      currentTier="free_trial"
+      currentTier={currentTier ?? 'free_trial'}
+      used={used}
+      limit={limit}
+      addonRemaining={addonRemaining}
       onDismiss={onDismiss}
     />
   );

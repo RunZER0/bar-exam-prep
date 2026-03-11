@@ -79,7 +79,7 @@ export default function DraftingDocumentPage() {
   const docId = params.documentId as string;
   const doc = getDocumentById(docId);
   const [mode, setMode] = useState<PageMode>(null);
-  const [showTrialLimit, setShowTrialLimit] = useState(false);
+  const [showTrialLimit, setShowTrialLimit] = useState<{tier?: string; used?: number; limit?: number; addonRemaining?: number} | null>(null);
 
   // Premium gate check
   const draftGate = usePremiumGate('drafting');
@@ -163,15 +163,15 @@ export default function DraftingDocumentPage() {
   if (mode === 'learn') {
     return (
       <>
-        <LearnModePanel doc={doc} onBack={() => setMode(null)} onPractice={() => setMode('practice')} getIdToken={getIdToken} onTrialLimit={() => setShowTrialLimit(true)} />
-        {showTrialLimit && <TrialLimitReached feature="drafting" onDismiss={() => { setShowTrialLimit(false); setMode(null); }} />}
+        <LearnModePanel doc={doc} onBack={() => setMode(null)} onPractice={() => setMode('practice')} getIdToken={getIdToken} onTrialLimit={(data?: any) => setShowTrialLimit(data || {})} />
+        {showTrialLimit && <TrialLimitReached feature="drafting" currentTier={showTrialLimit.tier as any} used={showTrialLimit.used} limit={showTrialLimit.limit} addonRemaining={showTrialLimit.addonRemaining} onDismiss={() => { setShowTrialLimit(null); setMode(null); }} />}
       </>
     );
   }
   return (
     <>
-      <PracticeModePanel doc={doc} onBack={() => setMode(null)} getIdToken={getIdToken} onTrialLimit={() => setShowTrialLimit(true)} />
-      {showTrialLimit && <TrialLimitReached feature="drafting" onDismiss={() => { setShowTrialLimit(false); setMode(null); }} />}
+      <PracticeModePanel doc={doc} onBack={() => setMode(null)} getIdToken={getIdToken} onTrialLimit={(data?: any) => setShowTrialLimit(data || {})} />
+      {showTrialLimit && <TrialLimitReached feature="drafting" currentTier={showTrialLimit.tier as any} used={showTrialLimit.used} limit={showTrialLimit.limit} addonRemaining={showTrialLimit.addonRemaining} onDismiss={() => { setShowTrialLimit(null); setMode(null); }} />}
     </>
   );
 }
@@ -189,7 +189,7 @@ function LearnModePanel({
   onBack: () => void;
   onPractice: () => void;
   getIdToken: () => Promise<string | null>;
-  onTrialLimit: () => void;
+  onTrialLimit: (data?: any) => void;
 }) {
   const [sections, setSections] = useState<LearnSection[]>([]);
   const [idx, setIdx] = useState(0);
@@ -329,7 +329,7 @@ function LearnModePanel({
         if (!res.ok) {
           if (res.status === 403) {
             const errData = await res.json();
-            if (errData.error === 'FREE_TRIAL_LIMIT' || errData.error === 'FEATURE_LIMIT') { onTrialLimit(); return; }
+            if (errData.error === 'FREE_TRIAL_LIMIT' || errData.error === 'FEATURE_LIMIT') { onTrialLimit({ tier: errData.tier, used: errData.used, limit: errData.limit, addonRemaining: errData.addonRemaining }); return; }
           }
           throw new Error('fetch failed');
         }
@@ -617,7 +617,7 @@ function PracticeModePanel({
   doc: { id: string; name: string; description: string; category: string };
   onBack: () => void;
   getIdToken: () => Promise<string | null>;
-  onTrialLimit: () => void;
+  onTrialLimit: (data?: any) => void;
 }) {
   const [timing, setTiming] = useState<TimingChoice | null>(null);
   const [scenario, setScenario] = useState<string | null>(null);
@@ -693,7 +693,7 @@ function PracticeModePanel({
       if (!res.ok) {
         if (res.status === 403) {
           const errData = await res.json();
-          if (errData.error === 'FREE_TRIAL_LIMIT' || errData.error === 'FEATURE_LIMIT') { onTrialLimit(); return; }
+          if (errData.error === 'FREE_TRIAL_LIMIT' || errData.error === 'FEATURE_LIMIT') { onTrialLimit({ tier: errData.tier, used: errData.used, limit: errData.limit, addonRemaining: errData.addonRemaining }); return; }
         }
         throw new Error('fetch failed');
       }

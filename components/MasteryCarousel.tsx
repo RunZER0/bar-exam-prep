@@ -797,10 +797,24 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
     const [mcqPassed, setMcqPassed] = useState(false);
     const [readingMode, setReadingMode] = useState<'slides' | 'reader'>('slides');
 
-    // Written/short answer assessment state
+    // Written/short answer assessment state (legacy — used by old stack-level flow)
     const [assessmentAnswer, setAssessmentAnswer] = useState('');
     const [assessmentSubmitted, setAssessmentSubmitted] = useState(false);
     const assessmentTextRef = useRef<HTMLTextAreaElement>(null);
+
+    // End-of-lesson assessment (new scored exam flow)
+    const [examStep, setExamStep] = useState(0); // which question (0-indexed)
+    const [examAnswers, setExamAnswers] = useState<Record<string, any>>({}); // questionId → answer
+    const [examGrading, setExamGrading] = useState(false);
+    const [examResults, setExamResults] = useState<{
+        totalScore: number;
+        totalPoints: number;
+        passed: boolean;
+        percentage: number;
+        results: Array<{ questionId: string; score: number; maxScore: number; feedback: string; correct: boolean }>;
+    } | null>(null);
+    const [examReview, setExamReview] = useState(false); // reviewing answers after grading
+    const [orderingState, setOrderingState] = useState<string[]>([]); // current ordering answer being built
 
     // Fullscreen
     const [isMaximized, setIsMaximized] = useState(false);
@@ -1024,13 +1038,128 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
             setView('NARRATIVE');
             const last = totalSlides - 1;
             setCurrentSlide(last); saveProgress({ v: 'NARRATIVE', s: last });
-        } else if (view === 'ASSESSMENT' && stackLevel === 1) {
+        } else if (view === 'ASSESSMENT' && examStep === 0 && !examResults) {
             if (content?.exhibit) { setView('EXHIBIT'); saveProgress({ v: 'EXHIBIT' }); }
             else { setView('NARRATIVE'); const last = totalSlides - 1; setCurrentSlide(last); saveProgress({ v: 'NARRATIVE', s: last }); }
         }
-    }, [view, currentSlide, totalSlides, content, stackLevel, saveProgress]);
+    }, [view, currentSlide, totalSlides, content, examStep, examResults, saveProgress]);
 
-    const canGoBack = (view === 'NARRATIVE' && currentSlide > 0) || view === 'EXHIBIT' || (view === 'ASSESSMENT' && stackLevel === 1);
+    const canGoBack = (view === 'NARRATIVE' && currentSlide > 0) || view === 'EXHIBIT' || (view === 'ASSESSMENT' && examStep === 0 && !examResults);
+
+    /* ---- End-of-Lesson Assessment Handlers ---- */
+    const examQuestions = content?.stack?.questions || content?.stack?.stack || [];
+    const currentExamQ = examQuestions[examStep];
+
+    // Initialize ordering state when arriving at an ORDERING question
+    useEffect(() => {
+        if (view === 'ASSESSMENT' && currentExamQ?.type === 'ORDERING' && currentExamQ.items && !examAnswers[currentExamQ.id]) {
+            const shuffled = [...currentExamQ.items];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            setOrderingState(shuffled);
+        }
+    }, [view, examStep, currentExamQ, examAnswers]);
+
+    const handleExamAnswer = useCallback((questionId: string, answer: any) => {
+        setExamAnswers(prev => ({ ...prev, [questionId]: answer }));
+    }, []);
+
+    const handleExamNext = useCallback(() => {
+        if (examStep < examQuestions.length - 1) {
+            setExamStep(s => s + 1);
+            setAssessmentAnswer(''); // clear textarea for next question
+        }
+    }, [examStep, examQuestions.length]);
+
+    const handleExamPrev = useCallback(() => {
+        if (examStep > 0) {
+            setExamStep(s => s - 1);
+        }
+    }, [examStep]);
+
+    const handleSubmitExam = useCallback(async () => {
+        if (examGrading) return;
+        setExamGrading(true);
+        try {
+            const token = await getIdToken();
+            const answers = examQuestions.map((q: any) => ({
+                questionId: q.id,
+                type: q.type,
+                question: q,
+                studentAnswer: examAnswers[q.id] ?? null,
+            }));
+
+            const res = await fetch('/api/mastery/grade-assessment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ topic: content?.title || task.data.title || 'Unknown', answers }),
+            });
+
+            if (!res.ok) throw new Error('Grading failed');
+            const results = await res.json();
+            setExamResults(results);
+        } catch (err) {
+            console.error('Assessment grading failed:', err);
+            // Show a fallback result
+            setExamResults({
+                totalScore: 0,
+                totalPoints: 100,
+                passed: false,
+                percentage: 0,
+                results: examQuestions.map((q: any) => ({
+                    questionId: q.id, score: 0, maxScore: q.points || 20,
+                    feedback: 'Grading error — please retake.', correct: false,
+                })),
+            });
+        } finally {
+            setExamGrading(false);
+        }
+    }, [examGrading, getIdToken, examQuestions, examAnswers, content, task]);
+
+    const handleRetakeAssessment = useCallback(async () => {
+        // Reset exam state
+        setExamStep(0);
+        setExamAnswers({});
+        setExamResults(null);
+        setExamReview(false);
+        setAssessmentAnswer('');
+        setOrderingState([]);
+
+        // Regenerate assessment (fetch fresh questions)
+        try {
+            const token = await getIdToken();
+            const params = new URLSearchParams({
+                skillId: task.data.id,
+                type: task.type || 'SYLLABUS',
+                phase: 'extras',
+                sectionCount: String(content?.sectionCount || 4),
+            });
+            const res = await fetch(`/api/mastery/content?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+            if (res.ok) {
+                const extras = await res.json();
+                setContent((prev: any) => ({
+                    ...prev,
+                    stack: extras.stack,
+                }));
+            }
+        } catch (err) {
+            console.error('Failed to regenerate assessment:', err);
+        }
+    }, [getIdToken, task, content?.sectionCount]);
+
+    const handleRereadNotes = useCallback(() => {
+        // Go back to narrative view, slide 0
+        setView('NARRATIVE');
+        setCurrentSlide(0);
+        setExamStep(0);
+        setExamAnswers({});
+        setExamResults(null);
+        setExamReview(false);
+        setAssessmentAnswer('');
+        saveProgress({ v: 'NARRATIVE', s: 0 });
+    }, [saveProgress]);
 
     // Markdown components (memoised per citation handler)
     const mdComponents = useMdComponents(handleCitationClick);
@@ -1109,171 +1238,296 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
     }
 
     /* ============================================================
-       VIEW: ASSESSMENT
+       VIEW: ASSESSMENT — End-of-Lesson Exam (5 questions, 70% to pass)
        ============================================================ */
     if (view === 'ASSESSMENT') {
-        const assessment = content.stack?.stack?.find((s: any) => s.level === stackLevel);
-        if (!assessment) {
+        // GRADING IN PROGRESS
+        if (examGrading) {
             return (
                 <div ref={containerRef} className={wrap}>
-                    <div className="animate-in zoom-in duration-300 flex items-center justify-center min-h-[60vh]">
-                        <Card className="w-full max-w-lg text-center py-12 border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/20 dark:bg-emerald-950/10 rounded-xl">
+                    <div className="animate-in fade-in duration-300 flex items-center justify-center min-h-[60vh]">
+                        <Card className="w-full max-w-lg text-center py-12 rounded-xl">
                             <CardContent className="space-y-6">
-                                <div className="relative"><div className="absolute inset-0 bg-emerald-200 rounded-full blur-xl opacity-40 animate-pulse" /><CheckCircle2 className="h-16 w-16 text-emerald-600 mx-auto relative z-10" /></div>
-                                <div><h2 className="text-2xl font-bold">Topic Complete</h2><p className="text-muted-foreground mt-1">Well done - you&apos;ve covered this section.</p></div>
-                                <Button onClick={() => { try { sessionStorage.removeItem(cacheKey); } catch {} onComplete({ passed: true, score: 100 }); }} size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-8 py-5 rounded-xl">Back to Mastery Hub</Button>
+                                <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                                <div>
+                                    <h2 className="text-xl font-bold">Grading Your Assessment</h2>
+                                    <p className="text-muted-foreground mt-1 text-sm">Evaluating your answers against the marking criteria...</p>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
                 </div>
             );
         }
+
+        // RESULTS VIEW (after grading)
+        if (examResults) {
+            const { totalScore, totalPoints, passed, percentage, results: qResults } = examResults;
+            return (
+                <div ref={containerRef} className={wrap}>
+                    <div className={cn('animate-in zoom-in duration-300 flex flex-col', cardHeight)}>
+                        <Card className={cn('flex-1 flex flex-col shadow-lg overflow-hidden rounded-xl border-t-4', passed ? 'border-t-emerald-500' : 'border-t-red-500')}>
+                            {/* Results Header */}
+                            <div className={cn('px-6 py-8 text-center', passed ? 'bg-emerald-50/30 dark:bg-emerald-950/15' : 'bg-red-50/30 dark:bg-red-950/15')}>
+                                <div className="relative inline-block mb-4">
+                                    <div className={cn('absolute inset-0 rounded-full blur-xl opacity-40 animate-pulse', passed ? 'bg-emerald-300' : 'bg-red-300')} />
+                                    {passed
+                                        ? <CheckCircle2 className="h-16 w-16 text-emerald-600 relative z-10" />
+                                        : <AlertTriangle className="h-16 w-16 text-red-500 relative z-10" />
+                                    }
+                                </div>
+                                <h2 className="text-2xl font-bold">{passed ? 'Assessment Passed!' : 'Not Yet — Keep Going'}</h2>
+                                <p className="text-muted-foreground mt-1">
+                                    {passed ? 'You have demonstrated mastery of this topic.' : 'You need 70% to pass. Review the material and try again.'}
+                                </p>
+                                {/* Score display */}
+                                <div className="mt-4 inline-flex items-baseline gap-1">
+                                    <span className={cn('text-5xl font-black tabular-nums', passed ? 'text-emerald-600' : 'text-red-500')}>{percentage}</span>
+                                    <span className="text-xl text-muted-foreground font-medium">%</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">{totalScore} / {totalPoints} points</p>
+                            </div>
+
+                            {/* Per-question results */}
+                            <div className="flex-1 overflow-hidden">
+                                <ScrollArea className="h-full">
+                                    <div className="p-5 space-y-3">
+                                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Question Breakdown</p>
+                                        {qResults.map((r, i) => {
+                                            const q = examQuestions[i];
+                                            return (
+                                                <div key={r.questionId}
+                                                    className={cn(
+                                                        'p-4 rounded-xl border transition-all',
+                                                        r.correct
+                                                            ? 'border-emerald-200/50 dark:border-emerald-800/30 bg-emerald-50/20 dark:bg-emerald-950/10'
+                                                            : 'border-red-200/40 dark:border-red-800/20 bg-red-50/20 dark:bg-red-950/10'
+                                                    )}>
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <Badge variant="outline" className="text-[10px]">Q{i + 1} · {q?.type || 'MCQ'}</Badge>
+                                                                <span className={cn('text-xs font-bold', r.correct ? 'text-emerald-600' : 'text-red-500')}>
+                                                                    {r.score}/{r.maxScore}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-sm text-foreground/80 line-clamp-2">{q?.question || ''}</p>
+                                                        </div>
+                                                        <div className={cn('flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold', r.correct ? 'bg-emerald-500' : 'bg-red-400')}>
+                                                            {r.correct ? '✓' : '✗'}
+                                                        </div>
+                                                    </div>
+                                                    {r.feedback && (
+                                                        <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{r.feedback}</p>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="px-5 py-4 border-t bg-muted/20">
+                                {passed ? (
+                                    <Button onClick={() => { try { sessionStorage.removeItem(cacheKey); } catch {} onComplete({ passed: true, score: percentage }); }} size="lg" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-md py-5 rounded-xl">
+                                        <CheckCircle2 className="h-5 w-5 mr-2" /> Complete Lesson
+                                    </Button>
+                                ) : (
+                                    <div className="flex gap-3">
+                                        <Button onClick={handleRereadNotes} variant="outline" size="default" className="flex-1 rounded-xl">
+                                            <BookOpen className="h-4 w-4 mr-2" /> Re-read Notes
+                                        </Button>
+                                        <Button onClick={handleRetakeAssessment} size="default" className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
+                                            <RefreshCw className="h-4 w-4 mr-2" /> Retake (Fresh Questions)
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        </Card>
+                    </div>
+                </div>
+            );
+        }
+
+        // NO QUESTIONS (assessment not loaded yet)
+        if (!examQuestions.length || !currentExamQ) {
+            return (
+                <div ref={containerRef} className={wrap}>
+                    <div className="animate-in fade-in duration-300 flex items-center justify-center min-h-[60vh]">
+                        <Card className="w-full max-w-lg text-center py-12 rounded-xl">
+                            <CardContent className="space-y-4">
+                                <Loader2 className="h-10 w-10 animate-spin text-muted-foreground mx-auto" />
+                                <p className="text-sm text-muted-foreground">Generating your end-of-lesson assessment...</p>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            );
+        }
+
+        // EXAM QUESTIONS VIEW (one question at a time)
+        const isLastQ = examStep === examQuestions.length - 1;
+        const currentAnswer = examAnswers[currentExamQ.id];
+        const isAnswered = currentAnswer !== undefined && currentAnswer !== null && currentAnswer !== '';
+
         return (
             <div ref={containerRef} className={wrap}>
                 <div className={cn('animate-in slide-in-from-right duration-300 flex flex-col', cardHeight)}>
                     <Card className="flex-1 flex flex-col border-t-2 border-t-primary shadow-lg overflow-hidden rounded-xl">
+                        {/* Header */}
                         <div className="px-5 py-4 border-b bg-card">
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
-                                    {canGoBack && <button onClick={handleBack} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><ChevronLeft className="h-4 w-4" /></button>}
-                                    <Badge variant="secondary" className="bg-primary/10 text-primary">Question {stackLevel}</Badge>
+                                    {canGoBack && examStep === 0 && <button onClick={handleBack} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><ChevronLeft className="h-4 w-4" /></button>}
+                                    <Badge variant="secondary" className="bg-primary/10 text-primary">
+                                        End-of-Lesson Assessment
+                                    </Badge>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[10px] text-muted-foreground tabular-nums">{stackLevel} of {content.stack?.stack?.length || 3}</span>
+                                    <Badge variant="outline" className="text-[10px]">{currentExamQ.points || 20} pts</Badge>
+                                    <span className="text-[10px] text-muted-foreground tabular-nums">Q{examStep + 1} of {examQuestions.length}</span>
                                     <button onClick={toggleMaximize} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors">{isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}</button>
                                 </div>
                             </div>
-                            <h3 className="text-base font-semibold leading-snug text-foreground">{assessment.title || 'Assessment'}</h3>
+                            {/* Progress dots */}
+                            <div className="flex gap-1.5 mb-2">
+                                {examQuestions.map((_: any, i: number) => (
+                                    <div key={i} className={cn(
+                                        'h-1.5 flex-1 rounded-full transition-colors',
+                                        i === examStep ? 'bg-primary' : examAnswers[examQuestions[i]?.id] !== undefined ? 'bg-primary/40' : 'bg-muted'
+                                    )} />
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-[10px]">{currentExamQ.type}</Badge>
+                                <span className="text-xs text-muted-foreground">Pass mark: 70%</span>
+                            </div>
                         </div>
+
+                        {/* Question body */}
                         <div className="flex-1 overflow-hidden">
                             <ScrollArea className="h-full">
                                 <div className="p-5 sm:p-6">
-                                    <p className="text-[15px] leading-[1.8] text-foreground/90 mb-5">{assessment.question}</p>
-                                    {assessment.type === 'MCQ' && (
+                                    <p className="text-[15px] leading-[1.8] text-foreground/90 mb-5 whitespace-pre-wrap">{currentExamQ.question}</p>
+
+                                    {/* MCQ */}
+                                    {currentExamQ.type === 'MCQ' && (
                                         <div className="space-y-3">
-                                            {assessment.options.map((opt: string, idx: number) => {
-                                                const isSelected = mcqAnswer === idx;
-                                                const isCorrect = idx === assessment.correctIndex;
-                                                const showCorrect = mcqPassed && isCorrect;
-                                                const showWrong = isSelected && !mcqPassed && mcqAnswer !== null;
+                                            {(currentExamQ.options || []).map((opt: string, idx: number) => {
+                                                const isSelected = currentAnswer === idx;
                                                 return (
-                                                    <button key={idx} onClick={() => {
-                                                        if (mcqPassed) return; setMcqAnswer(idx);
-                                                        if (isCorrect) { setMcqPassed(true); setTimeout(() => { setMcqPassed(false); setMcqAnswer(null); const nl = stackLevel + 1; setStackLevel(nl); saveProgress({ l: nl }); }, 1800); }
-                                                    }} disabled={mcqPassed}
+                                                    <button key={idx} onClick={() => handleExamAnswer(currentExamQ.id, idx)}
                                                         className={cn(
                                                             'w-full text-left flex items-start gap-3 p-4 rounded-xl border transition-all duration-200',
-                                                            !isSelected && !showCorrect && 'border-border/30 bg-background/50 hover:border-primary/30 hover:bg-primary/[0.03]',
-                                                            showCorrect && 'border-emerald-300/50 bg-emerald-500/5 dark:bg-emerald-500/8 ring-1 ring-emerald-300/30',
-                                                            showWrong && 'border-red-300/40 bg-red-500/5 dark:bg-red-500/8',
-                                                            isSelected && !showWrong && !showCorrect && 'border-primary/30 bg-primary/[0.03]',
+                                                            isSelected
+                                                                ? 'border-primary/50 bg-primary/[0.05] ring-1 ring-primary/20'
+                                                                : 'border-border/30 bg-background/50 hover:border-primary/30 hover:bg-primary/[0.03]'
                                                         )}>
                                                         <span className={cn(
                                                             'flex-shrink-0 w-7 h-7 rounded-full border flex items-center justify-center text-xs font-bold mt-0.5',
-                                                            showCorrect && 'bg-emerald-500 border-emerald-500 text-white',
-                                                            showWrong && 'bg-red-400 border-red-400 text-white',
-                                                            !showCorrect && !showWrong && 'text-muted-foreground border-border/50',
-                                                        )}>{showCorrect ? '✓' : showWrong ? '✗' : String.fromCharCode(65 + idx)}</span>
+                                                            isSelected ? 'bg-primary border-primary text-primary-foreground' : 'text-muted-foreground border-border/50'
+                                                        )}>{String.fromCharCode(65 + idx)}</span>
                                                         <span className="text-sm leading-relaxed text-foreground/90 whitespace-normal pt-0.5">{opt}</span>
                                                     </button>
                                                 );
                                             })}
                                         </div>
                                     )}
-                                    {mcqPassed && assessment.explanation && (
-                                        <div className="mt-5 p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 animate-in fade-in duration-300">
-                                            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1.5">Why this is correct:</p>
-                                            <p className="text-sm text-emerald-600 dark:text-emerald-300/80 leading-relaxed">{assessment.explanation}</p>
+
+                                    {/* ORDERING */}
+                                    {currentExamQ.type === 'ORDERING' && (
+                                        <div className="space-y-2">
+                                            <p className="text-xs text-muted-foreground mb-3">Drag to reorder, or use the arrows to move items up/down:</p>
+                                            {orderingState.map((item: string, idx: number) => (
+                                                <div key={`${item}-${idx}`} className="flex items-center gap-2 p-3 rounded-xl border border-border/30 bg-background/50">
+                                                    <span className="text-xs font-bold text-muted-foreground w-6 text-center">{idx + 1}</span>
+                                                    <span className="flex-1 text-sm text-foreground/90">{item}</span>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <button disabled={idx === 0} onClick={() => {
+                                                            const newOrder = [...orderingState];
+                                                            [newOrder[idx - 1], newOrder[idx]] = [newOrder[idx], newOrder[idx - 1]];
+                                                            setOrderingState(newOrder);
+                                                            // Map back to correctOrder indices format
+                                                            const items = currentExamQ.items || [];
+                                                            handleExamAnswer(currentExamQ.id, newOrder.map((item: string) => items.indexOf(item)));
+                                                        }} className="p-1 rounded hover:bg-muted disabled:opacity-20 transition-colors">
+                                                            <ArrowUpDown className="h-3 w-3 rotate-180" />
+                                                        </button>
+                                                        <button disabled={idx === orderingState.length - 1} onClick={() => {
+                                                            const newOrder = [...orderingState];
+                                                            [newOrder[idx], newOrder[idx + 1]] = [newOrder[idx + 1], newOrder[idx]];
+                                                            setOrderingState(newOrder);
+                                                            const items = currentExamQ.items || [];
+                                                            handleExamAnswer(currentExamQ.id, newOrder.map((item: string) => items.indexOf(item)));
+                                                        }} className="p-1 rounded hover:bg-muted disabled:opacity-20 transition-colors">
+                                                            <ArrowUpDown className="h-3 w-3" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
-                                    {assessment.type !== 'MCQ' && (
+
+                                    {/* SHORT / ANALYSIS — written answer */}
+                                    {(currentExamQ.type === 'SHORT' || currentExamQ.type === 'ANALYSIS' || currentExamQ.type === 'DRAFTING') && (
                                         <div className="space-y-3">
                                             {/* Formatting toolbar */}
-                                            {!assessmentSubmitted && (
-                                                <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-t-xl border border-b-0 border-border/30 bg-muted/30">
-                                                    <button onClick={() => {
-                                                        const ta = assessmentTextRef.current;
-                                                        if (!ta) return;
-                                                        const s = ta.selectionStart, e = ta.selectionEnd;
-                                                        const sel = assessmentAnswer.substring(s, e);
-                                                        setAssessmentAnswer(assessmentAnswer.substring(0, s) + '**' + sel + '**' + assessmentAnswer.substring(e));
-                                                    }} className="px-2 py-1 rounded-md text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Bold">
-                                                        B
-                                                    </button>
-                                                    <button onClick={() => {
-                                                        const ta = assessmentTextRef.current;
-                                                        if (!ta) return;
-                                                        const s = ta.selectionStart, e = ta.selectionEnd;
-                                                        const sel = assessmentAnswer.substring(s, e);
-                                                        setAssessmentAnswer(assessmentAnswer.substring(0, s) + '*' + sel + '*' + assessmentAnswer.substring(e));
-                                                    }} className="px-2 py-1 rounded-md text-xs italic text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Italic">
-                                                        I
-                                                    </button>
-                                                    <div className="w-px h-4 bg-border/50 mx-1" />
-                                                    <button onClick={() => {
-                                                        const ta = assessmentTextRef.current;
-                                                        if (!ta) return;
-                                                        const pos = ta.selectionStart;
-                                                        const before = assessmentAnswer.substring(0, pos);
-                                                        const after = assessmentAnswer.substring(pos);
-                                                        const bullet = (before.length === 0 || before.endsWith('\n')) ? '• ' : '\n• ';
-                                                        setAssessmentAnswer(before + bullet + after);
-                                                    }} className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Bullet">
-                                                        • List
-                                                    </button>
-                                                    <button onClick={() => {
-                                                        const ta = assessmentTextRef.current;
-                                                        if (!ta) return;
-                                                        const pos = ta.selectionStart;
-                                                        const before = assessmentAnswer.substring(0, pos);
-                                                        const after = assessmentAnswer.substring(pos);
-                                                        const num = (before.match(/\n/g) || []).length + 1;
-                                                        const prefix = (before.length === 0 || before.endsWith('\n')) ? `${num}. ` : `\n${num}. `;
-                                                        setAssessmentAnswer(before + prefix + after);
-                                                    }} className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Numbered list">
-                                                        1. List
-                                                    </button>
-                                                </div>
-                                            )}
-                                            <div className="relative">
-                                                <textarea
-                                                    ref={assessmentTextRef}
-                                                    value={assessmentAnswer}
-                                                    onChange={(e) => setAssessmentAnswer(e.target.value)}
-                                                    disabled={assessmentSubmitted}
-                                                    placeholder={assessment.type === 'SHORT' ? 'Type your answer...' : 'Write your response here. Be thorough and cite relevant provisions where applicable...'}
-                                                    rows={assessment.type === 'SHORT' ? 4 : 8}
-                                                    className={cn(
-                                                        'w-full p-4 border border-border/30 bg-background/60 text-sm leading-relaxed resize-none transition-all',
-                                                        'focus:ring-2 focus:ring-primary/15 focus:border-primary/40 focus:bg-background',
-                                                        'disabled:opacity-70 placeholder:text-muted-foreground/40',
-                                                        !assessmentSubmitted ? 'rounded-b-xl' : 'rounded-xl',
-                                                        "font-['Inter',system-ui,sans-serif]"
-                                                    )}
-                                                />
-                                                {!assessmentSubmitted && (
-                                                    <button
-                                                        onClick={() => {
-                                                            setAssessmentSubmitted(true);
-                                                            setTimeout(() => {
-                                                                setAssessmentSubmitted(false);
-                                                                setAssessmentAnswer('');
-                                                                const nl = stackLevel + 1;
-                                                                setStackLevel(nl);
-                                                                saveProgress({ l: nl });
-                                                            }, 2000);
-                                                        }}
-                                                        disabled={!assessmentAnswer.trim()}
-                                                        className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-30 transition-all"
-                                                    >
-                                                        <Send className="h-3 w-3" /> Submit
-                                                    </button>
-                                                )}
+                                            <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-t-xl border border-b-0 border-border/30 bg-muted/30">
+                                                <button onClick={() => {
+                                                    const ta = assessmentTextRef.current;
+                                                    if (!ta) return;
+                                                    const s = ta.selectionStart, e = ta.selectionEnd;
+                                                    const sel = (examAnswers[currentExamQ.id] || '').substring(s, e);
+                                                    const val = (examAnswers[currentExamQ.id] || '');
+                                                    handleExamAnswer(currentExamQ.id, val.substring(0, s) + '**' + sel + '**' + val.substring(e));
+                                                }} className="px-2 py-1 rounded-md text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Bold">
+                                                    B
+                                                </button>
+                                                <button onClick={() => {
+                                                    const ta = assessmentTextRef.current;
+                                                    if (!ta) return;
+                                                    const s = ta.selectionStart, e = ta.selectionEnd;
+                                                    const sel = (examAnswers[currentExamQ.id] || '').substring(s, e);
+                                                    const val = (examAnswers[currentExamQ.id] || '');
+                                                    handleExamAnswer(currentExamQ.id, val.substring(0, s) + '*' + sel + '*' + val.substring(e));
+                                                }} className="px-2 py-1 rounded-md text-xs italic text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Italic">
+                                                    I
+                                                </button>
+                                                <div className="w-px h-4 bg-border/50 mx-1" />
+                                                <button onClick={() => {
+                                                    const val = (examAnswers[currentExamQ.id] || '');
+                                                    const bullet = val.endsWith('\n') || val === '' ? '• ' : '\n• ';
+                                                    handleExamAnswer(currentExamQ.id, val + bullet);
+                                                }} className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Bullet">
+                                                    • List
+                                                </button>
                                             </div>
-                                            {assessmentSubmitted && (
-                                                <div className="p-3 rounded-xl border border-emerald-200/30 dark:border-emerald-800/20 bg-emerald-500/5 text-sm text-emerald-800 dark:text-emerald-300 animate-in fade-in duration-300">
-                                                    <CheckCircle2 className="inline h-3.5 w-3.5 mr-1.5" />
-                                                    Answer recorded — moving to next question...
+                                            <textarea
+                                                ref={assessmentTextRef}
+                                                value={examAnswers[currentExamQ.id] || ''}
+                                                onChange={(e) => handleExamAnswer(currentExamQ.id, e.target.value)}
+                                                placeholder={currentExamQ.type === 'SHORT'
+                                                    ? 'Write your answer (3-5 sentences). Cite relevant statutory provisions...'
+                                                    : 'Write your analysis. Identify all legal issues, state the applicable law, and reach reasoned conclusions. Cite specific statutory provisions and case law where applicable...'}
+                                                rows={currentExamQ.type === 'SHORT' ? 6 : 10}
+                                                className={cn(
+                                                    'w-full p-4 border border-border/30 bg-background/60 text-sm leading-relaxed resize-none transition-all rounded-b-xl',
+                                                    'focus:ring-2 focus:ring-primary/15 focus:border-primary/40 focus:bg-background',
+                                                    'placeholder:text-muted-foreground/40',
+                                                    "font-['Inter',system-ui,sans-serif]"
+                                                )}
+                                            />
+                                            {currentExamQ.rubric && (
+                                                <div className="p-3 rounded-xl bg-muted/30 border border-border/20">
+                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Marking Criteria</p>
+                                                    <ul className="space-y-1">
+                                                        {currentExamQ.rubric.map((r: string, i: number) => (
+                                                            <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                                                <span className="text-primary/60 mt-0.5">•</span> {r}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
                                                 </div>
                                             )}
                                         </div>
@@ -1281,10 +1535,32 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                                 </div>
                             </ScrollArea>
                         </div>
-                        <div className="px-5 py-3 border-t bg-muted/20 text-center">
-                            <p className="text-[11px] text-muted-foreground">
-                                {assessment.type === 'MCQ' ? 'Select the correct answer to continue' : 'Write your response and submit'}
-                            </p>
+
+                        {/* Bottom navigation */}
+                        <div className="px-5 py-3 border-t bg-muted/20 flex items-center justify-between">
+                            <div>
+                                {examStep > 0 && (
+                                    <button onClick={handleExamPrev} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors">
+                                        <ChevronLeft className="h-4 w-4" /> Previous
+                                    </button>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {!isLastQ ? (
+                                    <Button onClick={handleExamNext} disabled={!isAnswered} size="default" className="px-6 rounded-xl">
+                                        Next <ChevronRight className="ml-1.5 h-4 w-4" />
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        onClick={handleSubmitExam}
+                                        disabled={Object.keys(examAnswers).length < examQuestions.length}
+                                        size="default"
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 rounded-xl"
+                                    >
+                                        <Send className="h-4 w-4 mr-1.5" /> Submit Assessment
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                     </Card>
                 </div>

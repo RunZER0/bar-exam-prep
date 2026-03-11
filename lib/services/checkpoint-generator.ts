@@ -10,14 +10,15 @@ const getOpenAI = () => {
 /**
  * CheckpointGenerator
  * 
- * Generates lightweight inline checkpoint questions to be interleaved
- * with narrative study notes. These are NOT full assessments — they are
- * quick "attention checks" that force active recall during reading.
+ * Generates TOUGH inline checkpoint questions interleaved with study notes.
+ * These are NOT simple "attention checks" — they are bar-exam-grade questions
+ * that force students to THINK, APPLY, and DISTINGUISH. A student who merely
+ * skimmed the notes should get them wrong.
  * 
  * Types generated:
- *   - MCQ      : 4-option multiple choice (1 correct)
- *   - SHORT    : Free-text short answer (1-2 sentences expected)
- *   - ORDERING : Arrange items in correct sequence
+ *   - MCQ      : 4-option scenario-based (1 correct, 3 plausible traps)
+ *   - SHORT    : Application/analysis requiring 2-4 sentence reasoning
+ *   - ORDERING : Procedural sequence with legal consequences for wrong order
  */
 
 export type CheckpointType = 'MCQ' | 'SHORT' | 'ORDERING';
@@ -38,6 +39,8 @@ export interface CheckpointQuestion {
     // Shared
     hint?: string;
     explanation: string;
+    /** Points value for scoring (used by end-of-lesson assessment) */
+    points?: number;
 }
 
 export class CheckpointGenerator {
@@ -58,10 +61,10 @@ export class CheckpointGenerator {
 
         const typeDistribution = this.distributeTypes(count);
 
-        const prompt = `You are a Kenya School of Law (KSL) bar exam coach. Generate ${count} challenging checkpoint question(s) for the topic: "${topic}".
+        const prompt = `You are a RUTHLESS Kenya School of Law (KSL) bar exam coach. Generate ${count} TOUGH checkpoint question(s) for: "${topic}".
 ${context?.unitCode ? `Course: ${context.unitCode}` : ''}
 
-These are knowledge checks placed between study slides to test REAL understanding. They should challenge the student — not just regurgitate definitions but test APPLICATION, ANALYSIS, and TRICKY DISTINCTIONS that bar examiners love to test.
+DIFFICULTY MANDATE: These questions are placed between study slides to VERIFY genuine understanding. A student who only skimmed the notes MUST get these wrong. Target the difficulty of actual bar exam questions — tricky, scenario-based, requiring LEGAL REASONING not mere recall.
 
 Generate exactly this distribution: ${typeDistribution.join(', ')}
 
@@ -70,38 +73,38 @@ RESPOND WITH VALID JSON ONLY:
   "checkpoints": [
     {
       "type": "MCQ",
-      "question": "A challenging scenario-based question that requires reasoning, not just recall",
-      "options": ["A plausible but wrong answer", "The correct answer with a subtle distinction", "A common student misconception", "An answer that is partially right but misses a key element"],
+      "question": "Present a REALISTIC client scenario or courtroom situation (3-4 sentences) then ask a question that requires applying the law to the specific facts. Example: 'Wanjiku, a tenant under a 5-year lease registered under the Registration of Documents Act, discovers her landlord sold the property. The new owner serves a notice to vacate. Under Kenyan law, Wanjiku's STRONGEST legal position is:'",
+      "options": ["A plausible but legally wrong answer - would be correct if one fact changed", "The correct answer with precise legal reasoning", "A common student error - confuses a similar but inapplicable rule", "An answer that cites the right statute but reaches the wrong conclusion"],
       "correctIndex": 1,
-      "hint": "Optional short hint",
-      "explanation": "Brief explanation of WHY the correct answer is right and why the distractors are wrong (2-3 sentences)"
+      "hint": "Focus on the distinction between registered and unregistered interests",
+      "explanation": "Thorough explanation: WHY correct answer is right (cite the statutory provision), and WHY each distractor fails (2-4 sentences)"
     },
     {
       "type": "SHORT",
-      "question": "A question requiring the student to distinguish, compare, or apply a principle to a scenario...",
-      "sampleAnswer": "The expected answer showing reasoning",
-      "keywords": ["key", "terms", "that", "should", "appear"],
-      "hint": "Optional hint",
-      "explanation": "Brief explanation"
+      "question": "Present a fact pattern: 'Company X did [action]. Company Y responded by [action]. The court must determine [issue].' Then ask: 'Advise the court on the applicable legal test, citing the relevant statutory provision and ONE supporting Kenyan case.' Do NOT ask 'Define X' or 'What is X'.",
+      "sampleAnswer": "A model answer demonstrating the reasoning chain: identify the rule → apply to facts → reach conclusion (3-4 sentences)",
+      "keywords": ["specific_legal_term", "statute_section", "case_name", "legal_test"],
+      "hint": "Consider the distinction between...",
+      "explanation": "Full explanation of the correct analysis"
     },
     {
       "type": "ORDERING",
-      "question": "Arrange these steps in the correct procedural order:",
-      "items": ["Step A (scrambled)", "Step B", "Step C", "Step D"],
+      "question": "Arrange these steps in the correct procedural order. Getting ANY step wrong has real legal consequences (explain what goes wrong):",
+      "items": ["Step with specific legal detail (scrambled)", "Step B with statute reference", "Step C naming the specific court/office", "Step D with timeline requirement"],
       "correctOrder": [2, 0, 3, 1],
-      "hint": "Optional hint",
-      "explanation": "Brief explanation of correct order"
+      "hint": "Start with the preliminary step that must happen before the court has jurisdiction",
+      "explanation": "Correct order with legal consequence of each misstep (e.g., 'Filing before X makes the application incompetent under Order XX Rule X')"
     }
   ]
 }
 
-QUESTION DESIGN RULES:
-- MCQ: Every distractor must be PLAUSIBLE. Include common misconceptions, partial truths, and answers that would be correct in a DIFFERENT context. Use scenario-based questions (e.g. "If a company fails to register a charge within 30 days, the charge becomes:"). Avoid "Which of the following is true" generic formats.
-- SHORT: Ask the student to DISTINGUISH between similar concepts, APPLY a rule to a fact pattern, or EXPLAIN WHY a particular outcome follows from the law. Never ask "Define X" or "What is X".
-- ORDERING: Use real procedural sequences where the order matters legally (filing steps, court processes, registration procedures).
-- All questions must be grounded in Kenyan law
-- Questions should test understanding at the level of a bar exam, not a first-year tutorial
-- Make wrong MCQ options genuinely tempting — the student should need to think carefully`;
+QUESTION DESIGN COMMANDMENTS:
+1. EVERY MCQ must start with a FACT PATTERN (real-world scenario, 2-4 sentences minimum). NEVER use "Which of the following..." without a scenario.
+2. MCQ distractors must exploit ACTUAL student misconceptions — partial truths, confused statutes, right rule wrong context. A student should genuinely debate between 2-3 options.
+3. SHORT questions must require APPLYING law to facts, not reciting rules. "Advise [client] on..." or "Draft the legal argument for..." formats only.
+4. ORDERING must use REAL procedural sequences where wrong order = legal consequences (case struck out, appeal time-barred, etc.)
+5. ALL questions grounded in Kenyan law with specific statute/rule references where applicable.
+6. Difficulty level: A well-prepared bar candidate should get 60-70% right on first attempt. These should make students THINK hard.`;
 
         try {
             const openai = getOpenAI();

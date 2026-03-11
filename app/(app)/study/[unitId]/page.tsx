@@ -237,9 +237,31 @@ Make this practical and exam-focused for the Kenya bar exam.`;
         } else if (att.transcription) {
           processedAttachments.push({ type: att.type, transcription: att.transcription, fileName: att.file.name });
         } else {
-          // Read file as text for documents
-          const text = await att.file.text();
-          processedAttachments.push({ type: 'document', transcription: text, fileName: att.file.name });
+          // Extract text from documents server-side
+          const ext = att.file.name.split('.').pop()?.toLowerCase();
+          if (['pdf', 'doc', 'docx'].includes(ext || '')) {
+            try {
+              const token = await getIdToken();
+              const formData = new FormData();
+              formData.append('file', att.file);
+              const extractRes = await fetch('/api/extract-document', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
+              });
+              if (extractRes.ok) {
+                const extractData = await extractRes.json();
+                processedAttachments.push({ type: 'document', transcription: extractData.text, fileName: att.file.name });
+              } else {
+                processedAttachments.push({ type: 'document', transcription: `[Could not extract ${att.file.name}]`, fileName: att.file.name });
+              }
+            } catch {
+              processedAttachments.push({ type: 'document', transcription: `[Could not extract ${att.file.name}]`, fileName: att.file.name });
+            }
+          } else {
+            const text = await att.file.text();
+            processedAttachments.push({ type: 'document', transcription: text, fileName: att.file.name });
+          }
         }
       }
     }

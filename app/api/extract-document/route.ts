@@ -35,7 +35,8 @@ export async function POST(request: NextRequest) {
     // ── PDF extraction ──
     if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
       try {
-        const pdfParse = (await import('pdf-parse')).default;
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const pdfParse = require('pdf-parse');
         const pdfData = await pdfParse(buffer);
         extractedText = pdfData.text || '';
       } catch (err) {

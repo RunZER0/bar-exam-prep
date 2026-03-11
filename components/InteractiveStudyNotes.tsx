@@ -134,9 +134,9 @@ function AIChatPanel({ initialText, skillName, onClose, mode = 'chat' }: AIChatP
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [attachments, setAttachments] = useState<Array<{ id: string; file: File; type: string; preview?: string }>>([]);
+  const [attachments, setAttachments] = useState<Array<{ id: string; file: File; type: string; preview?: string; transcription?: string }>>([]);
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
     const newAtts = Array.from(files).map(file => ({
@@ -144,10 +144,36 @@ function AIChatPanel({ initialText, skillName, onClose, mode = 'chat' }: AIChatP
       file,
       type: file.type.startsWith('image/') ? 'image' as const : 'document' as const,
       ...(file.type.startsWith('image/') ? { preview: URL.createObjectURL(file) } : {}),
+      transcription: undefined as string | undefined,
     }));
     setAttachments(prev => [...prev, ...newAtts]);
     e.target.value = '';
-  }, []);
+
+    // Auto-extract text from documents
+    for (const att of newAtts) {
+      if (att.type === 'document') {
+        const ext = att.file.name.split('.').pop()?.toLowerCase();
+        if (['pdf', 'doc', 'docx'].includes(ext || '')) {
+          try {
+            const token = await getIdToken();
+            const formData = new FormData();
+            formData.append('file', att.file);
+            const res = await fetch('/api/extract-document', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+              body: formData,
+            });
+            if (res.ok) {
+              const data = await res.json();
+              setAttachments(prev => prev.map(a => a.id === att.id ? { ...a, transcription: data.text } : a));
+            }
+          } catch (err) {
+            console.error('Document extraction failed:', err);
+          }
+        }
+      }
+    }
+  }, [getIdToken]);
 
   const removeAttachment = useCallback((id: string) => {
     setAttachments(prev => prev.filter(a => a.id !== id));
@@ -241,12 +267,46 @@ function AIChatPanel({ initialText, skillName, onClose, mode = 'chat' }: AIChatP
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || loading) return;
+    if ((!input.trim() && attachments.length === 0) || loading) return;
     
     const userMessage = input.trim();
+    const currentAttachments = [...attachments];
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setAttachments([]);
+    setMessages(prev => [...prev, { role: 'user', content: userMessage + (currentAttachments.length > 0 ? ` [${currentAttachments.length} attachment(s)]` : '') }]);
     setLoading(true);
+
+    // Process attachments
+    const processedAttachments: Array<{ type: string; dataUrl?: string; content?: string; fileName?: string }> = [];
+    for (const att of currentAttachments) {
+      if (att.type === 'image' && att.preview) {
+        processedAttachments.push({ type: 'image', dataUrl: att.preview, fileName: att.file.name });
+      } else if (att.transcription) {
+        processedAttachments.push({ type: 'document', content: att.transcription, fileName: att.file.name });
+      } else {
+        // Fallback: extract on the fly if not already done
+        const ext = att.file.name.split('.').pop()?.toLowerCase();
+        if (['pdf', 'doc', 'docx'].includes(ext || '')) {
+          try {
+            const token = await getIdToken();
+            const formData = new FormData();
+            formData.append('file', att.file);
+            const extractRes = await fetch('/api/extract-document', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+              body: formData,
+            });
+            if (extractRes.ok) {
+              const extractData = await extractRes.json();
+              processedAttachments.push({ type: 'document', content: extractData.text, fileName: att.file.name });
+            }
+          } catch { /* skip */ }
+        } else {
+          const text = await att.file.text();
+          processedAttachments.push({ type: 'document', content: text, fileName: att.file.name });
+        }
+      }
+    }
 
     try {
       const token = await getIdToken();
@@ -257,9 +317,10 @@ function AIChatPanel({ initialText, skillName, onClose, mode = 'chat' }: AIChatP
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          message: userMessage,
+          message: userMessage || 'Please analyze the attached document(s).',
           competencyType: 'clarification',
           context: { topicArea: skillName },
+          ...(processedAttachments.length > 0 && { attachments: processedAttachments }),
         }),
       });
 

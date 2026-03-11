@@ -79,7 +79,7 @@ export default function Sidebar() {
   const nav = (
     <>
       {/* Logo */}
-      <div className={`flex items-center gap-3 px-4 pt-6 pb-6 ${collapsed ? 'justify-center' : ''}`}>
+      <Link href="/dashboard" className={`flex items-center gap-3 px-4 pt-6 pb-6 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer ${collapsed ? 'justify-center' : ''}`}>
         <Image
           src="/favicon-32x32.png"
           alt="Ynai Logo"
@@ -94,7 +94,7 @@ export default function Sidebar() {
             <p className="text-[10px] text-muted-foreground">Bar Exam Prep</p>
           </div>
         )}
-      </div>
+      </Link>
 
       {/* Nav links */}
       <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
@@ -208,7 +208,7 @@ export default function Sidebar() {
     <>
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card/80 backdrop-blur-xl border-b border-border/50 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <Link href="/dashboard" className="flex items-center gap-3 rounded-lg hover:opacity-80 transition-opacity">
           <Image
             src="/favicon-32x32.png"
             alt="Ynai Logo"
@@ -218,7 +218,7 @@ export default function Sidebar() {
             priority
           />
           <span className="font-bold text-lg">Ynai</span>
-        </div>
+        </Link>
         <div className="flex items-center gap-1">
           <NotificationBell collapsed />
           <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-xl hover:bg-accent">

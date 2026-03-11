@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { Zap, BookOpen, PlayCircle, CheckCircle2, BarChart3, ArrowLeft, ChevronRight, ChevronDown, Smile, Meh, Frown, ArrowRight, RotateCcw, Sparkles, Compass, FileText, Lightbulb, ClipboardCheck, PenTool, Layers } from 'lucide-react';
 import MasteryCarousel from '@/components/MasteryCarousel';
@@ -59,6 +60,7 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
 
 export default function MasteryPage() {
     const { getIdToken, user } = useAuth();
+    useTimeTracker('mastery');
     const [queueData, setQueueData] = useState<DailyQueue | null>(null);
     const [loading, setLoading] = useState(true);
     const [fetchError, setFetchError] = useState<string | null>(null);

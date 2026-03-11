@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 import EngagingLoader from '@/components/EngagingLoader';
 import {
@@ -97,6 +98,7 @@ interface ReportData {
 
 export default function ProgressPage() {
   const { user, getIdToken } = useAuth();
+  useTimeTracker('progress');
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

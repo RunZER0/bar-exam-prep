@@ -145,19 +145,22 @@ export default function AboutPage() {
           </div>
           <div className="space-y-4 text-muted-foreground leading-relaxed">
             <p>
-              It started with fear. In 2025, the Kenya School of Law bar exam results came out and the numbers were devastating - barely half the students who sat for the exams passed. Behind every failed script was a person who had spent years in university, sacrificed everything to get to KSL, and then watched their dream slip through their fingers. Some of them were the brightest minds in their law school classes. The bar exam didn't care.
+              There&apos;s a moment every KSL student knows. It&apos;s 2 AM. You&apos;re staring at the same provision you&apos;ve read four times. Your highlighter is running dry, your eyes are burning, and somewhere deep in your chest there&apos;s a tight knot of dread that whispers: <em>&quot;What if I&apos;m not doing enough?&quot;</em>
             </p>
             <p>
-              I'm sitting in those same halls right now. I'm a current KSL student in the trenches with you - not a former student looking back with nostalgia, but someone staring at the same mountain you are. I know what it feels like to read the same provision five times and still not know if you've understood it. I know the 2 AM panic when you realise how much content there is and how little time remains. I know the loneliness of studying for an exam where the odds feel stacked against you.
+              That moment happened to me. Not years ago — it happened last week. I&apos;m a current KSL student. Right now. I sit in the same lectures you sit in. I stress over the same revision timetables. I feel the same weight of a 50% failure rate pressing down on my shoulders every single day. I haven&apos;t crossed the finish line yet — I&apos;m running the same race you are.
             </p>
             <p>
-              When I looked at those failure rates - at my seniors who didn't make it, at the colleagues around me fighting the same anxiety - I refused to accept that our fate was just luck and willpower. There had to be a smarter way. A way to know exactly what you don't know. A way to practise in the exact format the bar exam demands. A way to get expert-level guidance at 3 AM when no lecturer is answering calls.
+              When the 2025 bar results came out, they hit close to home. Seniors I admired, people who studied harder than anyone I knew, didn&apos;t make it. Not because they weren&apos;t brilliant — they were. But brilliance alone isn&apos;t enough when the system gives you mountains of content, minimal feedback, and no way to know if you&apos;re actually ready until the day your results drop and it&apos;s too late.
             </p>
             <p>
-              So I built Ynai. Not after graduating. Not from a comfortable office. From the same desk where I prepare my own bar exam answers. Every feature in this platform exists because I needed it myself - and I know you need it too.
+              That broke something in me. Not my spirit — my patience. I refused to accept that the only strategy was &quot;read more, sleep less, hope for the best.&quot; There had to be a way to study smarter. To know <em>exactly</em> what you don&apos;t know. To practice drafting at midnight and get real feedback. To have someone — or something — that never sleeps, never judges, and always knows the right provision to point you to.
             </p>
-            <p className="font-medium text-foreground">
-              Ynai isn't just an app. It's our lifeline. Built by one of us, for all of us. Because the bar exam failure rate is not our destiny - preparation is.
+            <p>
+              So I built Ynai. Not from a corner office after graduating. Not with a team of 50. From my own study desk, between revision sessions, fuelled by the same instant coffee you&apos;re probably drinking right now. Every single feature exists because I needed it first. The mastery engine that tracks your weak spots? I built it because I was tired of guessing mine. The AI tutor that explains concepts at 3 AM? I built it because no lecturer picks up at that hour. The community? Because the loneliest exam in Kenya shouldn&apos;t be faced alone.
+            </p>
+            <p className="font-medium text-foreground italic">
+              I&apos;m not a founder looking down from the other side. I&apos;m a fellow student reaching out my hand from the same trench. Ynai is our tool, our edge, our refusal to accept that half of us have to fail. We&apos;re going to change that number — together.
             </p>
           </div>
         </div>

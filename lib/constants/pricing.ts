@@ -70,24 +70,24 @@ export const WEEKLY_LIMITS: Record<Exclude<SubscriptionTier, 'custom'>, Record<P
     oral_exam:  2,
     oral_devil: 2,
     cle_exam:   3,
-    research:   2,
-    clarify:    3,
+    research:   3,   // +40% (was 2)
+    clarify:    5,   // +60% (was 3)
   },
   standard: {
     drafting:   4,
     oral_exam:  4,
     oral_devil: 4,
     cle_exam:   4,
-    research:   4,
-    clarify:    4,
+    research:   6,   // +40% (was 4)
+    clarify:    6,   // +60% (was 4)
   },
   premium: {
     drafting:   6,
     oral_exam:  6,
     oral_devil: 6,
     cle_exam:   6,
-    research:   6,
-    clarify:    6,
+    research:   8,   // +40% (was 6)
+    clarify:    10,  // +60% (was 6)
   },
 };
 

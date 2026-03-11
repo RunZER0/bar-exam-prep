@@ -98,6 +98,26 @@ interface Ranking {
   isCurrentUser: boolean;
 }
 
+interface DMConversation {
+  partnerId: string;
+  displayName: string;
+  photoURL: string | null;
+  lastMessage: string;
+  lastMessageAt: string;
+  isLastFromMe: boolean;
+  unreadCount: number;
+}
+
+interface DMMessage {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  content: string;
+  messageType: 'message' | 'invite';
+  read: boolean;
+  createdAt: string;
+}
+
 interface Thread {
   id: string;
   authorId: string;
@@ -176,6 +196,7 @@ const TABS = [
   { id: 'rooms',     label: 'Rooms',      icon: Hash },
   { id: 'threads',   label: 'Threads',    icon: MessageCircle },
   { id: 'friends',   label: 'Friends',    icon: UserPlus },
+  { id: 'messages',  label: 'Messages',   icon: MessageSquare },
   { id: 'events',    label: 'Challenges', icon: Trophy },
   { id: 'rankings',  label: 'Rankings',   icon: Crown },
 ] as const;
@@ -274,6 +295,18 @@ export default function CommunityPage() {
   const [replyInput, setReplyInput] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
   const [loadingReplies, setLoadingReplies] = useState(false);
+
+  // Direct Messages
+  const [dmConversations, setDmConversations] = useState<DMConversation[]>([]);
+  const [activeDmPartner, setActiveDmPartner] = useState<{ id: string; name: string; photoURL: string | null } | null>(null);
+  const [dmMessages, setDmMessages] = useState<DMMessage[]>([]);
+  const [dmInput, setDmInput] = useState('');
+  const [sendingDm, setSendingDm] = useState(false);
+
+  // Profile photo
+  const [myPhotoURL, setMyPhotoURL] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -386,6 +419,12 @@ export default function CommunityPage() {
           setRankings(d.rankings || []);
           setWeekInfo(d.weekInfo || null);
         }
+      } else if (t === 'messages') {
+        const res = await apiFetch('/api/community/dm');
+        if (res.ok) {
+          const d = await res.json();
+          setDmConversations(d.conversations || []);
+        }
       }
     } catch (err) { console.error('Load error:', err); }
     finally { setLoading(false); }
@@ -451,10 +490,17 @@ export default function CommunityPage() {
         method: 'POST',
         body: JSON.stringify({ name: newRoomName, description: newRoomDesc, visibility: newRoomVisibility }),
       });
+      const data = await res.json();
       if (res.ok) {
         setShowCreateRoom(false);
         setNewRoomName('');
         setNewRoomDesc('');
+        if (data.autoApproved) {
+          // Room was auto-approved by AI — reload rooms
+          loadTabData('rooms');
+        }
+      } else {
+        alert(data.feedback || data.error || 'Request was not approved');
       }
     } catch {}
     finally { setSubmittingRoom(false); }
@@ -670,6 +716,202 @@ export default function CommunityPage() {
     }
   };
 
+  /* ---- Profile photo actions ---- */
+  useEffect(() => {
+    // Fetch current photo on mount
+    const fetchPhoto = async () => {
+      try {
+        const res = await apiFetch('/api/community/profile-photo');
+        if (res.ok) {
+          const d = await res.json();
+          if (d.photoURL) setMyPhotoURL(d.photoURL);
+        }
+      } catch {}
+    };
+    if (usernameChecked && !showUsernameSetup) fetchPhoto();
+  }, [usernameChecked, showUsernameSetup]);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { alert('Please select an image file'); return; }
+    if (file.size > 500 * 1024) { alert('Image too large. Max 500KB.'); return; }
+
+    setUploadingPhoto(true);
+    try {
+      // Compress and resize the image
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      await new Promise<void>((resolve) => {
+        img.onload = () => {
+          const size = Math.min(img.width, img.height, 200);
+          canvas.width = size;
+          canvas.height = size;
+          // Center crop
+          const sx = (img.width - size) / 2;
+          const sy = (img.height - size) / 2;
+          ctx?.drawImage(img, sx, sy, size, size, 0, 0, size, size);
+          resolve();
+        };
+        img.src = dataUrl;
+      });
+
+      const compressedData = canvas.toDataURL('image/jpeg', 0.8);
+
+      const res = await apiFetch('/api/community/profile-photo', {
+        method: 'POST',
+        body: JSON.stringify({ photoData: compressedData }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setMyPhotoURL(d.photoURL);
+      } else {
+        const d = await res.json();
+        alert(d.error || 'Failed to upload photo');
+      }
+    } catch {
+      alert('Failed to upload photo');
+    }
+    finally { setUploadingPhoto(false); }
+  };
+
+  /* ---- DM actions ---- */
+  const openDmChat = async (partnerId: string, partnerName: string, partnerPhoto: string | null) => {
+    setActiveDmPartner({ id: partnerId, name: partnerName, photoURL: partnerPhoto });
+    setDmMessages([]);
+    try {
+      const res = await apiFetch(`/api/community/dm?partnerId=${partnerId}`);
+      if (res.ok) {
+        const d = await res.json();
+        setDmMessages(d.messages || []);
+      }
+    } catch (err) {
+      console.error('Failed to load DMs:', err);
+    }
+  };
+
+  const sendDm = async () => {
+    if (!dmInput.trim() || !activeDmPartner || sendingDm) return;
+    setSendingDm(true);
+    try {
+      const res = await apiFetch('/api/community/dm', {
+        method: 'POST',
+        body: JSON.stringify({ recipientId: activeDmPartner.id, content: dmInput.trim() }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setDmMessages(prev => [...prev, d.message]);
+        setDmInput('');
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+      } else {
+        const d = await res.json();
+        alert(d.error || 'Failed to send message');
+      }
+    } catch (err) {
+      console.error('Failed to send DM:', err);
+    }
+    finally { setSendingDm(false); }
+  };
+
+  /* ================================================================
+     DM CHAT VIEW
+     ================================================================ */
+  if (activeDmPartner) {
+    return (
+      <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-background">
+        {/* DM header */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border/20 bg-card/50">
+          <button onClick={() => { setActiveDmPartner(null); setDmMessages([]); }} className="p-1.5 rounded-lg hover:bg-muted/40">
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            {activeDmPartner.photoURL ? (
+              <img src={activeDmPartner.photoURL} alt="" className="w-8 h-8 rounded-full object-cover" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                {activeDmPartner.name?.[0]?.toUpperCase() || '?'}
+              </div>
+            )}
+            <div>
+              <h2 className="font-semibold text-sm truncate">{activeDmPartner.name}</h2>
+              <p className="text-[11px] text-muted-foreground">Direct Message</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {dmMessages.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full text-center space-y-2 opacity-60">
+              <MessageSquare className="h-10 w-10 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">No messages yet. Say hello!</p>
+            </div>
+          )}
+          {dmMessages.map((msg) => {
+            const isMe = msg.senderId !== activeDmPartner.id;
+            return (
+              <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm leading-relaxed ${
+                  msg.messageType === 'invite'
+                    ? 'bg-amber-500/10 border border-amber-500/20 text-foreground'
+                    : isMe
+                      ? 'bg-primary text-primary-foreground rounded-tr-md'
+                      : 'bg-card border border-border/20 text-foreground rounded-tl-md'
+                }`}>
+                  {msg.messageType === 'invite' && (
+                    <p className="text-[10px] font-medium text-amber-600 mb-1 flex items-center gap-1">
+                      <Zap className="h-3 w-3" /> Invite Message
+                    </p>
+                  )}
+                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  <p className={`text-[10px] mt-1 ${isMe ? 'text-primary-foreground/60' : 'text-muted-foreground/60'}`}>
+                    {new Date(msg.createdAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* DM Input */}
+        <div className="px-4 py-3 border-t border-border/20 bg-card/50">
+          <div className="flex gap-2 items-end">
+            <textarea
+              value={dmInput}
+              onChange={e => {
+                setDmInput(e.target.value);
+                const el = e.target;
+                el.style.height = 'auto';
+                el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+              }}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendDm(); } }}
+              placeholder={`Message ${activeDmPartner.name}`}
+              rows={1}
+              className="flex-1 px-3 py-2 rounded-xl bg-background border border-border/20 text-sm outline-none focus:ring-1 focus:ring-primary/20 resize-none overflow-y-auto"
+              style={{ minHeight: '40px', maxHeight: '120px' }}
+            />
+            <button
+              onClick={sendDm}
+              disabled={!dmInput.trim() || sendingDm}
+              className="px-3 py-2 rounded-xl bg-primary text-primary-foreground disabled:opacity-30 transition-opacity shrink-0"
+            >
+              {sendingDm ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   /* ================================================================
      USERNAME SETUP MODAL
      ================================================================ */
@@ -783,13 +1025,17 @@ export default function CommunityPage() {
               <div key={msg.id} className={`flex gap-2.5 ${showHeader ? 'mt-3 first:mt-0' : 'mt-0.5'} ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                 {/* Avatar - only show on header messages */}
                 {showHeader ? (
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                    msg.isAgent ? 'bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-primary/20' 
-                    : isMe ? 'bg-primary/15 text-primary' 
-                    : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {msg.isAgent ? <Sparkles className="h-3.5 w-3.5" /> : (msg.displayName?.[0]?.toUpperCase() || '?')}
-                  </div>
+                  msg.photoURL && !msg.isAgent ? (
+                    <img src={msg.photoURL} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                  ) : (
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                      msg.isAgent ? 'bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-primary/20' 
+                      : isMe ? 'bg-primary/15 text-primary' 
+                      : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {msg.isAgent ? <Sparkles className="h-3.5 w-3.5" /> : (msg.displayName?.[0]?.toUpperCase() || '?')}
+                    </div>
+                  )
                 ) : (
                   <div className="w-8 shrink-0" />
                 )}
@@ -871,6 +1117,27 @@ export default function CommunityPage() {
             <p className="text-sm text-muted-foreground mt-1">
               Study together, compete, and grow with fellow candidates
             </p>
+          </div>
+          {/* Profile photo */}
+          <div className="relative">
+            <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+            <button
+              onClick={() => photoInputRef.current?.click()}
+              disabled={uploadingPhoto}
+              className="relative group"
+              title="Change profile photo"
+            >
+              {myPhotoURL ? (
+                <img src={myPhotoURL} alt="Profile" className="w-10 h-10 rounded-full object-cover ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all">
+                  {user?.displayName?.[0]?.toUpperCase() || '?'}
+                </div>
+              )}
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                {uploadingPhoto ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Plus className="h-2.5 w-2.5" />}
+              </div>
+            </button>
           </div>
         </div>
 
@@ -1314,9 +1581,13 @@ export default function CommunityPage() {
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0 mt-0.5">
-                          {reply.isAgentReply ? '🤖' : (reply.authorName?.[0] || '?')}
-                        </div>
+                        {reply.authorPhoto && !reply.isAgentReply ? (
+                          <img src={reply.authorPhoto} alt="" className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5" />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0 mt-0.5">
+                            {reply.isAgentReply ? '🤖' : (reply.authorName?.[0] || '?')}
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs font-medium">{reply.authorName || 'Anonymous'}</span>
@@ -1362,9 +1633,13 @@ export default function CommunityPage() {
                 <div className="space-y-2">
                   {pendingRequests.map(req => (
                     <div key={req.requestId} className="flex items-center gap-3 p-3 rounded-xl bg-card/40 border border-border/10">
-                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
-                        {req.displayName?.[0] || '?'}
-                      </div>
+                      {req.photoURL ? (
+                        <img src={req.photoURL} alt="" className="w-9 h-9 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                          {req.displayName?.[0] || '?'}
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{req.displayName}</p>
                         <p className="text-[11px] text-muted-foreground">Wants to connect</p>
@@ -1398,9 +1673,13 @@ export default function CommunityPage() {
                       >
                         <X className="h-3 w-3 text-muted-foreground" />
                       </button>
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-lg font-bold text-primary mb-2">
-                        {s.displayName?.[0] || '?'}
-                      </div>
+                      {s.photoURL ? (
+                        <img src={s.photoURL} alt="" className="w-12 h-12 rounded-full object-cover mb-2" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-lg font-bold text-primary mb-2">
+                          {s.displayName?.[0] || '?'}
+                        </div>
+                      )}
                       <p className="text-xs font-medium truncate w-full text-center">{s.displayName}</p>
                       {s.reasons[0] && (
                         <p className="text-[10px] text-muted-foreground mt-0.5 truncate w-full text-center">{s.reasons[0]}</p>
@@ -1437,15 +1716,26 @@ export default function CommunityPage() {
                 <div className="space-y-2">
                   {friends.map(f => (
                     <div key={f.friendshipId} className="flex items-center gap-3 p-3 rounded-xl bg-card/40 border border-border/10">
-                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
-                        {f.displayName?.[0] || '?'}
-                      </div>
+                      {f.photoURL ? (
+                        <img src={f.photoURL} alt="" className="w-9 h-9 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                          {f.displayName?.[0] || '?'}
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{f.displayName}</p>
                         {f.sharedInterests.length > 0 && (
                           <p className="text-[11px] text-muted-foreground truncate">{f.sharedInterests.join(' - ')}</p>
                         )}
                       </div>
+                      <button
+                        onClick={() => openDmChat(f.friendId, f.displayName, f.photoURL)}
+                        className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        title="Message"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                      </button>
                       <div className="flex items-center gap-1">
                         <Heart className="h-3 w-3 text-pink-500" />
                         <span className="text-[10px] text-muted-foreground">{f.matchScore}%</span>
@@ -1870,6 +2160,54 @@ export default function CommunityPage() {
           </div>
         )}
 
+        {/* ============ MESSAGES TAB ============ */}
+        {!loading && tab === 'messages' && (
+          <div className="space-y-4">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <MessageSquare className="h-3 w-3" /> Conversations
+            </h3>
+            {dmConversations.length === 0 ? (
+              <div className="text-center py-16 space-y-2">
+                <MessageSquare className="h-10 w-10 mx-auto text-muted-foreground/20" />
+                <p className="text-sm text-muted-foreground">No messages yet.</p>
+                <p className="text-xs text-muted-foreground">Message your friends from the Friends tab!</p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {dmConversations.map(conv => (
+                  <div
+                    key={conv.partnerId}
+                    onClick={() => openDmChat(conv.partnerId, conv.displayName, conv.photoURL)}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-card/40 border border-border/10 cursor-pointer hover:bg-card/60 transition-colors"
+                  >
+                    {conv.photoURL ? (
+                      <img src={conv.photoURL} alt="" className="w-10 h-10 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                        {conv.displayName?.[0] || '?'}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium truncate">{conv.displayName}</p>
+                        <span className="text-[10px] text-muted-foreground">{getTimeAgo(conv.lastMessageAt)}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {conv.isLastFromMe ? 'You: ' : ''}{conv.lastMessage}
+                      </p>
+                    </div>
+                    {conv.unreadCount > 0 && (
+                      <div className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                        {conv.unreadCount}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ============ RANKINGS TAB ============ */}
         {!loading && tab === 'rankings' && (
           <div className="space-y-4">
@@ -1932,9 +2270,13 @@ export default function CommunityPage() {
                         )}
                       </div>
 
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                        {r.displayName?.[0] || '?'}
-                      </div>
+                      {r.photoURL ? (
+                        <img src={r.photoURL} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                          {r.displayName?.[0] || '?'}
+                        </div>
+                      )}
 
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">

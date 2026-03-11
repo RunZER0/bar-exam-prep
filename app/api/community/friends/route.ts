@@ -364,51 +364,95 @@ async function generateAISuggestions(userId: string) {
 
     const userRoomIds = userRooms.map(r => r.roomId);
 
-    // Find users with similar study patterns or in same rooms
-    const potentialFriends = await db
-      .select({
-        suggestedUserId: roomMembers.userId,
-      })
-      .from(roomMembers)
-      .where(and(
-        ne(roomMembers.userId, userId),
-        userRoomIds.length > 0 
-          ? sql`${roomMembers.roomId} IN (${sql.join(userRoomIds.map(id => sql`${id}`), sql`, `)})` 
-          : sql`1=1`
-      ))
-      .groupBy(roomMembers.userId)
-      .limit(20);
+    // Get existing friend IDs to exclude them
+    const existingFriendships = await db
+      .select()
+      .from(userFriends)
+      .where(or(
+        eq(userFriends.userId, userId),
+        eq(userFriends.friendId, userId)
+      ));
+
+    const excludeIds = new Set([
+      userId,
+      ...existingFriendships.map(f => f.userId === userId ? f.friendId : f.userId),
+    ]);
+
+    // Strategy 1: Find users in shared rooms
+    let roommates: { suggestedUserId: string }[] = [];
+    if (userRoomIds.length > 0) {
+      roommates = await db
+        .select({
+          suggestedUserId: roomMembers.userId,
+        })
+        .from(roomMembers)
+        .where(and(
+          ne(roomMembers.userId, userId),
+          sql`${roomMembers.roomId} IN (${sql.join(userRoomIds.map(id => sql`${id}`), sql`, `)})`
+        ))
+        .groupBy(roomMembers.userId)
+        .limit(15);
+    }
+
+    // Strategy 2: Get ALL other registered users (so there's always someone to add)
+    const allUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(ne(users.id, userId))
+      .limit(50);
+
+    // Combine & deduplicate — roommates first, then remaining registered users
+    const roommateIds = new Set(roommates.map(r => r.suggestedUserId));
+    const potentialFriendIds: string[] = [];
+    
+    // Add roommates first (higher priority)
+    for (const rm of roommates) {
+      if (!excludeIds.has(rm.suggestedUserId)) {
+        potentialFriendIds.push(rm.suggestedUserId);
+      }
+    }
+    
+    // Fill in with other registered users
+    for (const u of allUsers) {
+      if (!excludeIds.has(u.id) && !roommateIds.has(u.id)) {
+        potentialFriendIds.push(u.id);
+      }
+    }
+
+    // Limit to 20 total
+    const finalIds = potentialFriendIds.slice(0, 20);
 
     // Calculate match scores and reasons
     const suggestions = await Promise.all(
-      potentialFriends.map(async (pf) => {
-        const { matchScore, sharedInterests } = await calculateMatchScore(userId, pf.suggestedUserId);
+      finalIds.map(async (suggestedId) => {
+        const { matchScore, sharedInterests } = await calculateMatchScore(userId, suggestedId);
         
         const reasons: string[] = [];
         if (sharedInterests.includes('same_rooms')) reasons.push('Active in same rooms');
         if (sharedInterests.includes('similar_weak_areas')) reasons.push('Similar weak areas');
         if (sharedInterests.includes('same_study_schedule')) reasons.push('Similar study schedule');
         if (sharedInterests.includes('complementary_strengths')) reasons.push('Complementary strengths');
+        if (sharedInterests.includes('similar_study_subjects')) reasons.push('Studies similar subjects');
+        if (reasons.length === 0) reasons.push('Fellow bar exam student');
 
         return {
           userId,
-          suggestedUserId: pf.suggestedUserId,
-          matchScore,
-          reasons: reasons.length > 0 ? reasons : ['Fellow bar exam student'],
+          suggestedUserId: suggestedId,
+          matchScore: Math.max(matchScore, 30), // Minimum 30% for non-roommate users
+          reasons,
           dismissed: false,
         };
       })
     );
 
-    // Filter and sort by match score
-    const filteredSuggestions = suggestions
-      .filter(s => s.matchScore > 50)
+    // Sort by match score descending
+    const sortedSuggestions = suggestions
       .sort((a, b) => b.matchScore - a.matchScore)
       .slice(0, 10);
 
     // Save suggestions to database
-    if (filteredSuggestions.length > 0) {
-      await db.insert(friendSuggestions).values(filteredSuggestions).onConflictDoNothing();
+    if (sortedSuggestions.length > 0) {
+      await db.insert(friendSuggestions).values(sortedSuggestions).onConflictDoNothing();
     }
 
     // Re-fetch from database to get full records with id and createdAt

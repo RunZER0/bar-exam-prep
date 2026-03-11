@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +26,11 @@ import {
   Sparkles,
   Brain,
   AlertCircle,
+  Mic,
+  Users,
+  GraduationCap,
+  BarChart2,
+  MessagesSquare,
 } from 'lucide-react';
 
 interface Stats {
@@ -110,10 +116,59 @@ const MODULES = [
     color: 'bg-gray-500/10 text-gray-500',
     borderColor: 'hover:border-gray-500/30',
   },
+  {
+    href: '/mastery',
+    label: 'Mastery Hub',
+    description: 'Track your mastery across every topic with intelligent study cards and assessments.',
+    icon: Brain,
+    color: 'bg-violet-500/10 text-violet-500',
+    borderColor: 'hover:border-violet-500/30',
+  },
+  {
+    href: '/oral-exams',
+    label: 'Oral Examinations',
+    description: 'Practice viva voce exams with an AI examiner simulating real bar panel questions.',
+    icon: Mic,
+    color: 'bg-indigo-500/10 text-indigo-500',
+    borderColor: 'hover:border-indigo-500/30',
+  },
+  {
+    href: '/community',
+    label: 'Community',
+    description: 'Connect with fellow students, join study rooms, and compete on leaderboards.',
+    icon: Users,
+    color: 'bg-blue-500/10 text-blue-500',
+    borderColor: 'hover:border-blue-500/30',
+  },
+  {
+    href: '/banter',
+    label: 'Banter',
+    description: 'Relax with light-hearted legal humour and fun conversations between study sessions.',
+    icon: MessagesSquare,
+    color: 'bg-pink-500/10 text-pink-500',
+    borderColor: 'hover:border-pink-500/30',
+  },
+  {
+    href: '/tutor',
+    label: 'AI Tutor',
+    description: 'Your personal AI tutor — ask any question about Kenyan law or bar exam preparation.',
+    icon: GraduationCap,
+    color: 'bg-teal-500/10 text-teal-500',
+    borderColor: 'hover:border-teal-500/30',
+  },
+  {
+    href: '/progress',
+    label: 'Progress Tracker',
+    description: 'See your study stats, time spent, accuracy trends, and readiness indicators.',
+    icon: BarChart2,
+    color: 'bg-cyan-500/10 text-cyan-500',
+    borderColor: 'hover:border-cyan-500/30',
+  },
 ];
 
 export default function DashboardPage() {
   const { user, getIdToken } = useAuth();
+  useTimeTracker('dashboard');
   const [stats, setStats] = useState<Stats | null>(null);
   const [streakData, setStreakData] = useState<StreakData | null>(null);
   const [recentSessions, setRecentSessions] = useState<any[]>([]);
@@ -252,15 +307,23 @@ export default function DashboardPage() {
         <div className="relative overflow-hidden rounded-2xl p-4 md:p-6 border border-orange-500/20 bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-yellow-500/10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="relative">
-                <Flame className="w-10 h-10 text-orange-500 animate-flame" />
-                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center">
+              <div className="relative w-12 h-14 flex items-center justify-center">
+                {/* Realistic animated fire */}
+                <div className="absolute inset-0 flex items-end justify-center">
+                  <div className="relative w-10 h-12">
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-10 rounded-full bg-gradient-to-t from-red-600 via-orange-500 to-yellow-400 opacity-90 animate-[fireFlicker_0.8s_ease-in-out_infinite_alternate] blur-[1px]" />
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-8 rounded-full bg-gradient-to-t from-orange-600 via-yellow-400 to-yellow-200 opacity-80 animate-[fireFlicker_0.6s_ease-in-out_infinite_alternate-reverse]" />
+                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-3 h-5 rounded-full bg-gradient-to-t from-yellow-300 to-white opacity-70 animate-[fireFlicker_0.4s_ease-in-out_infinite_alternate]" />
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-10 h-3 rounded-full bg-orange-500/30 blur-md animate-pulse" />
+                  </div>
+                </div>
+                <div className="absolute -top-1 -right-0 w-5 h-5 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center z-10 shadow-lg shadow-orange-500/50">
                   {streakData.currentStreak}
                 </div>
               </div>
               <div>
-                <p className="font-bold text-lg">
-                  {streakData.currentStreak} Day Streak! 🔥
+                <p className="font-bold text-lg bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 bg-clip-text text-transparent">
+                  {streakData.currentStreak} Day Streak!
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Keep it up! Study today to maintain your streak.

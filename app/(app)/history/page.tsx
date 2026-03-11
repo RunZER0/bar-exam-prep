@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import {
   History, FileText, BookOpen, Coffee, MessageCircleQuestion,
   Search, Clock, MessageSquare, Trash2,
@@ -115,6 +116,7 @@ function dateLabel(dateKey: string): string {
 export default function HistoryPage() {
   const router = useRouter();
   const { getIdToken } = useAuth();
+  useTimeTracker('history');
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');

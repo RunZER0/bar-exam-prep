@@ -1268,17 +1268,38 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                     <div className={cn('animate-in zoom-in duration-300 flex flex-col', cardHeight)}>
                         <Card className={cn('flex-1 flex flex-col shadow-lg overflow-hidden rounded-xl border-t-4', passed ? 'border-t-emerald-500' : 'border-t-red-500')}>
                             {/* Results Header */}
-                            <div className={cn('px-6 py-8 text-center', passed ? 'bg-emerald-50/30 dark:bg-emerald-950/15' : 'bg-red-50/30 dark:bg-red-950/15')}>
-                                <div className="relative inline-block mb-4">
-                                    <div className={cn('absolute inset-0 rounded-full blur-xl opacity-40 animate-pulse', passed ? 'bg-emerald-300' : 'bg-red-300')} />
+                            <div className={cn('px-6 py-8 text-center relative overflow-hidden', passed ? 'bg-emerald-50/30 dark:bg-emerald-950/15' : 'bg-red-50/30 dark:bg-red-950/15')}>
+                                {/* Confetti celebration for passed assessments */}
+                                {passed && (
+                                    <div className="absolute inset-0 pointer-events-none z-0">
+                                        {Array.from({ length: 24 }).map((_, i) => (
+                                            <div
+                                                key={i}
+                                                className="absolute"
+                                                style={{
+                                                    left: `${8 + (i * 17) % 84}%`,
+                                                    top: `${50 + (i % 3) * 15}%`,
+                                                    width: `${6 + (i % 4) * 2}px`,
+                                                    height: `${6 + (i % 3) * 3}px`,
+                                                    borderRadius: i % 3 === 0 ? '50%' : i % 3 === 1 ? '2px' : '0',
+                                                    background: ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'][i % 8],
+                                                    animation: `confettiBurst ${1.2 + (i % 5) * 0.3}s ease-out ${i * 0.05}s forwards`,
+                                                    transform: `rotate(${i * 37}deg)`,
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="relative inline-block mb-4 z-10">
+                                    <div className={cn('absolute inset-0 rounded-full blur-xl opacity-40', passed ? 'bg-emerald-300 animate-[celebrationPulse_0.8s_ease-in-out_3]' : 'bg-red-300 animate-pulse')} />
                                     {passed
-                                        ? <CheckCircle2 className="h-16 w-16 text-emerald-600 relative z-10" />
+                                        ? <CheckCircle2 className="h-16 w-16 text-emerald-600 relative z-10 animate-[celebrationPulse_0.6s_ease-in-out_3]" />
                                         : <AlertTriangle className="h-16 w-16 text-red-500 relative z-10" />
                                     }
                                 </div>
-                                <h2 className="text-2xl font-bold">{passed ? 'Assessment Passed!' : 'Not Yet — Keep Going'}</h2>
-                                <p className="text-muted-foreground mt-1">
-                                    {passed ? 'You have demonstrated mastery of this topic.' : 'You need 70% to pass. Review the material and try again.'}
+                                <h2 className="text-2xl font-bold relative z-10">{passed ? '🎉 Assessment Passed!' : 'Not Yet — Keep Going'}</h2>
+                                <p className="text-muted-foreground mt-1 relative z-10">
+                                    {passed ? 'Brilliant work! You\'ve demonstrated mastery of this topic.' : 'You need 70% to pass. Review the material and try again.'}
                                 </p>
                                 {/* Score display */}
                                 <div className="mt-4 inline-flex items-baseline gap-1">
@@ -1330,8 +1351,8 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                             {/* Action buttons */}
                             <div className="px-5 py-4 border-t bg-muted/20">
                                 {passed ? (
-                                    <Button onClick={() => { try { sessionStorage.removeItem(cacheKey); } catch {} onComplete({ passed: true, score: percentage }); }} size="lg" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-md py-5 rounded-xl">
-                                        <CheckCircle2 className="h-5 w-5 mr-2" /> Complete Lesson
+                                    <Button onClick={() => { try { sessionStorage.removeItem(cacheKey); } catch {} onComplete({ passed: true, score: percentage }); }} size="lg" className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/25 py-5 rounded-xl transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-[1.02]">
+                                        <CheckCircle2 className="h-5 w-5 mr-2" /> 🎉 Complete Lesson
                                     </Button>
                                 ) : (
                                     <div className="flex gap-3">

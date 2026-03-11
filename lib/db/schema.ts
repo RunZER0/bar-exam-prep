@@ -564,6 +564,17 @@ export const friendSuggestions = pgTable('friend_suggestions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// Direct Messages
+export const directMessages = pgTable('direct_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  senderId: uuid('sender_id').references(() => users.id).notNull(),
+  recipientId: uuid('recipient_id').references(() => users.id).notNull(),
+  content: text('content').notNull(),
+  messageType: text('message_type').default('message').notNull(), // 'message' | 'invite'
+  read: boolean('read').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   profile: one(userProfiles),

@@ -1,6 +1,6 @@
 /**
  * Room Creation Requests API
- * POST - Submit a request to create a custom room (needs admin approval)
+ * POST - Submit a request to create a custom room (AI-reviewed + admin approval)
  * GET  - Get user's room requests
  */
 
@@ -9,6 +9,63 @@ import { withAuth, withAdminAuth } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
 import { roomRequests, studyRooms, roomMembers, users } from '@/lib/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
+import OpenAI from 'openai';
+import { MINI_MODEL } from '@/lib/ai/model-config';
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// AI review of room request content
+async function reviewRoomRequest(name: string, description: string | null): Promise<{
+  approved: boolean;
+  feedback: string;
+  confidence: number;
+}> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: MINI_MODEL,
+      messages: [
+        {
+          role: 'system',
+          content: `You are a content moderator for a Kenya School of Law (KSL) bar exam preparation platform community. 
+Your job is to review room creation requests and determine if they are appropriate.
+
+APPROVE rooms that are:
+- Related to legal studies, bar exam prep, KSL coursework, or law in general
+- General student social/support groups (e.g. "Study Buddies", "Moot Court Group")
+- Professional development (e.g. "Pupillage Tips", "Career Advice")
+- Appropriate social groups (e.g. "Coffee & Cram", "Weekend Studiers")
+
+REJECT rooms that are:
+- Offensive, hateful, discriminatory, or vulgar
+- Promoting cheating, exam fraud, or academic dishonesty
+- Spam or nonsensical
+- Completely unrelated to education or student life
+- Impersonating official KSL rooms or faculty
+
+Respond with JSON only: {"approved": boolean, "feedback": "brief explanation", "confidence": 0-100}`
+        },
+        {
+          role: 'user',
+          content: `Room Name: "${name}"\nDescription: "${description || 'No description provided'}"`
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 150,
+      response_format: { type: 'json_object' },
+    });
+
+    const result = JSON.parse(response.choices[0]?.message?.content || '{}');
+    return {
+      approved: result.approved ?? true,
+      feedback: result.feedback || 'Reviewed by AI',
+      confidence: result.confidence ?? 80,
+    };
+  } catch (error) {
+    console.error('AI review error:', error);
+    // If AI review fails, default to pending for manual review
+    return { approved: true, feedback: 'AI review unavailable — sent for manual review', confidence: 0 };
+  }
+}
 
 // GET - Get my room creation requests
 export const GET = withAuth(async (req: NextRequest, user) => {
@@ -55,15 +112,53 @@ export const POST = withAuth(async (req: NextRequest, user) => {
       }, { status: 429 });
     }
 
+    // AI review the room request
+    const review = await reviewRoomRequest(name.trim(), description?.trim() || null);
+
+    if (!review.approved && review.confidence >= 70) {
+      // High-confidence rejection — reject immediately
+      return NextResponse.json({
+        error: 'Your room request was not approved.',
+        feedback: review.feedback,
+      }, { status: 400 });
+    }
+
+    // Auto-approve high-confidence or send to admin for marginal cases
+    const autoApproved = review.approved && review.confidence >= 80;
+
     const [request] = await db.insert(roomRequests).values({
       requestedBy: user.id,
       name: name.trim(),
       description: description?.trim() || null,
       visibility: visibility || 'public',
-      status: 'pending',
+      status: autoApproved ? 'approved' : 'pending',
     }).returning();
 
-    return NextResponse.json({ success: true, request });
+    // If auto-approved, also create the room immediately
+    if (autoApproved) {
+      const [newRoom] = await db.insert(studyRooms).values({
+        name: name.trim(),
+        description: description?.trim() || null,
+        unitId: null,
+        roomType: 'custom',
+        isPublic: (visibility || 'public') === 'public',
+        createdById: user.id,
+      }).returning();
+
+      // Add requester as owner/member
+      await db.insert(roomMembers).values({
+        roomId: newRoom.id,
+        userId: user.id,
+        role: 'owner',
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      request,
+      autoApproved,
+      feedback: review.feedback,
+    });
   } catch (error) {
     console.error('Room request error:', error);
     return NextResponse.json({ error: 'Failed to submit request' }, { status: 500 });

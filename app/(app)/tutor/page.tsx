@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,6 +66,7 @@ const ITEM_COLORS: Record<string, string> = {
 
 export default function TutorDashboard() {
   const { user } = useAuth();
+  useTimeTracker('tutor');
   const [todayItems, setTodayItems] = useState<StudyItem[]>([]);
   const [stats, setStats] = useState<TodayStats>({
     itemsCompleted: 0,

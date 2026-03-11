@@ -544,7 +544,12 @@ export default function ClarifyPage() {
           </div>
           <textarea
             value={input}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+              setInput(e.target.value);
+              const el = e.target;
+              el.style.height = 'auto';
+              el.style.height = Math.min(el.scrollHeight, 128) + 'px';
+            }}
             placeholder="What do you need help understanding?"
             disabled={isLoading}
             className="flex-1 min-h-[44px] max-h-32 resize-none rounded-xl bg-muted/20 border border-border/20 focus:border-violet-500/40 px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-violet-500/15 transition-colors"

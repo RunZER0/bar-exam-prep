@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,10 @@ import {
   Star,
   Paperclip,
   Mic,
+  MicOff,
   Smile,
+  X,
+  FileText,
 } from 'lucide-react';
 
 interface Message {
@@ -130,8 +133,12 @@ const MOCK_MEMBERS: RoomMember[] = [
 export default function RoomDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, getIdToken } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
   const [members, setMembers] = useState<RoomMember[]>(MOCK_MEMBERS);
@@ -139,6 +146,71 @@ export default function RoomDetailPage() {
   const [showMembers, setShowMembers] = useState(false);
   const [isNotificationsOn, setIsNotificationsOn] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [attachments, setAttachments] = useState<Array<{ id: string; file: File; type: string; preview?: string }>>([]);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newAttachments = Array.from(files).map(file => {
+      const att: { id: string; file: File; type: string; preview?: string } = {
+        id: crypto.randomUUID(),
+        file,
+        type: file.type.startsWith('image/') ? 'image' : 'document',
+      };
+      if (att.type === 'image') {
+        att.preview = URL.createObjectURL(file);
+      }
+      return att;
+    });
+    setAttachments(prev => [...prev, ...newAttachments]);
+    e.target.value = '';
+  }, []);
+
+  const removeAttachment = useCallback((id: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== id));
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        try {
+          const token = await getIdToken();
+          const formData = new FormData();
+          formData.append('audio', audioBlob, 'recording.webm');
+          const res = await fetch('/api/transcribe', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.text) setNewMessage(prev => prev ? prev + ' ' + data.text : data.text);
+          }
+        } catch (err) { console.error('Transcription failed:', err); }
+      };
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingIntervalRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+    } catch (err) { console.error('Mic access denied:', err); }
+  }, [getIdToken]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (recordingIntervalRef.current) { clearInterval(recordingIntervalRef.current); recordingIntervalRef.current = null; }
+  }, []);
   
   // Extract room info from ID
   const roomId = params.roomId as string;
@@ -390,27 +462,53 @@ export default function RoomDetailPage() {
 
           {/* Message Input — Unified Bar */}
           <div className="p-3 border-t border-border/30 bg-background">
+            {/* Attachment Preview */}
+            {attachments.length > 0 && (
+              <div className="flex gap-2 mb-2 flex-wrap">
+                {attachments.map(att => (
+                  <div key={att.id} className="relative group">
+                    {att.type === 'image' && att.preview ? (
+                      <img src={att.preview} alt="" className="h-16 w-16 rounded-lg object-cover border" />
+                    ) : (
+                      <div className="h-16 w-16 rounded-lg border bg-muted flex items-center justify-center">
+                        <FileText className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <button onClick={() => removeAttachment(att.id)} className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input ref={fileInputRef} type="file" className="hidden" accept="image/*,.pdf,.doc,.docx,.txt" multiple onChange={handleFileSelect} />
             <div className="flex items-end rounded-2xl border border-border/50 bg-muted/30 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
               {/* Left action buttons */}
               <div className="flex items-center gap-0.5 pl-2 pb-2.5">
                 <button
                   className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                   title="Attach image"
+                  onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = 'image/*'; fileInputRef.current.click(); } }}
                 >
                   <ImageIcon className="h-4 w-4" />
                 </button>
                 <button
                   className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                   title="Attach file"
+                  onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = 'image/*,.pdf,.doc,.docx,.txt'; fileInputRef.current.click(); } }}
                 >
                   <Paperclip className="h-4 w-4" />
                 </button>
                 <button
-                  className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  className={`p-1.5 rounded-lg transition-colors ${isRecording ? 'bg-red-500/15 text-red-500' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}
                   title="Voice message"
+                  onClick={isRecording ? stopRecording : startRecording}
                 >
-                  <Mic className="h-4 w-4" />
+                  {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                 </button>
+                {isRecording && (
+                  <span className="text-xs text-red-500 font-mono pl-1">{Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}</span>
+                )}
               </div>
 
               {/* Textarea */}

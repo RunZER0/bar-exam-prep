@@ -21,7 +21,8 @@ import { parseCitations, CitationLink, StatutePanel, type ParsedCitation } from 
 import { 
   Sparkles, X, Send, BookOpen, Lightbulb, 
   Loader2, MessageCircle, Save, Check,
-  GraduationCap, FileText, Scale, Stamp
+  GraduationCap, FileText, Scale, Stamp,
+  Mic, MicOff, Paperclip, Image as ImageIcon,
 } from 'lucide-react';
 
 // ============================================
@@ -125,6 +126,72 @@ function AIChatPanel({ initialText, skillName, onClose, mode = 'chat' }: AIChatP
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [attachments, setAttachments] = useState<Array<{ id: string; file: File; type: string; preview?: string }>>([]);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newAtts = Array.from(files).map(file => ({
+      id: crypto.randomUUID(),
+      file,
+      type: file.type.startsWith('image/') ? 'image' as const : 'document' as const,
+      ...(file.type.startsWith('image/') ? { preview: URL.createObjectURL(file) } : {}),
+    }));
+    setAttachments(prev => [...prev, ...newAtts]);
+    e.target.value = '';
+  }, []);
+
+  const removeAttachment = useCallback((id: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== id));
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        try {
+          const token = await getIdToken();
+          const formData = new FormData();
+          formData.append('audio', audioBlob, 'recording.webm');
+          const res = await fetch('/api/transcribe', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.text) setInput(prev => prev ? prev + ' ' + data.text : data.text);
+          }
+        } catch (err) { console.error('Transcription failed:', err); }
+      };
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingIntervalRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+    } catch (err) { console.error('Mic access denied:', err); }
+  }, [getIdToken]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (recordingIntervalRef.current) { clearInterval(recordingIntervalRef.current); recordingIntervalRef.current = null; }
+  }, []);
 
   // Auto-send first message
   useEffect(() => {
@@ -261,10 +328,55 @@ function AIChatPanel({ initialText, skillName, onClose, mode = 'chat' }: AIChatP
 
         {/* Input */}
         <div className="p-4 border-t">
-          <div className="flex gap-2">
-            <Textarea
+          {/* Attachment Preview */}
+          {attachments.length > 0 && (
+            <div className="flex gap-2 mb-2 flex-wrap">
+              {attachments.map(att => (
+                <div key={att.id} className="relative group">
+                  {att.type === 'image' && att.preview ? (
+                    <img src={att.preview} alt="" className="h-14 w-14 rounded-lg object-cover border" />
+                  ) : (
+                    <div className="h-14 w-14 rounded-lg border bg-muted flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <button onClick={() => removeAttachment(att.id)} className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <input ref={fileInputRef} type="file" className="hidden" accept="image/*,.pdf,.doc,.docx,.txt" multiple onChange={handleFileSelect} />
+          <div className="flex gap-2 items-end">
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                title="Attach file"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Paperclip className="h-4 w-4" />
+              </button>
+              <button
+                className={`p-1.5 rounded-lg transition-colors ${isRecording ? 'bg-red-500/15 text-red-500' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}
+                title="Voice input"
+                onClick={isRecording ? stopRecording : startRecording}
+              >
+                {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </button>
+              {isRecording && (
+                <span className="text-xs text-red-500 font-mono">{Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}</span>
+              )}
+            </div>
+            <textarea
+              ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                const el = e.target;
+                el.style.height = 'auto';
+                el.style.height = Math.min(el.scrollHeight, 128) + 'px';
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -272,7 +384,7 @@ function AIChatPanel({ initialText, skillName, onClose, mode = 'chat' }: AIChatP
                 }
               }}
               placeholder="Ask a follow-up question..."
-              className="min-h-[44px] max-h-32 resize-none"
+              className="flex-1 min-h-[44px] max-h-32 resize-none rounded-xl bg-muted/20 border border-border/20 px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary/20 transition-colors"
               rows={1}
             />
             <Button 

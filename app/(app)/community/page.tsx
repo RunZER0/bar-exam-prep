@@ -12,6 +12,7 @@ import {
   Handshake, Building2, Gavel, UserCheck, UserX, Bell, ArrowRight,
   Heart, Zap, Target, TrendingUp, Calendar, ThumbsUp, ThumbsDown,
   MessageCircle, ArrowUp, Filter, CornerDownRight,
+  Mic, MicOff, Paperclip, Image as ImageIcon,
 } from 'lucide-react';
 
 const UNIT_NAMES: Record<string, string> = {
@@ -309,6 +310,73 @@ export default function CommunityPage() {
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatFileInputRef = useRef<HTMLInputElement>(null);
+  const chatMediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chatAudioChunksRef = useRef<Blob[]>([]);
+  const chatRecordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [chatIsRecording, setChatIsRecording] = useState(false);
+  const [chatRecordingTime, setChatRecordingTime] = useState(0);
+  const [chatAttachments, setChatAttachments] = useState<Array<{ id: string; file: File; type: string; preview?: string }>>([]);
+  // Track which context we're in: 'room' or 'dm'
+  const [chatInputContext, setChatInputContext] = useState<'room' | 'dm'>('room');
+
+  const handleChatFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newAtts = Array.from(files).map(file => ({
+      id: crypto.randomUUID(),
+      file,
+      type: file.type.startsWith('image/') ? 'image' as const : 'document' as const,
+      ...(file.type.startsWith('image/') ? { preview: URL.createObjectURL(file) } : {}),
+    }));
+    setChatAttachments(prev => [...prev, ...newAtts]);
+    e.target.value = '';
+  }, []);
+
+  const removeChatAttachment = useCallback((id: string) => {
+    setChatAttachments(prev => prev.filter(a => a.id !== id));
+  }, []);
+
+  const startChatRecording = useCallback(async (setInput: (fn: (prev: string) => string) => void) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      chatMediaRecorderRef.current = mediaRecorder;
+      chatAudioChunksRef.current = [];
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chatAudioChunksRef.current.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const audioBlob = new Blob(chatAudioChunksRef.current, { type: 'audio/webm' });
+        try {
+          const token = await getIdToken();
+          const formData = new FormData();
+          formData.append('audio', audioBlob, 'recording.webm');
+          const res = await fetch('/api/transcribe', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.text) setInput(prev => prev ? prev + ' ' + data.text : data.text);
+          }
+        } catch (err) { console.error('Transcription failed:', err); }
+      };
+      mediaRecorder.start();
+      setChatIsRecording(true);
+      setChatRecordingTime(0);
+      chatRecordingIntervalRef.current = setInterval(() => setChatRecordingTime(t => t + 1), 1000);
+    } catch (err) { console.error('Mic access denied:', err); }
+  }, [getIdToken]);
+
+  const stopChatRecording = useCallback(() => {
+    if (chatMediaRecorderRef.current && chatMediaRecorderRef.current.state !== 'inactive') {
+      chatMediaRecorderRef.current.stop();
+    }
+    setChatIsRecording(false);
+    if (chatRecordingIntervalRef.current) { clearInterval(chatRecordingIntervalRef.current); chatRecordingIntervalRef.current = null; }
+  }, []);
 
   const apiFetch = useCallback(async (url: string, opts?: RequestInit) => {
     const token = await getIdToken();
@@ -884,7 +952,50 @@ export default function CommunityPage() {
 
         {/* DM Input */}
         <div className="px-4 py-3 border-t border-border/20 bg-card/50">
+          {/* Attachment Preview */}
+          {chatInputContext === 'dm' && chatAttachments.length > 0 && (
+            <div className="flex gap-2 mb-2 flex-wrap">
+              {chatAttachments.map(att => (
+                <div key={att.id} className="relative group">
+                  {att.type === 'image' && att.preview ? (
+                    <img src={att.preview} alt="" className="h-14 w-14 rounded-lg object-cover border" />
+                  ) : (
+                    <div className="h-14 w-14 rounded-lg border bg-muted flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <button onClick={() => removeChatAttachment(att.id)} className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <input ref={chatFileInputRef} type="file" className="hidden" accept="image/*,.pdf,.doc,.docx,.txt" multiple onChange={handleChatFileSelect} />
           <div className="flex gap-2 items-end">
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                title="Attach file"
+                onClick={() => { setChatInputContext('dm'); chatFileInputRef.current?.click(); }}
+              >
+                <Paperclip className="h-4 w-4" />
+              </button>
+              <button
+                className={`p-1.5 rounded-lg transition-colors ${chatIsRecording && chatInputContext === 'dm' ? 'bg-red-500/15 text-red-500' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}
+                title="Voice message"
+                onClick={() => {
+                  setChatInputContext('dm');
+                  if (chatIsRecording) stopChatRecording();
+                  else startChatRecording(fn => setDmInput(fn));
+                }}
+              >
+                {chatIsRecording && chatInputContext === 'dm' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </button>
+              {chatIsRecording && chatInputContext === 'dm' && (
+                <span className="text-xs text-red-500 font-mono">{Math.floor(chatRecordingTime / 60)}:{String(chatRecordingTime % 60).padStart(2, '0')}</span>
+              )}
+            </div>
             <textarea
               value={dmInput}
               onChange={e => {
@@ -1070,7 +1181,49 @@ export default function CommunityPage() {
 
         {/* Message input */}
         <div className="px-4 py-3 border-t border-border/20 bg-card/50">
+          {/* Attachment Preview */}
+          {chatInputContext === 'room' && chatAttachments.length > 0 && (
+            <div className="flex gap-2 mb-2 flex-wrap">
+              {chatAttachments.map(att => (
+                <div key={att.id} className="relative group">
+                  {att.type === 'image' && att.preview ? (
+                    <img src={att.preview} alt="" className="h-14 w-14 rounded-lg object-cover border" />
+                  ) : (
+                    <div className="h-14 w-14 rounded-lg border bg-muted flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <button onClick={() => removeChatAttachment(att.id)} className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex gap-2 items-end">
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                title="Attach file"
+                onClick={() => { setChatInputContext('room'); chatFileInputRef.current?.click(); }}
+              >
+                <Paperclip className="h-4 w-4" />
+              </button>
+              <button
+                className={`p-1.5 rounded-lg transition-colors ${chatIsRecording && chatInputContext === 'room' ? 'bg-red-500/15 text-red-500' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}
+                title="Voice message"
+                onClick={() => {
+                  setChatInputContext('room');
+                  if (chatIsRecording) stopChatRecording();
+                  else startChatRecording(fn => setMsgInput(fn));
+                }}
+              >
+                {chatIsRecording && chatInputContext === 'room' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </button>
+              {chatIsRecording && chatInputContext === 'room' && (
+                <span className="text-xs text-red-500 font-mono">{Math.floor(chatRecordingTime / 60)}:{String(chatRecordingTime % 60).padStart(2, '0')}</span>
+              )}
+            </div>
             <textarea
               value={msgInput}
               onChange={e => {

@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUnitById } from '@/lib/constants/legal-content';
 import { Button } from '@/components/ui/button';
-import { SmartChatInput } from '@/components/SmartChatInput';
+import { SmartChatInput, Attachment } from '@/components/SmartChatInput';
 import AiThinkingIndicator from '@/components/AiThinkingIndicator';
 import {
   ArrowLeft,
@@ -221,17 +221,33 @@ Make this practical and exam-focused for the Kenya bar exam.`;
     }
   };
 
-  const sendMessage = useCallback(async (overrideMessage?: string) => {
+  const sendMessage = useCallback(async (overrideMessage?: string, attachments?: Attachment[]) => {
     if (!unit) return;
     const userMessage = overrideMessage || input.trim();
     if (!userMessage || sending) return;
 
     if (!overrideMessage) setInput('');
+
+    // Process attachments to base64 for API
+    const processedAttachments: Array<{ type: string; dataUrl?: string; transcription?: string; fileName?: string }> = [];
+    if (attachments && attachments.length > 0) {
+      for (const att of attachments) {
+        if (att.type === 'image' && att.preview) {
+          processedAttachments.push({ type: 'image', dataUrl: att.preview, fileName: att.file.name });
+        } else if (att.transcription) {
+          processedAttachments.push({ type: att.type, transcription: att.transcription, fileName: att.file.name });
+        } else {
+          // Read file as text for documents
+          const text = await att.file.text();
+          processedAttachments.push({ type: 'document', transcription: text, fileName: att.file.name });
+        }
+      }
+    }
     
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: 'user',
-      content: userMessage,
+      content: userMessage + (processedAttachments.length > 0 ? ` [${processedAttachments.length} attachment(s)]` : ''),
       timestamp: new Date(),
     };
 
@@ -255,6 +271,7 @@ Make this practical and exam-focused for the Kenya bar exam.`;
             statutes: unit.statutes,
           },
           sessionId,
+          ...(processedAttachments.length > 0 && { attachments: processedAttachments }),
         }),
       });
 
@@ -464,11 +481,13 @@ Make this practical and exam-focused for the Kenya bar exam.`;
             <SmartChatInput
               value={input}
               onChange={setInput}
-              onSend={() => sendMessage()}
+              onSend={(attachments) => sendMessage(undefined, attachments)}
               isLoading={sending}
               placeholder={`Ask anything about ${unit.name}...`}
               suggestions={QUICK_PROMPTS.slice(0, 3).map(qp => ({ label: qp.label, prompt: qp.prompt }))}
               onSuggestionClick={(prompt) => sendMessage(prompt)}
+              showVoice={true}
+              showAttachment={true}
             />
           </div>
         </div>
@@ -652,9 +671,11 @@ Make this practical and exam-focused for the Kenya bar exam.`;
           <SmartChatInput
             value={input}
             onChange={setInput}
-            onSend={() => sendMessage()}
+            onSend={(attachments) => sendMessage(undefined, attachments)}
             isLoading={sending}
             placeholder={`Continue studying ${unit.name}...`}
+            showVoice={true}
+            showAttachment={true}
           />
         </div>
       </div>

@@ -168,6 +168,23 @@ function StatutePanel({ citation, onClose, getIdToken }: { citation: ParsedCitat
                     } catch { /* continue to AI fallback */ }
                 }
 
+                /* ---- Phase 1b: Case law — look up Kenya Law URL ---- */
+                if (citation.type === 'case') {
+                    try {
+                        const lookupRes = await fetch('/api/citations/lookup', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ type: 'case', name: citation.statute, fullMatch: citation.fullMatch }),
+                        });
+                        const lookupData = await lookupRes.json();
+                        if (lookupData.found && lookupData.url) {
+                            if (!cancelled) {
+                                setSourceInfo({ name: lookupData.title, url: lookupData.url, isVerbatim: false });
+                            }
+                        }
+                    } catch { /* continue to AI fallback */ }
+                }
+
                 /* ---- Phase 2: AI fallback ---- */
                 const token = await getIdToken();
                 const res = await fetch('/api/ai/chat', {

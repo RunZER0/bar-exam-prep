@@ -311,6 +311,11 @@ html {
   50% { width: 60%; margin-left: 20%; }
   100% { width: 0%; margin-left: 100%; }
 }
+@keyframes loading {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(40%); }
+  100% { transform: translateX(-100%); }
+}
 .animate-loading-bar {
   animation: loading-bar 1.8s ease-in-out infinite;
 }
@@ -350,6 +355,23 @@ html {
   50% { transform: translateX(-52%) scaleY(0.95) scaleX(1.05); opacity: 0.8; }
   75% { transform: translateX(-49%) scaleY(1.05) scaleX(0.98); opacity: 0.88; }
   100% { transform: translateX(-50%) scaleY(1.02) scaleX(1.02); opacity: 0.85; }
+}
+
+/* Realistic multi-layer fire dance */
+@keyframes fireDance {
+  0% { transform: translateX(-50%) scaleY(1) scaleX(1) rotate(-2deg); }
+  20% { transform: translateX(-48%) scaleY(1.12) scaleX(0.92) rotate(1deg); }
+  40% { transform: translateX(-52%) scaleY(0.92) scaleX(1.08) rotate(-1deg); }
+  60% { transform: translateX(-49%) scaleY(1.08) scaleX(0.96) rotate(2deg); }
+  80% { transform: translateX(-51%) scaleY(0.97) scaleX(1.03) rotate(-1.5deg); }
+  100% { transform: translateX(-50%) scaleY(1.05) scaleX(0.98) rotate(0deg); }
+}
+
+/* Spark particle rising animation */
+@keyframes sparkRise {
+  0% { transform: translateY(0) scale(1); opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { transform: translateY(-18px) scale(0); opacity: 0; }
 }
 
 /* Confetti burst animation for celebrations */

@@ -307,17 +307,24 @@ export default function DashboardPage() {
         <div className="relative overflow-hidden rounded-2xl p-4 md:p-6 border border-orange-500/20 bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-yellow-500/10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="relative w-12 h-14 flex items-center justify-center">
-                {/* Realistic animated fire */}
+              <div className="relative w-14 h-16 flex items-center justify-center">
+                {/* Multi-layer realistic fire */}
                 <div className="absolute inset-0 flex items-end justify-center">
-                  <div className="relative w-10 h-12">
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-10 rounded-full bg-gradient-to-t from-red-600 via-orange-500 to-yellow-400 opacity-90 animate-[fireFlicker_0.8s_ease-in-out_infinite_alternate] blur-[1px]" />
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-8 rounded-full bg-gradient-to-t from-orange-600 via-yellow-400 to-yellow-200 opacity-80 animate-[fireFlicker_0.6s_ease-in-out_infinite_alternate-reverse]" />
-                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-3 h-5 rounded-full bg-gradient-to-t from-yellow-300 to-white opacity-70 animate-[fireFlicker_0.4s_ease-in-out_infinite_alternate]" />
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-10 h-3 rounded-full bg-orange-500/30 blur-md animate-pulse" />
+                  <div className="relative w-12 h-14">
+                    {/* Outer glow */}
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-4 rounded-full bg-orange-500/20 blur-lg animate-pulse" />
+                    {/* Outer flame — red/orange */}
+                    <div className="absolute bottom-0 left-1/2 w-9 h-12 rounded-[50%_50%_50%_50%_/_60%_60%_40%_40%] bg-gradient-to-t from-red-600 via-orange-500 to-yellow-400 opacity-80 animate-[fireDance_0.8s_ease-in-out_infinite_alternate] origin-bottom blur-[0.5px]" style={{ transform: 'translateX(-50%)' }} />
+                    {/* Mid flame — orange/yellow */}
+                    <div className="absolute bottom-0 left-1/2 w-7 h-10 rounded-[50%_50%_50%_50%_/_60%_60%_40%_40%] bg-gradient-to-t from-orange-500 via-amber-400 to-yellow-300 opacity-85 animate-[fireDance_0.6s_ease-in-out_infinite_alternate-reverse] origin-bottom" style={{ transform: 'translateX(-50%)' }} />
+                    {/* Inner flame — yellow/white core */}
+                    <div className="absolute bottom-0.5 left-1/2 w-4 h-7 rounded-[50%_50%_50%_50%_/_60%_60%_40%_40%] bg-gradient-to-t from-yellow-400 via-yellow-200 to-white opacity-90 animate-[fireDance_0.5s_ease-in-out_infinite_alternate] origin-bottom" style={{ transform: 'translateX(-50%)' }} />
+                    {/* Spark particles */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1 w-1.5 h-1.5 rounded-full bg-yellow-300 opacity-70 animate-[sparkRise_1.2s_ease-out_infinite]" />
+                    <div className="absolute bottom-5 left-1/2 translate-x-1 w-1 h-1 rounded-full bg-orange-400 opacity-60 animate-[sparkRise_1.5s_ease-out_0.3s_infinite]" />
                   </div>
                 </div>
-                <div className="absolute -top-1 -right-0 w-5 h-5 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center z-10 shadow-lg shadow-orange-500/50">
+                <div className="absolute -top-1 -right-0 w-6 h-6 rounded-full bg-gradient-to-br from-orange-500 to-red-500 text-white text-xs font-bold flex items-center justify-center z-10 shadow-lg shadow-orange-500/50 border border-orange-400/30">
                   {streakData.currentStreak}
                 </div>
               </div>
@@ -412,45 +419,61 @@ export default function DashboardPage() {
       </div>
 
       {/* Weekly activity chart */}
-      {streakData && streakData.weeklyData.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                Weekly Activity
-              </CardTitle>
-              <span className="text-xs text-muted-foreground">Last 7 days</span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-end justify-between gap-2 h-24">
-              {streakData.weeklyData.map((day, i) => {
-                const maxMinutes = Math.max(...streakData.weeklyData.map(d => d.minutes), 1);
-                const height = (day.minutes / maxMinutes) * 100;
-                const isToday = i === streakData.weeklyData.length - 1;
-                
-                return (
-                  <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-                    <div className="w-full flex justify-center items-end h-16">
-                      <div
-                        className={`w-full max-w-8 activity-bar ${isToday ? 'opacity-100' : 'opacity-70'}`}
-                        style={{ height: `${Math.max(height, 4)}%` }}
-                      />
+      {streakData && streakData.weeklyData.length > 0 && (() => {
+        const maxMin = Math.max(...streakData.weeklyData.map(d => d.minutes), 1);
+        return (
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Weekly Activity
+                </CardTitle>
+                <span className="text-xs text-muted-foreground">Last 7 days</span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end justify-between gap-2 h-36">
+                {streakData.weeklyData.map((day, i) => {
+                  const height = maxMin > 0 ? Math.max((day.minutes / maxMin) * 100, day.minutes > 0 ? 8 : 3) : 3;
+                  const isToday = i === streakData.weeklyData.length - 1;
+                  
+                  return (
+                    <div key={day.date} className="flex-1 flex flex-col items-center gap-1.5 h-full group relative">
+                      <div className="w-full flex justify-center items-end flex-1">
+                        <div
+                          className={`w-full max-w-10 rounded-t transition-all duration-200 ${
+                            isToday
+                              ? 'bg-primary shadow-sm shadow-primary/30'
+                              : 'bg-primary/50 group-hover:bg-primary/80'
+                          }`}
+                          style={{ height: `${height}%` }}
+                        />
+                      </div>
+                      {/* Hover tooltip */}
+                      {day.minutes > 0 && (
+                        <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none">
+                          <div className="bg-popover border border-border/20 text-xs rounded-xl px-3 py-2 shadow-lg whitespace-nowrap">
+                            <div className="font-semibold text-foreground">{day.date}</div>
+                            <div className="text-muted-foreground">{day.minutes}m studied{day.questions ? ` · ${day.questions} questions` : ''}</div>
+                          </div>
+                          <div className="w-2 h-2 bg-popover border-b border-r border-border/20 transform rotate-45 -mt-1" />
+                        </div>
+                      )}
+                      <span className={`text-xs ${isToday ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
+                        {day.dayName}
+                      </span>
+                      {day.minutes > 0 && (
+                        <span className="text-[10px] text-muted-foreground">{day.minutes}m</span>
+                      )}
                     </div>
-                    <span className={`text-xs ${isToday ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
-                      {day.dayName}
-                    </span>
-                    {day.minutes > 0 && (
-                      <span className="text-[10px] text-muted-foreground">{day.minutes}m</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Module cards */}
       <div>

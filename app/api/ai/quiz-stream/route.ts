@@ -45,6 +45,8 @@ export async function POST(req: NextRequest) {
 You must output ONLY a JSON array — no markdown, no extra text.
 Start outputting immediately — every character counts for speed.
 
+CRITICAL: You MUST generate EXACTLY the number of questions requested. Not fewer. Count carefully.
+
 CRITICAL DIFFICULTY REQUIREMENTS:
 - These questions are for POSTGRADUATE law students preparing for the Kenya Bar Exam, NOT undergraduates or beginners.
 - Questions MUST test application, analysis, and synthesis — NOT mere recall of definitions.
@@ -58,7 +60,7 @@ CRITICAL DIFFICULTY REQUIREMENTS:
       ],
       stream: true,
       temperature: 0.8,
-      max_completion_tokens: Math.max(count * 350, 2000),
+      max_completion_tokens: Math.max(count * 500, 4000),
     });
 
     const encoder = new TextEncoder();

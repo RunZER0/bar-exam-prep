@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUnitById } from '@/lib/constants/legal-content';
 import { Button } from '@/components/ui/button';
@@ -373,9 +374,12 @@ Make this practical and exam-focused for the Kenya bar exam.`;
         </div>
 
         <div className="flex-1 flex items-center justify-center px-4 md:px-6 py-8">
-          <div className="text-center space-y-4">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mx-auto animate-pulse">
-              <BookOpen className="h-8 w-8 text-primary" />
+          <div className="text-center space-y-5">
+            <div className="relative mx-auto w-16 h-16">
+              <div className="absolute inset-0 rounded-2xl bg-primary/10 animate-ping opacity-30" />
+              <div className="relative h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                <Image src="/favicon-32x32.png" alt="Ynai" width={32} height={32} className="animate-pulse" />
+              </div>
             </div>
             <div>
               <h2 className="text-xl font-semibold mb-2">Loading Study Guide...</h2>
@@ -383,7 +387,9 @@ Make this practical and exam-focused for the Kenya bar exam.`;
                 Preparing your comprehensive notes for {unit.name}
               </p>
             </div>
-            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+            <div className="w-48 h-1.5 bg-muted rounded-full mx-auto overflow-hidden">
+              <div className="h-full bg-primary rounded-full animate-[loading_2s_ease-in-out_infinite]" style={{ width: '60%' }} />
+            </div>
           </div>
         </div>
       </div>

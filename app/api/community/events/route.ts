@@ -65,6 +65,77 @@ const UNIT_TOPICS: Record<string, { name: string; subjects: string[] }> = {
    New set generated at midnight Nairobi time (EAT, UTC+3).
    ================================================================ */
 
+/* ================================================================
+   AI CHALLENGE AGENT — generates daily COMMUNITY challenges for ALL 7 units.
+   Same challenges for everyone. Tough, bar-exam level.
+   New set generated at midnight Nairobi time (EAT, UTC+3).
+   ================================================================ */
+
+// Hardcoded fallback questions per unit so challenges always have content
+function generateFallbackQuestions(type: string, unitName: string, subject: string, subjects: string[]): any[] {
+  // Pool of fallback questions per unit, rotated by day
+  const FALLBACK_POOL: Record<string, any[]> = {
+    'Civil Litigation': [
+      { question: `Under the Civil Procedure Act, what is the time limit for filing a defence after service of summons?`, type: 'mcq', options: ['A. 7 days', 'B. 14 days', 'C. 21 days', 'D. 30 days'], answer: 'C', modelAnswer: '21 days from the date of service under Order 8 Rule 1 of the Civil Procedure Rules.', points: 10 },
+      { question: `Explain the doctrine of res judicata as applied by Kenyan courts post-2010, citing the relevant statutory provision.`, type: 'short_answer', modelAnswer: 'Section 7 of the Civil Procedure Act (Cap 21) bars re-litigation of issues that were directly and substantially in issue in a former suit between the same parties. The court in Independent Electoral and Boundaries Commission v Maina Kiai [2017] eKLR reaffirmed its strict application.', points: 10 },
+      { question: `Which court has original jurisdiction over disputes involving violation of fundamental rights under the Constitution of Kenya 2010?`, type: 'mcq', options: ['A. Magistrate Court', 'B. High Court', 'C. Court of Appeal', 'D. Supreme Court'], answer: 'B', modelAnswer: 'Article 23(1) of the Constitution vests the High Court with jurisdiction to hear and determine applications for redress of denial, violation, or infringement of rights.', points: 10 },
+      { question: `Draft a Notice of Intention to Sue the Government under Section 13A of the Government Proceedings Act.`, type: 'drafting', modelAnswer: 'A proper notice must include: addressee (Attorney General), claimant details, nature of claim, relief sought, brief facts, proposed defendant (national or county government), and be served at least 30 days before filing suit.', points: 20 },
+    ],
+    'Criminal Litigation': [
+      { question: `Under Article 49 of the Constitution of Kenya 2010, within how many hours must an arrested person be brought before a court?`, type: 'mcq', options: ['A. 12 hours', 'B. 24 hours', 'C. 48 hours', 'D. 72 hours'], answer: 'B', modelAnswer: 'Article 49(1)(f) requires that an arrested person be brought before a court as soon as reasonably possible, but not later than 24 hours.', points: 10 },
+      { question: `Distinguish between bail and bond in Kenyan criminal procedure, citing the relevant legal framework.`, type: 'short_answer', modelAnswer: 'Bail is a right under Article 49(1)(h) of the Constitution, exercised before plea. Bond is a written undertaking with or without sureties under the Bail and Bond Policy Guidelines 2015. The Bail and Bond Policy 2015 standardised the process and requires courts to consider the seriousness of the offence, flight risk, and public safety.', points: 10 },
+      { question: `Which of the following is NOT a ground for denying bail under the Bail and Bond Policy Guidelines?`, type: 'mcq', options: ['A. Compelling reasons to believe the accused will abscond', 'B. The accused is unable to afford cash bail', 'C. The offence is punishable by death', 'D. Interference with witnesses'], answer: 'B', modelAnswer: 'Inability to afford bail is not a valid ground. Courts must set bail at reasonable amounts per Article 49(1)(h). Poverty should not be used to deny liberty.', points: 10 },
+      { question: `Draft a plea bargain agreement outline under Section 137A-O of the Criminal Procedure Code.`, type: 'drafting', modelAnswer: 'Must include: case details, original charges, reduced/alternative charge, agreed facts, sentence recommendation, victim consultation record, prosecutor and accused signatures, and certificate that the accused entered the agreement voluntarily.', points: 20 },
+    ],
+    'Conveyancing': [
+      { question: `Under the Land Registration Act 2012, which of the following instruments must be registered to take effect?`, type: 'mcq', options: ['A. Power of Attorney', 'B. Lease of less than 2 years', 'C. Transfer of registered land', 'D. License to occupy'], answer: 'C', modelAnswer: 'Section 25 of the Land Registration Act 2012 provides that no instrument (except a lease of less than 2 years) shall be effectual to transfer land until registered.', points: 10 },
+      { question: `Explain the process and legal requirements for conducting an official search at the Land Registry, including the significance of a green card.`, type: 'short_answer', modelAnswer: 'An official search is conducted by filing Form RL 26 at the relevant Land Registry. It reveals the registered owner, nature of title, encumbrances, caveats, and restrictions. A "green card" is the physical land register maintained under Section 9 of the Land Registration Act 2012. The official search result is valid for the date shown and protects a purchaser who completes the transaction within 21 days.', points: 10 },
+      { question: `What is the stamp duty rate on transfer of residential property in Kenya?`, type: 'mcq', options: ['A. 2% in all areas', 'B. 4% in all areas', 'C. 2% in municipalities, 4% elsewhere', 'D. 4% in municipalities, 2% elsewhere'], answer: 'D', modelAnswer: 'Under the Stamp Duty Act, stamp duty on conveyances is 4% in municipalities and 2% in other areas.', points: 10 },
+      { question: `Draft the key clauses of a sale agreement for a freehold property in Nairobi, including completion provisions.`, type: 'drafting', modelAnswer: 'Key clauses: parties, property description (LR No., size, location), purchase price and payment schedule, completion period (usually 90 days), conditions precedent (official search, rates clearance, consent of Land Control Board if applicable), vendor obligations (discharge encumbrances, deliver title), warranties, default and remedies, and dispute resolution.', points: 20 },
+    ],
+    'Family Law': [
+      { question: `Under the Marriage Act 2014, what is the minimum age for marriage in Kenya?`, type: 'mcq', options: ['A. 16 years', 'B. 18 years', 'C. 21 years', 'D. No minimum age'], answer: 'B', modelAnswer: 'Section 4 of the Marriage Act 2014 sets 18 years as the minimum marriageable age for both parties.', points: 10 },
+      { question: `Discuss the principles governing division of matrimonial property upon divorce under the Matrimonial Property Act 2013.`, type: 'short_answer', modelAnswer: 'Under Section 7 of the Matrimonial Property Act 2013, matrimonial property vests in the spouses according to the contribution of each spouse. Contribution includes monetary, non-monetary (domestic work, childcare, farm work), and contribution to the management of property. Article 45(3) of the Constitution provides that parties to a marriage are entitled to equal rights at the time of the marriage, during the marriage, and at dissolution.', points: 10 },
+      { question: `Which of the following is NOT recognized as a valid form of marriage under the Marriage Act 2014?`, type: 'mcq', options: ['A. Christian marriage', 'B. Customary marriage', 'C. Common law marriage', 'D. Hindu marriage'], answer: 'C', modelAnswer: 'Section 6 of the Marriage Act 2014 recognises five types: civil, Christian, Islamic, Hindu, and customary marriages. Common law marriage is not recognised.', points: 10 },
+      { question: `Draft an application for custody orders under the Children Act 2001, identifying the best interests of the child factors a court must consider.`, type: 'drafting', modelAnswer: 'The application must identify: child details, current custody arrangement, wishes of the child (if of sufficient age), each parent\'s ability to provide, child\'s physical/emotional/educational needs, effect of change on the child, and any history of harm. Section 83 of the Children Act requires the court to treat the child\'s welfare as paramount.', points: 20 },
+    ],
+    'Probate': [
+      { question: `Under the Law of Succession Act, what fraction of a deceased's estate is a surviving spouse entitled to on intestacy where there are children?`, type: 'mcq', options: ['A. The entire estate', 'B. One-half', 'C. One-third', 'D. Life interest in the whole estate'], answer: 'D', modelAnswer: 'Under Section 35 of the Law of Succession Act, where the deceased leaves a spouse and children, the surviving spouse is entitled to the personal and household effects absolutely and a life interest in the remainder of the net intestate estate.', points: 10 },
+      { question: `Explain the difference between a grant of probate and a grant of letters of administration, including when each applies.`, type: 'short_answer', modelAnswer: 'A grant of probate is issued where the deceased left a valid will and is granted to the named executor(s) under Section 47. Letters of administration are granted under Section 55 where the deceased died intestate (no will) or where the will does not name an executor. Letters of administration intestate are governed by Section 66.', points: 10 },
+      { question: `Which of the following persons has priority in applying for letters of administration under the Law of Succession Act?`, type: 'mcq', options: ['A. A creditor of the estate', 'B. The Public Trustee', 'C. The surviving spouse', 'D. The county government'], answer: 'C', modelAnswer: 'Section 66 of the Law of Succession Act gives priority to the surviving spouse, then children, then parents, then siblings.', points: 10 },
+      { question: `Draft relevant paragraphs for a Petition for Grant of Letters of Administration Intestate.`, type: 'drafting', modelAnswer: 'Must include: petitioner identification, relationship to deceased, date and place of death, deceased died intestate, next of kin details, estate description (movable and immovable property), beneficiaries under intestacy rules, suitability of petitioner, consent of beneficiaries, and prayer for grant.', points: 20 },
+    ],
+    'Commercial': [
+      { question: `Under the Companies Act 2015, what is the minimum number of directors required for a private company?`, type: 'mcq', options: ['A. 1', 'B. 2', 'C. 3', 'D. 5'], answer: 'A', modelAnswer: 'Section 128(1) of the Companies Act 2015 requires a private company to have at least one director.', points: 10 },
+      { question: `Explain the doctrine of lifting the corporate veil under Kenyan company law, citing relevant statutory provisions and case law.`, type: 'short_answer', modelAnswer: 'The corporate veil may be lifted under Section 20 of the Companies Act 2015 where the company was formed for fraudulent or unlawful purposes. Courts have lifted the veil in cases of fraud, agency, and where justice requires it. In Atul Shah & Another v Deposit Protection Fund Board [2016] eKLR, the court emphasized that the veil will not be lifted merely because it is just and equitable.', points: 10 },
+      { question: `Which body is primarily responsible for the registration and regulation of companies in Kenya?`, type: 'mcq', options: ['A. Kenya Revenue Authority', 'B. Capital Markets Authority', 'C. Business Registration Service', 'D. Office of the Attorney General'], answer: 'C', modelAnswer: 'The Business Registration Service (BRS), established under the Business Registration Service Act 2015, is responsible for company registration.', points: 10 },
+      { question: `Draft the key provisions of a partnership agreement for a law firm under the Partnership Act (Cap 29).`, type: 'drafting', modelAnswer: 'Key provisions: firm name and business, partners\' names and contributions, profit/loss sharing ratio, management and decision-making, drawings and remuneration, admission and retirement of partners, non-compete clause, dispute resolution, dissolution provisions, and accounts/audit requirements.', points: 20 },
+    ],
+    'Legal Ethics': [
+      { question: `Under the Advocates Act (Cap 16), what is the primary regulatory body responsible for disciplining advocates?`, type: 'mcq', options: ['A. Law Society of Kenya', 'B. Advocates Complaints Commission', 'C. Disciplinary Tribunal', 'D. Chief Justice'], answer: 'C', modelAnswer: 'The Disciplinary Tribunal established under Section 57 of the Advocates Act investigates and determines complaints of professional misconduct against advocates.', points: 10 },
+      { question: `Discuss the ethical obligations of an advocate regarding client confidentiality and the circumstances under which disclosure may be permitted.`, type: 'short_answer', modelAnswer: 'An advocate has a duty of confidentiality under the Advocates Act and LSK Code of Standards of Professional Practice and Ethical Conduct. Disclosure is permitted: with client consent, where required by law or court order, to prevent imminent harm, or in defence of the advocate in professional proceedings. The duty survives the termination of the advocate-client relationship.', points: 10 },
+      { question: `Which of the following is NOT professional misconduct under the Advocates Act?`, type: 'mcq', options: ['A. Misappropriating client funds', 'B. Representing both parties in a dispute', 'C. Charging fees above the Advocates Remuneration Order', 'D. Filing a suit without reasonable cause'], answer: 'C', modelAnswer: 'Advocates may negotiate fees with clients, and the Remuneration Order sets minimum (not maximum) fees. Overcharging alone is not misconduct, though unconscionable fees may be taxed down.', points: 10 },
+      { question: `Draft a comprehensive conflict of interest disclosure letter to a potential client in a matter where your firm previously represented the opposing party.`, type: 'drafting', modelAnswer: 'Must include: identification of prior representation, nature of potential conflict, scope of prior retainer, information barriers in place, client\'s right to seek independent counsel, informed consent requirements, and confirmation that proceeding or declining is entirely the client\'s choice.', points: 20 },
+    ],
+  };
+
+  const unitQuestions = FALLBACK_POOL[unitName] || FALLBACK_POOL['Legal Ethics']!;
+
+  // Filter by type if possible, otherwise return a mix
+  if (type === 'trivia') {
+    return unitQuestions.filter(q => q.type === 'mcq').slice(0, 3);
+  } else if (type === 'drafting') {
+    const drafting = unitQuestions.filter(q => q.type === 'drafting');
+    const mcq = unitQuestions.filter(q => q.type === 'mcq').slice(0, 1);
+    return [...mcq, ...drafting].slice(0, 3);
+  } else {
+    // research — mix of short_answer and mcq
+    const short = unitQuestions.filter(q => q.type === 'short_answer');
+    const mcq = unitQuestions.filter(q => q.type === 'mcq').slice(0, 1);
+    return [...mcq, ...short].slice(0, 3);
+  }
+}
+
 // In-memory flag so only one generation runs per server instance per day
 let _generatingDate: string | null = null;
 
@@ -222,12 +293,15 @@ Respond in JSON only: {"challenges": [...]}`,
     console.error('[CommunityAgent] AI generation failed, using fallback:', err);
   }
 
-  // Fallback: deterministic challenges for all missing units
+  // Fallback: deterministic challenges for all missing units — WITH question content
   for (let i = 0; i < challengeSpecs.length; i++) {
     const spec = challengeSpecs[i];
     const unit = UNIT_TOPICS[spec.unitId];
     const typeEmoji = spec.type === 'drafting' ? '✍️' : spec.type === 'trivia' ? '🧠' : '📝';
     const typeLabel = spec.type === 'drafting' ? 'Draft Challenge' : spec.type === 'trivia' ? 'Quick Quiz' : 'Explain It';
+
+    // Generate deterministic fallback questions based on unit and subject
+    const fallbackQuestions = generateFallbackQuestions(spec.type, unit.name, spec.subject, unit.subjects);
 
     await db.insert(communityEvents).values({
       title: `${typeEmoji} ${typeLabel}: ${unit.name}`,
@@ -240,6 +314,7 @@ Respond in JSON only: {"challenges": [...]}`,
       rewards: REWARDS,
       isAgentCreated: true,
       reviewStatus: 'approved',
+      challengeContent: fallbackQuestions,
       maxParticipants: 500,
     });
   }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { useSidebar } from '@/contexts/SidebarContext';
@@ -523,10 +524,10 @@ Respond with ONLY valid JSON:
           />
         ) : (
           <>
-            <div className="relative">
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+            <div className="relative w-16 h-16 mx-auto">
+              <div className="absolute inset-0 rounded-2xl bg-primary/10 animate-ping opacity-30" />
+              <div className="relative h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                <Image src="/favicon-32x32.png" alt="Ynai" width={32} height={32} className="animate-pulse" />
               </div>
             </div>
             <div className="text-center">
@@ -534,6 +535,9 @@ Respond with ONLY valid JSON:
               <p className="text-sm text-muted-foreground mt-1">
                 {unit.name} · CLE Standard · {config.questions} questions
               </p>
+            </div>
+            <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-primary rounded-full animate-[loading_2s_ease-in-out_infinite]" style={{ width: '60%' }} />
             </div>
           </>
         )}

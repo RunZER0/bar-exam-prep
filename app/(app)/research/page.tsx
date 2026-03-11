@@ -25,6 +25,8 @@ import {
   Paperclip,
   Image,
   X,
+  Mic,
+  Square,
 } from 'lucide-react';
 
 interface Message {
@@ -70,15 +72,82 @@ export default function ResearchPage() {
   const [copied, setCopied] = useState(false);
   const topicFilter = 'general';
   const [webSearchEnabled, setWebSearchEnabled] = useState(true);
-  const [attachments, setAttachments] = useState<Array<{ id: string; file: File; preview?: string }>>([]); 
+  const [attachments, setAttachments] = useState<Array<{ id: string; file: File; preview?: string; type?: string; transcription?: string }>>([]); 
   const [featureLimitHit, setFeatureLimitHit] = useState<{tier?: string; used?: number; limit?: number; addonRemaining?: number} | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+    };
+  }, []);
+
+  /* ---- Voice Recording ---- */
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e: BlobEvent) => {
+        audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
+
+        try {
+          const token = await getIdToken();
+          const formData = new FormData();
+          formData.append('audio', audioFile);
+
+          const response = await fetch('/api/transcribe', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          });
+          const data = await response.json();
+          if (data.text) {
+            setInput(prev => prev + (prev ? ' ' : '') + data.text);
+          }
+        } catch (error) {
+          console.error('Transcription error:', error);
+        }
+
+        stream.getTracks().forEach(t => t.stop());
+        setRecordingTime(0);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      recordingIntervalRef.current = setInterval(() => setRecordingTime(p => p + 1), 1000);
+    } catch (error) {
+      console.error('Mic error:', error);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+    }
+  };
+
+  const formatRecTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -104,16 +173,18 @@ export default function ResearchPage() {
 
   const sendMessage = async (overrideMessage?: string) => {
     const userMessage = overrideMessage || input.trim();
-    if (!userMessage || sending) return;
+    if ((!userMessage && attachments.length === 0) || sending) return;
 
     if (!overrideMessage) setInput('');
+    const currentAttachments = [...attachments];
+    if (!overrideMessage) setAttachments([]);
 
     const msgId = Date.now().toString();
     const aiMsgId = (Date.now() + 1).toString();
 
     setMessages(prev => [
       ...prev,
-      { id: msgId, role: 'user', content: userMessage },
+      { id: msgId, role: 'user', content: userMessage || 'Research this:' },
       { id: aiMsgId, role: 'assistant', content: '', isStreaming: true },
     ]);
     setSending(true);
@@ -123,14 +194,47 @@ export default function ResearchPage() {
     try {
       const token = await getIdToken();
 
-      // Build research prompt for deep research
+      // Prepare attachment data for API (images → base64, docs → text, audio → transcription)
+      const attachmentData = await Promise.all(currentAttachments.map(async (att) => {
+        if (att.file.type.startsWith('image/')) {
+          return new Promise<any>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve({ type: 'image', fileName: att.file.name, dataUrl: reader.result });
+            reader.readAsDataURL(att.file);
+          });
+        }
+        if (att.file.type.startsWith('audio/')) {
+          return { type: 'audio', fileName: att.file.name, transcription: att.transcription || '[Voice note]' };
+        }
+        if (att.file.type === 'application/pdf' || att.file.name.endsWith('.pdf')) {
+          return { type: 'document', fileName: att.file.name, note: '[PDF document attached]' };
+        }
+        try {
+          const text = await att.file.text();
+          return { type: 'document', fileName: att.file.name, content: text.substring(0, 8000) };
+        } catch {
+          return { type: 'document', fileName: att.file.name };
+        }
+      }));
+
+      // Build enhanced message with attachment context
+      let enhancedMessage = userMessage || '';
+      if (currentAttachments.length > 0) {
+        const attDesc = currentAttachments.map(a => {
+          if (a.file.type.startsWith('image/')) return `[Image: ${a.file.name}]`;
+          if (a.file.type.startsWith('audio/')) return `[Voice note: ${a.file.name}]`;
+          return `[Document: ${a.file.name}]`;
+        }).join('\n');
+        enhancedMessage = `${attDesc}\n\n${enhancedMessage || 'Research this.'}`;
+      }
+
       const researchPrompt = webSearchEnabled
         ? `[Deep Research Mode] Research the following under Kenyan law thoroughly. Cite specific statutes, case law, and authoritative sources. Structure your response with clear headings. Only use verified and credible sources (Kenya Law Reports, Constitution, Acts of Parliament). If you reference a case, include the full citation.
 
 Topic area: ${topicArea}
 
-Question: ${userMessage}`
-        : userMessage;
+Question: ${enhancedMessage}`
+        : enhancedMessage;
 
       const res = await fetch('/api/ai/chat-stream', {
         method: 'POST',
@@ -143,6 +247,7 @@ Question: ${userMessage}`
           competencyType: 'research',
           context: { topicArea, webSearchEnabled },
           sessionId,
+          attachments: attachmentData.length > 0 ? attachmentData : undefined,
         }),
       });
 
@@ -397,8 +502,27 @@ Question: ${userMessage}`
           <button
             onClick={() => fileInputRef.current?.click()}
             className="shrink-0 h-11 w-11 rounded-xl bg-muted/30 hover:bg-muted/60 flex items-center justify-center transition-colors"
+            title="Attach file"
           >
             <Paperclip className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            className={`shrink-0 h-11 rounded-xl flex items-center justify-center transition-colors ${
+              isRecording
+                ? 'w-auto px-3 gap-2 bg-red-500/10 text-red-500 border border-red-500/30'
+                : 'w-11 bg-muted/30 hover:bg-muted/60'
+            }`}
+            title={isRecording ? 'Stop recording' : 'Voice input'}
+          >
+            {isRecording ? (
+              <>
+                <Square className="h-3.5 w-3.5 fill-current" />
+                <span className="text-xs font-medium">{formatRecTime(recordingTime)}</span>
+              </>
+            ) : (
+              <Mic className="h-4 w-4 text-muted-foreground" />
+            )}
           </button>
           <div className="flex-1 relative">
             <textarea
@@ -415,7 +539,7 @@ Question: ${userMessage}`
           </div>
           <button
             onClick={() => sendMessage()}
-            disabled={sending || !input.trim()}
+            disabled={sending || (!input.trim() && attachments.length === 0)}
             className="shrink-0 h-11 w-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-30 hover:bg-primary/90 transition-colors"
           >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

@@ -93,18 +93,42 @@ export function SmartChatInput({
   };
 
   // ---- File Upload ----
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    Array.from(files).forEach(file => {
+    for (const file of Array.from(files)) {
       const type: Attachment['type'] = file.type.startsWith('image/') ? 'image'
         : file.type.startsWith('audio/') ? 'audio' : 'document';
       const att: Attachment = { id: `${Date.now()}-${Math.random()}`, file, type };
       if (type === 'image') att.preview = URL.createObjectURL(file);
       setAttachments(prev => [...prev, att]);
-    });
+
+      // Auto-extract text from documents (PDF, DOCX, DOC, TXT)
+      if (type === 'document') {
+        try {
+          const token = await getIdToken();
+          const fd = new FormData();
+          fd.append('file', file);
+          const res = await fetch('/api/extract-document', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: fd,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.text) {
+              setAttachments(prev =>
+                prev.map(a => a.id === att.id ? { ...a, transcription: data.text } : a)
+              );
+            }
+          }
+        } catch (err) {
+          console.error('Document extraction failed:', err);
+        }
+      }
+    }
     if (fileInputRef.current) fileInputRef.current.value = '';
-  }, []);
+  }, [getIdToken]);
 
   const removeAttachment = useCallback((id: string) => {
     setAttachments(prev => {

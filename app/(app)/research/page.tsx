@@ -194,7 +194,7 @@ export default function ResearchPage() {
     try {
       const token = await getIdToken();
 
-      // Prepare attachment data for API (images → base64, docs → text, audio → transcription)
+      // Prepare attachment data for API (images → base64, docs → extracted text, audio → transcription)
       const attachmentData = await Promise.all(currentAttachments.map(async (att) => {
         if (att.file.type.startsWith('image/')) {
           return new Promise<any>((resolve) => {
@@ -206,12 +206,26 @@ export default function ResearchPage() {
         if (att.file.type.startsWith('audio/')) {
           return { type: 'audio', fileName: att.file.name, transcription: att.transcription || '[Voice note]' };
         }
-        if (att.file.type === 'application/pdf' || att.file.name.endsWith('.pdf')) {
-          return { type: 'document', fileName: att.file.name, note: '[PDF document attached]' };
-        }
+        // Documents (PDF, DOCX, DOC, TXT) — extract text server-side
+        try {
+          const fd = new FormData();
+          fd.append('file', att.file);
+          const extractRes = await fetch('/api/extract-document', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: fd,
+          });
+          if (extractRes.ok) {
+            const extractData = await extractRes.json();
+            if (extractData.text) {
+              return { type: 'document', fileName: att.file.name, content: extractData.text };
+            }
+          }
+        } catch (e) { console.error('Document extraction failed:', e); }
+        // Fallback: try reading as text
         try {
           const text = await att.file.text();
-          return { type: 'document', fileName: att.file.name, content: text.substring(0, 8000) };
+          return { type: 'document', fileName: att.file.name, content: text.substring(0, 12000) };
         } catch {
           return { type: 'document', fileName: att.file.name };
         }

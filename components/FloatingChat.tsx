@@ -311,7 +311,33 @@ export default function FloatingChat() {
           reader.readAsDataURL(att.file);
         });
       }
-      return { type: att.type, fileName: att.file.name };
+      if (att.type === 'audio') {
+        return { type: att.type, fileName: att.file.name, transcription: att.transcription || '[Voice note]' };
+      }
+      // Documents (PDF, DOCX, DOC, TXT) — extract text server-side
+      try {
+        const token = await getIdToken();
+        const fd = new FormData();
+        fd.append('file', att.file);
+        const extractRes = await fetch('/api/extract-document', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        });
+        if (extractRes.ok) {
+          const extractData = await extractRes.json();
+          if (extractData.text) {
+            return { type: att.type, fileName: att.file.name, content: extractData.text };
+          }
+        }
+      } catch (e) { console.error('Document extraction failed:', e); }
+      // Fallback: try reading as text
+      try {
+        const text = await att.file.text();
+        return { type: att.type, fileName: att.file.name, content: text.substring(0, 12000) };
+      } catch {
+        return { type: att.type, fileName: att.file.name };
+      }
     }));
     
     const currentInput = input;

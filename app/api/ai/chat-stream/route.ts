@@ -154,6 +154,8 @@ export async function POST(req: NextRequest) {
       const attDesc = attachments.map((a: any) => {
         if (a.type === 'audio' && a.transcription) return `[Voice note: "${a.transcription}"]`;
         if (a.type === 'image') return `[Image attached: ${a.fileName || 'image'}]`;
+        if (a.content) return `[Document: ${a.fileName || 'file'}]\n--- Document Content ---\n${a.content}\n--- End Document ---`;
+        if (a.transcription) return `[Document: ${a.fileName || 'file'}]\n--- Document Content ---\n${a.transcription}\n--- End Document ---`;
         return `[File attached: ${a.fileName || 'document'}]`;
       }).join('\n');
       userContent = `${attDesc}\n\n${message}`;

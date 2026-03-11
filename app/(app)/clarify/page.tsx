@@ -241,13 +241,26 @@ export default function ClarifyPage() {
             transcription: att.transcription || `[Voice note: ${att.duration || 0}s]`,
           };
         }
-        // For documents, read as text if possible
-        if (att.file.type === 'application/pdf' || att.file.name.endsWith('.pdf')) {
-          return { type: att.type, fileName: att.file.name, note: '[PDF document attached]' };
-        }
+        // Documents (PDF, DOCX, DOC, TXT) — extract text server-side
+        try {
+          const fd = new FormData();
+          fd.append('file', att.file);
+          const extractRes = await fetch('/api/extract-document', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: fd,
+          });
+          if (extractRes.ok) {
+            const extractData = await extractRes.json();
+            if (extractData.text) {
+              return { type: att.type, fileName: att.file.name, content: extractData.text };
+            }
+          }
+        } catch (e) { console.error('Document extraction failed:', e); }
+        // Fallback: try reading as text
         try {
           const text = await att.file.text();
-          return { type: att.type, fileName: att.file.name, content: text.substring(0, 8000) };
+          return { type: att.type, fileName: att.file.name, content: text.substring(0, 12000) };
         } catch {
           return { type: att.type, fileName: att.file.name };
         }

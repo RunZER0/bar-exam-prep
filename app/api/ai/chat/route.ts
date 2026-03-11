@@ -153,6 +153,11 @@ export const POST = withAuth(async (req: NextRequest, user) => {
               return `[Voice note transcription: "${att.transcription}"]`;
             } else if (att.type === 'image') {
               return `[User attached an image: ${att.fileName || 'image'}]`;
+            } else if (att.content) {
+              // Document with extracted text content
+              return `[Document: ${att.fileName || 'file'}]\n--- Document Content ---\n${att.content}\n--- End Document ---`;
+            } else if (att.transcription) {
+              return `[Document: ${att.fileName || 'file'}]\n--- Document Content ---\n${att.transcription}\n--- End Document ---`;
             } else {
               return `[User attached a ${att.type}: ${att.fileName || 'file'}]`;
             }

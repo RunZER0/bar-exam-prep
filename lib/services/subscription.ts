@@ -515,7 +515,7 @@ function defaultInfo(): SubscriptionInfo {
     subscriptionEndsAt: null,
     canAccess: (f) => BASIC_FEATURES.has(f),
     featureUsage: emptyUsage,
-    clarifyModel: 'gpt-4o-mini',
+    clarifyModel: 'gpt-5.2-mini',
     daysRemaining: 0,
     usage: { draftingUsed: 0, draftingLimit: 3, oralDevilUsed: 0, oralDevilLimit: 2, oralExamUsed: 0, oralExamLimit: 2 },
   };

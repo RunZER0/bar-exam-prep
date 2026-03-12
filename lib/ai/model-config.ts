@@ -4,22 +4,22 @@
  * The Triumvirate:
  * - ORCHESTRATOR: GPT-5.2 (High-Reasoning) - Queue management, path selection
  * - MENTOR: GPT-5.2 (Mentorship Tone) - Narrative notes, instructional content
- * - AUDITOR: Claude 4.5 Sonnet - Redline engine, cascading failure analysis
+ * - AUDITOR: Claude Sonnet 4.6 - Redline engine, cascading failure analysis
  * 
- * MINIMUM MODEL FLOOR: gpt-4o-mini — fast, cheap, reliable.
+ * MINIMUM MODEL FLOOR: gpt-5.2-mini — fast, cheap, reliable.
  */
 
 // === Model Assignments (Hard-Locked) ===
-export const ORCHESTRATOR_MODEL = process.env.ORCHESTRATOR_MODEL || 'gpt-4o';
-export const MENTOR_MODEL = process.env.MENTOR_MODEL || 'gpt-4o';
-export const AUDITOR_MODEL = process.env.AUDITOR_MODEL || 'claude-sonnet-4-20250514';
+export const ORCHESTRATOR_MODEL = process.env.ORCHESTRATOR_MODEL || 'gpt-5.2';
+export const MENTOR_MODEL = process.env.MENTOR_MODEL || 'gpt-5.2';
+export const AUDITOR_MODEL = process.env.AUDITOR_MODEL || 'claude-sonnet-4.6-20260312';
 
 // === Assessment & Grading ===
-export const ASSESSMENT_MODEL = process.env.ASSESSMENT_MODEL || 'gpt-4o';
-export const GRADING_MODEL = process.env.GRADING_MODEL || 'gpt-4o';
+export const ASSESSMENT_MODEL = process.env.ASSESSMENT_MODEL || 'gpt-5.2';
+export const GRADING_MODEL = process.env.GRADING_MODEL || 'gpt-5.2';
 
 // === Fast Operations ===
-export const FAST_MODEL = process.env.OPENAI_FAST_MODEL || 'gpt-4o';
+export const FAST_MODEL = process.env.OPENAI_FAST_MODEL || 'gpt-5.2';
 
 // === Minimum Floor Model — fast & cheap for streaming, quizzes, oral exams ===
 export const MINI_MODEL = process.env.MINI_MODEL || 'gpt-5.2-mini';

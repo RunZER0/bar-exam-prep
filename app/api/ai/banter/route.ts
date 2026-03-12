@@ -54,7 +54,8 @@ Write a SHORT, warm, personal greeting (1-2 sentences max). Be playful and relax
 ${preferences?.likedCategories?.length ? `They seem to enjoy: ${preferences.likedCategories.join(', ')}.` : ''}
 
 DO NOT use emojis. DO NOT say "Welcome to Legal Banter". Just be natural and warm. Keep it under 30 words.
-NEVER use em dashes. Use regular hyphens (-) only.`;
+NEVER use em dashes. Use regular hyphens (-) only.
+Do NOT use any markdown formatting whatsoever - no bold (**), no headings (#), no italics (*), no bullet lists, no backticks. Output plain conversational text only.`;
 
       const response = await callAIFast(prompt, 200);
       return NextResponse.json({ response });
@@ -82,7 +83,9 @@ NEVER use em dashes. Use regular hyphens (-) only.`;
 ${basePrompt}${prefContext}${avoidContext}
 
 Be genuinely entertaining and factual. When mentioning real cases, ensure they actually happened.
-NEVER use em dashes. Use regular hyphens (-) only.`;
+NEVER use em dashes. Use regular hyphens (-) only.
+Do NOT use any markdown formatting whatsoever - no bold (**), no headings (#), no italics (*), no bullet lists, no backticks. Output plain conversational text only.
+Be CREATIVE and VARIED - never repeat the same joke, fact, or case twice. Each response should feel fresh and surprising.`;
 
       // Streaming mode — return SSE stream
       if (body.stream) {
@@ -153,7 +156,8 @@ Rules:
 Student said: "${userMsg}"
 
 Respond with a witty comeback.
-NEVER use em dashes. Use regular hyphens (-) only.`;
+NEVER use em dashes. Use regular hyphens (-) only.
+Do NOT use any markdown formatting - no bold, no headings, no italics, no lists, no backticks. Plain text only.`;
 
       const response = await callAIFast(prompt, 300);
       return NextResponse.json({ response });

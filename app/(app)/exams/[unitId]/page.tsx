@@ -124,8 +124,11 @@ export default function ExamSessionPage() {
   const [showFeatureGate, setShowFeatureGate] = useState<{tier?: string; used?: number; limit?: number; addonRemaining?: number} | null>(null);
   const [slideDirection, setSlideDirection] = useState<'right' | 'left'>('right');
   const [draftSaved, setDraftSaved] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const autoSubmitRef = useRef(false);
   const loadedRef = useRef(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Collapse sidebar on mount for focused exam view, restore on unmount
   useEffect(() => {
@@ -825,15 +828,79 @@ Respond with ONLY valid JSON:
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen">
+      {/* Exit confirmation toast */}
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/30 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-background border border-border shadow-2xl rounded-2xl p-6 max-w-sm mx-4 animate-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">Leave this exam?</h3>
+                <p className="text-xs text-muted-foreground">Your progress will be lost</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              You&apos;ve answered {answeredCount}/{questions.length} questions. Leaving now means your work won&apos;t be graded.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowExitConfirm(false)}
+                className="flex-1 py-2 px-3 rounded-xl border border-border/30 text-sm font-medium hover:bg-muted/40 transition-colors"
+              >
+                Keep Writing
+              </button>
+              <button
+                onClick={() => router.push('/exams')}
+                className="flex-1 py-2 px-3 rounded-xl bg-red-500/10 text-red-600 text-sm font-medium hover:bg-red-500/20 transition-colors"
+              >
+                Leave Exam
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Submit confirmation toast */}
+      {showSubmitConfirm && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/30 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-background border border-border shadow-2xl rounded-2xl p-6 max-w-sm mx-4 animate-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">Submit incomplete exam?</h3>
+                <p className="text-xs text-muted-foreground">{answeredCount}/{questions.length} questions answered</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              You have {questions.length - answeredCount} unanswered question{questions.length - answeredCount !== 1 ? 's' : ''}. Submit anyway?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowSubmitConfirm(false)}
+                className="flex-1 py-2 px-3 rounded-xl border border-border/30 text-sm font-medium hover:bg-muted/40 transition-colors"
+              >
+                Keep Writing
+              </button>
+              <button
+                onClick={() => { setShowSubmitConfirm(false); handleSubmit(); }}
+                className="flex-1 py-2 px-3 rounded-xl bg-emerald-600/90 text-white text-sm font-medium hover:bg-emerald-700/90 transition-colors"
+              >
+                Submit Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Bar - Aesthetic timer */}
       <div className="px-4 md:px-6 py-3 flex items-center justify-between shrink-0 bg-background border-b border-border/20">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => {
-              if (confirm('Leave exam? Your progress will be lost.')) {
-                router.push('/exams');
-              }
-            }}
+            onClick={() => setShowExitConfirm(true)}
             className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -972,22 +1039,63 @@ Respond with ONLY valid JSON:
                 </div>
               )}
 
-              {/* Writing area */}
-              <div className="flex-1 p-6 overflow-y-auto">
-                <textarea
-                  placeholder="Write your answer here using IRAC format where applicable…"
-                  value={answers[currentQ?.id] || ''}
-                  onChange={(e) => setAnswers((prev) => ({ ...prev, [currentQ.id]: e.target.value }))}
-                  className="w-full h-full min-h-[300px] resize-none bg-transparent text-base leading-relaxed outline-none placeholder:text-muted-foreground/40"
-                />
+              {/* Premium Writing Area */}
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Formatting toolbar */}
+                <div className="px-6 py-2 border-b border-border/10 flex items-center gap-1 bg-muted/5 shrink-0">
+                  <span className="text-[10px] font-medium text-muted-foreground mr-2 uppercase tracking-wider">Insert:</span>
+                  {[
+                    { label: 'IRAC', tip: 'IRAC Template', text: '\n\nISSUE:\n[Identify the legal issue]\n\nRULE:\n[State the applicable law/statute/case]\n\nAPPLICATION:\n[Apply the law to the facts]\n\nCONCLUSION:\n[State your conclusion]\n' },
+                    { label: 'Intro', tip: 'Opening Paragraph', text: '\nThe central issue in this matter is whether... This question engages the provisions of...\n' },
+                    { label: 'Citation', tip: 'Case Citation', text: ' (see [Case Name] [Year] eKLR)' },
+                    { label: 'Section', tip: 'Statute Reference', text: ' Section __ of the __ Act (Cap __) provides that...' },
+                    { label: 'Conclude', tip: 'Conclusion', text: '\n\nIn conclusion, based on the foregoing analysis, it is submitted that...\n' },
+                  ].map((btn) => (
+                    <button
+                      key={btn.label}
+                      title={btn.tip}
+                      onClick={() => {
+                        const ta = textareaRef.current;
+                        if (!ta) return;
+                        const start = ta.selectionStart;
+                        const current = answers[currentQ?.id] || '';
+                        const newText = current.slice(0, start) + btn.text + current.slice(ta.selectionEnd);
+                        setAnswers((prev) => ({ ...prev, [currentQ.id]: newText }));
+                        setTimeout(() => {
+                          ta.focus();
+                          ta.selectionStart = ta.selectionEnd = start + btn.text.length;
+                        }, 0);
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors border border-transparent hover:border-border/30"
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                  <div className="flex-1" />
+                  <span className="text-[10px] tabular-nums text-muted-foreground/60">
+                    {((answers[currentQ?.id] || '').match(/\S+/g) || []).length} words
+                  </span>
+                </div>
+
+                {/* Textarea */}
+                <div className="flex-1 p-6 overflow-y-auto">
+                  <textarea
+                    ref={textareaRef}
+                    placeholder="Write your answer here using IRAC format where applicable. Use the toolbar above to quickly insert templates…"
+                    value={answers[currentQ?.id] || ''}
+                    onChange={(e) => setAnswers((prev) => ({ ...prev, [currentQ.id]: e.target.value }))}
+                    className="w-full h-full min-h-[300px] resize-none bg-transparent text-base leading-relaxed outline-none placeholder:text-muted-foreground/40 font-[system-ui]"
+                    style={{ tabSize: 4 }}
+                  />
+                </div>
               </div>
 
               {/* Bottom bar */}
               <div className="px-6 py-3 border-t border-border/20 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span>IRAC: Issue, Rule, Application, Conclusion</span>
-                  <span className="text-muted-foreground/40">|</span>
-                  <span>{(answers[currentQ?.id] || '').length} characters</span>
+                  <span className="hidden md:inline">IRAC: Issue, Rule, Application, Conclusion</span>
+                  <span className="text-muted-foreground/40 hidden md:inline">|</span>
+                  <span>{((answers[currentQ?.id] || '').match(/\S+/g) || []).length} words · {(answers[currentQ?.id] || '').length} chars</span>
                   {draftSaved && (
                     <span className="flex items-center gap-1 text-emerald-600 animate-in fade-in duration-300">
                       <CheckCircle2 className="h-3 w-3" /> Draft saved
@@ -1015,7 +1123,8 @@ Respond with ONLY valid JSON:
                     <button
                       onClick={() => {
                         if (answeredCount < questions.length) {
-                          if (!confirm(`You've answered ${answeredCount}/${questions.length} questions. Submit anyway?`)) return;
+                          setShowSubmitConfirm(true);
+                          return;
                         }
                         handleSubmit();
                       }}

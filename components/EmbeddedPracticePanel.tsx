@@ -532,7 +532,7 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
                   ? !selectedOption 
                   : !userAnswer.trim()
               } 
-              className="w-full" 
+              className="w-full sticky bottom-0" 
               size="lg"
             >
               Submit Answer
@@ -679,7 +679,7 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
               </div>
             )}
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-2 sticky bottom-0 bg-background/95 backdrop-blur-sm pb-2 -mx-6 px-6 border-t border-border/10 mt-4">
               <Button variant="outline" onClick={handleTryAnother} className="flex-1">
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Try Another

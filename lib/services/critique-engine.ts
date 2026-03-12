@@ -60,7 +60,11 @@ RESPOND WITH THIS EXACT JSON STRUCTURE:
 
             const response = await anthropic.messages.create({
                 model: AUDITOR_MODEL,
-                max_tokens: 2048,
+                max_tokens: 4096,
+                thinking: {
+                    type: 'enabled',
+                    budget_tokens: 6000,
+                },
                 messages: [
                     { role: 'user', content: userPrompt }
                 ],

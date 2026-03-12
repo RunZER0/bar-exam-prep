@@ -8,8 +8,9 @@
  */
 
 import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
-import { GRADING_MODEL } from '@/lib/ai/model-config';
+import { GRADING_MODEL, AUDITOR_MODEL, getAnthropicKey } from '@/lib/ai/model-config';
 import { 
   WRITTEN_RUBRIC_DIMENSIONS, 
   ORAL_RUBRIC_DIMENSIONS, 
@@ -268,6 +269,15 @@ const getOpenAI = () => {
   return _openai;
 };
 
+let _anthropic: Anthropic | null = null;
+const getAnthropic = () => {
+  const key = getAnthropicKey();
+  if (!_anthropic && key) {
+    _anthropic = new Anthropic({ apiKey: key });
+  }
+  return _anthropic;
+};
+
 /**
  * Grade a written response
  */
@@ -500,7 +510,66 @@ function extractJsonFromResponse(text: string): string {
 }
 
 /**
- * Call AI with retry logic and validation
+ * Call Claude Sonnet 4.6 (AUDITOR) with extended thinking for deep redlining analysis.
+ * Extended thinking lets Claude reason through rubric criteria step-by-step before
+ * producing the structured grading JSON — resulting in more accurate, evidence-backed scores.
+ */
+async function callClaudeGradingWithThinking(
+  anthropic: Anthropic,
+  prompt: string,
+  format: string,
+): Promise<GradingOutput> {
+  const systemPrompt = `You are an expert Kenyan bar exam grader known as "The Senior Partner".
+You grade with surgical precision and every point of feedback cites a specific statute, case, or rubric criterion.
+You MUST respond with valid JSON only — no markdown, no explanation outside the JSON.
+Use your extended thinking to reason through each rubric dimension before scoring.`;
+
+  const response = await anthropic.messages.create({
+    model: AUDITOR_MODEL,
+    max_tokens: 12000,
+    thinking: {
+      type: 'enabled',
+      budget_tokens: 8000,
+    },
+    system: systemPrompt,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  // Extract the text block (after thinking)
+  const textBlock = response.content.find(b => b.type === 'text');
+  if (!textBlock || textBlock.type !== 'text') {
+    throw new Error('No text content in Claude grading response');
+  }
+
+  const jsonText = extractJsonFromResponse(textBlock.text);
+  const parsed = JSON.parse(jsonText);
+  return validateGradingOutput(parsed);
+}
+
+/**
+ * Call OpenAI GPT-5.2 as fallback grader
+ */
+async function callOpenAIGrading(
+  openai: OpenAI,
+  prompt: string,
+): Promise<GradingOutput> {
+  const response = await openai.responses.create({
+    model: GRADING_MODEL,
+    input: prompt,
+  });
+
+  const content = response.output_text;
+  if (!content) throw new Error('Empty response from OpenAI');
+
+  const jsonText = extractJsonFromResponse(content);
+  const parsed = JSON.parse(jsonText);
+  return validateGradingOutput(parsed);
+}
+
+/**
+ * Call AI with retry logic and validation.
+ * Primary: Claude Sonnet 4.6 with extended thinking (deep redlining analysis)
+ * Fallback: GPT-5.2 via OpenAI
  */
 async function callGradingAIWithRetry(
   openai: OpenAI,
@@ -509,29 +578,23 @@ async function callGradingAIWithRetry(
   attempt: number = 1
 ): Promise<GradingOutput> {
   try {
-    const response = await openai.responses.create({
-      model: GRADING_MODEL,
-      input: prompt,
-    });
-    
-    const content = response.output_text;
-    if (!content) {
-      throw new Error('Empty response from AI');
+    // Primary: Claude Sonnet 4.6 with extended thinking
+    const anthropic = getAnthropic();
+    if (anthropic) {
+      try {
+        const result = await callClaudeGradingWithThinking(anthropic, prompt, format);
+        console.log(`[GradingService] Claude Sonnet 4.6 (extended thinking) graded ${format} successfully`);
+        return result;
+      } catch (claudeError) {
+        console.warn(`[GradingService] Claude grading failed, falling back to GPT-5.2:`, claudeError);
+      }
     }
-    
-    // Extract and parse JSON
-    const jsonText = extractJsonFromResponse(content);
-    let parsed: unknown;
-    
-    try {
-      parsed = JSON.parse(jsonText);
-    } catch (parseError) {
-      throw new Error(`JSON parse failed: ${parseError}`);
-    }
-    
-    // Validate with Zod
-    return validateGradingOutput(parsed);
-    
+
+    // Fallback: GPT-5.2
+    const result = await callOpenAIGrading(openai, prompt);
+    console.log(`[GradingService] GPT-5.2 fallback graded ${format} successfully`);
+    return result;
+
   } catch (error) {
     console.error(`Grading attempt ${attempt} failed:`, error);
     

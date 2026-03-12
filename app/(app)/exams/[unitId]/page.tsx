@@ -394,20 +394,14 @@ Respond with ONLY valid JSON:
   ]
 }`;
 
-      const res = await fetch('/api/ai/chat', {
+      const res = await fetch('/api/exams/grade', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          message: gradingPrompt,
-          competencyType: 'research',
-          context: {
-            topicArea: unit?.name,
-            examGrading: true,
-            examType,
-          },
+          gradingPrompt,
         }),
       });
 

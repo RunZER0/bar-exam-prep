@@ -22,7 +22,7 @@ export const GRADING_MODEL = process.env.GRADING_MODEL || 'gpt-4o';
 export const FAST_MODEL = process.env.OPENAI_FAST_MODEL || 'gpt-4o';
 
 // === Minimum Floor Model — fast & cheap for streaming, quizzes, oral exams ===
-export const MINI_MODEL = process.env.MINI_MODEL || 'gpt-4o-mini';
+export const MINI_MODEL = process.env.MINI_MODEL || 'gpt-5.2-mini';
 
 // === API Key Getters ===
 export function getOpenAIKey(): string | undefined {

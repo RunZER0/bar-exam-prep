@@ -631,6 +631,8 @@ function PracticeModePanel({
   const [grade, setGrade] = useState<GradeResult | null>(null);
   const [activeAnn, setActiveAnn] = useState<number | null>(null);
   const ivRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoSubmitRef = useRef(false);
+  const [timeExpired, setTimeExpired] = useState(false);
   const [guidanceOpen, setGuidanceOpen] = useState(false);
   const [guidance, setGuidance] = useState<string | null>(null);
   const [loadingGuidance, setLoadingGuidance] = useState(false);
@@ -641,13 +643,22 @@ function PracticeModePanel({
     if (timerOn && timeLeft > 0) {
       ivRef.current = setInterval(() => {
         setTimeLeft(prev => {
-          if (prev <= 1) { setTimerOn(false); return 0; }
+          if (prev <= 1) { setTimerOn(false); setTimeExpired(true); return 0; }
           return prev - 1;
         });
       }, 1000);
     }
     return () => { if (ivRef.current) clearInterval(ivRef.current); };
   }, [timerOn, timeLeft]);
+
+  // Auto-submit when timer expires (same pattern as exams page)
+  useEffect(() => {
+    if (timeExpired && !submitted && !autoSubmitRef.current) {
+      autoSubmitRef.current = true;
+      submitDraft();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeExpired, submitted]);
 
   const fmtTime = (s: number) => Math.floor(s / 60) + ':' + (s % 60).toString().padStart(2, '0');
 
@@ -796,6 +807,7 @@ function PracticeModePanel({
 
   const redraft = () => {
     setSubmitted(false); setGrade(null); setActiveAnn(null);
+    setTimeExpired(false); autoSubmitRef.current = false;
     if (timing === 'timed') { setTimeLeft(MINS * 60); setTimerOn(true); }
   };
 
@@ -803,6 +815,7 @@ function PracticeModePanel({
     setTiming(null); setScenario(null); setDraft('');
     setSubmitted(false); setGrade(null); setActiveAnn(null);
     setGuidance(null); setGuidanceOpen(false);
+    setTimeExpired(false); autoSubmitRef.current = false;
   };
 
   /* ── Formatting commands for contentEditable ── */
@@ -1025,9 +1038,9 @@ function PracticeModePanel({
           </div>
           <div className="flex items-center gap-3">
             {timing === 'timed' && (
-              <div className={'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-mono font-medium ' + (timeLeft < 300 ? 'bg-red-500/10 text-red-600' : 'bg-muted')}>
+              <div className={'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-mono font-medium ' + (timeExpired ? 'bg-red-500/15 text-red-600 animate-pulse' : timeLeft < 300 ? 'bg-red-500/10 text-red-600' : 'bg-muted')}>
                 <Timer className="h-3.5 w-3.5" />
-                {fmtTime(timeLeft)}
+                {timeExpired ? "Time's up!" : fmtTime(timeLeft)}
               </div>
             )}
             <span className="text-xs text-muted-foreground">{draft.length} chars</span>

@@ -850,7 +850,7 @@ export async function callAIWithTools(
 }
 
 /**
- * Fast AI call using gpt-5.2-mini for speed-critical generation
+ * Fast AI call using gpt-5-mini for speed-critical generation
  * Used for preloading content in background where speed > quality
  */
 export async function callAIFast(prompt: string, maxTokens: number = 2000): Promise<string> {

@@ -2,14 +2,14 @@
  * Smart Chat Router
  * 
  * Determines whether a user query should be handled by the lightweight
- * GPT-5.2-mini or the full GPT-5.2 frontier model.
+ * GPT-5-mini or the full GPT-5.2 frontier model.
  * 
  * Architecture:
  * 1. Deterministic pre-checks run FIRST (zero-cost, instant)
  *    - Keyword/pattern matching for known-simple and known-complex patterns
  *    - Message length heuristics
  *    - Attachment detection
- * 2. If pre-checks are inconclusive, falls back to a GPT-5.2-mini
+ * 2. If pre-checks are inconclusive, falls back to a GPT-5-mini
  *    structured-output call (~$0.0003/call) to classify the query
  * 
  * Design principles:
@@ -183,7 +183,7 @@ function deterministicRoute(
 // ─── AI Router Fallback ────────────────────────────────────────────
 
 const ROUTER_SYSTEM_PROMPT = `You are a query classifier for a Kenyan bar exam study platform.
-Your job: decide if a student's question needs the full frontier model (gpt-5.2) or the lighter mini model (gpt-5.2-mini).
+Your job: decide if a student's question needs the full frontier model (gpt-5.2) or the lighter mini model (gpt-5-mini).
 
 Route to FRONTIER when:
 - Multi-step legal reasoning or analysis is required

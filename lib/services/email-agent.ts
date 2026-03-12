@@ -4,7 +4,7 @@
  * ═══════════════════════════════════════════════════════════════
  *
  * Replaces static templates with an AI agent that writes every email.
- * Uses gpt-5.2-mini (floor model) to generate personalized copy,
+ * Uses gpt-5-mini (floor model) to generate personalized copy,
  * then wraps it in the branded base template for visual consistency.
  *
  * Every email is unique, contextual, and deeply personalized.

@@ -6,7 +6,7 @@
  * - MENTOR: GPT-5.2 (Mentorship Tone) - Narrative notes, instructional content
  * - AUDITOR: Claude Sonnet 4.6 - Redline engine, cascading failure analysis
  * 
- * MINIMUM MODEL FLOOR: gpt-5.2-mini — fast, cheap, reliable.
+ * MINIMUM MODEL FLOOR: gpt-5-mini — fast, cheap, reliable.
  */
 
 // === Model Assignments (Hard-Locked) ===
@@ -19,13 +19,13 @@ export const ASSESSMENT_MODEL = process.env.ASSESSMENT_MODEL || 'gpt-5.2';
 export const GRADING_MODEL = process.env.GRADING_MODEL || 'gpt-5.2';
 
 // === Fast Operations (downgraded from gpt-5.2 to mini for cost savings) ===
-export const FAST_MODEL = process.env.OPENAI_FAST_MODEL || 'gpt-5.2-mini';
+export const FAST_MODEL = process.env.OPENAI_FAST_MODEL || 'gpt-5-mini';
 
 // === Minimum Floor Model — fast & cheap for streaming, quizzes, oral exams ===
-export const MINI_MODEL = process.env.MINI_MODEL || 'gpt-5.2-mini';
+export const MINI_MODEL = process.env.MINI_MODEL || 'gpt-5-mini';
 
 // === Router Model — lightweight model for smart routing decisions ===
-export const ROUTER_MODEL = process.env.ROUTER_MODEL || 'gpt-5.2-mini';
+export const ROUTER_MODEL = process.env.ROUTER_MODEL || 'gpt-5-mini';
 
 // === Voice / Speech Models ===
 export const TTS_MODEL = process.env.TTS_MODEL || 'gpt-4o-mini-tts';

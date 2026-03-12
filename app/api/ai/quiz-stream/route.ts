@@ -13,7 +13,7 @@ const getOpenAI = () => {
  * Streams individual questions as SSE events so the UI can show the first question
  * instantly while the rest generate in the background.
  *
- * Uses gpt-5.2-mini (MINI_MODEL) for fast, cost-effective generation.
+ * Uses gpt-5-mini (MINI_MODEL) for fast, cost-effective generation.
  */
 export async function POST(req: NextRequest) {
   try {

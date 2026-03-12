@@ -3,14 +3,14 @@
  * 
  * Defines the Zod schema for the AI router's structured response.
  * Used when deterministic pre-checks are inconclusive and the
- * GPT-5.2-mini router model must classify the query.
+ * GPT-5-mini router model must classify the query.
  */
 
 import { z } from 'zod';
 
 /**
  * The route the router assigns to a query.
- * - 'mini': GPT-5.2-mini — fast, cheap, sufficient for straightforward questions
+ * - 'mini': GPT-5-mini — fast, cheap, sufficient for straightforward questions
  * - 'frontier': GPT-5.2 — full frontier model for complex reasoning
  */
 export const RouteEnum = z.enum(['mini', 'frontier']);

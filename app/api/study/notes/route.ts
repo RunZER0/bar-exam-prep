@@ -32,7 +32,7 @@ const sql = async (...args: Parameters<ReturnType<typeof neon>>) => {
  * Version affinity: If user already read a topic in Mastery Hub,
  * they see the SAME version here. If they haven't, they get version 4 or 5.
  * 
- * Fallback: If no pre-built notes exist, falls back to gpt-5.2-mini live generation.
+ * Fallback: If no pre-built notes exist, falls back to gpt-5-mini live generation.
  * Custom prompts always use live AI (bypass pre-built).
  */
 async function handlePost(req: NextRequest, user: AuthUser) {
@@ -248,7 +248,7 @@ async function handlePost(req: NextRequest, user: AuthUser) {
         let notes = prebuilt.narrative_markdown;
 
         // If withAssessment is requested, generate assessment questions LIVE
-        // using the pre-built notes as context (cheaper: small prompt + gpt-5.2-mini)
+        // using the pre-built notes as context (cheaper: small prompt + gpt-5-mini)
         let assessmentBlock = '';
         if (withAssessment) {
           try {
@@ -299,7 +299,7 @@ Include model answers for all questions. Use proper Markdown formatting.` },
 }
 
 /**
- * Fallback: Generate notes live with gpt-5.2-mini.
+ * Fallback: Generate notes live with gpt-5-mini.
  * Used when pre-built notes don't exist for the requested topic.
  */
 async function generateLiveNotes(opts: {

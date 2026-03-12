@@ -10,12 +10,12 @@
 | Model | Input ($/1M tokens) | Output ($/1M tokens) | Role |
 |-------|---------------------|----------------------|------|
 | **gpt-5.2** | $1.75 | $14.00 | Frontier (mastery, grading, assessment, research) |
-| **gpt-5.2-mini** | $0.15 | $0.60 | Workhorse (chat, quizzes, oral, banter, notes, routing) |
+| **gpt-5-mini** | $0.15 | $0.60 | Workhorse (chat, quizzes, oral, banter, notes, routing) |
 | **claude-sonnet-4.6** | $3.00 | $15.00 | Auditor (research validation, drafting critique) |
 | **gpt-4o-mini-tts** | $0.60 input | $10.00/1M audio tokens | Text-to-speech with persona instructions |
 | **gpt-4o-mini-transcribe** | — | $0.003/minute | Speech-to-text |
 
-**Key pricing change:** gpt-5.2-mini dropped from $0.25/$2.00 to **$0.15/$0.60** — a **70% reduction on output tokens** (which dominate cost).
+**Key pricing change:** gpt-5-mini dropped from $0.25/$2.00 to **$0.15/$0.60** — a **70% reduction on output tokens** (which dominate cost).
 
 ---
 
@@ -23,12 +23,12 @@
 
 | # | Optimization | Impact |
 |---|-------------|--------|
-| 1 | **Smart Chat Router** — 70% of smart chat + clarify queries routed to gpt-5.2-mini | Smart chat per-query cost: $0.031 → $0.010 blended |
-| 2 | **FAST_MODEL downgrade** — gpt-5.2 → gpt-5.2-mini for preload calls | Per call: $0.016 → $0.0003 |
+| 1 | **Smart Chat Router** — 70% of smart chat + clarify queries routed to gpt-5-mini | Smart chat per-query cost: $0.031 → $0.010 blended |
+| 2 | **FAST_MODEL downgrade** — gpt-5.2 → gpt-5-mini for preload calls | Per call: $0.016 → $0.0003 |
 | 3 | **Speech migration** — whisper-1 → gpt-4o-mini-transcribe, tts-1 → gpt-4o-mini-tts | STT: $0.006 → $0.003/min (50% cheaper) |
 | 4 | **AI Challenges reduced** — 9/day → 4/day (shared across all users) | Daily shared cost: $0.004 → $0.002 |
 | 5 | **AI Tutor removed** — was using gpt-5.2 at ~$0.031/call | Eliminates ~$0.06/day for active tutor users |
-| 6 | **gpt-5.2-mini price drop** — $0.25/$2.00 → $0.15/$0.60 | All 15 mini call sites ~70% cheaper |
+| 6 | **gpt-5-mini price drop** — $0.25/$2.00 → $0.15/$0.60 | All 15 mini call sites ~70% cheaper |
 
 ---
 
@@ -52,7 +52,7 @@
 | 33c | Drafting critique (claude-sonnet-4.6) | — | — | $0.032 |
 | 37 | Onboarding analysis (one-time) | — | — | $0.016 |
 
-### gpt-5.2-mini calls (NEW pricing — $0.15/$0.60)
+### gpt-5-mini calls (NEW pricing — $0.15/$0.60)
 
 | # | Call Site | Old Cost ($0.25/$2.00) | **New Cost ($0.15/$0.60)** | Reduction |
 |---|----------|----------------------|--------------------------|-----------|
@@ -82,7 +82,7 @@
 
 ## 4. Moderate User — Feature-by-Feature Breakdown (1–2 hrs/day, 30 days)
 
-### BEFORE optimizations (report baseline — gpt-5.2-mini at $0.25/$2.00, no router)
+### BEFORE optimizations (report baseline — gpt-5-mini at $0.25/$2.00, no router)
 
 | Feature | Usage/Day | Cost/Call | Daily Cost | Monthly |
 |---------|----------|----------|------------|---------|
@@ -114,7 +114,7 @@
 | Drafting training (1×/week) | 0.14 sess. | $0.026/sess | $0.004 | $0.11 | −$0.01 |
 | Case of the Day | 1 | $0.0009 | $0.001 | $0.03 | −$0.06 |
 | Banter (1×) | 1 | $0.0006 | $0.001 | $0.02 | −$0.04 |
-| Preload (FAST = gpt-5.2-mini) | 1 | $0.0003 | $0.0003 | $0.01 | **−$0.47** |
+| Preload (FAST = gpt-5-mini) | 1 | $0.0003 | $0.0003 | $0.01 | **−$0.47** |
 | Community challenges | 0.14 | $0.002/wk | $0.0001 | $0.004 | −$0.03 |
 | **TOTAL** | | | **$0.186** | **$5.59** | **−$2.90** |
 
@@ -125,7 +125,7 @@
 | Optimization | Monthly Savings | % of Total Savings |
 |-------------|----------------|-------------------|
 | Smart Chat Router (70% → mini) | $1.23 | 42.4% |
-| gpt-5.2-mini price drop ($0.25/$2.00 → $0.15/$0.60) | $0.77 | 26.6% |
+| gpt-5-mini price drop ($0.25/$2.00 → $0.15/$0.60) | $0.77 | 26.6% |
 | FAST_MODEL downgrade (gpt-5.2 → mini) | $0.47 | 16.2% |
 | Oral exam (mini + speech savings) | $0.45 | 15.5% |
 | **Total** | **$2.90** | **100%** |
@@ -239,7 +239,7 @@ $\$14.62 - \$5.84 = +\$8.78\text{/user/month (60.1\% margin)}$
 |-------|--------------|-----------|------------|
 | **gpt-5.2** | $4.44 | 79.4% | Mastery (assessment, grading, checkpoint), research, smart chat (30%), drafting grading |
 | **claude-sonnet-4.6** | $0.72 | 12.9% | Research auditor, drafting critique |
-| **gpt-5.2-mini** | $0.31 | 5.5% | Chat, quizzes, oral, notes, banter, routing, preload |
+| **gpt-5-mini** | $0.31 | 5.5% | Chat, quizzes, oral, notes, banter, routing, preload |
 | **Voice (STT+TTS)** | $0.12 | 2.1% | Oral exams, voice chat input |
 | **Total** | **$5.59** | **100%** | |
 

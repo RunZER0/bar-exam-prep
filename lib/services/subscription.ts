@@ -210,7 +210,7 @@ export async function getSubscriptionInfo(userId: string): Promise<SubscriptionI
     subscriptionEndsAt,
     canAccess,
     featureUsage: featureUsageMap,
-    clarifyModel: CLARIFY_MODEL[tier] || 'gpt-5.2-mini',
+    clarifyModel: CLARIFY_MODEL[tier] || 'gpt-5-mini',
     daysRemaining,
     usage: legacyUsage,
   };
@@ -515,7 +515,7 @@ function defaultInfo(): SubscriptionInfo {
     subscriptionEndsAt: null,
     canAccess: (f) => BASIC_FEATURES.has(f),
     featureUsage: emptyUsage,
-    clarifyModel: 'gpt-5.2-mini',
+    clarifyModel: 'gpt-5-mini',
     daysRemaining: 0,
     usage: { draftingUsed: 0, draftingLimit: 3, oralDevilUsed: 0, oralDevilLimit: 2, oralExamUsed: 0, oralExamLimit: 2 },
   };

@@ -139,11 +139,11 @@ Full simulation of the Kenya Bar oral examination with two distinct modes, voice
 
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
-| Devil's Advocate (stream) | gpt-5.2-mini | Adversarial questioning | ~$0.001 |
-| Devil's Advocate (non-stream) | gpt-5.2-mini | Fallback | ~$0.001 |
-| 3-Panel Examiner (stream) | gpt-5.2-mini | Panel simulation | ~$0.001 |
-| 3-Panel Examiner (non-stream) | gpt-5.2-mini | Fallback | ~$0.001 |
-| Session summary | gpt-5.2-mini | Score + feedback | ~$0.002 |
+| Devil's Advocate (stream) | gpt-5-mini | Adversarial questioning | ~$0.001 |
+| Devil's Advocate (non-stream) | gpt-5-mini | Fallback | ~$0.001 |
+| 3-Panel Examiner (stream) | gpt-5-mini | Panel simulation | ~$0.001 |
+| 3-Panel Examiner (non-stream) | gpt-5-mini | Fallback | ~$0.001 |
+| Session summary | gpt-5-mini | Score + feedback | ~$0.002 |
 
 **Plus Voice I/O (shared):**
 | Call Site | Model | Purpose | Per-Call Cost |
@@ -206,7 +206,7 @@ Each document type is taught through 6-8 progressive sessions:
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
 | Training content | DB lookup | 🔵 **PREBUILT** — 55 progressive training courses from database | **$0.000** |
-| Scenario generation | gpt-5.2-mini | Fresh exercise scenario from prebuilt prompt | ~$0.002 |
+| Scenario generation | gpt-5-mini | Fresh exercise scenario from prebuilt prompt | ~$0.002 |
 | Exercise grading | gpt-5.2 (GRADING) | Draft evaluation against prebuilt rubric | ~$0.025 |
 | Critique engine | claude-sonnet-4 | CLE-standard document critique (free practice mode) | ~$0.032 |
 
@@ -235,7 +235,7 @@ Comprehensive quiz engine supporting 3 question types, multiple difficulty level
 
 **Key Features:**
 - **Difficulty Levels:** Easy / Medium / Hard / Mixed
-- **Smart Preloading:** Background question generation via gpt-5.2-mini for instant load times
+- **Smart Preloading:** Background question generation via gpt-5-mini for instant load times
 - **Topic Selection:** Any of 9 ATP units, specific topics within units
 - **Performance Tracking:** Per-topic accuracy, time spent, improvement trends
 - **Immediate Feedback:** Detailed explanations for correct/incorrect answers
@@ -244,8 +244,8 @@ Comprehensive quiz engine supporting 3 question types, multiple difficulty level
 
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
-| Quiz streaming | gpt-5.2-mini (MINI_MODEL) | Real-time question generation | ~$0.004 |
-| Quiz preload | gpt-5.2-mini | Background batch generation | ~$0.001 |
+| Quiz streaming | gpt-5-mini (MINI_MODEL) | Real-time question generation | ~$0.004 |
+| Quiz preload | gpt-5-mini | Background batch generation | ~$0.001 |
 
 **Total Quiz AI cost per session:** ~$0.005–$0.01  
 **Trial Limit:** Unlimited (no gate)
@@ -291,8 +291,8 @@ Structured study environment covering all 9 ATP units with AI-generated study ma
 
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
-| Study notes (quick) | gpt-5.2-mini | Fast study note generation | ~$0.006 |
-| Case of the Day | gpt-5.2-mini | Daily case analysis | ~$0.003 |
+| Study notes (quick) | gpt-5-mini | Fast study note generation | ~$0.006 |
+| Case of the Day | gpt-5-mini | Daily case analysis | ~$0.003 |
 
 **Total Study AI cost per session:** ~$0.006–$0.01  
 **Trial Limit:** Unlimited (no gate)
@@ -390,7 +390,7 @@ Draggable floating chat bubble accessible from every page in the application. Co
 
 #### How It Works
 **3 Intelligence Modes:**
-1. **Standard** — gpt-5.2-mini: Fast, cost-effective for general questions
+1. **Standard** — gpt-5-mini: Fast, cost-effective for general questions
 2. **Smart** — gpt-5.2: Deeper reasoning for complex legal analysis
 3. **Image** — gpt-4o: Vision-capable for analyzing uploaded images (past papers, notes, etc.)
 
@@ -406,7 +406,7 @@ Draggable floating chat bubble accessible from every page in the application. Co
 
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
-| Standard chat | gpt-5.2-mini | General Q&A | ~$0.001 |
+| Standard chat | gpt-5-mini | General Q&A | ~$0.001 |
 | Smart mode | gpt-5.2 (ORCHESTRATOR) | Deep analysis | ~$0.031 |
 | Image mode | gpt-4o | Vision analysis | ~$0.015 |
 | Voice input | gpt-4o-mini-transcribe | Speech transcription | ~$0.003 |
@@ -515,7 +515,7 @@ Focused Q&A interface for quick legal concept clarification. Supports text, imag
 
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
-| Clarification query | gpt-5.2 (MENTOR) / gpt-5.2-mini (tier-dependent) | Grounded legal explanation | ~$0.002–$0.031 |
+| Clarification query | gpt-5.2 (MENTOR) / gpt-5-mini (tier-dependent) | Grounded legal explanation | ~$0.002–$0.031 |
 | Voice input | gpt-4o-mini-transcribe | Speech transcription | ~$0.003 |
 
 **Total per query:** ~$0.02–$0.03
@@ -540,9 +540,9 @@ Full social learning platform with chat rooms, friends, discussion threads, and 
 
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
-| Challenge generation | gpt-5.2-mini | Weekly challenge creation | ~$0.004 |
-| Challenge review | gpt-5.2-mini | Submission review | ~$0.001 |
-| Challenge grading | gpt-5.2-mini | Score + feedback | ~$0.002 |
+| Challenge generation | gpt-5-mini | Weekly challenge creation | ~$0.004 |
+| Challenge review | gpt-5-mini | Submission review | ~$0.001 |
+| Challenge grading | gpt-5-mini | Score + feedback | ~$0.002 |
 
 **Total AI cost:** ~$0.004/user/week (very low — challenges are shared)
 
@@ -575,7 +575,7 @@ Legal entertainment with 6 categories of fun content. Designed to keep students 
 
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
-| Banter content | gpt-5.2-mini (MINI_MODEL) | Entertainment generation | ~$0.002 |
+| Banter content | gpt-5-mini (MINI_MODEL) | Entertainment generation | ~$0.002 |
 
 **Total AI cost:** ~$0.002–$0.004/session
 
@@ -752,7 +752,7 @@ Static marketing and legal pages. Zero AI cost.
 | # | Model | Provider | Pricing (Input/Output per 1M tokens) | Call Sites | % of AI Cost |
 |---|-------|----------|---------------------------------------|------------|-------------|
 | 1 | **gpt-5.2** | OpenAI | **$1.75 / $14.00** | 14 | **~82%** |
-| 2 | **gpt-5.2-mini** | OpenAI | **$0.25 / $2.00** | 15 | ~10% |
+| 2 | **gpt-5-mini** | OpenAI | **$0.25 / $2.00** | 15 | ~10% |
 | 3 | **gpt-4o** | OpenAI | $2.50 / $10.00 | 1 (rare) | <1% |
 | 4 | **claude-sonnet-4.6** | Anthropic | $3.00 / $15.00 | 2 | ~5% |
 | 5 | **gpt-4o-mini-transcribe** | OpenAI | $0.003/minute | 3 | ~1% |
@@ -760,15 +760,15 @@ Static marketing and legal pages. Zero AI cost.
 | 7 | **o3** | OpenAI | $2.00 / $8.00 | Offline generation only | $0 per-user |
 
 > **⚠️ MODEL CORRECTIONS (March 2026):**
-> 1. All previous "gpt-4o-mini" references were incorrect — codebase uses **gpt-5.2-mini** (`MINI_MODEL`), pricing $0.25/$2.00 per 1M tokens.
-> 2. "gemini-2.0-flash" was listed for quiz preloading but **does not exist in the codebase** — `quiz-completion.ts` hardcodes `gpt-5.2-mini`. Gemini removed from inventory.
+> 1. All previous "gpt-4o-mini" references were incorrect — codebase uses **gpt-5-mini** (`MINI_MODEL`), pricing $0.25/$2.00 per 1M tokens.
+> 2. "gemini-2.0-flash" was listed for quiz preloading but **does not exist in the codebase** — `quiz-completion.ts` hardcodes `gpt-5-mini`. Gemini removed from inventory.
 > 3. Per-call costs recalculated using **actual token counts** (input prompt length × $1.75/1M + output JSON size × $14.00/1M). Previous estimates overestimated by ~2× because they assumed prose-length outputs; actual outputs are compact Zod-validated JSON schemas.
 > These corrections reduce estimated moderate user costs from $13.38 to **$8.49/month**.
 
 > **⚠️ INFRASTRUCTURE UPGRADES (March 2026 — Round 2):**
 > 4. **Voice stack migrated:** whisper-1 → **gpt-4o-mini-transcribe** ($0.003/min, 50% cheaper), tts-1 → **gpt-4o-mini-tts** ($12/1M chars, 20% cheaper + persona-based instructions for examiner voices).
-> 5. **FAST_MODEL downgraded:** gpt-5.2 → **gpt-5.2-mini** for fast preload calls. Cost per call: $0.016 → $0.001.
-> 6. **Smart chat router added:** Deterministic pre-checks + GPT-5.2-mini structured-output fallback routes smart chat and clarify queries to mini or frontier model. ~70% of queries resolved without any AI router call. Feature-flagged: `SMART_CHAT_ROUTER_ENABLED`, `CLARIFY_ROUTER_ENABLED`.
+> 5. **FAST_MODEL downgraded:** gpt-5.2 → **gpt-5-mini** for fast preload calls. Cost per call: $0.016 → $0.001.
+> 6. **Smart chat router added:** Deterministic pre-checks + gpt-5-mini structured-output fallback routes smart chat and clarify queries to mini or frontier model. ~70% of queries resolved without any AI router call. Feature-flagged: `SMART_CHAT_ROUTER_ENABLED`, `CLARIFY_ROUTER_ENABLED`.
 > 7. **Oral exam TTS now uses persona instructions:** Each examiner (Justice Mwangi, Advocate Amara, Prof. Otieno, Devil's Advocate) gets distinct voice tone/pace/delivery via gpt-4o-mini-tts `instructions` field.
 
 ### Model Role Assignments (from `model-config.ts`)
@@ -780,9 +780,9 @@ Static marketing and legal pages. Zero AI cost.
 | AUDITOR_MODEL | claude-sonnet-4.6 | Cross-validation, drafting critique |
 | ASSESSMENT_MODEL | gpt-5.2 | Assessment + checkpoint generation |
 | GRADING_MODEL | gpt-5.2 | Answer grading across all features |
-| FAST_MODEL | gpt-5.2-mini | Fast preload, quick responses |
-| MINI_MODEL | gpt-5.2-mini | **Quizzes, banter, standard chat, oral exams, study notes, community, drafting scenarios** |
-| ROUTER_MODEL | gpt-5.2-mini | Smart chat/clarify query routing (structured output) |
+| FAST_MODEL | gpt-5-mini | Fast preload, quick responses |
+| MINI_MODEL | gpt-5-mini | **Quizzes, banter, standard chat, oral exams, study notes, community, drafting scenarios** |
+| ROUTER_MODEL | gpt-5-mini | Smart chat/clarify query routing (structured output) |
 | TTS_MODEL | gpt-4o-mini-tts | Text-to-speech with persona instructions |
 | STT_MODEL | gpt-4o-mini-transcribe | Speech-to-text (oral exams, voice notes) |
 
@@ -794,7 +794,7 @@ Static marketing and legal pages. Zero AI cost.
 
 | # | Feature Area | Call Site | Model | Per-Call Cost | Calls/Day (Active User) |
 |---|-------------|-----------|-------|---------------|------------------------|
-| 1 | Chat | Standard chat | gpt-5.2-mini | $0.001 | 5–15 |
+| 1 | Chat | Standard chat | gpt-5-mini | $0.001 | 5–15 |
 | 2 | Chat | Smart mode | gpt-5.2 | $0.031 | 1–3 |
 | 3 | Chat | Image mode | gpt-4o | $0.015 | 0–1 |
 | 4 | Chat | Non-streaming | guardrails | varies | varies |
@@ -806,31 +806,31 @@ Static marketing and legal pages. Zero AI cost.
 | 10 | Mastery | Grading | gpt-5.2 | $0.008 | 2–5 |
 | 11 | Mastery | Pacing decision | gpt-5.2 | $0.002 | 1–3 |
 | 12 | Mastery | Queue reorder | gpt-5.2 | $0.004 | 0–1 |
-| 13 | Oral | Devil's Advocate (stream) | gpt-5.2-mini | $0.001 | 5–15/session |
-| 14 | Oral | Devil's Advocate (non-stream) | gpt-5.2-mini | $0.001 | 5–15/session |
-| 15 | Oral | 3-Panel (stream) | gpt-5.2-mini | $0.001 | 5–15/session |
-| 16 | Oral | 3-Panel (non-stream) | gpt-5.2-mini | $0.001 | 5–15/session |
-| 17 | Oral | Session summary | gpt-5.2-mini | $0.002 | 1/session |
-| 18 | Quiz | Quiz streaming | gpt-5.2-mini | $0.004 | 1–3 |
-| 19 | Quiz | Quiz preload | gpt-5.2-mini | $0.001 | 1–2 |
-| 20 | Study | Quick notes | gpt-5.2-mini | $0.006 | 1–2 |
-| 21 | Study | Case of Day | gpt-5.2-mini | $0.003 | 0–1 |
+| 13 | Oral | Devil's Advocate (stream) | gpt-5-mini | $0.001 | 5–15/session |
+| 14 | Oral | Devil's Advocate (non-stream) | gpt-5-mini | $0.001 | 5–15/session |
+| 15 | Oral | 3-Panel (stream) | gpt-5-mini | $0.001 | 5–15/session |
+| 16 | Oral | 3-Panel (non-stream) | gpt-5-mini | $0.001 | 5–15/session |
+| 17 | Oral | Session summary | gpt-5-mini | $0.002 | 1/session |
+| 18 | Quiz | Quiz streaming | gpt-5-mini | $0.004 | 1–3 |
+| 19 | Quiz | Quiz preload | gpt-5-mini | $0.001 | 1–2 |
+| 20 | Study | Quick notes | gpt-5-mini | $0.006 | 1–2 |
+| 21 | Study | Case of Day | gpt-5-mini | $0.003 | 0–1 |
 | 22–24 | Research | Authority retrieval (×3) | gpt-5.2 | $0.024 ea. | 0–3 |
 | 25 | Research | Mentor + web search | gpt-5.2 | $0.031 | 1–3 |
 | 26 | Research | Auditor validation | claude-sonnet-4.6 | $0.032 | 1–2/session |
 | 27–28 | Guardrails | Agentic tool-use (×2) | gpt-5.2 | $0.033 ea. | 0–2 |
-| 29 | Preload | Fast preload | gpt-5.2-mini | $0.001 | 1–2 |
-| 30 | Community | Challenge generation | gpt-5.2-mini | $0.004 | 0–1 |
-| 31 | Community | Challenge review | gpt-5.2-mini | $0.001 | 0–1 |
-| 32 | Community | Challenge grading | gpt-5.2-mini | $0.002 | 0–2 |
-| 33 | Drafting | Training scenario gen | gpt-5.2-mini | $0.002 | 1–2/session |
+| 29 | Preload | Fast preload | gpt-5-mini | $0.001 | 1–2 |
+| 30 | Community | Challenge generation | gpt-5-mini | $0.004 | 0–1 |
+| 31 | Community | Challenge review | gpt-5-mini | $0.001 | 0–1 |
+| 32 | Community | Challenge grading | gpt-5-mini | $0.002 | 0–2 |
+| 33 | Drafting | Training scenario gen | gpt-5-mini | $0.002 | 1–2/session |
 | 33b | Drafting | Exercise grading | gpt-5.2 | $0.025 | 1–2/session |
 | 33c | Drafting | Critique engine | claude-sonnet-4.6 | $0.032 | 1–2/session |
 | 34 | Voice | STT (chat) | gpt-4o-mini-transcribe | $0.003 | 0–2 |
 | 35 | Voice | STT (oral) | gpt-4o-mini-transcribe | $0.003 | 0–3 |
 | 36 | Voice | TTS | gpt-4o-mini-tts | $0.006 | 0–3 |
 | 37 | Onboarding | Senior Partner analysis | gpt-5.2 | $0.016 | 1 (once) |
-| 38 | Banter | Entertainment content | gpt-5.2-mini | $0.002 | 0–3 |
+| 38 | Banter | Entertainment content | gpt-5-mini | $0.002 | 0–3 |
 
 
 > 🔵 = **Prebuilt content** — served from database at $0 per-user cost. Generated offline using gpt-5.2/o3 as a one-time investment.
@@ -871,7 +871,7 @@ Static marketing and legal pages. Zero AI cost.
 | **Daily Total** | | **$0.283** |
 | **Monthly Total (30 days)** | | **$8.49** |
 
-> **Key corrections vs. prior report:** (1) Mastery Hub session cost token-audited from $0.138 to **$0.060** — all AI calls output structured JSON (~380–1,450 tokens), not prose, making them 2× cheaper than assumed. (2) Quiz preloading uses gpt-5.2-mini, not gemini-2.0-flash (phantom model removed). (3) All "mini" model calls use gpt-5.2-mini ($0.25/$2.00).
+> **Key corrections vs. prior report:** (1) Mastery Hub session cost token-audited from $0.138 to **$0.060** — all AI calls output structured JSON (~380–1,450 tokens), not prose, making them 2× cheaper than assumed. (2) Quiz preloading uses gpt-5-mini, not gemini-2.0-flash (phantom model removed). (3) All "mini" model calls use gpt-5-mini ($0.25/$2.00).
 
 ### Scenario C: Heavy User (~3+ hrs/day, power user)
 
@@ -1027,14 +1027,14 @@ Replaced static drafting critique with a full 7-session progressive training cou
 
 ### Remaining Optimization Opportunity: Model Downgrade
 
-Downgrade 4 of 14 remaining gpt-5.2 call sites to gpt-5.2-mini where frontier reasoning isn't needed:
+Downgrade 4 of 14 remaining gpt-5.2 call sites to gpt-5-mini where frontier reasoning isn't needed:
 
 | Call Site | Current Model | Proposed Model | Savings/Call | Quality Impact |
 |-----------|---------------|----------------|-------------|----------------|
-| Pacing decision (#11) | gpt-5.2 | gpt-5.2-mini | $0.002 | Low — algorithmic task |
-| Queue reorder (#12) | gpt-5.2 | gpt-5.2-mini | $0.003 | Low — sorting task |
-| Fast preload (#29) | gpt-5.2 | gpt-5.2-mini | $0.015 | Low — batch generation |
-| Onboarding (#37) | gpt-5.2 | gpt-5.2-mini | $0.015 | Low — one-time analysis |
+| Pacing decision (#11) | gpt-5.2 | gpt-5-mini | $0.002 | Low — algorithmic task |
+| Queue reorder (#12) | gpt-5.2 | gpt-5-mini | $0.003 | Low — sorting task |
+| Fast preload (#29) | gpt-5.2 | gpt-5-mini | $0.015 | Low — batch generation |
+| Onboarding (#37) | gpt-5.2 | gpt-5-mini | $0.015 | Low — one-time analysis |
 
 **Estimated additional savings if implemented: ~$0.50–$1.00/moderate user/month**
 
@@ -1049,18 +1049,18 @@ With model optimization applied on top of prebuilt content + tiered pricing + to
 | # | Feature | Category | AI Models | AI Cost/Session | Gated? | Page |
 |---|---------|----------|-----------|----------------|--------|------|
 | 1 | Mastery Hub | 🏆 Flagship | gpt-5.2 (6 active + 2 prebuilt) | $0.04–$0.07 | No (unlimited) | `/mastery` |
-| 2 | Oral Exams | 🏆 Flagship | gpt-5.2-mini, gpt-4o-mini-transcribe, gpt-4o-mini-tts | $0.01–$0.10 | ✅ 2–6/wk | `/oral-exams` |
-| 3 | Legal Drafting | 🏆 Flagship | gpt-5.2-mini + gpt-5.2 + claude-sonnet-4.6 | $0.03 (training) / $0.03–$0.06 (practice) | ✅ 3–6/wk | `/drafting` |
-| 4 | Quizzes | 🏆 Flagship | gpt-5.2-mini | $0.005–$0.01 | No (unlimited) | `/quizzes` |
-| 5 | Study | 🏆 Flagship | gpt-5.2-mini | $0.006–$0.01 | No (unlimited) | `/study` |
+| 2 | Oral Exams | 🏆 Flagship | gpt-5-mini, gpt-4o-mini-transcribe, gpt-4o-mini-tts | $0.01–$0.10 | ✅ 2–6/wk | `/oral-exams` |
+| 3 | Legal Drafting | 🏆 Flagship | gpt-5-mini + gpt-5.2 + claude-sonnet-4.6 | $0.03 (training) / $0.03–$0.06 (practice) | ✅ 3–6/wk | `/drafting` |
+| 4 | Quizzes | 🏆 Flagship | gpt-5-mini | $0.005–$0.01 | No (unlimited) | `/quizzes` |
+| 5 | Study | 🏆 Flagship | gpt-5-mini | $0.006–$0.01 | No (unlimited) | `/study` |
 | 6 | CLE Exams | ⭐ Core | gpt-5.2 | $0.05–$0.08 | ✅ 0–6/wk | `/exams` |
 | 7 | Legal Research | ⭐ Core | gpt-5.2, claude-sonnet-4.6 | $0.09–$0.12 | ✅ 0–6/wk | `/research` |
-| 8 | Floating Chat | ⭐ Core | gpt-5.2-mini/gpt-5.2/gpt-4o | $0.001–$0.031 | No (unlimited) | (global) |
+| 8 | Floating Chat | ⭐ Core | gpt-5-mini/gpt-5.2/gpt-4o | $0.001–$0.031 | No (unlimited) | (global) |
 | 9 | Progress | ⭐ Core | None | $0 | No | `/progress` |
 | 10 | Onboarding | ⭐ Core | gpt-5.2 | $0.016 (once) | No | `/onboarding` |
-| 11 | Clarify | 🔧 Supporting | gpt-5.2/gpt-5.2-mini (tier-dependent) | $0.002–$0.031 | ✅ 0–6/wk | `/clarify` |
-| 12 | Community | 🔧 Supporting | gpt-5.2-mini | $0.007/week | No (unlimited) | `/community` |
-| 13 | Legal Banter | 🔧 Supporting | gpt-5.2-mini | $0.002 | No (unlimited) | `/banter` |
+| 11 | Clarify | 🔧 Supporting | gpt-5.2/gpt-5-mini (tier-dependent) | $0.002–$0.031 | ✅ 0–6/wk | `/clarify` |
+| 12 | Community | 🔧 Supporting | gpt-5-mini | $0.007/week | No (unlimited) | `/community` |
+| 13 | Legal Banter | 🔧 Supporting | gpt-5-mini | $0.002 | No (unlimited) | `/banter` |
 | 14 | History | 🔧 Supporting | None | $0 | No | `/history` |
 | 15 | Dashboard | 🔧 Supporting | None | $0 | No | `/dashboard` |
 | 16 | Subscribe | 🔧 Supporting | None | $0 | No | `/subscribe` |
@@ -1513,7 +1513,7 @@ For a **full mastery session** (student works through one node from NOTE to MAST
 
 **Key cost driver:** The ASSESSMENT_MODEL calls (checkpoint gen + assessment gen). Assessment generation outputs ~1,450 tokens of JSON per 5-question exam — this single call at ~$0.022 is the most expensive step. Grading outputs are compact (~380 tokens each, ~$0.008/call).
 
-**Optimization opportunity:** Pacing ($0.002) and queue reorder ($0.004) could move to gpt-5.2-mini for ~$0.005/day savings. Assessment/grading must stay on gpt-5.2 — quality is critical for accurate mastery measurement.
+**Optimization opportunity:** Pacing ($0.002) and queue reorder ($0.004) could move to gpt-5-mini for ~$0.005/day savings. Assessment/grading must stay on gpt-5.2 — quality is critical for accurate mastery measurement.
 
 ---
 
@@ -1541,4 +1541,4 @@ For a **full mastery session** (student works through one node from NOTE to MAST
 
 *End of Board Report — YNAI Complete System Feature Catalog*  
 *Prepared for pricing review and strategic planning*  
-*Updated: March 2026 — Model correction (gpt-5.2-mini), AI Tutor removed, prebuilt content strategy, 3-tier pricing*
+*Updated: March 2026 — Model correction (gpt-5-mini), AI Tutor removed, prebuilt content strategy, 3-tier pricing*

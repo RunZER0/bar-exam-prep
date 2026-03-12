@@ -102,11 +102,11 @@ export const DAILY_DRAFT_ATTEMPTS = 2;
 // ── Clarify Model Per Tier ──
 // Light + Standard + Custom use the mini model; Premium uses the full model
 export const CLARIFY_MODEL: Record<SubscriptionTier, string> = {
-  free_trial: 'gpt-5.2-mini',
-  light:      'gpt-5.2-mini',
-  standard:   'gpt-5.2-mini',
+  free_trial: 'gpt-5-mini',
+  light:      'gpt-5-mini',
+  standard:   'gpt-5-mini',
   premium:    'gpt-5.2',
-  custom:     'gpt-5.2-mini',
+  custom:     'gpt-5-mini',
 };
 
 // ── Add-on Pass Prices (per single-feature pass, KES) ──

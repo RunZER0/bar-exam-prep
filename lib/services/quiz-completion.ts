@@ -189,7 +189,7 @@ Return a JSON object with a "questions" array. Each question object has:
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const completion = await openai.chat.completions.create({
-      model: 'gpt-5.2-mini',
+      model: 'gpt-5-mini',
       messages: [
         { role: 'system', content: 'You are a Kenya bar exam question generator. Return valid JSON only.' },
         { role: 'user', content: prompt },

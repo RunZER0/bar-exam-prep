@@ -15,6 +15,11 @@ function getRawSql() {
   if (!_rawSql) _rawSql = neon(process.env.DATABASE_URL!);
   return _rawSql;
 }
+// Helper: neon tagged templates return FullQueryResults which may not have .length in strict mode
+const sql = async (...args: Parameters<ReturnType<typeof neon>>) => {
+  const result = await getRawSql()(...args);
+  return result as any[];
+};
 
 /**
  * POST /api/study/notes
@@ -42,8 +47,6 @@ async function handlePost(req: NextRequest, user: AuthUser) {
   if (customPrompt) {
     return generateLiveNotes({ topicContext: customPrompt, unitName, depth, withAssessment, topicName });
   }
-
-  const rawSql = getRawSql();
 
   // ═══════════════════════════════════════════════════════════
   // PRE-BUILT NOTES: Find matching syllabus node and serve pre-built
@@ -73,7 +76,7 @@ async function handlePost(req: NextRequest, user: AuthUser) {
       
       // Tier 1+2: Exact and substring match
       const exactMatches = unitId
-        ? await rawSql`
+        ? await sql`
             SELECT id, 
               CASE 
                 WHEN topic_name = ${exactName} OR subtopic_name = ${exactName} THEN 1
@@ -92,7 +95,7 @@ async function handlePost(req: NextRequest, user: AuthUser) {
             ORDER BY match_rank ASC
             LIMIT 1
           `
-        : await rawSql`
+        : await sql`
             SELECT id, 
               CASE 
                 WHEN topic_name = ${exactName} OR subtopic_name = ${exactName} THEN 1
@@ -115,7 +118,7 @@ async function handlePost(req: NextRequest, user: AuthUser) {
         // Tier 3: Reverse match — node topic_name contained in the search term
         const cleanName = exactName.replace(/^Case:\s*/i, '').trim();
         const reverseMatches = unitId
-          ? await rawSql`
+          ? await sql`
               SELECT id FROM syllabus_nodes
               WHERE UPPER(REPLACE(unit_code, '-', '')) = UPPER(REPLACE(${unitId}, '-', ''))
                 AND LENGTH(topic_name) >= 4
@@ -124,7 +127,7 @@ async function handlePost(req: NextRequest, user: AuthUser) {
               ORDER BY LENGTH(topic_name) DESC
               LIMIT 1
             `
-          : await rawSql`
+          : await sql`
               SELECT id FROM syllabus_nodes
               WHERE LENGTH(topic_name) >= 4
                 AND (${exactName} ILIKE '%' || topic_name || '%'
@@ -141,13 +144,13 @@ async function handlePost(req: NextRequest, user: AuthUser) {
             // Try combined pattern first (all words in order)
             const combinedPattern = `%${searchWords.join('%')}%`;
             const fuzzyMatches = unitId
-              ? await rawSql`
+              ? await sql`
                   SELECT id FROM syllabus_nodes
                   WHERE (topic_name ILIKE ${combinedPattern} OR subtopic_name ILIKE ${combinedPattern})
                     AND UPPER(REPLACE(unit_code, '-', '')) = UPPER(REPLACE(${unitId}, '-', ''))
                   LIMIT 1
                 `
-              : await rawSql`
+              : await sql`
                   SELECT id FROM syllabus_nodes
                   WHERE topic_name ILIKE ${combinedPattern} OR subtopic_name ILIKE ${combinedPattern}
                   LIMIT 1
@@ -159,7 +162,7 @@ async function handlePost(req: NextRequest, user: AuthUser) {
               // e.g., "Jurisdiction & Venue" → search for "%Jurisdiction%" in the unit
               const primaryWord = searchWords[0];
               const keywordMatches = unitId
-                ? await rawSql`
+                ? await sql`
                     SELECT id FROM syllabus_nodes
                     WHERE UPPER(REPLACE(unit_code, '-', '')) = UPPER(REPLACE(${unitId}, '-', ''))
                       AND (topic_name ILIKE ${'%' + primaryWord + '%'}
@@ -167,7 +170,7 @@ async function handlePost(req: NextRequest, user: AuthUser) {
                     ORDER BY id ASC
                     LIMIT 1
                   `
-                : await rawSql`
+                : await sql`
                     SELECT id FROM syllabus_nodes
                     WHERE topic_name ILIKE ${'%' + primaryWord + '%'}
                       OR subtopic_name ILIKE ${'%' + primaryWord + '%'}
@@ -195,7 +198,7 @@ async function handlePost(req: NextRequest, user: AuthUser) {
 
       if (dbUserId) {
         try {
-          const [existing] = await rawSql`
+          const [existing] = await sql`
             SELECT mastery_version, study_version FROM user_note_versions
             WHERE user_id = ${dbUserId}::uuid AND node_id = ${matchedNodeId}::uuid
           `;
@@ -220,7 +223,7 @@ async function handlePost(req: NextRequest, user: AuthUser) {
       // Persist the study version assignment
       if (dbUserId) {
         try {
-          await rawSql`
+          await sql`
             INSERT INTO user_note_versions (user_id, node_id, study_version, study_read_at)
             VALUES (${dbUserId}::uuid, ${matchedNodeId}::uuid, ${assignedVersion}, NOW())
             ON CONFLICT (user_id, node_id) DO UPDATE SET
@@ -232,7 +235,7 @@ async function handlePost(req: NextRequest, user: AuthUser) {
       }
 
       // Fetch pre-built notes for the assigned version
-      const [prebuilt] = await rawSql`
+      const [prebuilt] = await sql`
         SELECT narrative_markdown, sections_json, authorities_json, personality, title
         FROM prebuilt_notes
         WHERE node_id = ${matchedNodeId}::uuid 

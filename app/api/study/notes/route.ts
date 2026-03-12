@@ -187,6 +187,27 @@ async function handlePost(req: NextRequest, user: AuthUser) {
       }
     }
 
+    // Tier 6: If no match yet and we have a unitId, grab ANY node from this unit
+    if (!matchedNodeId && unitId) {
+      console.log(`[study/notes] Tiers 1-5 failed for "${topicName}" (unit: ${unitId}). Trying Tier 6: any node in unit.`);
+      try {
+        const unitCode = unitId.replace(/-/g, '').toUpperCase(); // atp-100 → ATP100
+        const anyNode = await sql`
+          SELECT sn.id FROM syllabus_nodes sn
+          INNER JOIN prebuilt_notes pn ON pn.node_id = sn.id AND pn.is_active = true
+          WHERE UPPER(REPLACE(sn.unit_code, '-', '')) = ${unitCode}
+          ORDER BY sn.week_number ASC, sn.id ASC
+          LIMIT 1
+        `;
+        if (anyNode.length > 0) {
+          matchedNodeId = anyNode[0].id;
+          console.log(`[study/notes] Tier 6 fallback: using node ${matchedNodeId} from unit ${unitId}`);
+        }
+      } catch (e) {
+        console.warn('[study/notes] Tier 6 lookup failed:', e);
+      }
+    }
+
     if (!matchedNodeId) {
       console.log(`[study/notes] No syllabus node match for "${topicName}" (unit: ${unitId}). Using live generation.`);
     }
@@ -220,31 +241,38 @@ async function handlePost(req: NextRequest, user: AuthUser) {
         assignedVersion = 1;
       }
 
-      // Persist the study version assignment
-      if (dbUserId) {
-        try {
-          await sql`
-            INSERT INTO user_note_versions (user_id, node_id, study_version, study_read_at)
-            VALUES (${dbUserId}::uuid, ${matchedNodeId}::uuid, ${assignedVersion}, NOW())
-            ON CONFLICT (user_id, node_id) DO UPDATE SET
-              study_version = COALESCE(user_note_versions.study_version, ${assignedVersion}),
-              study_read_at = NOW(),
-              updated_at = NOW()
-          `;
-        } catch { /* non-critical */ }
-      }
-
-      // Fetch pre-built notes for the assigned version
-      const [prebuilt] = await sql`
-        SELECT narrative_markdown, sections_json, authorities_json, personality, title
+      // Fetch pre-built notes — try the assigned version first, then ANY available version
+      let prebuilt: any = null;
+      const versions = await sql`
+        SELECT narrative_markdown, sections_json, authorities_json, personality, title, version_number
         FROM prebuilt_notes
-        WHERE node_id = ${matchedNodeId}::uuid 
-          AND version_number = ${assignedVersion}
-          AND is_active = true
+        WHERE node_id = ${matchedNodeId}::uuid AND is_active = true
+        ORDER BY CASE WHEN version_number = ${assignedVersion} THEN 0 ELSE 1 END, version_number ASC
         LIMIT 1
       `;
+      if (versions.length > 0) {
+        prebuilt = versions[0];
+        if (prebuilt.version_number !== assignedVersion) {
+          console.log(`[study/notes] Assigned v${assignedVersion} not found, using v${prebuilt.version_number} for node ${matchedNodeId}`);
+          assignedVersion = prebuilt.version_number;
+        }
+      }
 
       if (prebuilt?.narrative_markdown) {
+        // Persist the study version assignment
+        if (dbUserId) {
+          try {
+            await sql`
+              INSERT INTO user_note_versions (user_id, node_id, study_version, study_read_at)
+              VALUES (${dbUserId}::uuid, ${matchedNodeId}::uuid, ${assignedVersion}, NOW())
+              ON CONFLICT (user_id, node_id) DO UPDATE SET
+                study_version = COALESCE(user_note_versions.study_version, ${assignedVersion}),
+                study_read_at = NOW(),
+                updated_at = NOW()
+            `;
+          } catch { /* non-critical */ }
+        }
+
         let notes = prebuilt.narrative_markdown;
 
         // If withAssessment is requested, generate assessment questions LIVE
@@ -284,10 +312,16 @@ Include model answers for all questions. Use proper Markdown formatting.` },
           personality: prebuilt.personality,
           generatedAt: new Date().toISOString(),
         });
+      } else {
+        console.warn(`[study/notes] Node ${matchedNodeId} found but NO prebuilt_notes rows (is_active=true). Falling back to live generation.`);
       }
     }
   } catch (e) {
     console.error('[study/notes] Pre-built lookup failed, falling back to AI:', e);
+    // Log the actual error stack so we can debug production issues
+    if (e instanceof Error) {
+      console.error('[study/notes] Stack:', e.stack);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════

@@ -40,11 +40,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Image too large. Max 500KB.' }, { status: 400 });
     }
 
-    // Update user's photo URL
+    // Update user's photo URL (match on firebaseUid, not users.id which is a Postgres UUID)
     await db
       .update(users)
       .set({ photoURL: photoData })
-      .where(eq(users.id, userId));
+      .where(eq(users.firebaseUid, userId));
 
     return NextResponse.json({ success: true, photoURL: photoData });
   } catch (error) {
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
     const [user] = await db
       .select({ photoURL: users.photoURL })
       .from(users)
-      .where(eq(users.id, userId))
+      .where(eq(users.firebaseUid, userId))
       .limit(1);
 
     return NextResponse.json({ photoURL: user?.photoURL || null });

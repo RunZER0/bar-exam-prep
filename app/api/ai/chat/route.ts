@@ -188,9 +188,10 @@ export const POST = withAuth(async (req: NextRequest, user) => {
     }
 
     // Save chat history
+    const effectiveSessionId = sessionId || crypto.randomUUID();
     await db.insert(chatHistory).values({
       userId: user.id,
-      sessionId: sessionId || crypto.randomUUID(),
+      sessionId: effectiveSessionId,
       competencyType: competencyType as any,
       message,
       response: aiResponse.content,
@@ -201,6 +202,37 @@ export const POST = withAuth(async (req: NextRequest, user) => {
         sources,
       },
     });
+
+    // Also persist into chatSessions + chatMessages for history UI
+    try {
+      const [existingSession] = await db
+        .select({ id: chatSessions.id })
+        .from(chatSessions)
+        .where(eq(chatSessions.id, effectiveSessionId))
+        .limit(1);
+
+      if (!existingSession) {
+        const title = message.replace(/\[.*?\]\s*/g, '').trim().substring(0, 60) || 'Conversation';
+        try {
+          await db.insert(chatSessions).values({
+            id: effectiveSessionId,
+            userId: user.id,
+            title,
+            competencyType: competencyType as any,
+            context: context?.source || null,
+          });
+        } catch { /* race condition safe */ }
+      } else {
+        await db.update(chatSessions)
+          .set({ lastMessageAt: new Date() })
+          .where(eq(chatSessions.id, effectiveSessionId));
+      }
+
+      await db.insert(chatMessages).values([
+        { sessionId: effectiveSessionId, role: 'user', content: message },
+        { sessionId: effectiveSessionId, role: 'assistant', content: aiResponse.content },
+      ]);
+    } catch { /* silent fail for session/message save */ }
 
     return NextResponse.json({
       response: aiResponse.content,

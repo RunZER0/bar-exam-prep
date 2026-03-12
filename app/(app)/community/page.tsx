@@ -12,7 +12,7 @@ import {
   Handshake, Building2, Gavel, UserCheck, UserX, Bell, ArrowRight,
   Heart, Zap, Target, TrendingUp, Calendar, ThumbsUp, ThumbsDown,
   MessageCircle, ArrowUp, Filter, CornerDownRight,
-  Mic, MicOff, Paperclip, Image as ImageIcon,
+  Mic, MicOff, Paperclip, Image as ImageIcon, Camera,
 } from 'lucide-react';
 
 const UNIT_NAMES: Record<string, string> = {
@@ -1038,7 +1038,37 @@ export default function CommunityPage() {
             </div>
             <h2 className="text-xl font-bold">Welcome to the Community</h2>
             <p className="text-sm text-muted-foreground">
-              Choose a username that other students will see. You can keep the suggested one or pick your own.
+              Set up your profile so other students can recognize you.
+            </p>
+          </div>
+
+          {/* Profile Photo Upload */}
+          <div className="flex flex-col items-center gap-2">
+            <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={uploadingPhoto}
+              className="group relative w-20 h-20 rounded-full bg-muted/30 border-2 border-dashed border-border/40 hover:border-primary/50 flex items-center justify-center transition-all overflow-hidden"
+            >
+              {myPhotoURL ? (
+                <img src={myPhotoURL} alt="Profile" className="w-full h-full rounded-full object-cover" />
+              ) : uploadingPhoto ? (
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              ) : (
+                <div className="text-center">
+                  <Camera className="h-5 w-5 mx-auto text-muted-foreground group-hover:text-primary transition-colors" />
+                  <span className="text-[10px] text-muted-foreground mt-0.5 block">Add Photo</span>
+                </div>
+              )}
+              {myPhotoURL && !uploadingPhoto && (
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-full flex items-center justify-center transition-opacity">
+                  <Camera className="h-5 w-5 text-white" />
+                </div>
+              )}
+            </button>
+            <p className="text-[11px] text-muted-foreground">
+              {myPhotoURL ? 'Click to change photo' : 'Optional — you can add one later'}
             </p>
           </div>
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
 import { users, chatSessions, chatMessages } from '@/lib/db/schema';
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, desc, sql, and } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,6 +18,13 @@ export async function GET(request: NextRequest) {
     if (!dbUser) {
       return NextResponse.json({ sessions: [] });
     }
+
+    // Optional competencyType filter
+    const { searchParams } = new URL(request.url);
+    const typeFilter = searchParams.get('type');
+    const whereConditions = typeFilter
+      ? and(eq(chatSessions.userId, dbUser.id), eq(chatSessions.competencyType, typeFilter as any))
+      : eq(chatSessions.userId, dbUser.id);
 
     // Get all chat sessions with message count
     const sessions = await db
@@ -35,7 +42,7 @@ export async function GET(request: NextRequest) {
         )`.as('message_count'),
       })
       .from(chatSessions)
-      .where(eq(chatSessions.userId, dbUser.id))
+      .where(whereConditions)
       .orderBy(desc(chatSessions.lastMessageAt));
 
     return NextResponse.json({ sessions });

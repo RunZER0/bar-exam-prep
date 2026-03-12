@@ -2,8 +2,8 @@ import { NextRequest } from 'next/server';
 import { verifyAuth } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
 import { db } from '@/lib/db';
-import { chatHistory } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { chatHistory, chatSessions, chatMessages } from '@/lib/db/schema';
+import { eq, desc, and } from 'drizzle-orm';
 import { ORCHESTRATOR_MODEL, MINI_MODEL } from '@/lib/ai/model-config';
 import { getSubscriptionInfo, incrementFeatureUsage } from '@/lib/services/subscription';
 
@@ -212,15 +212,60 @@ export async function POST(req: NextRequest) {
           try {
             // Map 'general' to 'clarification' since DB enum doesn't include 'general'
             const dbCompetencyType = competencyType === 'general' ? 'clarification' : competencyType;
+            const effectiveSessionId = sessionId || crypto.randomUUID();
+
             await db.insert(chatHistory).values({
               userId: user.id,
-              sessionId: sessionId || crypto.randomUUID(),
+              sessionId: effectiveSessionId,
               competencyType: dbCompetencyType as any,
               message,
               response: fullContent,
               wasFiltered: false,
               metadata: { context, streaming: true },
             });
+
+            // Also persist into chatSessions + chatMessages for history UI
+            // Upsert the session (create if first message, update lastMessageAt otherwise)
+            const [existingSession] = await db
+              .select({ id: chatSessions.id })
+              .from(chatSessions)
+              .where(eq(chatSessions.id, effectiveSessionId))
+              .limit(1);
+
+            if (!existingSession) {
+              // Derive title from first user message (first 60 chars)
+              const title = message.replace(/\[.*?\]\s*/g, '').trim().substring(0, 60) || 'Conversation';
+              try {
+                await db.insert(chatSessions).values({
+                  id: effectiveSessionId,
+                  userId: user.id,
+                  title,
+                  competencyType: dbCompetencyType as any,
+                  context: context?.source || null,
+                });
+              } catch {
+                // Session may already exist from race condition — safe to ignore
+              }
+            } else {
+              await db.update(chatSessions)
+                .set({ lastMessageAt: new Date() })
+                .where(eq(chatSessions.id, effectiveSessionId));
+            }
+
+            // Save both user message and assistant response
+            await db.insert(chatMessages).values([
+              {
+                sessionId: effectiveSessionId,
+                role: 'user',
+                content: message,
+                metadata: attachments?.length ? { attachments: attachments.map((a: any) => ({ type: a.type, fileName: a.fileName })) } : null,
+              },
+              {
+                sessionId: effectiveSessionId,
+                role: 'assistant',
+                content: fullContent,
+              },
+            ]);
           } catch {
             // Silent fail for history save
           }

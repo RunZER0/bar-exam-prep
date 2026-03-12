@@ -35,11 +35,12 @@ export async function POST(request: NextRequest) {
     }
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const { STT_MODEL } = await import('@/lib/ai/model-config');
 
     // Transcribe the audio
     const transcription = await openai.audio.transcriptions.create({
       file: audioFile,
-      model: 'whisper-1',
+      model: STT_MODEL,
       language: 'en', // Can be made dynamic based on user preference
       response_format: 'json',
     });

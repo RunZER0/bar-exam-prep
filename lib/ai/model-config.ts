@@ -18,11 +18,30 @@ export const AUDITOR_MODEL = process.env.AUDITOR_MODEL || 'claude-sonnet-4.6-202
 export const ASSESSMENT_MODEL = process.env.ASSESSMENT_MODEL || 'gpt-5.2';
 export const GRADING_MODEL = process.env.GRADING_MODEL || 'gpt-5.2';
 
-// === Fast Operations ===
-export const FAST_MODEL = process.env.OPENAI_FAST_MODEL || 'gpt-5.2';
+// === Fast Operations (downgraded from gpt-5.2 to mini for cost savings) ===
+export const FAST_MODEL = process.env.OPENAI_FAST_MODEL || 'gpt-5.2-mini';
 
 // === Minimum Floor Model — fast & cheap for streaming, quizzes, oral exams ===
 export const MINI_MODEL = process.env.MINI_MODEL || 'gpt-5.2-mini';
+
+// === Router Model — lightweight model for smart routing decisions ===
+export const ROUTER_MODEL = process.env.ROUTER_MODEL || 'gpt-5.2-mini';
+
+// === Voice / Speech Models ===
+export const TTS_MODEL = process.env.TTS_MODEL || 'gpt-4o-mini-tts';
+export const TTS_MODEL_LEGACY = 'tts-1';
+export const STT_MODEL = process.env.STT_MODEL || 'gpt-4o-mini-transcribe';
+export const STT_MODEL_LEGACY = 'whisper-1';
+
+// === Feature Flags ===
+// Smart Chat Router: deterministic pre-checks + AI fallback to route between mini and 5.2
+export const SMART_CHAT_ROUTER_ENABLED = process.env.SMART_CHAT_ROUTER_ENABLED !== 'false'; // on by default
+// Clarify Router: same router for clarification mode
+export const CLARIFY_ROUTER_ENABLED = process.env.CLARIFY_ROUTER_ENABLED !== 'false'; // on by default
+// New TTS model (gpt-4o-mini-tts with instructions support)
+export const NEW_TTS_ENABLED = process.env.NEW_TTS_ENABLED !== 'false'; // on by default
+// New STT model (gpt-4o-mini-transcribe)
+export const NEW_STT_ENABLED = process.env.NEW_STT_ENABLED !== 'false'; // on by default
 
 // === API Key Getters ===
 export function getOpenAIKey(): string | undefined {

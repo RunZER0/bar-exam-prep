@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
+import { transcribeAudio } from '@/lib/voice/transcribe';
+import { logSTTRequest } from '@/lib/ai/telemetry';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// POST - Convert speech to text using OpenAI Whisper
+// POST - Convert speech to text using OpenAI transcription
 export const POST = withAuth(async (req: NextRequest, user) => {
   try {
     const formData = await req.formData();
@@ -14,15 +16,23 @@ export const POST = withAuth(async (req: NextRequest, user) => {
       return NextResponse.json({ error: 'Audio file required' }, { status: 400 });
     }
 
-    const transcription = await openai.audio.transcriptions.create({
+    const result = await transcribeAudio(openai, {
       file: audioFile,
-      model: 'whisper-1',
       language: 'en',
     });
 
+    // Log telemetry
+    logSTTRequest({
+      userId: user.id,
+      model: result.model,
+      fallback: result.model === 'whisper-1',
+      latency_ms: result.latency_ms,
+    });
+
     return NextResponse.json({
-      text: transcription.text,
+      text: result.text,
       success: true,
+      model: result.model,
     });
   } catch (error: any) {
     console.error('STT error:', error);

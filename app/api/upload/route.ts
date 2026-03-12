@@ -58,18 +58,19 @@ export async function POST(request: NextRequest) {
     const base64 = buffer.toString('base64');
     const dataUrl = `data:${file.type};base64,${base64}`;
 
-    // For audio files, transcribe using OpenAI Whisper
+    // For audio files, transcribe using OpenAI STT
     let transcription: string | null = null;
     if (fileType === 'audio' && process.env.OPENAI_API_KEY) {
       try {
         const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const { STT_MODEL } = await import('@/lib/ai/model-config');
         
         // Create a proper file for the OpenAI API
         const audioFile = new File([buffer], file.name, { type: file.type });
         
         const transcriptionResponse = await openai.audio.transcriptions.create({
           file: audioFile,
-          model: 'whisper-1',
+          model: STT_MODEL,
           language: 'en',
         });
         

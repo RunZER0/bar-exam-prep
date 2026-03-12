@@ -28,7 +28,6 @@ import {
   AlertCircle,
   Mic,
   Users,
-  GraduationCap,
   BarChart2,
   MessagesSquare,
 } from 'lucide-react';
@@ -147,14 +146,6 @@ const MODULES = [
     icon: MessagesSquare,
     color: 'bg-pink-500/10 text-pink-500',
     borderColor: 'hover:border-pink-500/30',
-  },
-  {
-    href: '/tutor',
-    label: 'AI Tutor',
-    description: 'Your personal AI tutor — ask any question about Kenyan law or bar exam preparation.',
-    icon: GraduationCap,
-    color: 'bg-teal-500/10 text-teal-500',
-    borderColor: 'hover:border-teal-500/30',
   },
   {
     href: '/progress',

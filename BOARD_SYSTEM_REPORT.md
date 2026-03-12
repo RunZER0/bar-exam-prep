@@ -3,7 +3,7 @@
 **Platform:** ynai.co.ke — Kenya Bar Exam Preparation  
 **Architecture:** Next.js 14.2.35 · Neon PostgreSQL (pgvector) · Firebase Auth · Paystack · Render  
 **Market:** ~2,200 KSL students/cohort + ~900 resitters · 9 ATP units · 3 terms × 11 weeks  
-**Report Date:** July 2025
+**Report Date:** March 2026
 
 ---
 
@@ -24,26 +24,26 @@
 
 ## 1. Executive Summary
 
-YNAI is a comprehensive AI-powered Kenya Bar Exam preparation platform with **17 user-facing features**, **74+ API endpoints**, **38 distinct AI call sites**, and **5 AI model families**. The platform covers the entire bar preparation journey — from onboarding through mastery, practice, examination simulation, and community engagement.
+YNAI is a comprehensive AI-powered Kenya Bar Exam preparation platform with **16 user-facing features**, **70+ API endpoints**, **38 distinct AI call sites**, and **5 AI model families**. The platform covers the entire bar preparation journey — from onboarding through mastery, practice, examination simulation, and community engagement.
 
 ### Key Numbers at a Glance
 
 | Metric | Count |
 |--------|-------|
-| User-facing features | 17 |
+| User-facing features | 16 |
 | Flagship features (heavy AI) | 5 |
-| Core features | 6 |
+| Core features | 5 |
 | Supporting features | 6 |
-| API endpoints | 74+ |
+| API endpoints | 70+ |
 | AI call sites | 38 |
-| AI models in use | 7 (across 5 families) |
+| AI models in use | 6 (across 5 families) |
 | Database tables | 30+ |
 | Infrastructure cost | $0 (all free tier) |
 | Prebuilt study notes | 297 (all syllabus nodes, v1) |
 | Prebuilt drafting training courses | 55 (all document types, v1) |
-| AI cost per moderate user/month | **$13.38** |
+| AI cost per moderate user/month | **$8.49** |
 | Monthly subscription revenue (Standard) | **$15.38** (KES 2,000) |
-| **Net margin per moderate user (Standard)** | **+15.0% (PROFITABLE)** |
+| **Net margin per moderate user (Standard)** | **+45% (PROFITABLE)** |
 
 ---
 
@@ -82,18 +82,20 @@ The Mastery Hub is YNAI's signature learning engine — an AI-orchestrated space
 |-----------|-------|---------|---------------|
 | Study notes | DB lookup | 🔵 **PREBUILT** — served from database (297 pre-generated notes) | **$0.000** |
 | Narrative renderer | DB lookup | 🔵 **PREBUILT** — served from database | **$0.000** |
-| Practice item generation | gpt-5.2 | MCQ/written/short-answer questions | ~$0.031 |
-| Assessment generation | gpt-5.2 (ASSESSMENT) | Comprehensive topic assessments | ~$0.031 |
-| Checkpoint generation | gpt-5.2 (ASSESSMENT) | Phase gate verification | ~$0.023 |
-| Grading service | gpt-5.2 (GRADING) | Answer evaluation + rubric scoring | ~$0.025 |
-| Pacing decision | gpt-5.2 (ORCHESTRATOR) | Adaptive daily load calibration | ~$0.009 |
-| Queue re-prioritization | gpt-5.2 (ORCHESTRATOR) | Dynamic queue reordering | ~$0.011 |
+| Practice item generation | gpt-5.2 | MCQ/written/short-answer questions (if not in DB) | ~$0.005 |
+| Assessment generation | gpt-5.2 (ASSESSMENT) | 5-question end-of-lesson exam | ~$0.022 |
+| Checkpoint generation | gpt-5.2 (ASSESSMENT) | 2-4 inline checkpoint questions | ~$0.014 |
+| Grading service | gpt-5.2 (GRADING) | Answer evaluation + rubric scoring (JSON output) | ~$0.008 |
+| Pacing decision | gpt-5.2 (ORCHESTRATOR) | Adaptive load calibration (~50 output tokens) | ~$0.002 |
+| Queue re-prioritization | gpt-5.2 (ORCHESTRATOR) | Dynamic queue reordering (~80 output tokens) | ~$0.004 |
 
-> **🔵 PREBUILT CONTENT STRATEGY:** Study notes and narrative slides are pre-generated offline using gpt-5.2 with full RAG grounding and stored in the database. This eliminates the two most expensive per-user call sites, reducing Mastery Hub session costs by ~46% compared to live generation.
+> **🔵 PREBUILT CONTENT STRATEGY:** Study notes and narrative slides are pre-generated offline using gpt-5.2 with full RAG grounding and stored in the database. This eliminates the two most expensive per-user call sites.
 
-**Total Mastery Hub AI cost per session:** ~$0.07–$0.25 (was ~$0.15–$0.40 before prebuilt)  
-**Daily cost for active user:** ~$0.15–$0.50  
-**Monthly cost for daily user:** ~$4.50–$15.00
+> **⚠️ COST AUDIT (March 2026):** All per-call costs have been recalculated using actual token counts against gpt-5.2 pricing ($1.75/$14.00 per 1M tokens). Previous estimates overstated costs by ~2× because they overestimated output token volumes — mastery AI calls return structured JSON (Zod-validated schemas), not verbose prose. Checkpoint gen outputs ~900 tokens, grading outputs ~380 tokens, pacing outputs ~50 tokens.
+
+**Total Mastery Hub AI cost per session:** ~$0.04–$0.07 (token-audited)  
+**Daily cost for active user:** ~$0.06–$0.14  
+**Monthly cost for daily user:** ~$1.80–$4.30
 
 #### API Endpoints
 | Endpoint | Purpose |
@@ -124,7 +126,7 @@ Full simulation of the Kenya Bar oral examination with two distinct modes, voice
    - **Prof. Otieno** — Academic, tests theoretical foundations
 
 **Voice Pipeline:**
-- Student speaks → Whisper STT transcription → AI response → TTS playback (tts-1)
+- Student speaks → GPT-4o mini transcribe STT → AI response → GPT-4o mini TTS playback (with persona instructions)
 - Also supports text-only mode for quiet environments
 
 **Session Features:**
@@ -137,19 +139,19 @@ Full simulation of the Kenya Bar oral examination with two distinct modes, voice
 
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
-| Devil's Advocate (stream) | gpt-4o-mini | Adversarial questioning | ~$0.0006 |
-| Devil's Advocate (non-stream) | gpt-4o-mini | Fallback | ~$0.0006 |
-| 3-Panel Examiner (stream) | gpt-4o-mini | Panel simulation | ~$0.0006 |
-| 3-Panel Examiner (non-stream) | gpt-4o-mini | Fallback | ~$0.0006 |
-| Session summary | gpt-4o-mini | Score + feedback | ~$0.001 |
+| Devil's Advocate (stream) | gpt-5.2-mini | Adversarial questioning | ~$0.001 |
+| Devil's Advocate (non-stream) | gpt-5.2-mini | Fallback | ~$0.001 |
+| 3-Panel Examiner (stream) | gpt-5.2-mini | Panel simulation | ~$0.001 |
+| 3-Panel Examiner (non-stream) | gpt-5.2-mini | Fallback | ~$0.001 |
+| Session summary | gpt-5.2-mini | Score + feedback | ~$0.002 |
 
 **Plus Voice I/O (shared):**
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
-| Speech-to-text | whisper-1 | Student speech input | ~$0.006/min |
-| Text-to-speech | tts-1 | AI speech output | ~$0.008/call |
+| Speech-to-text | gpt-4o-mini-transcribe | Student speech input | ~$0.003/min |
+| Text-to-speech | gpt-4o-mini-tts | AI speech output (with persona instructions) | ~$0.006/call |
 
-**Total Oral Exam AI cost per session:** ~$0.04–$0.10 (text only) / ~$0.15–$0.40 (with voice)  
+**Total Oral Exam AI cost per session:** ~$0.01–$0.02 (text only) / ~$0.12–$0.15 (with voice)  
 **Trial Limit:** 2 Devil's Advocate sessions + 2 Panel sessions
 
 #### API Endpoints
@@ -158,8 +160,8 @@ Full simulation of the Kenya Bar oral examination with two distinct modes, voice
 | `/api/oral-exams` | Conversation streaming + summary generation |
 | `/api/oral-exams/sessions` | Save/list session transcripts |
 | `/api/oral-exams/sessions/[id]` | Session detail + replay |
-| `/api/voice/stt` | Speech-to-text (whisper-1) |
-| `/api/voice/tts` | Text-to-speech (tts-1) |
+| `/api/voice/stt` | Speech-to-text (gpt-4o-mini-transcribe) |
+| `/api/voice/tts` | Text-to-speech (gpt-4o-mini-tts with persona instructions) |
 
 ---
 
@@ -204,7 +206,7 @@ Each document type is taught through 6-8 progressive sessions:
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
 | Training content | DB lookup | 🔵 **PREBUILT** — 55 progressive training courses from database | **$0.000** |
-| Scenario generation | gpt-4o-mini | Fresh exercise scenario from prebuilt prompt | ~$0.002 |
+| Scenario generation | gpt-5.2-mini | Fresh exercise scenario from prebuilt prompt | ~$0.002 |
 | Exercise grading | gpt-5.2 (GRADING) | Draft evaluation against prebuilt rubric | ~$0.025 |
 | Critique engine | claude-sonnet-4 | CLE-standard document critique (free practice mode) | ~$0.032 |
 
@@ -233,7 +235,7 @@ Comprehensive quiz engine supporting 3 question types, multiple difficulty level
 
 **Key Features:**
 - **Difficulty Levels:** Easy / Medium / Hard / Mixed
-- **Smart Preloading:** Background question generation via Gemini Flash for instant load times
+- **Smart Preloading:** Background question generation via gpt-5.2-mini for instant load times
 - **Topic Selection:** Any of 9 ATP units, specific topics within units
 - **Performance Tracking:** Per-topic accuracy, time spent, improvement trends
 - **Immediate Feedback:** Detailed explanations for correct/incorrect answers
@@ -242,10 +244,10 @@ Comprehensive quiz engine supporting 3 question types, multiple difficulty level
 
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
-| Quiz streaming | gpt-5.2 (ORCHESTRATOR) | Real-time question generation | ~$0.031 |
-| Quiz preload | gemini-2.0-flash | Background batch generation | ~$0.001 |
+| Quiz streaming | gpt-5.2-mini (MINI_MODEL) | Real-time question generation | ~$0.004 |
+| Quiz preload | gpt-5.2-mini | Background batch generation | ~$0.001 |
 
-**Total Quiz AI cost per session:** ~$0.02–$0.06  
+**Total Quiz AI cost per session:** ~$0.005–$0.01  
 **Trial Limit:** Unlimited (no gate)
 
 #### API Endpoints
@@ -289,10 +291,10 @@ Structured study environment covering all 9 ATP units with AI-generated study ma
 
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
-| Study notes (quick) | gpt-4o-mini | Fast study note generation | ~$0.002 |
-| Case of the Day | gpt-4o-mini | Daily case analysis | ~$0.001 |
+| Study notes (quick) | gpt-5.2-mini | Fast study note generation | ~$0.006 |
+| Case of the Day | gpt-5.2-mini | Daily case analysis | ~$0.003 |
 
-**Total Study AI cost per session:** ~$0.003–$0.01  
+**Total Study AI cost per session:** ~$0.006–$0.01  
 **Trial Limit:** Unlimited (no gate)
 
 #### API Endpoints
@@ -388,12 +390,12 @@ Draggable floating chat bubble accessible from every page in the application. Co
 
 #### How It Works
 **3 Intelligence Modes:**
-1. **Standard** — gpt-4o-mini: Fast, cost-effective for general questions
+1. **Standard** — gpt-5.2-mini: Fast, cost-effective for general questions
 2. **Smart** — gpt-5.2: Deeper reasoning for complex legal analysis
 3. **Image** — gpt-4o: Vision-capable for analyzing uploaded images (past papers, notes, etc.)
 
 **Features:**
-- Voice recording with transcription (whisper-1)
+- Voice recording with transcription (gpt-4o-mini-transcribe)
 - File/image attachment support
 - Context-aware sessions (knows what page you're on)
 - Streaming responses
@@ -404,10 +406,10 @@ Draggable floating chat bubble accessible from every page in the application. Co
 
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
-| Standard chat | gpt-4o-mini | General Q&A | ~$0.0007 |
+| Standard chat | gpt-5.2-mini | General Q&A | ~$0.001 |
 | Smart mode | gpt-5.2 (ORCHESTRATOR) | Deep analysis | ~$0.031 |
 | Image mode | gpt-4o | Vision analysis | ~$0.015 |
-| Voice input | whisper-1 | Speech transcription | ~$0.006 |
+| Voice input | gpt-4o-mini-transcribe | Speech transcription | ~$0.003 |
 
 **Total Chat AI cost per day:** ~$0.01–$0.15 (depends on mode usage)
 
@@ -448,45 +450,7 @@ Comprehensive analytics dashboard showing mastery progress, study time analysis,
 
 ---
 
-### 3.5 AI TUTOR / STUDY GUIDE — "The Personal Tutor"
-**Flagship: NO (Core)** · **Status: Live** · **Page: `/tutor`** (580 lines)
-
-#### What It Does
-AI-generated daily study plan with prioritized items, case recommendations, and progress tracking. Acts as the student's personal study advisor.
-
-#### How It Works
-**Daily Study Plan includes:**
-- Prioritized study items (reading, case studies, practice questions, quizzes, review, drafting, research)
-- Estimated time per item
-- AI rationale for why each item matters
-- Case law recommendations with citations
-- Today's statistics (items completed, minutes studied, reviews due, streak)
-- Time-based greeting personalization
-
-**Features:**
-- Items can be marked complete, in-progress, or skipped
-- Spaced repetition review cards
-- Cached study guide recommendations
-
-#### AI Models Used
-
-| Call Site | Model | Purpose | Per-Call Cost |
-|-----------|-------|---------|---------------|
-| Smart suggestions | gpt-5.2 (ORCHESTRATOR) | Study item recommendations | ~$0.031 |
-
-**Total Tutor AI cost per day:** ~$0.02 (suggestions generated once/day)
-
-#### API Endpoints
-| Endpoint | Purpose |
-|----------|---------|
-| `/api/tutor/today` | Today's items + stats |
-| `/api/tutor/guide` | AI recommendations (cached) |
-| `/api/tutor/plan` | Study plan CRUD |
-| `/api/tutor/review` | Spaced repetition cards |
-
----
-
-### 3.6 ONBOARDING — "The First Impression"
+### 3.5 ONBOARDING — "The First Impression"
 **Flagship: NO (Core)** · **Status: Live** · **Page: `/onboarding`** (811 lines)
 
 #### What It Does
@@ -542,7 +506,7 @@ Focused Q&A interface for quick legal concept clarification. Supports text, imag
 #### How It Works
 - Chat-based interface optimized for quick questions
 - Supports multimodal input: text, images, audio recordings, documents
-- Voice recording with real-time transcription (whisper-1)
+- Voice recording with real-time transcription (gpt-4o-mini-transcribe)
 - Streaming AI responses
 - Session-based context awareness
 - Uses guardrails system for grounded responses
@@ -551,8 +515,8 @@ Focused Q&A interface for quick legal concept clarification. Supports text, imag
 
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
-| Clarification query | gpt-5.2 (MENTOR) | Grounded legal explanation | ~$0.031 |
-| Voice input | whisper-1 | Speech transcription | ~$0.006 |
+| Clarification query | gpt-5.2 (MENTOR) / gpt-5.2-mini (tier-dependent) | Grounded legal explanation | ~$0.002–$0.031 |
+| Voice input | gpt-4o-mini-transcribe | Speech transcription | ~$0.003 |
 
 **Total per query:** ~$0.02–$0.03
 
@@ -576,9 +540,9 @@ Full social learning platform with chat rooms, friends, discussion threads, and 
 
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
-| Challenge generation | gpt-4o-mini | Weekly challenge creation | ~$0.003 |
-| Challenge review | gpt-4o-mini | Submission review | ~$0.0004 |
-| Challenge grading | gpt-4o-mini | Score + feedback | ~$0.001 |
+| Challenge generation | gpt-5.2-mini | Weekly challenge creation | ~$0.004 |
+| Challenge review | gpt-5.2-mini | Submission review | ~$0.001 |
+| Challenge grading | gpt-5.2-mini | Score + feedback | ~$0.002 |
 
 **Total AI cost:** ~$0.004/user/week (very low — challenges are shared)
 
@@ -611,9 +575,9 @@ Legal entertainment with 6 categories of fun content. Designed to keep students 
 
 | Call Site | Model | Purpose | Per-Call Cost |
 |-----------|-------|---------|---------------|
-| Banter content | gpt-5.2 (FAST) | Entertainment generation | ~$0.003 |
+| Banter content | gpt-5.2-mini (MINI_MODEL) | Entertainment generation | ~$0.002 |
 
-**Total AI cost:** ~$0.002–$0.006/session
+**Total AI cost:** ~$0.002–$0.004/session
 
 #### API Endpoints
 | Endpoint | Purpose |
@@ -787,27 +751,40 @@ Static marketing and legal pages. Zero AI cost.
 
 | # | Model | Provider | Pricing (Input/Output per 1M tokens) | Call Sites | % of AI Cost |
 |---|-------|----------|---------------------------------------|------------|-------------|
-| 1 | **gpt-5.2** | OpenAI | **$1.75 / $14.00** | 16 (was 18; 2 now prebuilt) | **~85%** |
-| 2 | **gpt-4o-mini** | OpenAI | $0.15 / $0.60 | 11 | ~4% |
+| 1 | **gpt-5.2** | OpenAI | **$1.75 / $14.00** | 14 | **~82%** |
+| 2 | **gpt-5.2-mini** | OpenAI | **$0.25 / $2.00** | 15 | ~10% |
 | 3 | **gpt-4o** | OpenAI | $2.50 / $10.00 | 1 (rare) | <1% |
-| 4 | **claude-sonnet-4** | Anthropic | $3.00 / $15.00 | 2 | ~5% |
-| 5 | **gemini-2.0-flash** | Google | $0.10 / $0.40 | 1 | <1% |
-| 6 | **whisper-1** | OpenAI | $0.006/minute | 3 | ~2% |
-| 7 | **tts-1** | OpenAI | $15.00/1M chars | 1 | ~1% |
-| 8 | **o3** | OpenAI | $2.00 / $8.00 | Offline generation only | $0 per-user |
+| 4 | **claude-sonnet-4.6** | Anthropic | $3.00 / $15.00 | 2 | ~5% |
+| 5 | **gpt-4o-mini-transcribe** | OpenAI | $0.003/minute | 3 | ~1% |
+| 6 | **gpt-4o-mini-tts** | OpenAI | $12.00/1M chars | 1 | ~1% |
+| 7 | **o3** | OpenAI | $2.00 / $8.00 | Offline generation only | $0 per-user |
 
-> **⚠️ PRICING CORRECTION:** gpt-5.2 pricing is **$1.75 / $14.00** per 1M tokens (input/output), not $2.00 / $8.00 as previously reported. The higher output price ($14.00 vs $8.00) increases per-call costs by ~55%, but this is more than offset by the prebuilt content strategy which eliminates the two most expensive call sites entirely.
+> **⚠️ MODEL CORRECTIONS (March 2026):**
+> 1. All previous "gpt-4o-mini" references were incorrect — codebase uses **gpt-5.2-mini** (`MINI_MODEL`), pricing $0.25/$2.00 per 1M tokens.
+> 2. "gemini-2.0-flash" was listed for quiz preloading but **does not exist in the codebase** — `quiz-completion.ts` hardcodes `gpt-5.2-mini`. Gemini removed from inventory.
+> 3. Per-call costs recalculated using **actual token counts** (input prompt length × $1.75/1M + output JSON size × $14.00/1M). Previous estimates overestimated by ~2× because they assumed prose-length outputs; actual outputs are compact Zod-validated JSON schemas.
+> These corrections reduce estimated moderate user costs from $13.38 to **$8.49/month**.
+
+> **⚠️ INFRASTRUCTURE UPGRADES (March 2026 — Round 2):**
+> 4. **Voice stack migrated:** whisper-1 → **gpt-4o-mini-transcribe** ($0.003/min, 50% cheaper), tts-1 → **gpt-4o-mini-tts** ($12/1M chars, 20% cheaper + persona-based instructions for examiner voices).
+> 5. **FAST_MODEL downgraded:** gpt-5.2 → **gpt-5.2-mini** for fast preload calls. Cost per call: $0.016 → $0.001.
+> 6. **Smart chat router added:** Deterministic pre-checks + GPT-5.2-mini structured-output fallback routes smart chat and clarify queries to mini or frontier model. ~70% of queries resolved without any AI router call. Feature-flagged: `SMART_CHAT_ROUTER_ENABLED`, `CLARIFY_ROUTER_ENABLED`.
+> 7. **Oral exam TTS now uses persona instructions:** Each examiner (Justice Mwangi, Advocate Amara, Prof. Otieno, Devil's Advocate) gets distinct voice tone/pace/delivery via gpt-4o-mini-tts `instructions` field.
 
 ### Model Role Assignments (from `model-config.ts`)
 
 | Config Role | Model | Used By |
 |-------------|-------|---------|
-| ORCHESTRATOR_MODEL | gpt-5.2 | Mastery pacing, queue, chat (smart), quiz, suggestions, onboarding, agentic tools |
-| MENTOR_MODEL | gpt-5.2 | Study notes, narrative rendering, research, clarification |
-| AUDITOR_MODEL | claude-sonnet-4 | Cross-validation, drafting critique |
+| ORCHESTRATOR_MODEL | gpt-5.2 | Mastery pacing, queue, chat (smart), onboarding, agentic tools |
+| MENTOR_MODEL | gpt-5.2 | Research, clarification |
+| AUDITOR_MODEL | claude-sonnet-4.6 | Cross-validation, drafting critique |
 | ASSESSMENT_MODEL | gpt-5.2 | Assessment + checkpoint generation |
 | GRADING_MODEL | gpt-5.2 | Answer grading across all features |
-| FAST_MODEL | gpt-5.2 | Fast preload, banter, quick responses |
+| FAST_MODEL | gpt-5.2-mini | Fast preload, quick responses |
+| MINI_MODEL | gpt-5.2-mini | **Quizzes, banter, standard chat, oral exams, study notes, community, drafting scenarios** |
+| ROUTER_MODEL | gpt-5.2-mini | Smart chat/clarify query routing (structured output) |
+| TTS_MODEL | gpt-4o-mini-tts | Text-to-speech with persona instructions |
+| STT_MODEL | gpt-4o-mini-transcribe | Speech-to-text (oral exams, voice notes) |
 
 ---
 
@@ -817,43 +794,44 @@ Static marketing and legal pages. Zero AI cost.
 
 | # | Feature Area | Call Site | Model | Per-Call Cost | Calls/Day (Active User) |
 |---|-------------|-----------|-------|---------------|------------------------|
-| 1 | Chat | Standard chat | gpt-4o-mini | $0.0007 | 5–15 |
+| 1 | Chat | Standard chat | gpt-5.2-mini | $0.001 | 5–15 |
 | 2 | Chat | Smart mode | gpt-5.2 | $0.031 | 1–3 |
 | 3 | Chat | Image mode | gpt-4o | $0.015 | 0–1 |
 | 4 | Chat | Non-streaming | guardrails | varies | varies |
 | 5 | Mastery | Study notes | **DB lookup** | **$0.000** 🔵 | 0 (prebuilt) |
 | 6 | Mastery | Narrative renderer | **DB lookup** | **$0.000** 🔵 | 0 (prebuilt) |
-| 7 | Mastery | Practice items | gpt-5.2 | $0.031 | 3–8 |
-| 8 | Mastery | Assessment gen | gpt-5.2 | $0.031 | 1–2 |
-| 9 | Mastery | Checkpoint gen | gpt-5.2 | $0.023 | 0–1 |
-| 10 | Mastery | Grading | gpt-5.2 | $0.025 | 2–5 |
-| 11 | Mastery | Pacing decision | gpt-5.2 | $0.009 | 1–3 |
-| 12 | Mastery | Queue reorder | gpt-5.2 | $0.011 | 0–1 |
-| 13 | Oral | Devil's Advocate (stream) | gpt-4o-mini | $0.0006 | 5–15/session |
-| 14 | Oral | Devil's Advocate (non-stream) | gpt-4o-mini | $0.0006 | 5–15/session |
-| 15 | Oral | 3-Panel (stream) | gpt-4o-mini | $0.0006 | 5–15/session |
-| 16 | Oral | 3-Panel (non-stream) | gpt-4o-mini | $0.0006 | 5–15/session |
-| 17 | Oral | Session summary | gpt-4o-mini | $0.001 | 1/session |
-| 18 | Quiz | Quiz streaming | gpt-5.2 | $0.031 | 1–3 |
-| 19 | Quiz | Quiz preload | gemini-2.0-flash | $0.001 | 1–2 |
-| 20 | Study | Quick notes | gpt-4o-mini | $0.002 | 1–2 |
-| 21 | Study | Case of Day | gpt-4o-mini | $0.001 | 0–1 |
+| 7 | Mastery | Practice items | gpt-5.2 | $0.005 | 3–8 |
+| 8 | Mastery | Assessment gen | gpt-5.2 | $0.022 | 1–2 |
+| 9 | Mastery | Checkpoint gen | gpt-5.2 | $0.014 | 0–1 |
+| 10 | Mastery | Grading | gpt-5.2 | $0.008 | 2–5 |
+| 11 | Mastery | Pacing decision | gpt-5.2 | $0.002 | 1–3 |
+| 12 | Mastery | Queue reorder | gpt-5.2 | $0.004 | 0–1 |
+| 13 | Oral | Devil's Advocate (stream) | gpt-5.2-mini | $0.001 | 5–15/session |
+| 14 | Oral | Devil's Advocate (non-stream) | gpt-5.2-mini | $0.001 | 5–15/session |
+| 15 | Oral | 3-Panel (stream) | gpt-5.2-mini | $0.001 | 5–15/session |
+| 16 | Oral | 3-Panel (non-stream) | gpt-5.2-mini | $0.001 | 5–15/session |
+| 17 | Oral | Session summary | gpt-5.2-mini | $0.002 | 1/session |
+| 18 | Quiz | Quiz streaming | gpt-5.2-mini | $0.004 | 1–3 |
+| 19 | Quiz | Quiz preload | gpt-5.2-mini | $0.001 | 1–2 |
+| 20 | Study | Quick notes | gpt-5.2-mini | $0.006 | 1–2 |
+| 21 | Study | Case of Day | gpt-5.2-mini | $0.003 | 0–1 |
 | 22–24 | Research | Authority retrieval (×3) | gpt-5.2 | $0.024 ea. | 0–3 |
 | 25 | Research | Mentor + web search | gpt-5.2 | $0.031 | 1–3 |
-| 26 | Research | Auditor validation | claude-sonnet-4 | $0.032 | 1–2/session |
+| 26 | Research | Auditor validation | claude-sonnet-4.6 | $0.032 | 1–2/session |
 | 27–28 | Guardrails | Agentic tool-use (×2) | gpt-5.2 | $0.033 ea. | 0–2 |
-| 29 | Preload | Fast preload | gpt-5.2 | $0.016 | 1–2 |
-| 30 | Community | Challenge generation | gpt-4o-mini | $0.003 | 0–1 |
-| 31 | Community | Challenge review | gpt-4o-mini | $0.0004 | 0–1 |
-| 32 | Community | Challenge grading | gpt-4o-mini | $0.001 | 0–2 |
-| 33 | Drafting | Training scenario gen | gpt-4o-mini | $0.002 | 1–2/session |
+| 29 | Preload | Fast preload | gpt-5.2-mini | $0.001 | 1–2 |
+| 30 | Community | Challenge generation | gpt-5.2-mini | $0.004 | 0–1 |
+| 31 | Community | Challenge review | gpt-5.2-mini | $0.001 | 0–1 |
+| 32 | Community | Challenge grading | gpt-5.2-mini | $0.002 | 0–2 |
+| 33 | Drafting | Training scenario gen | gpt-5.2-mini | $0.002 | 1–2/session |
 | 33b | Drafting | Exercise grading | gpt-5.2 | $0.025 | 1–2/session |
-| 33c | Drafting | Critique engine | claude-sonnet-4 | $0.032 | 1–2/session |
-| 34 | Voice | STT (chat) | whisper-1 | $0.006 | 0–2 |
-| 35 | Voice | STT (oral) | whisper-1 | $0.006 | 0–3 |
-| 36 | Voice | TTS | tts-1 | $0.008 | 0–3 |
+| 33c | Drafting | Critique engine | claude-sonnet-4.6 | $0.032 | 1–2/session |
+| 34 | Voice | STT (chat) | gpt-4o-mini-transcribe | $0.003 | 0–2 |
+| 35 | Voice | STT (oral) | gpt-4o-mini-transcribe | $0.003 | 0–3 |
+| 36 | Voice | TTS | gpt-4o-mini-tts | $0.006 | 0–3 |
 | 37 | Onboarding | Senior Partner analysis | gpt-5.2 | $0.016 | 1 (once) |
-| 38 | Banter | Entertainment content | gpt-5.2 | $0.003 | 0–3 |
+| 38 | Banter | Entertainment content | gpt-5.2-mini | $0.002 | 0–3 |
+
 
 > 🔵 = **Prebuilt content** — served from database at $0 per-user cost. Generated offline using gpt-5.2/o3 as a one-time investment.
 
@@ -865,61 +843,59 @@ Static marketing and legal pages. Zero AI cost.
 
 | Feature | Daily AI Calls | Daily Cost |
 |---------|---------------|------------|
-| Standard chat (5×) | 5 | $0.004 |
-| Study notes (1×) | 1 | $0.002 |
-| Quiz session (1×) | 1 | $0.031 |
-| Mastery (light — reads prebuilt notes + 1 practice) | 3 | $0.065 |
-| **Daily Total** | | **$0.102** |
-| **Monthly Total (30 days)** | | **$3.06** |
+| Standard chat (5×) | 5 | $0.005 |
+| Study notes (1×) | 1 | $0.006 |
+| Quiz session (1×) | 1 | $0.004 |
+| Mastery (light — reads prebuilt notes + 1 practice) | 2 | $0.022 |
+| **Daily Total** | | **$0.037** |
+| **Monthly Total (30 days)** | | **$1.11** |
 
-> Note: Mastery Hub light usage = pacing ($0.009) + prebuilt notes ($0) + 1 practice item ($0.031) + 1 grading ($0.025). Notes reading is free thanks to prebuilt content.
+> Note: Mastery Hub light usage = checkpoint gen ($0.014) + prebuilt notes ($0) + 1 practice grading ($0.008). Practice items served from 6,615-item database ($0). Notes reading is free thanks to prebuilt content.
 
 ### Scenario B: Moderate User (~1–2 hrs/day, multiple features)
 
 | Feature | Daily AI Calls | Daily Cost |
 |---------|---------------|------------|
-| Standard chat (10×) | 10 | $0.007 |
+| Standard chat (10×) | 10 | $0.010 |
 | Smart chat (2×) | 2 | $0.062 |
-| Mastery Hub (full session — prebuilt notes) | 6 | $0.138 |
-| Study notes (2×) | 2 | $0.004 |
-| Quiz session (2×) | 2 | $0.062 |
-| Oral exam (voice, 1×/week) | 0.14 | $0.029 |
+| Mastery Hub (full session — prebuilt notes) | 5 | $0.060 |
+| Study notes (2×) | 2 | $0.012 |
+| Quiz session (2×) | 2 | $0.008 |
+| Oral exam (voice, 1×/week) | 0.14 | $0.018 |
 | Research query (1×) | 3 | $0.087 |
 | Drafting training (1×/week) | 0.14 | $0.004 |
-| Case of Day | 1 | $0.001 |
-| Banter (1×) | 1 | $0.003 |
+| Case of Day | 1 | $0.003 |
+| Banter (1×) | 1 | $0.002 |
 | Preload | 1 | $0.016 |
-| Tutor suggestions | 1 | $0.031 |
 | Community | 0.14 | $0.001 |
-| **Daily Total** | | **$0.445** |
-| **Monthly Total (30 days)** | | **$13.38** |
+| **Daily Total** | | **$0.283** |
+| **Monthly Total (30 days)** | | **$8.49** |
 
-> Note: Mastery Hub cost reduced from $0.153 to $0.138 per session despite corrected (higher) gpt-5.2 pricing, thanks to prebuilt notes eliminating 2 AI calls. Without prebuilt content, the corrected Mastery cost would have been ~$0.251/session.
+> **Key corrections vs. prior report:** (1) Mastery Hub session cost token-audited from $0.138 to **$0.060** — all AI calls output structured JSON (~380–1,450 tokens), not prose, making them 2× cheaper than assumed. (2) Quiz preloading uses gpt-5.2-mini, not gemini-2.0-flash (phantom model removed). (3) All "mini" model calls use gpt-5.2-mini ($0.25/$2.00).
 
 ### Scenario C: Heavy User (~3+ hrs/day, power user)
 
 | Feature | Daily AI Calls | Daily Cost |
 |---------|---------------|------------|
-| Standard chat (15×) | 15 | $0.011 |
+| Standard chat (15×) | 15 | $0.015 |
 | Smart chat (3×) | 3 | $0.093 |
 | Image chat (1×) | 1 | $0.015 |
-| Mastery Hub (deep — prebuilt notes) | 13 | $0.335 |
-| Study notes (3×) | 3 | $0.006 |
-| Quiz sessions (3×) | 3 | $0.093 |
-| Oral exams (voice, 3×/week) | 0.43 | $0.086 |
+| Mastery Hub (deep — prebuilt notes) | 13 | $0.144 |
+| Study notes (3×) | 3 | $0.018 |
+| Quiz sessions (3×) | 3 | $0.012 |
+| Oral exams (voice, 3×/week) | 0.43 | $0.055 |
 | Research queries (3×) | 9 | $0.261 |
 | Drafting training (3×/week) | 0.43 | $0.012 |
 | Written exams (1×) | 2 | $0.047 |
-| Case of Day | 1 | $0.001 |
-| Banter (3×) | 3 | $0.009 |
+| Case of Day | 1 | $0.003 |
+| Banter (3×) | 3 | $0.006 |
 | Preload (2×) | 2 | $0.032 |
-| Tutor suggestions | 1 | $0.031 |
 | Community challenges | 0.43 | $0.002 |
 | Voice (STT+TTS, 5×) | 5 | $0.034 |
-| **Daily Total** | | **$1.068** |
-| **Monthly Total (30 days)** | | **$32.04** |
+| **Daily Total** | | **$0.749** |
+| **Monthly Total (30 days)** | | **$22.47** |
 
-> Note: Heavy user costs increased due to corrected gpt-5.2 pricing ($14.00/1M output vs. previously reported $8.00). However, the 3-tier pricing system with **weekly feature limits** caps actual costs significantly — Premium tier limits all premium features to 6/week, Standard to 4/week, Light to 2–3/week, preventing unlimited usage of the most expensive features.
+> Note: Heavy user cost reduced from $28.20 to $22.47 due to token-audited mastery costs ($0.144 vs $0.335 for deep usage). Weekly feature limits cap actual costs further — Premium tier limits all premium features to 6/week.
 
 ---
 
@@ -944,7 +920,7 @@ Static marketing and legal pages. Zero AI cost.
 | CLE Exams | 2/day* | 3/week | 4/week | 6/week | configurable† |
 | Legal Research | 2/day* | 2/week | 4/week | 6/week | configurable† |
 | Get Clarification | 2/day* | 3/week | 4/week | 6/week | configurable† |
-| Clarify AI Model | GPT-4o Mini | GPT-4o Mini | GPT-4o Mini | **GPT-5.2** | GPT-4o Mini |
+| Clarify AI Model | GPT-5.2 Mini | GPT-5.2 Mini | GPT-5.2 Mini | **GPT-5.2** | GPT-5.2 Mini |
 | Add-on passes | ❌ | ✅ | ✅ | ✅ | ✅ |
 | Drafting daily cap | 2/day per doc | 2/day per doc | 2/day per doc | 2/day per doc | 2/day per doc |
 | Trial duration | 3 days | — | — | — | — |
@@ -983,40 +959,40 @@ Static marketing and legal pages. Zero AI cost.
 | Research | 80 | 350 |
 | Clarify | 50 | 200 |
 
-> Basic features (Mastery Hub, Study, Quizzes, Community, Banter, Progress, Dashboard, Reports, AI Tutor) are **unlimited** across all tiers including Custom.
+> Basic features (Mastery Hub, Study, Quizzes, Community, Banter, Progress, Dashboard, Reports) are **unlimited** across all tiers including Custom.
 
 ### Margin Analysis Per Tier (Monthly Plan)
 
-| Tier | Revenue/Month | Light User ($3.06) | Moderate User ($13.38) | Heavy User ($32.04) |
+| Tier | Revenue/Month | Light User ($1.11) | Moderate User ($8.49) | Heavy User ($22.47) |
 |------|--------------|--------------------|-----------------------|---------------------|
-| **Light** (KES 1,500) | $11.54 | +$8.48 (+277%) | **-$1.84 (-16%)** | **-$20.50 (-178%)** |
-| **Standard** (KES 2,000) | $15.38 | +$12.32 (+403%) | **+$2.00 (+15%)** ✅ | **-$16.66 (-108%)** |
-| **Premium** (KES 2,500) | $19.23 | +$16.17 (+528%) | **+$5.85 (+44%)** ✅ | **-$12.81 (-67%)** |
+| **Light** (KES 1,500) | $11.54 | +$10.43 (+90%) | **+$3.05 (+36%)** ✅ | **-$10.93 (-95%)** |
+| **Standard** (KES 2,000) | $15.38 | +$14.27 (+93%) | **+$6.89 (+81%)** ✅ | **-$7.09 (-46%)** |
+| **Premium** (KES 2,500) | $19.23 | +$18.12 (+94%) | **+$10.74 (+127%)** ✅ | **-$3.24 (-17%)** |
 
-### Critical Finding (Updated)
+### Critical Finding (Updated March 2026)
 
 | User Type | Est. % of Users | Standard Tier Profitable? | Premium Tier Profitable? |
 |-----------|-----------------|---------------------------|-------------------------|
-| Light | ~30% | ✅ Yes (+$12.32) | ✅ Yes (+$16.17) |
-| Moderate | ~50% | ✅ **Yes (+$2.00)** | ✅ **Yes (+$5.85)** |
-| Heavy | ~20% | ❌ No (-$16.66) | ❌ No (-$12.81) |
+| Light | ~30% | ✅ Yes (+$14.27) | ✅ Yes (+$18.12) |
+| Moderate | ~50% | ✅ **Yes (+$6.89)** | ✅ **Yes (+$10.74)** |
+| Heavy | ~20% | ❌ No (-$7.09) | ❌ No (-$3.24) |
 
-> **Key change vs. original report:** Moderate users (50% of the base) are now **profitable** on both Standard and Premium tiers, thanks to: (1) prebuilt content reducing Mastery Hub costs by 46%, (2) tiered pricing increasing revenue, (3) weekly feature limits capping heavy user costs.
+> **Key change vs. prior report:** Token-audited mastery costs cut moderate user cost from $10.83 to $8.49 (−22%). Standard tier moderate margin improves from +$4.55 (+42%) to **+$6.89 (+81%)**. Premium heavy user loss narrows to just -$3.24 (−17%). Light users generate 90%+ margins on ALL tiers.
 
 **Blended margin assuming 30/50/20 user split across tiers (40% Light / 40% Standard / 20% Premium):**
 
 Weighted ARPU: (0.40 × $11.54) + (0.40 × $15.38) + (0.20 × $19.23) = **$14.62/user/month**
 
-Weighted cost: (0.30 × $3.06) + (0.50 × $13.38) + (0.20 × $32.04) = **$14.01/user/month**
+Weighted cost: (0.30 × $1.11) + (0.50 × $8.49) + (0.20 × $22.47) = **$9.07/user/month**
 
-> Blended margin: $14.62 - $14.01 = **+$0.61/user/month (+4.2% margin)**
+> Blended margin: $14.62 - $9.07 = **+$5.55/user/month (+38.0% margin)**
 
-With weekly feature limits capping heavy users to ~$25/month:
-> Blended cost: (0.30 × $3.06) + (0.50 × $13.38) + (0.20 × $25.00) = **$12.61/user/month**  
-> Blended margin: $14.62 - $12.61 = **+$2.01/user/month (+13.7% margin)**
+With weekly feature limits capping heavy users to ~$18/month:
+> Blended cost: (0.30 × $1.11) + (0.50 × $8.49) + (0.20 × $18.00) = **$8.18/user/month**  
+> Blended margin: $14.62 - $8.18 = **+$6.44/user/month (+44.1% margin)**
 
-**At 200 subscribers: +$122 to +$402/month PROFIT**  
-**At 500 subscribers: +$305 to +$1,005/month PROFIT**
+**At 200 subscribers: +$1,110 to +$1,288/month PROFIT**  
+**At 500 subscribers: +$2,775 to +$3,220/month PROFIT**
 
 ---
 
@@ -1035,7 +1011,7 @@ The two most expensive per-user call sites — study notes generation ($0.060/ca
 | Prebuilt study notes | 297 (all syllabus nodes) | gpt-5.2 | ~$18 | **$0.000** |
 | Prebuilt drafting training courses | 55 (all document types) | o3 | ~$30 (est.) | **$0.000** |
 
-**Impact:** Mastery Hub session cost reduced by 46% — from $0.251 (corrected) to $0.138. This single strategy absorbed the entire impact of the pricing correction and still came out cheaper.
+**Impact:** Mastery Hub per-user session cost is **$0.060** (token-audited). Without prebuilt content, phases 1-2 would require live generation at ~$0.055/session, nearly doubling the session cost to ~$0.115.
 
 #### ✅ Action 2: 3-Tier Pricing with Weekly/Daily Limits (IMPLEMENTED)
 
@@ -1045,30 +1021,26 @@ Replaced the single-tier pricing with Light ($11.54) / Standard ($15.38) / Premi
 **Light**: 2–3/week per feature · **Standard**: 4/week all features · **Premium**: 6/week all features + GPT-5.2 for clarify  
 **Custom**: Per-session pricing — users pick features, sessions/week, and duration (1 week to 3 months with up to 15% discount)
 
-**Impact:** Moderate users on Standard tier now generate +$2.00/month margin (was -$2.53 loss). Weekly limits cap heavy user costs significantly. Feature locking screens proactively gate premium feature tabs when usage is exhausted or subscription tier doesn't include the feature.
-
 #### ✅ Action 3: Progressive Drafting Training (IMPLEMENTED)
 
 Replaced static drafting critique with a full 7-session progressive training course per document type. Teaching content is prebuilt; only scenario generation (gpt-4o-mini, $0.002) and exercise grading (gpt-5.2, $0.025) require live AI — approximately the same cost as the old critique but delivering dramatically more value.
 
 ### Remaining Optimization Opportunity: Model Downgrade
 
-Downgrade 6 of 16 remaining gpt-5.2 call sites to gpt-4o-mini where frontier reasoning isn't needed:
+Downgrade 4 of 14 remaining gpt-5.2 call sites to gpt-5.2-mini where frontier reasoning isn't needed:
 
 | Call Site | Current Model | Proposed Model | Savings/Call | Quality Impact |
 |-----------|---------------|----------------|-------------|----------------|
-| Pacing decision (#11) | gpt-5.2 | gpt-4o-mini | $0.008 | Low — algorithmic task |
-| Queue reorder (#12) | gpt-5.2 | gpt-4o-mini | $0.010 | Low — sorting task |
-| Fast preload (#29) | gpt-5.2 | gpt-4o-mini | $0.015 | Low — batch generation |
-| Checkpoint gen (#9) | gpt-5.2 | gpt-4o-mini | $0.022 | Low — structured output |
-| Banter (#38) | gpt-5.2 | gpt-4o-mini | $0.002 | None — entertainment |
-| Onboarding (#37) | gpt-5.2 | gpt-4o-mini | $0.015 | Low — one-time analysis |
+| Pacing decision (#11) | gpt-5.2 | gpt-5.2-mini | $0.002 | Low — algorithmic task |
+| Queue reorder (#12) | gpt-5.2 | gpt-5.2-mini | $0.003 | Low — sorting task |
+| Fast preload (#29) | gpt-5.2 | gpt-5.2-mini | $0.015 | Low — batch generation |
+| Onboarding (#37) | gpt-5.2 | gpt-5.2-mini | $0.015 | Low — one-time analysis |
 
-**Estimated additional savings if implemented: ~$1.50–$2.00/moderate user/month**
+**Estimated additional savings if implemented: ~$0.50–$1.00/moderate user/month**
 
-With model optimization applied on top of prebuilt content + tiered pricing:
-> Moderate user cost: ~$11.50/month → Standard tier margin: +$3.88 (+25%)
-> Blended margin with weekly limits: **+$3.50–$4.00/user/month (+24–27%)**
+With model optimization applied on top of prebuilt content + tiered pricing + token-audited costs:
+> Moderate user cost: ~$7.50/month → Standard tier margin: +$7.88 (+51%)
+> Blended margin with weekly limits: **+$7.00–$7.50/user/month (+48–51%)**
 
 ---
 
@@ -1076,23 +1048,22 @@ With model optimization applied on top of prebuilt content + tiered pricing:
 
 | # | Feature | Category | AI Models | AI Cost/Session | Gated? | Page |
 |---|---------|----------|-----------|----------------|--------|------|
-| 1 | Mastery Hub | 🏆 Flagship | gpt-5.2 (6 active + 2 prebuilt) | $0.07–$0.25 | No (unlimited) | `/mastery` |
-| 2 | Oral Exams | 🏆 Flagship | gpt-4o-mini, whisper-1, tts-1 | $0.04–$0.40 | ✅ 2–6/wk | `/oral-exams` |
-| 3 | Legal Drafting | 🏆 Flagship | gpt-4o-mini + gpt-5.2 + claude-sonnet-4 | $0.03 (training) / $0.03–$0.06 (practice) | ✅ 3–6/wk | `/drafting` |
-| 4 | Quizzes | 🏆 Flagship | gpt-5.2, gemini-flash | $0.03–$0.06 | No (unlimited) | `/quizzes` |
-| 5 | Study | 🏆 Flagship | gpt-4o-mini | $0.003–$0.01 | No (unlimited) | `/study` |
+| 1 | Mastery Hub | 🏆 Flagship | gpt-5.2 (6 active + 2 prebuilt) | $0.04–$0.07 | No (unlimited) | `/mastery` |
+| 2 | Oral Exams | 🏆 Flagship | gpt-5.2-mini, gpt-4o-mini-transcribe, gpt-4o-mini-tts | $0.01–$0.10 | ✅ 2–6/wk | `/oral-exams` |
+| 3 | Legal Drafting | 🏆 Flagship | gpt-5.2-mini + gpt-5.2 + claude-sonnet-4.6 | $0.03 (training) / $0.03–$0.06 (practice) | ✅ 3–6/wk | `/drafting` |
+| 4 | Quizzes | 🏆 Flagship | gpt-5.2-mini | $0.005–$0.01 | No (unlimited) | `/quizzes` |
+| 5 | Study | 🏆 Flagship | gpt-5.2-mini | $0.006–$0.01 | No (unlimited) | `/study` |
 | 6 | CLE Exams | ⭐ Core | gpt-5.2 | $0.05–$0.08 | ✅ 0–6/wk | `/exams` |
-| 7 | Legal Research | ⭐ Core | gpt-5.2, claude-sonnet-4 | $0.09–$0.12 | ✅ 0–6/wk | `/research` |
-| 8 | Floating Chat | ⭐ Core | gpt-4o-mini/gpt-5.2/gpt-4o | $0.01–$0.15 | No (unlimited) | (global) |
+| 7 | Legal Research | ⭐ Core | gpt-5.2, claude-sonnet-4.6 | $0.09–$0.12 | ✅ 0–6/wk | `/research` |
+| 8 | Floating Chat | ⭐ Core | gpt-5.2-mini/gpt-5.2/gpt-4o | $0.001–$0.031 | No (unlimited) | (global) |
 | 9 | Progress | ⭐ Core | None | $0 | No | `/progress` |
-| 10 | AI Tutor | ⭐ Core | gpt-5.2 | $0.02 | No (unlimited) | `/tutor` |
-| 11 | Onboarding | ⭐ Core | gpt-5.2 | $0.011 (once) | No | `/onboarding` |
-| 12 | Clarify | 🔧 Supporting | gpt-5.2/gpt-4o-mini (tier-dependent) | $0.02–$0.03 | ✅ 0–6/wk | `/clarify` |
-| 13 | Community | 🔧 Supporting | gpt-4o-mini | $0.004/week | No (unlimited) | `/community` |
-| 14 | Legal Banter | 🔧 Supporting | gpt-5.2 | $0.003 | No (unlimited) | `/banter` |
-| 15 | History | 🔧 Supporting | None | $0 | No | `/history` |
-| 16 | Dashboard | 🔧 Supporting | None | $0 | No | `/dashboard` |
-| 17 | Subscribe | 🔧 Supporting | None | $0 | No | `/subscribe` |
+| 10 | Onboarding | ⭐ Core | gpt-5.2 | $0.016 (once) | No | `/onboarding` |
+| 11 | Clarify | 🔧 Supporting | gpt-5.2/gpt-5.2-mini (tier-dependent) | $0.002–$0.031 | ✅ 0–6/wk | `/clarify` |
+| 12 | Community | 🔧 Supporting | gpt-5.2-mini | $0.007/week | No (unlimited) | `/community` |
+| 13 | Legal Banter | 🔧 Supporting | gpt-5.2-mini | $0.002 | No (unlimited) | `/banter` |
+| 14 | History | 🔧 Supporting | None | $0 | No | `/history` |
+| 15 | Dashboard | 🔧 Supporting | None | $0 | No | `/dashboard` |
+| 16 | Subscribe | 🔧 Supporting | None | $0 | No | `/subscribe` |
 
 **Infrastructure (zero user-facing AI cost):**
 
@@ -1103,7 +1074,7 @@ With model optimization applied on top of prebuilt content + tiered pricing:
 | 20 | Payments | Paystack integration (card + M-Pesa) | 1.5% + KES 100 per transaction |
 | 21 | PWA | Installable progressive web app | $0 |
 | 22 | Cron/Workers | Background jobs, preloading, emails | $0 |
-| 23 | Voice I/O | STT (whisper-1) + TTS (tts-1) shared service | Per-use (see call sites) |
+| 23 | Voice I/O | STT (gpt-4o-mini-transcribe) + TTS (gpt-4o-mini-tts with persona instructions) shared service | Per-use (see call sites) |
 | 24 | Citations | Case/statute DB lookup (218,974 cases, 2,942 statutes) | $0 (DB query) |
 | 25 | Spaced Repetition | SM-2 algorithm for review scheduling | $0 (algorithmic) |
 | 26 | Streaks | Daily engagement tracking | $0 (DB) |
@@ -1141,6 +1112,433 @@ At 200 active subscribers doing 1 Mastery session/day:
 
 ---
 
+## Appendix A: Mastery Hub — Full Technical Architecture
+
+*Prepared for technical board review. This appendix documents the complete architecture, data flow, AI call chain, and cost breakdown of the Mastery Hub ("The Engine") — the platform's most complex and expensive feature.*
+
+---
+
+### A.1 System Overview
+
+The Mastery Hub is a **4-phase spaced mastery system** that takes each student through every syllabus node (297 nodes across 9 ATP units) in a structured lifecycle. It is NOT a chatbot or open-ended AI tutor — it is a deterministic state machine with AI-augmented transitions.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    MASTERY HUB DATA FLOW                           │
+│                                                                     │
+│  Student opens /mastery                                             │
+│       │                                                             │
+│       ▼                                                             │
+│  ┌──────────────────────┐     ┌──────────────────────────────┐     │
+│  │  MasteryOrchestrator │────▶│  Daily Queue (max 12 items)  │     │
+│  │  (generateDailyQueue)│     │  75% Syllabus + 25% Practice │     │
+│  │  ════════════════════│     └──────────┬───────────────────┘     │
+│  │  • DB: user_profiles │               │                          │
+│  │  • DB: syllabus_nodes│               ▼                          │
+│  │  • DB: node_progress │     Student picks a node                 │
+│  │  • DB: mastery_state │               │                          │
+│  │  • NO AI CALL (v3)   │               ▼                          │
+│  └──────────────────────┘     ┌──────────────────────┐             │
+│                               │  4-PHASE LIFECYCLE   │             │
+│                               │                      │             │
+│                               │  1. NOTE    ($0.00)  │◀── Prebuilt │
+│                               │  2. EXHIBIT ($0.00)  │◀── Prebuilt │
+│                               │  3. DIAGNOSIS        │◀── AI $$    │
+│                               │  4. MASTERY          │◀── AI $$$   │
+│                               └──────────────────────┘             │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Key architectural insight:** Phases 1-2 are **zero AI cost** (prebuilt content from database). Phases 3-4 are where ALL the AI spend happens.
+
+---
+
+### A.2 The Orchestrator — Queue Generation
+
+**File:** `lib/services/mastery-orchestrator.ts` (653 lines)  
+**Class:** `MasteryOrchestrator`  
+**Method:** `generateDailyQueue(userId)`  
+**AI Model:** None in v3 — pure DB queries + algorithmic sorting  
+
+The orchestrator runs when a student loads the Mastery Hub. It builds a personalized daily study queue through this pipeline:
+
+#### Step 1: Profile Extraction (DB Query)
+```
+user_profiles → {
+  examPath: 'APRIL_2026' | 'NOVEMBER_2026'   // Determines Path A vs B
+  weakAreas: ['atp-100', 'atp-103']           // Self-reported + detected
+  strongAreas: ['atp-104']                     // Self-reported
+  studyPace: 'moderate' | 'intensive' | 'relaxed'
+  professionalExposure: 'STUDENT' | 'PARALEGAL' | 'ADVOCATE'
+  learningStyle: 'visual' | 'reading' | 'mixed'
+  goals.coverageTarget: 'full_calendar' | '16_weeks' | '8_weeks' | '4_weeks'
+  goals.weekendStudyHours: 0-8
+  goals.confidenceLevel: 1-10
+}
+```
+
+#### Step 2: Two-Track Logic
+
+| Track | Who | Strategy | Queue Source |
+|-------|-----|----------|-------------|
+| **Path A — Surgical Strike** | Resitters (examPath=APRIL_2026) | Only failed units, all unmastered nodes. High-yield + drafting nodes first. | `syllabus_nodes WHERE unit IN failedUnits AND NOT mastered` |
+| **Path B — Paced Build** | First-timers | Synced to KSL academic calendar (3 terms × 11 weeks = 33 weeks). Current week ±1, plus backfill. | `syllabus_nodes WHERE week BETWEEN (currentWeek-1) AND (currentWeek+1)` |
+
+KSL calendar is hardcoded:
+- Term 1: Feb 3 – Apr 14, 2026
+- Term 2: Apr 28 – Jul 7, 2026  
+- Term 3: Aug 18 – Oct 27, 2026
+
+#### Step 3: Personalized Sorting
+
+Within the queue, nodes are sorted by a **3-tier priority system:**
+
+| Priority | Condition | Effect |
+|----------|-----------|--------|
+| 0 (highest) | `unitCode ∈ weakAreas` | Weak units always surface first |
+| 1 (normal) | Not weak, not strong | Standard ordering by week number |
+| 2 (lowest) | `unitCode ∈ strongAreas` | De-prioritized — student is comfortable |
+
+Within the same priority band: `isHighYield` nodes first, then by `weekNumber` ascending.
+
+#### Step 4: Unit Diversity Cap
+
+To prevent "topic whiplash," the queue is capped at **MAX_UNITS_PER_DAY = 3** distinct units. Selection uses a deterministic user-seeded daily rotation:
+
+```
+dateSeed = sum(YYYY, MM, DD)
+userSeed = sum(charCodes of userId)
+combinedSeed = dateSeed × 31 + userSeed
+
+// Priority: weak units first → normal units (rotated) → strong units (last resort)
+```
+
+This means different users see different unit combinations each day, and the same user sees a rotating selection.
+
+#### Step 5: Adaptive Queue Cap
+
+The base daily cap of 12 items is adjusted by multipliers:
+
+```
+adjustedCap = 12 × coverageMultiplier × paceMultiplier × weekendBoost
+
+coverageMultiplier:
+  4_weeks  → ×1.7  (cramming — more items)
+  8_weeks  → ×1.3
+  16_weeks → ×1.0
+  full_cal → ×0.7  (relaxed — fewer items)
+
+paceMultiplier:
+  intensive → ×1.25
+  moderate  → ×1.0
+  relaxed   → ×0.67
+
+weekendBoost (Sat/Sun only):
+  weekendStudyHours ≥ 4 → ×1.3
+  weekendStudyHours ≥ 2 → ×1.15
+  otherwise             → ×1.0
+```
+
+**Example:** An intensive student on a 4-week coverage target on a Saturday with 4+ weekend hours:  
+`12 × 1.7 × 1.25 × 1.3 = 33 items/day`
+
+A relaxed first-timer on full-calendar pacing on a weekday:  
+`12 × 0.7 × 0.67 × 1.0 = 5 items/day`
+
+#### Step 6: Micro-Skill Practice Items
+
+Alongside syllabus nodes, the orchestrator fetches practice items from the `micro_skills` + `items` + `item_skill_map` tables. These are **pre-seeded** items (6,615 in database). Selection criteria:
+
+```sql
+WHERE ms.unit_id = ANY(queuedUnitCodes)
+  AND ms.is_active = true
+  AND (mastery_state.p_mastery IS NULL OR p_mastery < 0.85)
+ORDER BY
+  is_core DESC,           -- Core skills first
+  p_mastery ASC,          -- Weakest first
+  exam_weight DESC        -- High exam-weight first
+```
+
+**Cost:** $0 — pure SQL query against pre-seeded items.
+
+#### AI Methods (Called On-Demand, Not Per Queue Load)
+
+The orchestrator also exposes two AI-augmented methods, but these are **NOT called on every queue generation** — they are triggered conditionally:
+
+| Method | Trigger | Model | Cost |
+|--------|---------|-------|------|
+| `checkPacing()` | Student scores <60% on understanding check | gpt-5.2 (ORCHESTRATOR) | ~$0.009 |
+| `aiPrioritizeQueue()` | Called separately — reranks queue using error patterns | gpt-5.2 (ORCHESTRATOR) | ~$0.011 |
+
+`checkPacing()` returns one of: `SLOW_DOWN`, `REVIEW_PREREQUISITE`, `CHANGE_FORMAT`, `INJECT_EXAMPLE` — with a specific skill target and difficulty adjustment. The AI analyzes the student's last 10 attempts to detect patterns.
+
+`aiPrioritizeQueue()` takes the SQL-sorted queue and the student's error history, asks the ORCHESTRATOR to rerank for maximum exam readiness. Returns reordered indices + reasoning.
+
+---
+
+### A.3 The 4-Phase Lifecycle — Per Node
+
+Each syllabus node (297 total) progresses through 4 phases. The `node_progress` table tracks where each user is on each node.
+
+#### Phase 1: NOTE (Cost: $0.00)
+
+**API:** `GET /api/mastery/content?skillId={nodeId}&phase=narrative`  
+**Service:** `NarrativeNoteRenderer` (221 lines)  
+**Source:** `prebuilt_notes` table  
+
+Notes are **prebuilt** — 297 notes generated offline with gpt-5.2 + full RAG grounding (218,974 cases + 2,942 statutes). Each user is assigned a random version (1-3) on first access via `user_note_versions` table, then sees the same version consistently.
+
+```
+Student → GET /api/mastery/content → DB lookup (prebuilt_notes) → Markdown slides → UI
+                                      ↓
+                                 NO AI CALL
+                                 $0.00 per user
+```
+
+The NarrativeNoteRenderer has a live-generation fallback (gpt-5.2 MENTOR_MODEL with RAG), but this path is only hit if a prebuilt note doesn't exist — which shouldn't happen for any of the 297 syllabus nodes.
+
+#### Phase 2: EXHIBIT (Cost: $0.00)
+
+**Same API as Phase 1** — the narrative includes interactive elements, citation detection for Kenya Law Reports / eKLR references, statute section parsing, and visual slide formatting.
+
+Five visual styles are randomly chosen per session: `classic`, `magazine`, `slide`, `highlight`, `minimal`.
+
+**Zero additional AI cost** — content is embedded in the prebuilt note.
+
+#### Phase 3: DIAGNOSIS (Cost: ~$0.022/node)
+
+**API:** `GET /api/mastery/content?phase=extras` + `GET /api/mastery/item`  
+**Services:** `CheckpointGenerator` + `AssessmentGenerator` + Items from DB  
+
+This is where AI cost begins. Two parallel AI calls are made:
+
+| Call | Service | Model | Purpose | Cost |
+|------|---------|-------|---------|------|
+| Checkpoint questions | `CheckpointGenerator.generate()` | gpt-5.2 (ASSESSMENT_MODEL) | 2-4 inline checkpoint questions (MCQ, SHORT, ORDERING) | ~$0.014 |
+| Practice item | `GET /api/mastery/item` | gpt-5.2 (ASSESSMENT_MODEL) | Generate MCQ/written/short-answer if none in DB | ~$0.005 |
+
+**Checkpoints** are interleaved with note content. Types are distributed: 2 qs → [MCQ, SHORT], 3 qs → [MCQ, SHORT, ORDERING], 4 qs → [MCQ, SHORT, ORDERING, MCQ].
+
+**Practice items** first attempt to serve from the 6,615 pre-seeded items (`items` + `item_skill_map` tables). AI generation only fires if no matching item exists in DB for the requested skill+format. Format selection is weighted: 60% written, 20% MCQ, 20% short-answer (bar exam is primarily written).
+
+If the item is served from DB: **$0.00 for that call.**  
+If AI-generated: **~$0.005** using ASSESSMENT_MODEL (gpt-5.2).
+
+#### Phase 4: MASTERY (Cost: ~$0.038/node for assessment + grading)
+
+**API:** `GET /api/mastery/content?phase=extras` + `POST /api/mastery/attempt`  
+**Services:** `AssessmentGenerator` + `GradingService` + `MasteryEngine`  
+
+The mastery phase is the most expensive — it generates a full 5-question assessment and then grades the student's responses.
+
+##### Assessment Generation (Cost: ~$0.022)
+
+**Service:** `AssessmentGenerator.generateStack(topic)`  
+**Model:** gpt-5.2 (ASSESSMENT_MODEL)  
+
+Generates a 5-question, 100-point assessment:
+
+| Q# | Type | Points | Tests |
+|----|------|--------|-------|
+| Q1 | MCQ (scenario) | 20 | Recall + application |
+| Q2 | MCQ (scenario) | 20 | Different subtopic |
+| Q3 | SHORT (application) | 20 | Apply law to facts |
+| Q4 | ORDERING (procedural) | 20 | Correct legal sequence |
+| Q5 | ANALYSIS/DRAFTING | 20 | Full legal reasoning |
+
+Pass mark: **70/100**. Questions are fresh-generated each time (no memorization on retakes). All grounded in Kenyan law with specific statute/case citations.
+
+MCQ (Q1, Q2) and ORDERING (Q4) are **auto-graded** — $0 cost.  
+SHORT (Q3) and ANALYSIS (Q5) are **AI-graded** — see below.
+
+##### AI Grading (Cost: ~$0.008/submission)
+
+**Service:** `GradingService.gradeResponse()`  
+**Model:** gpt-5.2 (GRADING_MODEL)  
+
+The grading pipeline:
+
+```
+Student submission
+       │
+       ▼
+┌──────────────────────────────────────────────────┐
+│  STEP 1: RAG Context Retrieval (pgvector)        │
+│  • searchLectureChunksSemantic(query, topK=3)    │
+│  • searchKnowledgeBaseSemantic(query, topK=5)    │
+│  Cost: $0 (embedding similarity search)          │
+└──────────────────┬───────────────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────────────┐
+│  STEP 2: AI Grading (GRADING_MODEL = gpt-5.2)   │
+│  Inputs:                                          │
+│  • Student's response text                        │
+│  • Original question + rubric + model answer      │
+│  • RAG: lecture chunks + authority records         │
+│  Output (JSON, Zod-validated):                    │
+│  {                                                │
+│    scoreNorm: 0-1,                                │
+│    rubricBreakdown: [{category, score, feedback}],│
+│    missingPoints: [...],                          │
+│    errorTags: [...],                              │
+│    nextDrills: [...],                             │
+│    modelOutline: "...",                           │
+│    evidenceRequests: [...]                        │
+│  }                                                │
+│  Cost: ~$0.025                                    │
+└──────────────────┬───────────────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────────────┐
+│  STEP 3: Mastery State Update (MasteryEngine)    │
+│  Algorithm: Bayesian update with clamping         │
+│  delta = LR × (quality - 0.6) × format × mode   │
+│         × difficulty × coverage                   │
+│  Clamped: [-0.12, +0.10] per attempt             │
+│  Cost: $0 (pure math)                            │
+└──────────────────┬───────────────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────────────┐
+│  STEP 4: Gate Verification Check                  │
+│  Criteria for verification ("mastered"):          │
+│  • p_mastery ≥ 0.85                              │
+│  • 2 timed passes                                │
+│  • Passes ≥ 24 hours apart                       │
+│  • Top-3 error tags must not repeat              │
+│  Cost: $0 (pure SQL + logic)                     │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+### A.4 Mastery Engine — The Math
+
+**File:** `lib/services/mastery-engine.ts` (950 lines)  
+
+The mastery update is a **clamped Bayesian learning rate model**, not a simple percentage counter. Each attempt produces a delta that moves the student's `p_mastery` for the tested skill(s).
+
+#### Delta Calculation
+
+```
+delta = learningRate × (attemptQuality - passingThreshold)
+        × formatWeight × modeWeight × difficultyFactor × coverageWeight
+
+Clamped to: [-0.12, +0.10]
+```
+
+| Parameter | Values |
+|-----------|--------|
+| `learningRate` | 0.15 |
+| `passingThreshold` | 0.6 (60%) |
+| `formatWeight` | oral: 1.35, drafting: 1.25, written: 1.15, mcq: 0.75, flashcard: 0.65 |
+| `modeWeight` | exam_sim: 1.25, timed: 1.25, practice: 1.0 |
+| `difficultyFactor` | Easy(1): 0.6, Medium(3): 1.0, Hard(5): 1.4 |
+
+**Example:** Student scores 80% on a timed written question at difficulty 4:
+```
+delta = 0.15 × (0.80 - 0.6) × 1.15 × 1.25 × 1.2 × 1.0
+      = 0.15 × 0.20 × 1.15 × 1.25 × 1.2
+      = 0.0518
+→ p_mastery goes up by ~5.2% per correct answer
+```
+
+**Example:** Student scores 30% on a practice MCQ at difficulty 2:
+```
+delta = 0.15 × (0.30 - 0.6) × 0.75 × 1.0 × 0.8 × 1.0
+      = 0.15 × (-0.30) × 0.60
+      = -0.027
+→ p_mastery goes down by ~2.7% per wrong answer
+```
+
+#### Stability Tracking
+
+Each skill also has a `stability` score (0.3–2.0) that tracks consistency:
+- **Success:** stability += 0.1 (max 2.0)
+- **Failure:** stability -= 0.15 (min 0.3)
+
+High stability = the student consistently performs well on this skill. Used by the planner to deprioritize stable skills.
+
+#### Gate Verification (Cannot Be Bypassed)
+
+A skill is "mastered" only when ALL four conditions are met:
+
+| Gate | Requirement | Rationale |
+|------|-------------|-----------|
+| Minimum mastery | p_mastery ≥ 0.85 | Must demonstrate deep knowledge |
+| Timed proof | ≥ 2 timed/exam_sim passes | Practice mode alone isn't enough |
+| Spacing | 2 passes ≥ 24 hours apart | Proves retention, not short-term memory |
+| Error clearance | Top-3 error tags must not repeat in 2nd pass | Must fix systematic weaknesses |
+
+This means a student **cannot cram through mastery in one sitting.** Minimum 2 days to verify any skill, and they must fix their specific errors.
+
+---
+
+### A.5 Complete AI Call Chain — One Mastery Session
+
+For a **full mastery session** (student works through one node from NOTE to MASTERY):
+
+> **Methodology:** Costs calculated by counting actual input prompt tokens + expected output JSON tokens, priced at gpt-5.2 rates ($1.75/1M input, $14.00/1M output). Output drives ~85% of cost because the 8× output multiplier dominates. All mastery AI outputs are Zod-validated JSON schemas — compact structured data, not verbose prose.
+
+| Step | What Happens | AI Model | Input ~tokens | Output ~tokens | Cost |
+|------|-------------|----------|--------------|----------------|------|
+| 1. Queue load | `MasteryOrchestrator.generateDailyQueue()` | **None** (SQL + algorithm) | — | — | $0.000 |
+| 2. Phase NOTE | Fetch prebuilt note from `prebuilt_notes` table | **None** (DB lookup) | — | — | $0.000 |
+| 3. Phase EXHIBIT | Same prebuilt content, rendered with citation parsing | **None** (DB lookup) | — | — | $0.000 |
+| 4. Checkpoint gen | `CheckpointGenerator.generate()` — 3 inline questions | gpt-5.2 (ASSESSMENT) | ~720 | ~900 | $0.014 |
+| 5. Practice item | `GET /api/mastery/item` — from DB or AI-generated | gpt-5.2 (ASSESSMENT) | ~300 | ~300 | $0.000–$0.005 |
+| 6. Practice grading | `POST /api/mastery/attempt` — AI grades written answer | gpt-5.2 (GRADING) | ~1,300 | ~380 | $0.008 |
+| 7. Mastery state update | `MasteryEngine.updateMasteryWithCurrentState()` | **None** (math) | — | — | $0.000 |
+| 8. Assessment gen | `AssessmentGenerator.generateStack()` — 5-question exam | gpt-5.2 (ASSESSMENT) | ~1,000 | ~1,450 | $0.022 |
+| 9. Assessment grading | `GradingService.gradeResponse()` × 2 written answers | gpt-5.2 (GRADING) | ~2,600 | ~760 | $0.016 |
+| 10. Gate check | `MasteryEngine.checkGateVerification()` | **None** (logic) | — | — | $0.000 |
+| 11. Pacing (conditional) | `MasteryOrchestrator.checkPacing()` — if score < 60% | gpt-5.2 (ORCHESTRATOR) | ~610 | ~50 | $0.002 |
+| **TOTAL (full session)** | | | ~6,530 | ~3,840 | **$0.060–$0.067** |
+| **TOTAL (typical — item from DB, no pacing)** | | | ~5,620 | ~3,490 | **$0.060** |
+
+**AI calls per full session: 4-5 calls to gpt-5.2** (unchanged)  
+**Non-AI operations per session: 6+ DB queries**  
+**Why costs are lower than original estimates:** Output tokens dominate cost (8× input rate). Grading outputs ~380 tokens of structured JSON, not ~1,500 tokens of prose. Pacing outputs just ~50 tokens. Checkpoint gen outputs ~900 tokens for 3 questions in JSON. Original estimates assumed ~2× more output tokens than the actual Zod schemas produce.
+
+---
+
+### A.6 Monthly Cost Projection
+
+| Usage Pattern | Sessions/Day | AI Calls/Day | Daily Cost | Monthly Cost |
+|--------------|-------------|-------------|------------|-------------|
+| Light (reads notes only, 1 practice) | 1 | 2 | $0.022 | $0.66 |
+| Moderate (full session + 1 practice) | 1.5 | 5-7 | $0.068 | $2.04 |
+| Heavy (2 full sessions + extra practice) | 3 | 10-14 | $0.144 | $4.32 |
+
+**Key cost driver:** The ASSESSMENT_MODEL calls (checkpoint gen + assessment gen). Assessment generation outputs ~1,450 tokens of JSON per 5-question exam — this single call at ~$0.022 is the most expensive step. Grading outputs are compact (~380 tokens each, ~$0.008/call).
+
+**Optimization opportunity:** Pacing ($0.002) and queue reorder ($0.004) could move to gpt-5.2-mini for ~$0.005/day savings. Assessment/grading must stay on gpt-5.2 — quality is critical for accurate mastery measurement.
+
+---
+
+### A.7 Database Tables Involved
+
+| Table | Purpose | Records |
+|-------|---------|---------|
+| `syllabus_nodes` | All 297 nodes across 9 ATP units, with week numbers, term, high-yield flags | 297 |
+| `node_progress` | Per-user, per-node phase tracking (NOTE→EXHIBIT→DIAGNOSIS→MASTERY) | Dynamic |
+| `mastery_state` | Per-user, per-skill Bayesian mastery probability + stability | Dynamic |
+| `user_profiles` | Student profile from onboarding (weak areas, pace, path) | 1/user |
+| `micro_skills` | 430 discrete testable skills mapped to ATP units | 430 |
+| `items` | 6,615 pre-seeded practice items (MCQ, written, short-answer) | 6,615 |
+| `item_skill_map` | Maps items to the skills they test, with coverage weights | ~10,000 |
+| `prebuilt_notes` | 297 pre-generated study notes (gpt-5.2 + RAG, 3 versions each) | 297 |
+| `user_note_versions` | Tracks which note version each user has been assigned | Dynamic |
+| `attempts` | Full attempt history with scores, error tags, timing | Dynamic |
+| `daily_plans` | Cached daily queue per user | Dynamic |
+
+---
+
+*End of Appendix A — Mastery Hub Technical Architecture*
+
+---
+
 *End of Board Report — YNAI Complete System Feature Catalog*  
 *Prepared for pricing review and strategic planning*  
-*Updated: July 2025 — Pricing correction, prebuilt content strategy, 3-tier pricing*
+*Updated: March 2026 — Model correction (gpt-5.2-mini), AI Tutor removed, prebuilt content strategy, 3-tier pricing*

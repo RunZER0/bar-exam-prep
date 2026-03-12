@@ -2,7 +2,7 @@
  * Autopilot Precompute Engine
  * 
  * Ensures study sessions are READY before user clicks Start.
- * Called on GET /api/tutor/today to precompute top N sessions.
+ * Can be called from any daily plan endpoint to precompute top N sessions.
  * 
  * Flow:
  * 1. Get user's daily plan

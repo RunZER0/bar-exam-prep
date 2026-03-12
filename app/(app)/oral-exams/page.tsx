@@ -383,13 +383,13 @@ export default function OralExamsPage() {
      TTS — Play AI response (with prefetch support for sync)
      ================================================================ */
   // Prefetch TTS audio — returns a ready-to-play Audio element
-  const prefetchTTS = useCallback(async (text: string, voice: string = 'onyx'): Promise<HTMLAudioElement | null> => {
+  const prefetchTTS = useCallback(async (text: string, voice: string = 'onyx', panelistId?: string): Promise<HTMLAudioElement | null> => {
     if (isMuted) return null;
     try {
       const res = await authFetch('/api/voice/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voice, speed: 1.05 }),
+        body: JSON.stringify({ text, voice, speed: 1.05, panelistId }),
       });
       if (!res.ok) throw new Error('TTS failed');
       const blob = await res.blob();
@@ -550,8 +550,9 @@ export default function OralExamsPage() {
     const handleAIResponse = async (data: any) => {
       if (handleFeatureLimit(data)) return;
       const voice = data.panelist?.voice || data.voice || 'onyx';
+      const pid = data.panelist?.id || (examType === 'devils-advocate' ? 'devils-advocate' : undefined);
       // Start TTS fetch in parallel with rendering the message
-      const audioPromise = prefetchTTS(data.content, voice);
+      const audioPromise = prefetchTTS(data.content, voice, pid);
       const aiMsg: Message = {
         id: `a-${Date.now()}`,
         role: 'assistant',
@@ -652,8 +653,9 @@ export default function OralExamsPage() {
                   if (data.type === 'done') {
                     const finalContent = data.fullContent || fullContent;
                     const voice = metadata?.panelist?.voice || metadata?.voice || 'onyx';
+                    const pid = metadata?.panelist?.id || (examType === 'devils-advocate' ? 'devils-advocate' : undefined);
                     // Start TTS fetch immediately in parallel with UI updates
-                    const audioPromise = prefetchTTS(finalContent, voice);
+                    const audioPromise = prefetchTTS(finalContent, voice, pid);
                     const aiMsg: Message = {
                       id: `a-${Date.now()}`,
                       role: 'assistant',
@@ -688,7 +690,8 @@ export default function OralExamsPage() {
           // If stream completed but we never got a 'done' event and there IS accumulated content, use it
           if (!streamingSucceeded && fullContent.trim()) {
             const voice = metadata?.panelist?.voice || metadata?.voice || 'onyx';
-            const audioPromise = prefetchTTS(fullContent, voice);
+            const pid = metadata?.panelist?.id || (examType === 'devils-advocate' ? 'devils-advocate' : undefined);
+            const audioPromise = prefetchTTS(fullContent, voice, pid);
             const aiMsg: Message = {
               id: `a-${Date.now()}`,
               role: 'assistant',
@@ -818,8 +821,9 @@ export default function OralExamsPage() {
       };
       
       const voice = data.panelist?.voice || data.voice || 'onyx';
+      const pid = data.panelist?.id || (examType === 'devils-advocate' ? 'devils-advocate' : undefined);
       // Start TTS fetch in parallel with rendering  
-      const audioPromise = prefetchTTS(data.content, voice);
+      const audioPromise = prefetchTTS(data.content, voice, pid);
       setMessages([aiMsg]);
 
       if (data.nextPanelistIndex !== undefined) {

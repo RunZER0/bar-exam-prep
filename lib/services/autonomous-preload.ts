@@ -47,16 +47,7 @@ const PRELOAD_TASKS: PreloadTask[] = [
     method: 'GET',
     cacheKey: 'mastery:readiness',
   },
-  // === TUTOR & PROGRESS ===
-  {
-    id: 'recommendations',
-    type: 'recommendations',
-    priority: 1,
-    lastRun: null,
-    intervalMs: 15 * 60 * 1000, // 15 minutes
-    endpoint: '/api/tutor/guide',
-    method: 'POST', // POST triggers regeneration
-  },
+  // === PROGRESS ===
   {
     id: 'progress',
     type: 'progress',

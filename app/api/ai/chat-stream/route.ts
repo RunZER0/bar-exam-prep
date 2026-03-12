@@ -4,8 +4,10 @@ import OpenAI from 'openai';
 import { db } from '@/lib/db';
 import { chatHistory, chatSessions, chatMessages } from '@/lib/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
-import { ORCHESTRATOR_MODEL, MINI_MODEL } from '@/lib/ai/model-config';
+import { ORCHESTRATOR_MODEL, MINI_MODEL, SMART_CHAT_ROUTER_ENABLED, CLARIFY_ROUTER_ENABLED } from '@/lib/ai/model-config';
 import { getSubscriptionInfo, incrementFeatureUsage } from '@/lib/services/subscription';
+import { routeQuery, type RouterDecision } from '@/lib/ai/router';
+import { logRouterDecision } from '@/lib/ai/telemetry';
 
 const getOpenAI = () => {
   if (!process.env.OPENAI_API_KEY) return null;
@@ -176,19 +178,51 @@ export async function POST(req: NextRequest) {
       messages.push({ role: 'user', content: userContent });
     }
 
-    // Stream the response — use tier-based model for clarify, smart model for floating chat, mini for others
-    const selectedModel = clarifyModel
-      ? clarifyModel
-      : useSmartModel
-        ? ORCHESTRATOR_MODEL
-        : MINI_MODEL;
+    // Stream the response — smart router decides model when enabled, else legacy logic
+    let selectedModel: string;
+    let routerDecision: RouterDecision | null = null;
+
+    if (clarifyModel) {
+      // Clarify mode: use tier-based model OR route when CLARIFY_ROUTER_ENABLED
+      if (CLARIFY_ROUTER_ENABLED && openai) {
+        routerDecision = await routeQuery(message, openai, {
+          competencyType,
+          attachments: attachments?.map((a: any) => ({ type: a.type })),
+        });
+        // Clarify router: frontier → tier's clarifyModel, mini → MINI_MODEL
+        selectedModel = routerDecision.route === 'frontier' ? clarifyModel : MINI_MODEL;
+        logRouterDecision(routerDecision, { userId: user.id, competencyType, message });
+      } else {
+        selectedModel = clarifyModel;
+      }
+    } else if (useSmartModel) {
+      // Smart chat (floating chat button): route when SMART_CHAT_ROUTER_ENABLED
+      if (SMART_CHAT_ROUTER_ENABLED && openai) {
+        routerDecision = await routeQuery(message, openai, {
+          competencyType,
+          attachments: attachments?.map((a: any) => ({ type: a.type })),
+        });
+        selectedModel = routerDecision.route === 'frontier' ? ORCHESTRATOR_MODEL : MINI_MODEL;
+        logRouterDecision(routerDecision, { userId: user.id, competencyType, message });
+      } else {
+        selectedModel = ORCHESTRATOR_MODEL;
+      }
+    } else {
+      // Standard chat — always mini
+      selectedModel = MINI_MODEL;
+    }
+
+    // Token budget: frontier gets 4000, mini gets 2000, research always 4000
+    const maxTokens = selectedModel === MINI_MODEL
+      ? (competencyType === 'research' ? 4000 : 2000)
+      : 4000;
 
     const stream = await openai.chat.completions.create({
       model: selectedModel,
       messages,
       stream: true,
       temperature: 0.7,
-      max_completion_tokens: useSmartModel ? 4000 : (competencyType === 'research' ? 4000 : 2000),
+      max_completion_tokens: maxTokens,
     });
 
     const encoder = new TextEncoder();
@@ -205,7 +239,7 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', fullContent })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', fullContent, model: selectedModel, routerMethod: routerDecision?.method })}\n\n`));
           controller.close();
 
           // Save to chat history in background

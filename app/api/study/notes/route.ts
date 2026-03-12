@@ -4,8 +4,17 @@ import OpenAI from 'openai';
 import { neon } from '@neondatabase/serverless';
 import { MINI_MODEL } from '@/lib/ai/model-config';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const rawSql = neon(process.env.DATABASE_URL!);
+// Lazy init to avoid cold-start race conditions with env vars
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return _openai;
+}
+let _rawSql: ReturnType<typeof neon> | null = null;
+function getRawSql() {
+  if (!_rawSql) _rawSql = neon(process.env.DATABASE_URL!);
+  return _rawSql;
+}
 
 /**
  * POST /api/study/notes
@@ -34,6 +43,8 @@ async function handlePost(req: NextRequest, user: AuthUser) {
     return generateLiveNotes({ topicContext: customPrompt, unitName, depth, withAssessment, topicName });
   }
 
+  const rawSql = getRawSql();
+
   // ═══════════════════════════════════════════════════════════
   // PRE-BUILT NOTES: Find matching syllabus node and serve pre-built
   // ═══════════════════════════════════════════════════════════
@@ -50,13 +61,17 @@ async function handlePost(req: NextRequest, user: AuthUser) {
     if (!matchedNodeId && topicName) {
       // Multi-tier matching strategy for maximum reliability:
       //   Tier 1: Exact match on topic_name or subtopic_name
-      //   Tier 2: Exact match on combined "topic_name: subtopic_name"
-      //   Tier 3: ILIKE with the full topic name
-      //   Tier 4: Fuzzy word matching (last resort)
+      //   Tier 2: ILIKE with the full topic name
+      //   Tier 3: Reverse match (node name contained in search term)
+      //   Tier 4: Fuzzy word matching with OR (any word matches)
+      //   Tier 5: Individual keyword search (last resort)
       
       const exactName = topicName.trim();
+      const unitFilter = unitId
+        ? `UPPER(REPLACE(unit_code, '-', '')) = UPPER(REPLACE('${unitId.replace(/'/g, "''")}', '-', ''))`
+        : 'TRUE';
       
-      // Tier 1+2: Exact and near-exact
+      // Tier 1+2: Exact and substring match
       const exactMatches = unitId
         ? await rawSql`
             SELECT id, 
@@ -120,28 +135,57 @@ async function handlePost(req: NextRequest, user: AuthUser) {
         if (reverseMatches.length > 0) {
           matchedNodeId = reverseMatches[0].id;
         } else {
-          // Tier 4: Fuzzy word matching (last resort)
+          // Tier 4: Fuzzy — any significant keyword matches (OR-based, not AND)
           const searchWords = topicName.split(/[\s:,&]+/).filter((w: string) => w.length > 3).slice(0, 5);
           if (searchWords.length > 0) {
-            const pattern = `%${searchWords.join('%')}%`;
+            // Try combined pattern first (all words in order)
+            const combinedPattern = `%${searchWords.join('%')}%`;
             const fuzzyMatches = unitId
               ? await rawSql`
                   SELECT id FROM syllabus_nodes
-                  WHERE (topic_name ILIKE ${pattern} OR subtopic_name ILIKE ${pattern})
+                  WHERE (topic_name ILIKE ${combinedPattern} OR subtopic_name ILIKE ${combinedPattern})
                     AND UPPER(REPLACE(unit_code, '-', '')) = UPPER(REPLACE(${unitId}, '-', ''))
                   LIMIT 1
                 `
               : await rawSql`
                   SELECT id FROM syllabus_nodes
-                  WHERE topic_name ILIKE ${pattern} OR subtopic_name ILIKE ${pattern}
+                  WHERE topic_name ILIKE ${combinedPattern} OR subtopic_name ILIKE ${combinedPattern}
                   LIMIT 1
                 `;
             if (fuzzyMatches.length > 0) {
               matchedNodeId = fuzzyMatches[0].id;
+            } else {
+              // Tier 5: Individual keyword search — match on the FIRST significant word
+              // e.g., "Jurisdiction & Venue" → search for "%Jurisdiction%" in the unit
+              const primaryWord = searchWords[0];
+              const keywordMatches = unitId
+                ? await rawSql`
+                    SELECT id FROM syllabus_nodes
+                    WHERE UPPER(REPLACE(unit_code, '-', '')) = UPPER(REPLACE(${unitId}, '-', ''))
+                      AND (topic_name ILIKE ${'%' + primaryWord + '%'}
+                        OR subtopic_name ILIKE ${'%' + primaryWord + '%'})
+                    ORDER BY id ASC
+                    LIMIT 1
+                  `
+                : await rawSql`
+                    SELECT id FROM syllabus_nodes
+                    WHERE topic_name ILIKE ${'%' + primaryWord + '%'}
+                      OR subtopic_name ILIKE ${'%' + primaryWord + '%'}
+                    ORDER BY id ASC
+                    LIMIT 1
+                  `;
+              if (keywordMatches.length > 0) {
+                matchedNodeId = keywordMatches[0].id;
+                console.log(`[study/notes] Tier 5 keyword match: "${primaryWord}" → node ${matchedNodeId}`);
+              }
             }
           }
         }
       }
+    }
+
+    if (!matchedNodeId) {
+      console.log(`[study/notes] No syllabus node match for "${topicName}" (unit: ${unitId}). Using live generation.`);
     }
 
     if (matchedNodeId) {
@@ -150,25 +194,26 @@ async function handlePost(req: NextRequest, user: AuthUser) {
       let hasMasteryVersion = false;
 
       if (dbUserId) {
-        const [existing] = await rawSql`
-          SELECT mastery_version, study_version FROM user_note_versions
-          WHERE user_id = ${dbUserId}::uuid AND node_id = ${matchedNodeId}::uuid
-        `;
-        
-        if (existing) {
-          if (existing.study_version) {
-            // Already has a Study Hub version — use it
-            assignedVersion = existing.study_version;
-          } else if (existing.mastery_version) {
-            // Has Mastery Hub version — use the SAME one (version affinity)
-            assignedVersion = existing.mastery_version;
-            hasMasteryVersion = true;
+        try {
+          const [existing] = await rawSql`
+            SELECT mastery_version, study_version FROM user_note_versions
+            WHERE user_id = ${dbUserId}::uuid AND node_id = ${matchedNodeId}::uuid
+          `;
+          
+          if (existing) {
+            if (existing.study_version) {
+              assignedVersion = existing.study_version;
+            } else if (existing.mastery_version) {
+              assignedVersion = existing.mastery_version;
+              hasMasteryVersion = true;
+            }
           }
+        } catch (e) {
+          console.warn('[study/notes] Version lookup failed:', e);
         }
       }
 
       if (!assignedVersion) {
-        // Use version 1 — currently the only generated version
         assignedVersion = 1;
       }
 
@@ -204,7 +249,7 @@ async function handlePost(req: NextRequest, user: AuthUser) {
         let assessmentBlock = '';
         if (withAssessment) {
           try {
-            const assessCompletion = await openai.chat.completions.create({
+            const assessCompletion = await getOpenAI().chat.completions.create({
               model: MINI_MODEL,
               messages: [
                 { role: 'system', content: `You are a Kenya bar exam assessor. Based on the study notes provided, generate assessment questions. Include:
@@ -239,12 +284,13 @@ Include model answers for all questions. Use proper Markdown formatting.` },
       }
     }
   } catch (e) {
-    console.warn('[study/notes] Pre-built lookup failed, falling back to AI:', e);
+    console.error('[study/notes] Pre-built lookup failed, falling back to AI:', e);
   }
 
   // ═══════════════════════════════════════════════════════════
   // FALLBACK: Live AI generation (only if no pre-built notes available)
   // ═══════════════════════════════════════════════════════════
+  console.log(`[study/notes] Falling back to live generation for: "${topicName}" (unit: ${unitId})`);
   const topicContext = `${topicName} under ${unitName} (${unitId})`;
   return generateLiveNotes({ topicContext, unitName, depth, withAssessment, topicName });
 }
@@ -302,35 +348,58 @@ KENYAN LAW CONTEXT:
 - Reference current legislation (post-2010 Constitution)
 - Include both written and oral exam tips where applicable`;
 
-  try {
-    const completion = await openai.chat.completions.create({
-      model: MINI_MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Generate study notes on: ${topicContext}` },
-      ],
-      temperature: 0.7,
-      max_completion_tokens: 4096,
-    });
+  const openai = getOpenAI();
+  const maxAttempts = 2;
 
-    const notes = completion.choices[0]?.message?.content || 'Failed to generate notes.';
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`[study/notes] Live generation attempt ${attempt} for: ${topicContext}`);
+      const completion = await openai.chat.completions.create({
+        model: MINI_MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Generate study notes on: ${topicContext}` },
+        ],
+        temperature: 0.7,
+        max_completion_tokens: 4096,
+      });
 
-    return NextResponse.json({
-      notes,
-      topicName: topicName || 'Custom Study',
-      unitName: unitName || '',
-      depth,
-      withAssessment,
-      prebuilt: false,
-      generatedAt: new Date().toISOString(),
-    });
-  } catch (error: any) {
-    console.error('Study notes generation error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate notes. Please try again.' },
-      { status: 500 }
-    );
+      const notes = completion.choices[0]?.message?.content;
+      if (!notes || notes.length < 50) {
+        console.warn(`[study/notes] OpenAI returned empty/short content (${notes?.length ?? 0} chars). Attempt ${attempt}/${maxAttempts}`);
+        if (attempt < maxAttempts) { await new Promise(r => setTimeout(r, 1000)); continue; }
+        return NextResponse.json(
+          { error: 'AI returned empty notes. Please try again in a moment.' },
+          { status: 502 }
+        );
+      }
+
+      console.log(`[study/notes] Live generation succeeded (${notes.length} chars)`);
+      return NextResponse.json({
+        notes,
+        topicName: topicName || 'Custom Study',
+        unitName: unitName || '',
+        depth,
+        withAssessment,
+        prebuilt: false,
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      const errMsg = error?.message || error?.toString() || 'Unknown error';
+      console.error(`[study/notes] Live generation error (attempt ${attempt}/${maxAttempts}):`, errMsg);
+      if (attempt < maxAttempts) { await new Promise(r => setTimeout(r, 1500)); continue; }
+      return NextResponse.json(
+        { error: `Notes generation failed: ${errMsg.slice(0, 100)}` },
+        { status: 500 }
+      );
+    }
   }
+
+  // Should never reach here, but just in case
+  return NextResponse.json(
+    { error: 'Failed to generate notes after retries.' },
+    { status: 500 }
+  );
 }
 
 export const POST = withAuth(handlePost);

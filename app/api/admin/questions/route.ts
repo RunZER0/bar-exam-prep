@@ -1,8 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminAuth } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
-import { questions, contentUpdates } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { questions, contentUpdates, topics } from '@/lib/db/schema';
+import { eq, desc, count, ilike, sql } from 'drizzle-orm';
+
+export const GET = withAdminAuth(async (req: NextRequest, _user) => {
+  try {
+    const { searchParams } = new URL(req.url);
+    const search = searchParams.get('search') || '';
+    const topicId = searchParams.get('topicId');
+    const questionType = searchParams.get('questionType');
+    const difficulty = searchParams.get('difficulty');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = parseInt(searchParams.get('offset') || '0');
+
+    const conditions = [eq(questions.isActive, true)];
+
+    if (search) {
+      conditions.push(ilike(questions.question, `%${search}%`));
+    }
+    if (topicId) {
+      conditions.push(eq(questions.topicId, topicId));
+    }
+    if (questionType) {
+      conditions.push(sql`${questions.questionType} = ${questionType}`);
+    }
+    if (difficulty) {
+      conditions.push(sql`${questions.difficulty} = ${difficulty}`);
+    }
+
+    const allQuestions = await db.query.questions.findMany({
+      where: (q, { and }) => and(...conditions),
+      orderBy: [desc(questions.createdAt)],
+      limit,
+      offset,
+      with: { topic: true },
+    });
+
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(questions)
+      .where(sql`${questions.isActive} = true`);
+
+    return NextResponse.json({
+      questions: allQuestions,
+      pagination: { total, limit, offset, hasMore: offset + limit < total },
+    });
+  } catch (error) {
+    console.error('Error fetching questions:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch questions' },
+      { status: 500 }
+    );
+  }
+});
 
 export const POST = withAdminAuth(async (req: NextRequest, user) => {
   try {

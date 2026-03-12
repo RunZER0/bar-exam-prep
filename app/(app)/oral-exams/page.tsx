@@ -380,12 +380,12 @@ export default function OralExamsPage() {
   }, [authFetch]);
 
   /* ================================================================
-     TTS — Play AI response
+     TTS — Play AI response (with prefetch support for sync)
      ================================================================ */
-  const playTTS = useCallback(async (text: string, voice: string = 'onyx') => {
-    if (isMuted) return;
+  // Prefetch TTS audio — returns a ready-to-play Audio element
+  const prefetchTTS = useCallback(async (text: string, voice: string = 'onyx'): Promise<HTMLAudioElement | null> => {
+    if (isMuted) return null;
     try {
-      setIsPlayingAudio(true);
       const res = await authFetch('/api/voice/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -395,7 +395,26 @@ export default function OralExamsPage() {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
+      // Wait until audio is buffered enough to play
+      await new Promise<void>((resolve) => {
+        audio.oncanplaythrough = () => resolve();
+        audio.onerror = () => resolve(); // Don't block on error
+        audio.load();
+      });
+      return audio;
+    } catch (err) {
+      console.error('TTS prefetch error:', err);
+      return null;
+    }
+  }, [isMuted, authFetch]);
+
+  // Play a prefetched audio element (or fetch+play if not prefetched)
+  const playAudio = useCallback(async (audio: HTMLAudioElement | null) => {
+    if (!audio) return;
+    try {
+      setIsPlayingAudio(true);
       audioRef.current = audio;
+      const url = audio.src;
       audio.onended = () => {
         setIsPlayingAudio(false);
         URL.revokeObjectURL(url);
@@ -406,10 +425,15 @@ export default function OralExamsPage() {
       };
       await audio.play();
     } catch (err) {
-      console.error('TTS error:', err);
+      console.error('TTS play error:', err);
       setIsPlayingAudio(false);
     }
-  }, [isMuted, authFetch]);
+  }, []);
+
+  const playTTS = useCallback(async (text: string, voice: string = 'onyx') => {
+    const audio = await prefetchTTS(text, voice);
+    await playAudio(audio);
+  }, [prefetchTTS, playAudio]);
 
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
@@ -525,6 +549,9 @@ export default function OralExamsPage() {
     // Helper: process a successful AI response (non-streaming or fallback)
     const handleAIResponse = async (data: any) => {
       if (handleFeatureLimit(data)) return;
+      const voice = data.panelist?.voice || data.voice || 'onyx';
+      // Start TTS fetch in parallel with rendering the message
+      const audioPromise = prefetchTTS(data.content, voice);
       const aiMsg: Message = {
         id: `a-${Date.now()}`,
         role: 'assistant',
@@ -536,8 +563,9 @@ export default function OralExamsPage() {
       if (data.nextPanelistIndex !== undefined) {
         setCurrentPanelistIndex(data.nextPanelistIndex);
       }
-      const voice = data.panelist?.voice || data.voice || 'onyx';
-      await playTTS(data.content, voice);
+      // Audio should be ready by now (or nearly so) — play immediately
+      const audio = await audioPromise;
+      await playAudio(audio);
     };
 
     try {
@@ -622,10 +650,14 @@ export default function OralExamsPage() {
                   }
 
                   if (data.type === 'done') {
+                    const finalContent = data.fullContent || fullContent;
+                    const voice = metadata?.panelist?.voice || metadata?.voice || 'onyx';
+                    // Start TTS fetch immediately in parallel with UI updates
+                    const audioPromise = prefetchTTS(finalContent, voice);
                     const aiMsg: Message = {
                       id: `a-${Date.now()}`,
                       role: 'assistant',
-                      content: data.fullContent || fullContent,
+                      content: finalContent,
                       timestamp: new Date(),
                       panelist: metadata?.panelist || undefined,
                     };
@@ -635,8 +667,8 @@ export default function OralExamsPage() {
                     setIsStreaming(false);
                     streamingSucceeded = true;
 
-                    const voice = metadata?.panelist?.voice || metadata?.voice || 'onyx';
-                    await playTTS(aiMsg.content, voice);
+                    const audio = await audioPromise;
+                    await playAudio(audio);
 
                     if (metadata?.sessionEnded) {
                       setTimeout(() => endSessionRef.current(), 2000);
@@ -655,6 +687,8 @@ export default function OralExamsPage() {
 
           // If stream completed but we never got a 'done' event and there IS accumulated content, use it
           if (!streamingSucceeded && fullContent.trim()) {
+            const voice = metadata?.panelist?.voice || metadata?.voice || 'onyx';
+            const audioPromise = prefetchTTS(fullContent, voice);
             const aiMsg: Message = {
               id: `a-${Date.now()}`,
               role: 'assistant',
@@ -664,8 +698,8 @@ export default function OralExamsPage() {
             };
             setMessages(prev => [...prev, aiMsg]);
             streamingSucceeded = true;
-            const voice = metadata?.panelist?.voice || metadata?.voice || 'onyx';
-            await playTTS(aiMsg.content, voice);
+            const audio = await audioPromise;
+            await playAudio(audio);
           }
 
           if (streamError && !streamingSucceeded) {
@@ -727,7 +761,7 @@ export default function OralExamsPage() {
       setIsStreaming(false);
       setStreamingContent('');
     }
-  }, [messages, examType, mode, feedbackMode, selectedUnit, panelistCount, currentPanelistIndex, isLoading, isStreaming, enableStreaming, authFetchJSON, playTTS, getIdToken, sessionElapsedSec]);
+  }, [messages, examType, mode, feedbackMode, selectedUnit, panelistCount, currentPanelistIndex, isLoading, isStreaming, enableStreaming, authFetchJSON, playTTS, prefetchTTS, playAudio, getIdToken, sessionElapsedSec]);
 
   /* ================================================================
      START SESSION
@@ -782,14 +816,18 @@ export default function OralExamsPage() {
         timestamp: new Date(),
         panelist: data.panelist || undefined,
       };
+      
+      const voice = data.panelist?.voice || data.voice || 'onyx';
+      // Start TTS fetch in parallel with rendering  
+      const audioPromise = prefetchTTS(data.content, voice);
       setMessages([aiMsg]);
 
       if (data.nextPanelistIndex !== undefined) {
         setCurrentPanelistIndex(data.nextPanelistIndex);
       }
 
-      const voice = data.panelist?.voice || data.voice || 'onyx';
-      await playTTS(data.content, voice);
+      const audio = await audioPromise;
+      await playAudio(audio);
     } catch (err: any) {
       console.error('Start error:', err);
       // Handle 403 feature-limit from authFetchJSON (err.data populated by our improved authFetchJSON)
@@ -807,7 +845,7 @@ export default function OralExamsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [examType, mode, feedbackMode, selectedUnit, panelistCount, authFetchJSON, playTTS, startSessionRecording, stopSessionRecording, autoRecord]);
+  }, [examType, mode, feedbackMode, selectedUnit, panelistCount, authFetchJSON, playTTS, prefetchTTS, playAudio, startSessionRecording, stopSessionRecording, autoRecord]);
 
   /* ================================================================
      END SESSION — get summary

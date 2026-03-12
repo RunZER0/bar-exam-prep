@@ -506,6 +506,21 @@ export async function GET(req: NextRequest) {
       const endsAt = event.endsAt ? new Date(event.endsAt) : null;
       const msLeft = endsAt ? endsAt.getTime() - now.getTime() : 0;
 
+      // Backfill challengeContent for AI challenges that have null content (from before fallback fix)
+      let content = event.challengeContent || null;
+      if (!content && event.isAgentCreated && event.unitId && UNIT_TOPICS[event.unitId]) {
+        const unit = UNIT_TOPICS[event.unitId];
+        const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
+        const subject = unit.subjects[dayOfYear % unit.subjects.length];
+        content = generateFallbackQuestions(event.type || 'trivia', unit.name, subject, unit.subjects);
+        
+        // Also persist it so next load doesn't need to regenerate
+        db.update(communityEvents)
+          .set({ challengeContent: content })
+          .where(eq(communityEvents.id, event.id))
+          .catch(() => {}); // fire-and-forget update
+      }
+
       return {
         id: event.id,
         title: event.title,
@@ -519,7 +534,7 @@ export async function GET(req: NextRequest) {
         isJoined,
         isAgentCreated: event.isAgentCreated ?? false,
         submitterName: event.submitterName || null,
-        challengeContent: event.challengeContent || null,
+        challengeContent: content,
         hoursLeft: msLeft > 0 ? Math.floor(msLeft / 3600000) : 0,
         daysLeft: msLeft > 0 ? Math.ceil(msLeft / 86400000) : 0,
         unitId: event.unitId,
@@ -531,7 +546,7 @@ export async function GET(req: NextRequest) {
     const communityChallenges = enriched.filter(e => !e.isAgentCreated);
 
     // Community challenges — same for everyone, no per-user personalization.
-    // Sort by unit order (atp-100 through atp-106) for consistency.
+    // Sort by unit order (atp-100 through atp-108) for consistency.
     aiChallenges.sort((a, b) => (a.unitId || '').localeCompare(b.unitId || ''));
 
     return NextResponse.json({ events: enriched, aiChallenges, communityChallenges });

@@ -18,11 +18,13 @@ import {
 const UNIT_NAMES: Record<string, string> = {
   'atp-100': 'Civil Litigation',
   'atp-101': 'Criminal Litigation',
-  'atp-102': 'Conveyancing',
-  'atp-103': 'Family Law',
-  'atp-104': 'Probate',
-  'atp-105': 'Commercial',
-  'atp-106': 'Legal Ethics',
+  'atp-102': 'Probate and Administration',
+  'atp-103': 'Legal Writing and Drafting',
+  'atp-104': 'Trial Advocacy',
+  'atp-105': 'Professional Ethics',
+  'atp-106': 'Legal Practice Management',
+  'atp-107': 'Conveyancing',
+  'atp-108': 'Commercial Transactions',
 };
 
 /* ================================================================
@@ -803,7 +805,7 @@ export default function CommunityPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) { alert('Please select an image file'); return; }
-    if (file.size > 500 * 1024) { alert('Image too large. Max 500KB.'); return; }
+    if (file.size > 10 * 1024 * 1024) { alert('Image too large. Max 10MB.'); return; }
 
     setUploadingPhoto(true);
     try {
@@ -1629,6 +1631,13 @@ export default function CommunityPage() {
                           <h3 className="text-sm font-semibold text-foreground leading-snug mb-1 line-clamp-2">{thread.title}</h3>
                           <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{thread.content}</p>
                           <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
+                            {thread.authorPhoto && !thread.isAgentPost ? (
+                              <img src={thread.authorPhoto} alt="" className="w-5 h-5 rounded-full object-cover" />
+                            ) : (
+                              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[8px] font-bold text-primary">
+                                {thread.isAgentPost ? '🤖' : (thread.authorName?.[0] || '?')}
+                              </div>
+                            )}
                             <span className="font-medium">{thread.authorName || 'Anonymous'}</span>
                             <span>·</span>
                             <span>{timeAgo}</span>
@@ -1669,6 +1678,13 @@ export default function CommunityPage() {
               <h2 className="text-base font-bold">{activeThread.title}</h2>
               <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{activeThread.content}</p>
               <div className="flex items-center gap-4 pt-2 border-t border-border/10 text-[11px] text-muted-foreground">
+                {activeThread.authorPhoto && !activeThread.isAgentPost ? (
+                  <img src={activeThread.authorPhoto} alt="" className="w-6 h-6 rounded-full object-cover" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[9px] font-bold text-primary">
+                    {activeThread.isAgentPost ? '🤖' : (activeThread.authorName?.[0] || '?')}
+                  </div>
+                )}
                 <span className="font-medium">{activeThread.authorName || 'Anonymous'}</span>
                 <span>{getTimeAgo(activeThread.createdAt)}</span>
                 <div className="flex items-center gap-1.5 ml-auto" onClick={e => e.stopPropagation()}>
@@ -2075,6 +2091,15 @@ export default function CommunityPage() {
                                 <><Send className="h-3.5 w-3.5" /> Submit Answers</>
                               )}
                             </button>
+                          </div>
+                        )}
+
+                        {/* Edge case: joined but no challenge content yet */}
+                        {event.isJoined && !gradeResults[event.id] && (!event.challengeContent || event.challengeContent.length === 0) && (
+                          <div className="bg-background/60 rounded-lg p-4 border border-border/10 text-center space-y-2">
+                            <Loader2 className="h-5 w-5 animate-spin mx-auto text-primary/40" />
+                            <p className="text-xs text-muted-foreground">Challenge questions are being prepared. Refresh in a moment!</p>
+                            <button onClick={() => loadTabData('events')} className="text-[11px] text-primary hover:underline">Refresh</button>
                           </div>
                         )}
 

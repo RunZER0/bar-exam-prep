@@ -12,7 +12,7 @@ import {
   Handshake, Building2, Gavel, UserCheck, UserX, Bell, ArrowRight,
   Heart, Zap, Target, TrendingUp, Calendar, ThumbsUp, ThumbsDown,
   MessageCircle, ArrowUp, Filter, CornerDownRight,
-  Mic, MicOff, Paperclip, Image as ImageIcon, Camera,
+  Mic, MicOff, Paperclip, Image as ImageIcon, Camera, Shield, CheckCircle2,
 } from 'lucide-react';
 
 const UNIT_NAMES: Record<string, string> = {
@@ -82,6 +82,8 @@ interface CommunityEvent {
   endsAt: string;
   rewards: { position: number; reward: string }[];
   isJoined: boolean;
+  hasCompleted: boolean;
+  userScore: number | null;
   isAgentCreated: boolean;
   submitterName: string | null;
   challengeContent: any[] | null;
@@ -480,8 +482,12 @@ export default function CommunityPage() {
         const res = await apiFetch(`/api/community/threads?${params}`);
         if (res.ok) { const d = await res.json(); setThreads(d.threads || []); }
       } else if (t === 'events') {
-        const res = await apiFetch('/api/community/events');
-        if (res.ok) { const d = await res.json(); setEvents(d.events || []); setAiChallenges(d.aiChallenges || []); setCommunityChallenges(d.communityChallenges || []); }
+        const [evRes, rkRes] = await Promise.all([
+          apiFetch('/api/community/events'),
+          apiFetch('/api/community/rankings'),
+        ]);
+        if (evRes.ok) { const d = await evRes.json(); setEvents(d.events || []); setAiChallenges(d.aiChallenges || []); setCommunityChallenges(d.communityChallenges || []); }
+        if (rkRes.ok) { const d = await rkRes.json(); setRankings(d.rankings || []); setWeekInfo(d.weekInfo || null); }
       } else if (t === 'rankings') {
         const res = await apiFetch('/api/community/rankings');
         if (res.ok) {
@@ -1963,6 +1969,61 @@ export default function CommunityPage() {
               </div>
             )}
 
+            {/* Your Score Summary */}
+            {(() => {
+              const completedAi = aiChallenges.filter(e => e.hasCompleted);
+              const totalUserScore = completedAi.reduce((sum, e) => sum + (e.userScore || 0), 0);
+              const currentRank = rankings.find(r => r.isCurrentUser);
+              if (completedAi.length === 0 && !currentRank) return null;
+              return (
+                <div className="rounded-xl bg-gradient-to-r from-primary/5 via-background to-amber-500/5 border border-primary/15 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Trophy className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">Your Challenge Score</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {completedAi.length} of {aiChallenges.length} today&apos;s challenges completed
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-primary">{totalUserScore}</p>
+                      <p className="text-[10px] text-muted-foreground">pts earned today</p>
+                    </div>
+                  </div>
+                  {currentRank && (
+                    <div className="mt-3 pt-3 border-t border-border/15 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {currentRank.rank <= 3 ? (
+                          <>{currentRank.rank === 1 ? <Crown className="h-3.5 w-3.5 text-amber-500" /> : currentRank.rank === 2 ? <Medal className="h-3.5 w-3.5 text-slate-400" /> : <Award className="h-3.5 w-3.5 text-amber-700" />}</>
+                        ) : (
+                          <span className="font-bold text-foreground">#{currentRank.rank}</span>
+                        )}
+                        <span>You are ranked <span className="font-semibold text-foreground">#{currentRank.rank}</span> out of {rankings.length} students this week</span>
+                      </div>
+                      <button
+                        onClick={() => setTab('rankings')}
+                        className="text-[11px] text-primary font-medium hover:underline flex items-center gap-1"
+                      >
+                        View Full Rankings <ChevronRight className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Anti-cheat notice */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/10">
+              <Shield className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <p className="text-[10px] text-muted-foreground">
+                Challenges are <span className="font-semibold text-foreground">one attempt only</span>. Time and tab switches are tracked. Points count toward your weekly ranking.
+              </p>
+            </div>
+
             {/* ---- Section 1: Today's AI Challenges ---- */}
             <div>
               <div className="flex items-center gap-2 mb-3">
@@ -1977,9 +2038,8 @@ export default function CommunityPage() {
                   <button onClick={() => loadTabData('events')} className="text-[11px] text-primary hover:underline">Refresh</button>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {aiChallenges.map(event => {
-                    const isActive = event.status === 'active';
                     const typeColors: Record<string, string> = {
                       trivia: 'from-blue-500/10 to-blue-600/5 border-blue-500/20',
                       reading: 'from-emerald-500/10 to-emerald-600/5 border-emerald-500/20',
@@ -1988,7 +2048,7 @@ export default function CommunityPage() {
                       research: 'from-teal-500/10 to-teal-600/5 border-teal-500/20',
                     };
                     const typeLabels: Record<string, string> = {
-                      trivia: 'Multiple Choice', drafting: 'Drafting', research: 'Short Answer',
+                      trivia: 'MCQ', drafting: 'Drafting', research: 'Short Answer',
                       reading: 'Reading', quiz_marathon: 'Quiz Marathon',
                     };
                     const typeIcons: Record<string, typeof Zap> = {
@@ -1996,167 +2056,57 @@ export default function CommunityPage() {
                     };
                     const EventIcon = typeIcons[event.type] || Zap;
                     const colorClass = typeColors[event.type] || typeColors.trivia;
+                    const questionCount = event.challengeContent?.length || 0;
+                    const totalPts = questionCount > 0 
+                      ? event.challengeContent!.reduce((s: number, q: any) => s + (q.points || 10), 0) 
+                      : 0;
 
                     return (
-                      <div key={event.id} className={`rounded-xl bg-gradient-to-r ${colorClass} border p-4 space-y-3`}>
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 rounded-lg bg-background/50">
-                            <EventIcon className="h-5 w-5" />
+                      <div key={event.id} className={`rounded-xl bg-gradient-to-br ${colorClass} border p-4 flex flex-col gap-3`}>
+                        <div className="flex items-start gap-2.5">
+                          <div className="p-2 rounded-lg bg-background/50 shrink-0">
+                            <EventIcon className="h-4 w-4" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="text-sm font-semibold">{event.title}</h3>
-                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
-                                {typeLabels[event.type] || event.type}
-                              </span>
-                              {isActive && <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">Active</span>}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-0.5">{event.description}</p>
+                            <h3 className="text-xs font-semibold leading-snug line-clamp-2">{event.title}</h3>
                             {event.unitId && UNIT_NAMES[event.unitId] && (
-                              <p className="text-[10px] text-muted-foreground/70 mt-0.5 flex items-center gap-1">
-                                <BookOpen className="h-3 w-3" /> {UNIT_NAMES[event.unitId]}
+                              <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                                <BookOpen className="h-2.5 w-2.5" /> {UNIT_NAMES[event.unitId]}
                               </p>
                             )}
                           </div>
                         </div>
 
-                        {/* Grading results — shown after submission */}
-                        {gradeResults[event.id] && (
-                          <div className="bg-background/80 rounded-lg p-3 space-y-2 border border-border/20">
+                        <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground">
+                          <span className="px-1.5 py-0.5 rounded bg-background/60 font-medium">{typeLabels[event.type] || event.type}</span>
+                          {questionCount > 0 && <span>{questionCount} Qs · {totalPts} pts</span>}
+                          <span className="flex items-center gap-0.5"><Users className="h-2.5 w-2.5" /> {event.participantCount}</span>
+                          {event.hoursLeft > 0 && <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> {event.hoursLeft}h</span>}
+                        </div>
+
+                        <div className="mt-auto pt-1">
+                          {event.hasCompleted ? (
                             <div className="flex items-center justify-between">
-                              <h4 className="text-xs font-bold flex items-center gap-1.5">
-                                <Star className="h-3.5 w-3.5 text-amber-500" /> Your Score
-                              </h4>
-                              <span className={`text-sm font-bold ${
-                                gradeResults[event.id].percentage >= 70 ? 'text-emerald-500' :
-                                gradeResults[event.id].percentage >= 40 ? 'text-amber-500' : 'text-red-500'
-                              }`}>
-                                {gradeResults[event.id].totalScore}/{gradeResults[event.id].totalPossible} ({gradeResults[event.id].percentage}%)
+                              <span className="text-[10px] font-medium text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded-full flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" /> Completed
                               </span>
+                              <span className="text-xs font-bold text-amber-600">{event.userScore} pts</span>
                             </div>
-                            {gradeResults[event.id].results.length > 0 && (
-                              <div className="space-y-1.5">
-                                {gradeResults[event.id].results.map((r: any, ri: number) => (
-                                  <div key={ri} className={`text-[11px] p-2 rounded-md ${r.correct ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
-                                    <div className="flex items-center justify-between mb-0.5">
-                                      <span className="font-medium">Q{ri + 1}. {r.correct ? '✓' : '✗'}</span>
-                                      <span className="font-bold">{r.pointsEarned}/{r.pointsPossible} pts</span>
-                                    </div>
-                                    <p className="text-muted-foreground">{r.feedback}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            <p className="text-[10px] text-muted-foreground text-center">Points added to your weekly ranking</p>
-                          </div>
-                        )}
-
-                        {/* Challenge questions with answer inputs */}
-                        {event.challengeContent && event.challengeContent.length > 0 && event.isJoined && !gradeResults[event.id] && (
-                          <div className="bg-background/60 rounded-lg p-3 space-y-3 border border-border/10">
-                            {event.challengeContent.map((q: { question: string; type: string; options?: string[]; points?: number }, qi: number) => (
-                              <div key={qi} className="space-y-1.5">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs font-medium">Q{qi + 1}. {q.question}</p>
-                                  <span className="text-[10px] text-muted-foreground font-medium">{q.points || 10} pts</span>
-                                </div>
-                                {q.type === 'mcq' && q.options && (
-                                  <div className="grid gap-1 pl-3">
-                                    {q.options.map((opt: string, oi: number) => {
-                                      const letter = String.fromCharCode(65 + oi);
-                                      const selected = (challengeAnswers[event.id]?.[qi] || '') === letter;
-                                      return (
-                                        <button
-                                          key={oi}
-                                          onClick={() => setChallengeAnswers(prev => ({
-                                            ...prev,
-                                            [event.id]: { ...prev[event.id], [qi]: letter }
-                                          }))}
-                                          className={`text-left text-[11px] px-2 py-1.5 rounded-md transition-colors ${
-                                            selected ? 'bg-primary/15 text-primary font-medium border border-primary/30' : 'text-muted-foreground hover:bg-muted/50'
-                                          }`}
-                                        >
-                                          {letter}. {opt}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                                {(q.type === 'short_answer' || q.type === 'research') && (
-                                  <textarea
-                                    value={challengeAnswers[event.id]?.[qi] || ''}
-                                    onChange={e => setChallengeAnswers(prev => ({
-                                      ...prev,
-                                      [event.id]: { ...prev[event.id], [qi]: e.target.value }
-                                    }))}
-                                    placeholder="Write your answer..."
-                                    rows={2}
-                                    className="w-full text-[11px] px-2 py-1.5 rounded-md bg-background border border-border/30 placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
-                                  />
-                                )}
-                                {q.type === 'drafting' && (
-                                  <textarea
-                                    value={challengeAnswers[event.id]?.[qi] || ''}
-                                    onChange={e => setChallengeAnswers(prev => ({
-                                      ...prev,
-                                      [event.id]: { ...prev[event.id], [qi]: e.target.value }
-                                    }))}
-                                    placeholder="Draft your legal document..."
-                                    rows={4}
-                                    className="w-full text-[11px] px-2 py-1.5 rounded-md bg-background border border-border/30 placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
-                                  />
-                                )}
-                              </div>
-                            ))}
-
-                            {/* Submit answers button */}
-                            <button
-                              onClick={() => submitChallengeAnswers(event.id)}
-                              disabled={gradingEventId === event.id || !Object.keys(challengeAnswers[event.id] || {}).length}
-                              className="w-full mt-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                            >
-                              {gradingEventId === event.id ? (
-                                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Grading...</>
-                              ) : (
-                                <><Send className="h-3.5 w-3.5" /> Submit Answers</>
-                              )}
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Edge case: joined but no challenge content yet */}
-                        {event.isJoined && !gradeResults[event.id] && (!event.challengeContent || event.challengeContent.length === 0) && (
-                          <div className="bg-background/60 rounded-lg p-4 border border-border/10 text-center space-y-2">
-                            <Loader2 className="h-5 w-5 animate-spin mx-auto text-primary/40" />
-                            <p className="text-xs text-muted-foreground">Challenge questions are being prepared. Refresh in a moment!</p>
-                            <button onClick={() => loadTabData('events')} className="text-[11px] text-primary hover:underline">Refresh</button>
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
-                            <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {event.participantCount} joined</span>
-                            {event.hoursLeft != null && <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {event.hoursLeft}h left</span>}
-                          </div>
-                          {!event.isJoined ? (
-                            <button onClick={() => joinEvent(event.id)}
-                              className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/15 transition-colors">
-                              Take Challenge
-                            </button>
-                          ) : gradeResults[event.id] ? (
-                            <span className="text-[10px] font-medium text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full">
-                              Scored {gradeResults[event.id].totalScore} pts
-                            </span>
                           ) : (
-                            <span className="text-[10px] font-medium text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">Participating</span>
+                            <button
+                              onClick={() => router.push(`/challenge/${event.id}`)}
+                              className="w-full py-2 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/15 transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              <Zap className="h-3 w-3" /> Take Challenge
+                            </button>
                           )}
                         </div>
 
                         {event.rewards && event.rewards.length > 0 && (
-                          <div className="flex gap-2 pt-1">
+                          <div className="flex gap-2 pt-0.5">
                             {event.rewards.slice(0, 3).map((r, i) => (
-                              <div key={i} className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                {i === 0 ? <Crown className="h-3 w-3 text-amber-500" /> : i === 1 ? <Medal className="h-3 w-3 text-slate-400" /> : <Award className="h-3 w-3 text-amber-700" />}
+                              <div key={i} className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                                {i === 0 ? <Crown className="h-2.5 w-2.5 text-amber-500" /> : i === 1 ? <Medal className="h-2.5 w-2.5 text-slate-400" /> : <Award className="h-2.5 w-2.5 text-amber-700" />}
                                 {r.reward}
                               </div>
                             ))}
@@ -2297,66 +2247,52 @@ export default function CommunityPage() {
                   <p className="text-xs text-muted-foreground">No community challenges yet. Be the first to create one!</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {communityChallenges.map(event => {
-                    const isActive = event.status === 'active';
                     const typeLabels: Record<string, string> = {
-                      trivia: 'Multiple Choice', drafting: 'Drafting', research: 'Short Answer',
+                      trivia: 'MCQ', drafting: 'Drafting', research: 'Short Answer',
                       reading: 'Reading', quiz_marathon: 'Quiz Marathon',
                     };
+                    const questionCount = event.challengeContent?.length || 0;
 
                     return (
-                      <div key={event.id} className="rounded-xl bg-gradient-to-r from-blue-500/5 to-indigo-500/5 border border-blue-500/15 p-4 space-y-3">
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 rounded-lg bg-blue-500/10">
-                            <Globe className="h-5 w-5 text-blue-500" />
+                      <div key={event.id} className="rounded-xl bg-gradient-to-br from-blue-500/5 to-indigo-500/5 border border-blue-500/15 p-4 flex flex-col gap-3">
+                        <div className="flex items-start gap-2.5">
+                          <div className="p-2 rounded-lg bg-blue-500/10 shrink-0">
+                            <Globe className="h-4 w-4 text-blue-500" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="text-sm font-semibold">{event.title}</h3>
-                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600">
-                                {typeLabels[event.type] || event.type}
-                              </span>
-                              {isActive && <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">Active</span>}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-0.5">{event.description}</p>
+                            <h3 className="text-xs font-semibold leading-snug line-clamp-2">{event.title}</h3>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{event.description}</p>
                             {event.submitterName && (
                               <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
-                                <UserCheck className="h-3 w-3" /> Posted by {event.submitterName}
+                                <UserCheck className="h-2.5 w-2.5" /> {event.submitterName}
                               </p>
                             )}
                           </div>
                         </div>
 
-                        {/* Challenge content for participants */}
-                        {event.challengeContent && event.challengeContent.length > 0 && event.isJoined && (
-                          <div className="bg-background/60 rounded-lg p-3 space-y-2 border border-border/10">
-                            {event.challengeContent.map((q: { question: string; type: string; options?: string[] }, qi: number) => (
-                              <div key={qi} className="space-y-1">
-                                <p className="text-xs font-medium">Q{qi + 1}. {q.question}</p>
-                                {q.type === 'mcq' && q.options && (
-                                  <div className="grid grid-cols-2 gap-1 pl-3">
-                                    {q.options.map((opt: string, oi: number) => (
-                                      <span key={oi} className="text-[11px] text-muted-foreground">{String.fromCharCode(65 + oi)}. {opt}</span>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground">
+                          <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 font-medium">{typeLabels[event.type] || event.type}</span>
+                          {questionCount > 0 && <span>{questionCount} Qs</span>}
+                          <span className="flex items-center gap-0.5"><Users className="h-2.5 w-2.5" /> {event.participantCount}</span>
+                        </div>
 
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
-                            <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {event.participantCount} joined</span>
-                          </div>
-                          {!event.isJoined ? (
-                            <button onClick={() => joinEvent(event.id)}
-                              className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 text-xs font-medium hover:bg-blue-500/15 transition-colors">
-                              Join Challenge
-                            </button>
+                        <div className="mt-auto pt-1">
+                          {event.hasCompleted ? (
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-medium text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded-full flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" /> Completed
+                              </span>
+                              {event.userScore != null && <span className="text-xs font-bold text-amber-600">{event.userScore} pts</span>}
+                            </div>
                           ) : (
-                            <span className="text-[10px] font-medium text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">Participating</span>
+                            <button
+                              onClick={() => router.push(`/challenge/${event.id}`)}
+                              className="w-full py-2 rounded-lg bg-blue-500/10 text-blue-600 text-xs font-semibold hover:bg-blue-500/15 transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              <Zap className="h-3 w-3" /> Take Challenge
+                            </button>
                           )}
                         </div>
                       </div>

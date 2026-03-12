@@ -491,9 +491,11 @@ export async function GET(req: NextRequest) {
         .where(eq(eventParticipants.eventId, event.id));
 
       let isJoined = false;
+      let hasCompleted = false;
+      let userScore: number | null = null;
       if (userId) {
         const participation = await db
-          .select({ id: eventParticipants.id })
+          .select({ id: eventParticipants.id, score: eventParticipants.score, questionsAnswered: eventParticipants.questionsAnswered })
           .from(eventParticipants)
           .where(and(
             eq(eventParticipants.eventId, event.id),
@@ -501,6 +503,10 @@ export async function GET(req: NextRequest) {
           ))
           .limit(1);
         isJoined = participation.length > 0;
+        if (participation.length > 0 && participation[0].score > 0) {
+          hasCompleted = true;
+          userScore = participation[0].score;
+        }
       }
 
       const endsAt = event.endsAt ? new Date(event.endsAt) : null;
@@ -532,6 +538,8 @@ export async function GET(req: NextRequest) {
         endsAt: event.endsAt,
         rewards: event.rewards as typeof REWARDS,
         isJoined,
+        hasCompleted,
+        userScore,
         isAgentCreated: event.isAgentCreated ?? false,
         submitterName: event.submitterName || null,
         challengeContent: content,

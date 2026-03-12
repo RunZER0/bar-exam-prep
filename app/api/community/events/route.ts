@@ -175,8 +175,11 @@ async function ensureActiveChallenges(): Promise<void> {
       gte(communityEvents.createdAt, todayStart)
     ));
 
-  // We generate one challenge per unit — if we already have enough, skip
-  if ((todaysAiCount?.count || 0) >= UNIT_COUNT) return;
+  // Generate 4 challenges per day (rotating across 9 units)
+  const DAILY_CHALLENGE_COUNT = 4;
+
+  // We generate a limited set per day — if we already have enough, skip
+  if ((todaysAiCount?.count || 0) >= DAILY_CHALLENGE_COUNT) return;
 
   // Prevent duplicate generation: only one in-flight per day
   if (_generatingDate === todayStr) return;
@@ -195,7 +198,18 @@ async function ensureActiveChallenges(): Promise<void> {
       gte(communityEvents.createdAt, todayStart)
     ));
   const existingUnitIds = new Set(existingToday.map(e => e.unitId));
-  const unitsToGenerate = unitKeys.filter(u => !existingUnitIds.has(u));
+
+  // Pick which units to generate for today — rotate through all 9 units across days
+  // Each day picks DAILY_CHALLENGE_COUNT units starting from a different offset
+  const startOffset = (dayOfYear * DAILY_CHALLENGE_COUNT) % unitKeys.length;
+  const todaysUnits: string[] = [];
+  for (let i = 0; i < DAILY_CHALLENGE_COUNT; i++) {
+    const unitId = unitKeys[(startOffset + i) % unitKeys.length];
+    if (!existingUnitIds.has(unitId)) {
+      todaysUnits.push(unitId);
+    }
+  }
+  const unitsToGenerate = todaysUnits;
 
   if (unitsToGenerate.length === 0) return;
 

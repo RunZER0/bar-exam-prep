@@ -300,6 +300,7 @@ export default function CommunityPage() {
   const [replyInput, setReplyInput] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
   const [loadingReplies, setLoadingReplies] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<ThreadReply | null>(null);
 
   // Direct Messages
   const [dmConversations, setDmConversations] = useState<DMConversation[]>([]);
@@ -755,10 +756,11 @@ export default function CommunityPage() {
     try {
       const res = await apiFetch('/api/community/threads/replies', {
         method: 'POST',
-        body: JSON.stringify({ threadId: activeThread.id, content: replyInput }),
+        body: JSON.stringify({ threadId: activeThread.id, content: replyInput, parentReplyId: replyingTo?.id || null }),
       });
       if (res.ok) {
         setReplyInput('');
+        setReplyingTo(null);
         const d = await res.json();
         setThreadReplies(prev => [...prev, d.reply]);
         setActiveThread(prev => prev ? { ...prev, replyCount: prev.replyCount + 1 } : null);
@@ -1743,21 +1745,30 @@ export default function CommunityPage() {
 
             {/* Reply input */}
             {!activeThread.isLocked && (
-              <div className="flex gap-2">
-                <input
-                  value={replyInput}
-                  onChange={e => setReplyInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && postReply()}
-                  placeholder="Write a reply..."
-                  className="flex-1 px-3 py-2 rounded-xl border border-border/30 bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
-                />
-                <button
-                  onClick={postReply}
-                  disabled={submittingReply || !replyInput.trim()}
-                  className="px-3 py-2 rounded-xl bg-primary text-primary-foreground disabled:opacity-40"
-                >
-                  {submittingReply ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </button>
+              <div className="space-y-1">
+                {replyingTo && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 text-xs text-muted-foreground">
+                    <CornerDownRight className="h-3 w-3 shrink-0" />
+                    <span>Replying to <span className="font-semibold text-foreground">{replyingTo.authorName}</span></span>
+                    <button onClick={() => setReplyingTo(null)} className="ml-auto"><X className="h-3 w-3" /></button>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    value={replyInput}
+                    onChange={e => setReplyInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && postReply()}
+                    placeholder={replyingTo ? `Reply to ${replyingTo.authorName}...` : "Write a reply..."}
+                    className="flex-1 px-3 py-2 rounded-xl border border-border/30 bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  />
+                  <button
+                    onClick={postReply}
+                    disabled={submittingReply || !replyInput.trim()}
+                    className="px-3 py-2 rounded-xl bg-primary text-primary-foreground disabled:opacity-40"
+                  >
+                    {submittingReply ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1778,13 +1789,21 @@ export default function CommunityPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {threadReplies.map(reply => (
+                  {threadReplies.map(reply => {
+                    const parentReply = reply.parentReplyId ? threadReplies.find(r => r.id === reply.parentReplyId) : null;
+                    return (
                     <div
                       key={reply.id}
                       className={`rounded-xl border bg-card/30 p-3.5 ${
                         reply.isAgentReply ? 'border-primary/15' : 'border-border/10'
-                      }`}
+                      } ${reply.parentReplyId ? 'ml-6 border-l-2 border-l-primary/20' : ''}`}
                     >
+                      {parentReply && (
+                        <div className="flex items-center gap-1.5 mb-2 text-[10px] text-muted-foreground">
+                          <CornerDownRight className="h-3 w-3" />
+                          <span>Replying to <span className="font-semibold">{parentReply.authorName}</span></span>
+                        </div>
+                      )}
                       <div className="flex items-start gap-3">
                         {reply.authorPhoto && !reply.isAgentReply ? (
                           <img src={reply.authorPhoto} alt="" className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5" />
@@ -1815,11 +1834,18 @@ export default function CommunityPage() {
                             >
                               <ThumbsDown className="h-3 w-3" />
                             </button>
+                            <button
+                              onClick={() => { setReplyingTo(reply); }}
+                              className="p-1 rounded-md text-xs flex items-center gap-0.5 text-muted-foreground/40 hover:text-primary"
+                            >
+                              <CornerDownRight className="h-3 w-3" /> Reply
+                            </button>
                           </div>
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

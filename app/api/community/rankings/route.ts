@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { weeklyRankings, users, userProgress } from '@/lib/db/schema';
 import { eq, desc, and, gte, lte, sql, count } from 'drizzle-orm';
-import { verifyIdToken } from '@/lib/firebase/admin';
+import { verifyAuth } from '@/lib/auth/middleware';
 
 // Weekly bonus prizes
 const WEEKLY_BONUSES = [
@@ -43,10 +43,9 @@ export async function GET(req: NextRequest) {
     let currentUserId: string | null = null;
 
     if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
       try {
-        const decodedToken = await verifyIdToken(token);
-        currentUserId = decodedToken.uid;
+        const authUser = await verifyAuth(req);
+        currentUserId = authUser?.id || null; // DB UUID, not Firebase UID
       } catch {
         // User not authenticated
       }
@@ -220,14 +219,11 @@ export async function GET(req: NextRequest) {
 // POST - Update rankings (typically called by a cron job or after quiz completion)
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    const authUser = await verifyAuth(req);
+    if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const token = authHeader.substring(7);
-    const decodedToken = await verifyIdToken(token);
-    const userId = decodedToken.uid;
+    const userId = authUser.id; // DB UUID
 
     const body = await req.json();
     const { points, quizzesCompleted } = body;

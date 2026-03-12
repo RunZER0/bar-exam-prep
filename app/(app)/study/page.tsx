@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { ATP_UNITS, TOPICS_BY_UNIT } from '@/lib/constants/legal-content';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import EngagingLoader from '@/components/EngagingLoader';
 import {
   BookOpen, ChevronRight, ChevronDown, Loader2, Sparkles,
   GraduationCap, FileText, Scale, Shield, Briefcase,
@@ -45,7 +46,7 @@ interface CaseOfDay {
   keywords: string[];
 }
 
-type ViewState = 'browse' | 'topics' | 'loading' | 'notes' | 'ask-ai';
+type ViewState = 'browse' | 'topics' | 'loading' | 'notes' | 'ask-ai' | 'error';
 
 /* ═══════════════════════════════════════
    MAIN PAGE
@@ -62,6 +63,7 @@ export default function StudyPage() {
   const [notes, setNotes] = useState('');
   const [notesLoading, setNotesLoading] = useState(false);
   const [notesMeta, setNotesMeta] = useState<{ topicName: string; unitName: string } | null>(null);
+  const [notesError, setNotesError] = useState<string | null>(null);
 
   // Case of the Day
   const [caseOfDay, setCaseOfDay] = useState<CaseOfDay | null>(null);
@@ -134,8 +136,7 @@ export default function StudyPage() {
   const selectTopic = (unit: typeof ATP_UNITS[number], topic: { id: string; name: string; description: string }) => {
     setSelectedUnit(unit);
     setSelectedTopic(topic);
-    // Go straight to generating notes — no depth selection screen
-    // since we only have one version of prebuilt notes
+    setNotesError(null);
     setView('loading');
     setNotesLoading(true);
     getIdToken().then(token => {
@@ -152,20 +153,30 @@ export default function StudyPage() {
       }).then(async res => {
         if (res.ok) {
           const data = await res.json();
-          setNotes(data.notes);
-          setNotesMeta({ topicName: data.topicName, unitName: data.unitName });
-          setView('notes');
+          if (data.notes) {
+            setNotes(data.notes);
+            setNotesMeta({ topicName: data.topicName, unitName: data.unitName });
+            setView('notes');
+          } else {
+            setNotesError('Notes came back empty. Try again or choose another topic.');
+            setView('error');
+          }
         } else {
-          setView('browse');
+          const errData = await res.json().catch(() => ({}));
+          setNotesError(errData.error || 'Failed to load notes. Please try again.');
+          setView('error');
         }
-      }).catch(() => setView('browse'))
-        .finally(() => setNotesLoading(false));
-    }).catch(() => { setView('browse'); setNotesLoading(false); });
+      }).catch(() => {
+        setNotesError('Network error. Please check your connection and try again.');
+        setView('error');
+      }).finally(() => setNotesLoading(false));
+    }).catch(() => { setNotesError('Authentication error. Please refresh the page.'); setView('error'); setNotesLoading(false); });
   };
 
   const generateNotes = async (customPrompt?: string) => {
     setView('loading');
     setNotesLoading(true);
+    setNotesError(null);
     try {
       const token = await getIdToken();
       const res = await fetch('/api/study/notes', {
@@ -183,14 +194,21 @@ export default function StudyPage() {
 
       if (res.ok) {
         const data = await res.json();
-        setNotes(data.notes);
-        setNotesMeta({ topicName: data.topicName, unitName: data.unitName });
-        setView('notes');
+        if (data.notes) {
+          setNotes(data.notes);
+          setNotesMeta({ topicName: data.topicName, unitName: data.unitName });
+          setView('notes');
+        } else {
+          setNotesError('Notes came back empty. Try again.');
+          setView('error');
+        }
       } else {
-        setView('browse');
+        setNotesError('Failed to generate notes. Please try again.');
+        setView('error');
       }
     } catch {
-      setView('browse');
+      setNotesError('Network error. Please check your connection.');
+      setView('error');
     } finally {
       setNotesLoading(false);
     }
@@ -206,6 +224,7 @@ export default function StudyPage() {
   const goBack = () => {
     if (viewingSavedNote) { setViewingSavedNote(null); return; }
     if (view === 'notes') { setView('browse'); setNotes(''); setNotesMeta(null); }
+    else if (view === 'error') { setView('browse'); setNotesError(null); }
     else if (view === 'ask-ai') setView('browse');
     else if (view === 'topics') setView('browse');
     else setView('browse');
@@ -314,22 +333,46 @@ export default function StudyPage() {
   if (view === 'loading') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4 animate-in fade-in duration-300">
-          <div className="relative w-16 h-16 mx-auto">
-            <div className="absolute inset-0 rounded-full border-2 border-primary/20" />
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary animate-spin" />
-            <Sparkles className="absolute inset-0 m-auto h-6 w-6 text-primary animate-pulse" />
+        <EngagingLoader size="lg" message="Getting your notes ready..." />
+      </div>
+    );
+  }
+
+  /* ═══════════════════════════════════════
+     ERROR VIEW
+     ═══════════════════════════════════════ */
+  if (view === 'error') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4 animate-in fade-in duration-300 max-w-sm px-4">
+          <div className="w-14 h-14 mx-auto rounded-full bg-red-500/10 flex items-center justify-center">
+            <X className="h-6 w-6 text-red-500" />
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">Getting Your Notes Ready</h3>
+            <h3 className="font-semibold text-foreground">Something Went Wrong</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Crafting comprehensive notes...
+              {notesError || 'Failed to load notes.'}
             </p>
           </div>
-          <div className="flex items-center justify-center gap-1.5 pt-2">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="w-2 h-2 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
-            ))}
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={() => {
+                if (selectedUnit && selectedTopic) {
+                  selectTopic(selectedUnit, selectedTopic);
+                } else {
+                  goBack();
+                }
+              }}
+              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+            >
+              <RefreshCw className="h-3.5 w-3.5" /> Try Again
+            </button>
+            <button
+              onClick={goBack}
+              className="px-4 py-2 rounded-xl bg-muted text-foreground text-sm font-medium hover:bg-muted/80 transition-colors"
+            >
+              Go Back
+            </button>
           </div>
         </div>
       </div>

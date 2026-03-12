@@ -64,6 +64,7 @@ export default function StudyPage() {
   const [notesLoading, setNotesLoading] = useState(false);
   const [notesMeta, setNotesMeta] = useState<{ topicName: string; unitName: string } | null>(null);
   const [notesError, setNotesError] = useState<string | null>(null);
+  const [availableTopics, setAvailableTopics] = useState<{ nodeId: string; name: string }[]>([]);
 
   // Case of the Day
   const [caseOfDay, setCaseOfDay] = useState<CaseOfDay | null>(null);
@@ -151,19 +152,20 @@ export default function StudyPage() {
           withAssessment: false,
         }),
       }).then(async res => {
-        if (res.ok) {
-          const data = await res.json();
-          if (data.notes) {
-            setNotes(data.notes);
-            setNotesMeta({ topicName: data.topicName, unitName: data.unitName });
-            setView('notes');
-          } else {
-            setNotesError('Notes came back empty. Try again or choose another topic.');
-            setView('error');
-          }
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.notes) {
+          setNotes(data.notes);
+          setNotesMeta({ topicName: data.topicName, unitName: data.unitName });
+          setAvailableTopics([]);
+          setView('notes');
+        } else if (data.availableTopics && data.availableTopics.length > 0) {
+          // No direct match — show available topics from this unit
+          setAvailableTopics(data.availableTopics);
+          setNotesError(data.error || 'Topic not found. Select from available topics below.');
+          setView('error');
         } else {
-          const errData = await res.json().catch(() => ({}));
-          setNotesError(errData.error || 'Failed to load notes. Please try again.');
+          setAvailableTopics([]);
+          setNotesError(data.error || 'Failed to load notes. Please try again.');
           setView('error');
         }
       }).catch(() => {
@@ -171,6 +173,41 @@ export default function StudyPage() {
         setView('error');
       }).finally(() => setNotesLoading(false));
     }).catch(() => { setNotesError('Authentication error. Please refresh the page.'); setView('error'); setNotesLoading(false); });
+  };
+
+  // Select a topic by nodeId (used when picking from available topics)
+  const selectTopicByNodeId = (nodeId: string, topicName: string) => {
+    setNotesError(null);
+    setAvailableTopics([]);
+    setView('loading');
+    setNotesLoading(true);
+    getIdToken().then(token => {
+      fetch('/api/study/notes', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nodeId,
+          topicName,
+          unitName: selectedUnit?.name,
+          unitId: selectedUnit?.id,
+          depth: 'standard',
+          withAssessment: false,
+        }),
+      }).then(async res => {
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.notes) {
+          setNotes(data.notes);
+          setNotesMeta({ topicName: data.topicName, unitName: data.unitName });
+          setView('notes');
+        } else {
+          setNotesError(data.error || 'Failed to load notes. Please try again.');
+          setView('error');
+        }
+      }).catch(() => {
+        setNotesError('Network error. Please check your connection and try again.');
+        setView('error');
+      }).finally(() => setNotesLoading(false));
+    }).catch(() => { setNotesError('Authentication error.'); setView('error'); setNotesLoading(false); });
   };
 
   const generateNotes = async (customPrompt?: string) => {
@@ -343,30 +380,54 @@ export default function StudyPage() {
      ═══════════════════════════════════════ */
   if (view === 'error') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4 animate-in fade-in duration-300 max-w-sm px-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center space-y-4 animate-in fade-in duration-300 max-w-lg w-full">
           <div className="w-14 h-14 mx-auto rounded-full bg-red-500/10 flex items-center justify-center">
             <X className="h-6 w-6 text-red-500" />
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">Something Went Wrong</h3>
+            <h3 className="font-semibold text-foreground">
+              {availableTopics.length > 0 ? 'Topic Not Found' : 'Something Went Wrong'}
+            </h3>
             <p className="text-sm text-muted-foreground mt-1">
               {notesError || 'Failed to load notes.'}
             </p>
           </div>
+
+          {/* Show available topics when the backend returns them */}
+          {availableTopics.length > 0 && (
+            <div className="mt-4 text-left bg-muted/50 rounded-xl p-4 max-h-64 overflow-y-auto">
+              <p className="text-xs text-muted-foreground mb-2 font-medium">Available topics in this unit:</p>
+              <div className="space-y-1">
+                {availableTopics.map((t, i) => (
+                  <button
+                    key={t.nodeId}
+                    onClick={() => selectTopicByNodeId(t.nodeId, t.name)}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-primary/10 text-sm text-foreground transition-colors flex items-center gap-2 group"
+                  >
+                    <BookOpen className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary" />
+                    <span className="line-clamp-1">{t.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2 justify-center">
-            <button
-              onClick={() => {
-                if (selectedUnit && selectedTopic) {
-                  selectTopic(selectedUnit, selectedTopic);
-                } else {
-                  goBack();
-                }
-              }}
-              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5"
-            >
-              <RefreshCw className="h-3.5 w-3.5" /> Try Again
-            </button>
+            {availableTopics.length === 0 && (
+              <button
+                onClick={() => {
+                  if (selectedUnit && selectedTopic) {
+                    selectTopic(selectedUnit, selectedTopic);
+                  } else {
+                    goBack();
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> Try Again
+              </button>
+            )}
             <button
               onClick={goBack}
               className="px-4 py-2 rounded-xl bg-muted text-foreground text-sm font-medium hover:bg-muted/80 transition-colors"

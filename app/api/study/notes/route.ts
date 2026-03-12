@@ -187,32 +187,41 @@ async function handlePost(req: NextRequest, user: AuthUser) {
       }
     }
 
-    // Tier 6: If no match yet and we have a unitId, grab ANY node from this unit
+    // No match found — return available topics for user to choose from
     if (!matchedNodeId && unitId) {
-      console.log(`[study/notes] Tiers 1-5 failed for "${topicName}" (unit: ${unitId}). Trying Tier 6: any node in unit.`);
-      try {
-        const unitCode = unitId.replace(/-/g, '').toUpperCase(); // atp-100 → ATP100
-        const anyNode = await sql`
-          SELECT sn.id FROM syllabus_nodes sn
-          INNER JOIN prebuilt_notes pn ON pn.node_id = sn.id AND pn.is_active = true
-          WHERE UPPER(REPLACE(sn.unit_code, '-', '')) = ${unitCode}
-          ORDER BY sn.week_number ASC, sn.id ASC
-          LIMIT 1
-        `;
-        if (anyNode.length > 0) {
-          matchedNodeId = anyNode[0].id;
-          console.log(`[study/notes] Tier 6 fallback: using node ${matchedNodeId} from unit ${unitId}`);
-        }
-      } catch (e) {
-        console.warn('[study/notes] Tier 6 lookup failed:', e);
+      const unitCode = unitId.replace(/-/g, '').toUpperCase();
+      const available = await sql`
+        SELECT sn.id, sn.topic_name, sn.subtopic_name 
+        FROM syllabus_nodes sn
+        INNER JOIN prebuilt_notes pn ON pn.node_id = sn.id AND pn.is_active = true
+        WHERE UPPER(REPLACE(sn.unit_code, '-', '')) = ${unitCode}
+        ORDER BY sn.week_number ASC, sn.id ASC
+        LIMIT 20
+      ` as any[];
+      
+      if (available.length > 0) {
+        console.log(`[study/notes] No match for "${topicName}" in ${unitId}. Returning ${available.length} available topics.`);
+        return NextResponse.json({
+          error: `No notes found for "${topicName}". Choose a specific topic below.`,
+          noMatch: true,
+          availableTopics: available.map(n => ({
+            nodeId: n.id,
+            name: n.topic_name + (n.subtopic_name ? ': ' + n.subtopic_name : ''),
+          })),
+        }, { status: 404 });
       }
     }
 
     if (!matchedNodeId) {
-      console.log(`[study/notes] No syllabus node match for "${topicName}" (unit: ${unitId}). Using live generation.`);
+      console.log(`[study/notes] No syllabus node match for "${topicName}" (unit: ${unitId}). No pre-built notes available.`);
+      return NextResponse.json({
+        error: `No pre-built notes found for "${topicName}". This topic may not be in the curriculum yet.`,
+        noMatch: true,
+      }, { status: 404 });
     }
 
-    if (matchedNodeId) {
+    // matchedNodeId found — proceed to fetch notes
+    {
       // Check user's version assignment
       let assignedVersion: number | null = null;
       let hasMasteryVersion = false;
@@ -313,23 +322,25 @@ Include model answers for all questions. Use proper Markdown formatting.` },
           generatedAt: new Date().toISOString(),
         });
       } else {
-        console.warn(`[study/notes] Node ${matchedNodeId} found but NO prebuilt_notes rows (is_active=true). Falling back to live generation.`);
+        console.warn(`[study/notes] Node ${matchedNodeId} found but NO prebuilt_notes rows (is_active=true).`);
+        return NextResponse.json({
+          error: `Notes for this topic exist but are currently unavailable. Please try again later.`,
+          nodeId: matchedNodeId,
+        }, { status: 503 });
       }
     }
   } catch (e) {
-    console.error('[study/notes] Pre-built lookup failed, falling back to AI:', e);
-    // Log the actual error stack so we can debug production issues
+    console.error('[study/notes] Pre-built lookup failed:', e);
     if (e instanceof Error) {
       console.error('[study/notes] Stack:', e.stack);
     }
+    return NextResponse.json({
+      error: 'Database error while fetching notes. Please try again.',
+    }, { status: 500 });
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // FALLBACK: Live AI generation (only if no pre-built notes available)
-  // ═══════════════════════════════════════════════════════════
-  console.log(`[study/notes] Falling back to live generation for: "${topicName}" (unit: ${unitId})`);
-  const topicContext = `${topicName} under ${unitName} (${unitId})`;
-  return generateLiveNotes({ topicContext, unitName, depth, withAssessment, topicName });
+  // Should never reach here — all paths above return
+  return NextResponse.json({ error: 'Unexpected state' }, { status: 500 });
 }
 
 /**

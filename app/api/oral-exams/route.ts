@@ -249,6 +249,10 @@ function buildContinuityFallbackQuestion(
   previousAssistantText: string,
   unitId?: string,
 ): string {
+  if (!lastUserText?.trim()) {
+    return buildContextualOpeningQuestion(panelist, unitId);
+  }
+
   const unit = unitId ? ATP_UNITS.find(u => u.id === unitId) : null;
   const area = unit?.name || 'this issue';
   const userSummary = summarizeForPrompt(lastUserText);
@@ -389,6 +393,13 @@ Be specific and reference actual moments from the conversation. Keep it conversa
 
       // Inject session timing context
       const remaining = Math.max(0, sessionMaxMinutes - elapsedMinutes);
+      const phaseCtx = elapsedMinutes < 2
+        ? '[SESSION PHASE: OPENING. Start with a brief welcome line, then ask a precise first question tied to the chosen unit.]'
+        : remaining <= 2
+        ? '[SESSION PHASE: CLOSING. Begin wrap-up naturally: one final challenge, then a concise conclusion.]'
+        : '[SESSION PHASE: DEEP DIVE. Probe the student answer with follow-ups and escalating difficulty.]';
+      apiMessages.push({ role: 'system' as const, content: phaseCtx });
+
       if (elapsedMinutes > 0 && messages.length > 0) {
         const timeCtx = remaining <= 0
           ? `[SESSION TIME IS UP. You MUST end the session now. Say something like: "Time's up, Counsel. That concludes our debate. Let me generate your session summary." Do NOT ask any new questions.]`
@@ -484,6 +495,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
           type: 'devils-advocate',
           content: cleanedResponse,
           voice: 'onyx',
+          sessionEnded: remaining <= 0,
         });
       }
 
@@ -513,6 +525,13 @@ Be specific and reference actual moments from the conversation. Keep it conversa
 
       // Inject session timing context
       const examRemaining = Math.max(0, sessionMaxMinutes - elapsedMinutes);
+      const examPhaseCtx = elapsedMinutes < 2
+        ? '[SESSION PHASE: OPENING. Brief welcome, then one concrete exam question with a clearly named legal issue.]'
+        : examRemaining <= 2
+        ? '[SESSION PHASE: CLOSING. Ask one final concise question, then close the session naturally.]'
+        : '[SESSION PHASE: DEEP DIVE. Continue probing student reasoning with targeted follow-ups.]';
+      apiMessages.push({ role: 'system' as const, content: examPhaseCtx });
+
       if (elapsedMinutes > 0 && messages.length > 0) {
         const timeCtx = examRemaining <= 0
           ? `[SESSION TIME IS UP. End the session now. Say: "${currentPanelist.name}: Thank you, Counsel. That concludes today's examination." Do NOT ask new questions.]`
@@ -629,11 +648,15 @@ Be specific and reference actual moments from the conversation. Keep it conversa
 
         const response = completion.choices[0]?.message?.content || buildContextualFallbackQuestion(currentPanelist, messages, unitId);
         const cleanedResponse = stripSpeakerPrefix(response, currentPanelist.name);
-        const finalResponse = isLowQualityExaminerTurn(cleanedResponse, previousAssistantText)
-          ? (shouldPivotTopic
-              ? buildPivotQuestion(currentPanelist, unitId)
-              : buildContinuityFallbackQuestion(currentPanelist, lastUserText, previousAssistantText, unitId))
-          : cleanedResponse;
+        const finalResponse = messages.length === 0
+          ? (isLowQualityExaminerTurn(cleanedResponse, previousAssistantText)
+              ? buildContextualOpeningQuestion(currentPanelist, unitId)
+              : cleanedResponse)
+          : (isLowQualityExaminerTurn(cleanedResponse, previousAssistantText)
+              ? (shouldPivotTopic
+                  ? buildPivotQuestion(currentPanelist, unitId)
+                  : buildContinuityFallbackQuestion(currentPanelist, lastUserText, previousAssistantText, unitId))
+              : cleanedResponse);
 
         return NextResponse.json({
           type: 'examiner',
@@ -646,6 +669,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
             voice: currentPanelist.voice,
           },
           nextPanelistIndex,
+          sessionEnded: examRemaining <= 0,
         });
       }
     }

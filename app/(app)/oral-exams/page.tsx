@@ -589,6 +589,10 @@ export default function OralExamsPage() {
       // Audio should be ready by now (or nearly so) — play immediately
       const audio = await audioPromise;
       await playAudio(audio);
+
+      if (data.sessionEnded) {
+        setTimeout(() => endSessionRef.current(), 1500);
+      }
     };
 
     try {

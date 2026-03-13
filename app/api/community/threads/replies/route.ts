@@ -25,20 +25,30 @@ async function handleGet(req: NextRequest, user: AuthUser) {
     ORDER BY r.created_at ASC
   `;
 
-  const replies = rawReplies.map((r: any) => ({
-    id: r.id,
-    threadId: r.thread_id,
-    authorId: r.author_id,
-    authorName: r.author_username || r.author_name || 'Anonymous',
-    authorPhoto: r.author_photo,
-    parentReplyId: r.parent_reply_id,
-    content: r.content,
-    upvotes: r.upvotes || 0,
-    downvotes: r.downvotes || 0,
-    isAgentReply: r.is_agent_reply || false,
-    userVote: r.user_vote || null,
-    createdAt: r.created_at,
-  }));
+  const replies = rawReplies.map((r: any) => {
+    const createdAtMs = new Date(r.created_at).getTime();
+    const withinEditWindow = Date.now() - createdAtMs <= 15 * 60 * 1000;
+    const isMine = r.author_id === user.id;
+    const isDeleted = r.content === '[deleted]';
+
+    return {
+      id: r.id,
+      threadId: r.thread_id,
+      authorId: r.author_id,
+      authorName: r.author_username || r.author_name || 'Anonymous',
+      authorPhoto: r.author_photo,
+      parentReplyId: r.parent_reply_id,
+      content: r.content,
+      upvotes: r.upvotes || 0,
+      downvotes: r.downvotes || 0,
+      isAgentReply: r.is_agent_reply || false,
+      userVote: r.user_vote || null,
+      createdAt: r.created_at,
+      isDeleted,
+      canEdit: isMine && !isDeleted && withinEditWindow,
+      canDelete: isMine && !isDeleted,
+    };
+  });
 
   return NextResponse.json({ replies });
 }
@@ -77,6 +87,9 @@ async function handlePost(req: NextRequest, user: AuthUser) {
     isAgentReply: false,
     userVote: null,
     createdAt: rawReply.created_at,
+    isDeleted: false,
+    canEdit: true,
+    canDelete: true,
   };
 
   return NextResponse.json({ reply }, { status: 201 });
@@ -85,11 +98,87 @@ async function handlePost(req: NextRequest, user: AuthUser) {
 // PATCH - Vote on a reply
 async function handlePatch(req: NextRequest, user: AuthUser) {
   const body = await req.json();
-  const { replyId, voteType, vote } = body;
+  const { replyId, voteType, vote, action, content } = body;
   const effectiveVote = voteType || vote;
 
   if (!replyId) {
     return NextResponse.json({ error: 'Reply ID required' }, { status: 400 });
+  }
+
+  if (action === 'edit') {
+    if (!content || typeof content !== 'string' || !content.trim()) {
+      return NextResponse.json({ error: 'Content required' }, { status: 400 });
+    }
+
+    const [targetReply] = await sql`
+      SELECT id, author_id, created_at, content
+      FROM thread_replies
+      WHERE id = ${replyId}
+      LIMIT 1
+    `;
+
+    if (!targetReply) {
+      return NextResponse.json({ error: 'Reply not found' }, { status: 404 });
+    }
+
+    if (targetReply.author_id !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const createdAtMs = new Date(targetReply.created_at).getTime();
+    if (Date.now() - createdAtMs > 15 * 60 * 1000) {
+      return NextResponse.json({ error: 'Edit window expired (15 minutes)' }, { status: 400 });
+    }
+
+    if (targetReply.content === '[deleted]') {
+      return NextResponse.json({ error: 'Deleted replies cannot be edited' }, { status: 400 });
+    }
+
+    const [updated] = await sql`
+      UPDATE thread_replies
+      SET content = ${content.trim()}
+      WHERE id = ${replyId}
+      RETURNING id, content, created_at
+    `;
+
+    const canEdit = Date.now() - new Date(updated.created_at).getTime() <= 15 * 60 * 1000;
+    return NextResponse.json({
+      ok: true,
+      reply: {
+        id: updated.id,
+        content: updated.content,
+        canEdit,
+      },
+    });
+  }
+
+  if (action === 'delete') {
+    const [targetReply] = await sql`
+      SELECT id, author_id, content
+      FROM thread_replies
+      WHERE id = ${replyId}
+      LIMIT 1
+    `;
+
+    if (!targetReply) {
+      return NextResponse.json({ error: 'Reply not found' }, { status: 404 });
+    }
+
+    if (targetReply.author_id !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (targetReply.content === '[deleted]') {
+      return NextResponse.json({ ok: true });
+    }
+
+    await sql`
+      UPDATE thread_replies
+      SET content = '[deleted]'
+      WHERE id = ${replyId}
+    `;
+
+    return NextResponse.json({ ok: true });
   }
 
   const [existing] = await sql`

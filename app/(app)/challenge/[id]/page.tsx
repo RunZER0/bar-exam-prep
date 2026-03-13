@@ -77,12 +77,14 @@ export default function ChallengePage() {
   // Load challenge data
   useEffect(() => {
     const loadChallenge = async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
       try {
-        const res = await apiFetch('/api/community/events');
+        const res = await apiFetch(`/api/community/events?eventId=${challengeId}`, { signal: controller.signal });
         if (!res.ok) throw new Error('Failed to load');
         const data = await res.json();
-        const allEvents = [...(data.aiChallenges || []), ...(data.communityChallenges || [])];
-        const found = allEvents.find((e: any) => e.id === challengeId);
+        const allEvents = [...(data.events || []), ...(data.aiChallenges || []), ...(data.communityChallenges || [])];
+        const found = allEvents.find((e: any) => e.id === challengeId) || null;
         if (!found) {
           setError('Challenge not found');
           return;
@@ -110,6 +112,7 @@ export default function ChallengePage() {
       } catch {
         setError('Failed to load challenge');
       } finally {
+        clearTimeout(timeout);
         setLoading(false);
       }
     };

@@ -187,6 +187,69 @@ async function handlePost(req: NextRequest, user: AuthUser) {
       }
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // TIER 6: AI-POWERED SEMANTIC MATCHING
+    // When fuzzy matching fails, use AI to intelligently find the best
+    // syllabus node that matches the frontend topic name.
+    // ═══════════════════════════════════════════════════════════
+    if (!matchedNodeId && unitId && topicName) {
+      const unitCode = unitId.replace(/-/g, '').toUpperCase();
+      const candidates = await sql`
+        SELECT sn.id, sn.topic_name, sn.subtopic_name 
+        FROM syllabus_nodes sn
+        INNER JOIN prebuilt_notes pn ON pn.node_id = sn.id AND pn.is_active = true
+        WHERE UPPER(REPLACE(sn.unit_code, '-', '')) = ${unitCode}
+        ORDER BY sn.week_number ASC, sn.id ASC
+        LIMIT 30
+      ` as any[];
+      
+      if (candidates.length > 0) {
+        console.log(`[study/notes] Tier 6: AI matching for "${topicName}" against ${candidates.length} candidates`);
+        
+        try {
+          const candidateList = candidates.map((c, i) => 
+            `${i + 1}. ${c.topic_name}${c.subtopic_name ? ': ' + c.subtopic_name : ''}`
+          ).join('\n');
+          
+          const openai = getOpenAI();
+          const aiResponse = await openai.chat.completions.create({
+            model: MINI_MODEL,
+            max_tokens: 50,
+            temperature: 0,
+            messages: [{
+              role: 'system',
+              content: `You're helping match a user's topic request to official syllabus nodes for Philippine Bar Exam prep.
+Given a search term and numbered list of available topics, return ONLY the number of the best matching topic.
+If NO topic is a reasonable match (completely unrelated), return 0.
+Consider that users may use informal/abbreviated names. Match conceptually, not just literally.
+Examples: "Jurisdiction" matches "Jurisdiction of Courts". "Evidence Rules" matches "Admissibility of Evidence".`
+            }, {
+              role: 'user',
+              content: `Search term: "${topicName}"
+
+Available topics:
+${candidateList}
+
+Return only the number (1-${candidates.length}) or 0 if no match:`
+            }],
+          });
+          
+          const answer = aiResponse.choices[0]?.message?.content?.trim() || '0';
+          const matchIndex = parseInt(answer, 10);
+          
+          if (matchIndex > 0 && matchIndex <= candidates.length) {
+            matchedNodeId = candidates[matchIndex - 1].id;
+            console.log(`[study/notes] AI matched "${topicName}" → "${candidates[matchIndex - 1].topic_name}" (index ${matchIndex})`);
+          } else {
+            console.log(`[study/notes] AI found no semantic match for "${topicName}"`);
+          }
+        } catch (aiErr) {
+          console.error('[study/notes] AI matching failed:', aiErr);
+          // Continue to 404 fallback
+        }
+      }
+    }
+
     // No match found — return available topics for user to choose from
     if (!matchedNodeId && unitId) {
       const unitCode = unitId.replace(/-/g, '').toUpperCase();

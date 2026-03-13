@@ -459,6 +459,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
     const type = searchParams.get('type');
+    const eventId = searchParams.get('eventId');
 
     // Community Agent: kick off challenge generation in the background
     // so it never blocks the response to the user
@@ -493,6 +494,7 @@ export async function GET(req: NextRequest) {
     // Filter out rejected
     allEvents = allEvents.filter(e => (e.reviewStatus || 'approved') !== 'rejected');
 
+    if (eventId) allEvents = allEvents.filter(e => e.id === eventId);
     if (status) allEvents = allEvents.filter(e => e.status === status);
     if (type) allEvents = allEvents.filter(e => e.type === type);
 
@@ -570,6 +572,7 @@ export async function GET(req: NextRequest) {
     // Community challenges — same for everyone, no per-user personalization.
     // Sort by unit order (atp-100 through atp-108) for consistency.
     aiChallenges.sort((a, b) => (a.unitId || '').localeCompare(b.unitId || ''));
+    aiChallenges = aiChallenges.slice(0, 4);
 
     return NextResponse.json({ events: enriched, aiChallenges, communityChallenges });
   } catch (error) {

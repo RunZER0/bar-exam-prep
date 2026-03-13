@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
@@ -155,7 +155,16 @@ interface ThreadReply {
   isAgentReply: boolean;
   userVote: 'up' | 'down' | null;
   createdAt: string;
+  isDeleted?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
+
+type OrderedReply = {
+  reply: ThreadReply;
+  depth: number;
+  parent: ThreadReply | null;
+};
 
 const THREAD_CATEGORIES = [
   { id: 'all', label: 'All' },
@@ -224,6 +233,52 @@ function getTimeAgo(dateStr: string | null | undefined): string {
   if (days < 7) return `${days}d ago`;
   if (days < 30) return `${Math.floor(days / 7)}w ago`;
   return `${Math.floor(days / 30)}mo ago`;
+}
+
+function orderRepliesHierarchically(replies: ThreadReply[]): OrderedReply[] {
+  if (!replies.length) return [];
+
+  const byId = new Map<string, ThreadReply>();
+  const byParent = new Map<string | null, ThreadReply[]>();
+
+  for (const reply of replies) {
+    byId.set(reply.id, reply);
+    const key = reply.parentReplyId || null;
+    const existing = byParent.get(key) || [];
+    existing.push(reply);
+    byParent.set(key, existing);
+  }
+
+  for (const children of byParent.values()) {
+    children.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }
+
+  const result: OrderedReply[] = [];
+  const visited = new Set<string>();
+
+  const walk = (parentId: string | null, depth: number) => {
+    const children = byParent.get(parentId) || [];
+    for (const child of children) {
+      if (visited.has(child.id)) continue;
+      visited.add(child.id);
+      result.push({
+        reply: child,
+        depth,
+        parent: child.parentReplyId ? byId.get(child.parentReplyId) || null : null,
+      });
+      walk(child.id, Math.min(depth + 1, 6));
+    }
+  };
+
+  walk(null, 0);
+
+  for (const reply of replies) {
+    if (!visited.has(reply.id)) {
+      result.push({ reply, depth: 0, parent: null });
+    }
+  }
+
+  return result;
 }
 
 /* ================================================================
@@ -301,6 +356,8 @@ export default function CommunityPage() {
   const [submittingReply, setSubmittingReply] = useState(false);
   const [loadingReplies, setLoadingReplies] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ThreadReply | null>(null);
+  const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
+  const [editReplyInput, setEditReplyInput] = useState('');
 
   // Direct Messages
   const [dmConversations, setDmConversations] = useState<DMConversation[]>([]);
@@ -313,6 +370,8 @@ export default function CommunityPage() {
   const [myPhotoURL, setMyPhotoURL] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const didInitUsernameCheckRef = useRef(false);
+  const usernameSetupCompletedRef = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatFileInputRef = useRef<HTMLInputElement>(null);
@@ -393,6 +452,8 @@ export default function CommunityPage() {
 
   /* ---- Check username on mount ---- */
   useEffect(() => {
+    if (didInitUsernameCheckRef.current) return;
+    didInitUsernameCheckRef.current = true;
     checkUsername();
   }, []);
 
@@ -401,9 +462,12 @@ export default function CommunityPage() {
       const res = await apiFetch('/api/community/username');
       if (res.ok) {
         const data = await res.json();
+        if (usernameSetupCompletedRef.current) {
+          setUsernameChecked(true);
+          return;
+        }
         if (!data.hasUsername) {
           setSuggestedUsername(data.suggestedUsername || '');
-          setUsername(data.suggestedUsername || '');
           setShowUsernameSetup(true);
         }
       }
@@ -438,6 +502,9 @@ export default function CommunityPage() {
         body: JSON.stringify({ username }),
       });
       if (res.ok) {
+        usernameSetupCompletedRef.current = true;
+        setSuggestedUsername('');
+        setUsernameChecked(true);
         setShowUsernameSetup(false);
         loadTabData('rooms');
       } else {
@@ -487,7 +554,12 @@ export default function CommunityPage() {
           apiFetch('/api/community/events'),
           apiFetch('/api/community/rankings'),
         ]);
-        if (evRes.ok) { const d = await evRes.json(); setEvents(d.events || []); setAiChallenges(d.aiChallenges || []); setCommunityChallenges(d.communityChallenges || []); }
+        if (evRes.ok) {
+          const d = await evRes.json();
+          setEvents(d.events || []);
+          setAiChallenges((d.aiChallenges || []).slice(0, 4));
+          setCommunityChallenges(d.communityChallenges || []);
+        }
         if (rkRes.ok) { const d = await rkRes.json(); setRankings(d.rankings || []); setWeekInfo(d.weekInfo || null); }
       } else if (t === 'rankings') {
         const res = await apiFetch('/api/community/rankings');
@@ -769,6 +841,36 @@ export default function CommunityPage() {
     finally { setSubmittingReply(false); }
   };
 
+  const editReply = async (replyId: string, content: string) => {
+    if (!content.trim()) return;
+    try {
+      const res = await apiFetch('/api/community/threads/replies', {
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'edit', replyId, content: content.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setThreadReplies(prev => prev.map(r => r.id === replyId ? { ...r, content: data.reply?.content || content.trim(), canEdit: data.reply?.canEdit ?? false } : r));
+        setEditingReplyId(null);
+        setEditReplyInput('');
+      }
+    } catch {}
+  };
+
+  const deleteReply = async (replyId: string) => {
+    try {
+      const res = await apiFetch('/api/community/threads/replies', {
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'delete', replyId }),
+      });
+      if (res.ok) {
+        setThreadReplies(prev => prev.map(r => r.id === replyId ? { ...r, content: '[deleted]', isDeleted: true, canEdit: false, canDelete: false } : r));
+      }
+    } catch {}
+  };
+
+  const orderedThreadReplies = useMemo(() => orderRepliesHierarchically(threadReplies), [threadReplies]);
+
   const voteReply = async (replyId: string, vote: 'up' | 'down' | 'none') => {
     const prevReplies = [...threadReplies];
     setThreadReplies(prev => prev.map(r => {
@@ -991,20 +1093,6 @@ export default function CommunityPage() {
               >
                 <Paperclip className="h-4 w-4" />
               </button>
-              <button
-                className={`p-1.5 rounded-lg transition-colors ${chatIsRecording && chatInputContext === 'dm' ? 'bg-red-500/15 text-red-500' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}
-                title="Voice message"
-                onClick={() => {
-                  setChatInputContext('dm');
-                  if (chatIsRecording) stopChatRecording();
-                  else startChatRecording(fn => setDmInput(fn));
-                }}
-              >
-                {chatIsRecording && chatInputContext === 'dm' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-              </button>
-              {chatIsRecording && chatInputContext === 'dm' && (
-                <span className="text-xs text-red-500 font-mono">{Math.floor(chatRecordingTime / 60)}:{String(chatRecordingTime % 60).padStart(2, '0')}</span>
-              )}
             </div>
             <textarea
               value={dmInput}
@@ -1094,6 +1182,7 @@ export default function CommunityPage() {
                 }}
                 onBlur={() => checkUsernameAvailability(username)}
                 placeholder="your_username"
+                autoComplete="off"
                 className="w-full pl-8 pr-10 py-2.5 rounded-xl bg-background border border-border/30 text-sm outline-none focus:ring-1 focus:ring-primary/30"
                 maxLength={20}
               />
@@ -1249,20 +1338,6 @@ export default function CommunityPage() {
               >
                 <Paperclip className="h-4 w-4" />
               </button>
-              <button
-                className={`p-1.5 rounded-lg transition-colors ${chatIsRecording && chatInputContext === 'room' ? 'bg-red-500/15 text-red-500' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}
-                title="Voice message"
-                onClick={() => {
-                  setChatInputContext('room');
-                  if (chatIsRecording) stopChatRecording();
-                  else startChatRecording(fn => setMsgInput(fn));
-                }}
-              >
-                {chatIsRecording && chatInputContext === 'room' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-              </button>
-              {chatIsRecording && chatInputContext === 'room' && (
-                <span className="text-xs text-red-500 font-mono">{Math.floor(chatRecordingTime / 60)}:{String(chatRecordingTime % 60).padStart(2, '0')}</span>
-              )}
             </div>
             <textarea
               value={msgInput}
@@ -1753,13 +1828,25 @@ export default function CommunityPage() {
                     <button onClick={() => setReplyingTo(null)} className="ml-auto"><X className="h-3 w-3" /></button>
                   </div>
                 )}
-                <div className="flex gap-2">
-                  <input
+                <div className="flex gap-2 items-end">
+                  <textarea
                     value={replyInput}
-                    onChange={e => setReplyInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && postReply()}
+                    onChange={e => {
+                      setReplyInput(e.target.value);
+                      const el = e.target;
+                      el.style.height = 'auto';
+                      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        postReply();
+                      }
+                    }}
                     placeholder={replyingTo ? `Reply to ${replyingTo.authorName}...` : "Write a reply..."}
-                    className="flex-1 px-3 py-2 rounded-xl border border-border/30 bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
+                    rows={1}
+                    className="flex-1 px-3 py-2 rounded-xl border border-border/30 bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none overflow-y-auto"
+                    style={{ minHeight: '40px', maxHeight: '120px' }}
                   />
                   <button
                     onClick={postReply}
@@ -1789,19 +1876,19 @@ export default function CommunityPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {threadReplies.map(reply => {
-                    const parentReply = reply.parentReplyId ? threadReplies.find(r => r.id === reply.parentReplyId) : null;
+                  {orderedThreadReplies.map(({ reply, depth, parent }) => {
                     return (
                     <div
                       key={reply.id}
                       className={`rounded-xl border bg-card/30 p-3.5 ${
                         reply.isAgentReply ? 'border-primary/15' : 'border-border/10'
-                      } ${reply.parentReplyId ? 'ml-6 border-l-2 border-l-primary/20' : ''}`}
+                      } ${depth > 0 ? 'border-l-2 border-l-primary/20' : ''}`}
+                      style={depth > 0 ? { marginLeft: `${Math.min(depth, 4) * 16}px` } : undefined}
                     >
-                      {parentReply && (
+                      {parent && (
                         <div className="flex items-center gap-1.5 mb-2 text-[10px] text-muted-foreground">
                           <CornerDownRight className="h-3 w-3" />
-                          <span>Replying to <span className="font-semibold">{parentReply.authorName}</span></span>
+                          <span>Replying to <span className="font-semibold">{parent.authorName}</span></span>
                         </div>
                       )}
                       <div className="flex items-start gap-3">
@@ -1820,26 +1907,79 @@ export default function CommunityPage() {
                             )}
                             <span className="text-[10px] text-muted-foreground">{getTimeAgo(reply.createdAt)}</span>
                           </div>
-                          <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{reply.content}</p>
+                          {editingReplyId === reply.id ? (
+                            <div className="space-y-2">
+                              <textarea
+                                value={editReplyInput}
+                                onChange={e => {
+                                  setEditReplyInput(e.target.value);
+                                  const el = e.target;
+                                  el.style.height = 'auto';
+                                  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+                                }}
+                                rows={1}
+                                className="w-full px-2.5 py-2 rounded-lg border border-border/30 bg-background text-sm resize-none overflow-y-auto"
+                                style={{ minHeight: '38px', maxHeight: '120px' }}
+                              />
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => editReply(reply.id, editReplyInput)}
+                                  disabled={!editReplyInput.trim()}
+                                  className="px-2 py-1 rounded-md bg-primary text-primary-foreground text-[11px] disabled:opacity-40"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => { setEditingReplyId(null); setEditReplyInput(''); }}
+                                  className="px-2 py-1 rounded-md bg-muted text-xs"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className={`text-sm whitespace-pre-wrap leading-relaxed ${reply.isDeleted ? 'text-muted-foreground italic' : 'text-foreground/80'}`}>
+                              {reply.isDeleted ? 'This message was deleted' : reply.content}
+                            </p>
+                          )}
                           <div className="flex items-center gap-2 mt-2">
                             <button
                               onClick={() => voteReply(reply.id, reply.userVote === 'up' ? 'none' : 'up')}
+                              disabled={reply.isDeleted}
                               className={`p-1 rounded-md text-xs flex items-center gap-0.5 ${reply.userVote === 'up' ? 'text-primary bg-primary/10' : 'text-muted-foreground/40 hover:text-primary'}`}
                             >
                               <ThumbsUp className="h-3 w-3" /> {reply.upvotes || ''}
                             </button>
                             <button
                               onClick={() => voteReply(reply.id, reply.userVote === 'down' ? 'none' : 'down')}
+                              disabled={reply.isDeleted}
                               className={`p-1 rounded-md text-xs ${reply.userVote === 'down' ? 'text-red-500 bg-red-500/10' : 'text-muted-foreground/40 hover:text-red-500'}`}
                             >
                               <ThumbsDown className="h-3 w-3" />
                             </button>
                             <button
                               onClick={() => { setReplyingTo(reply); }}
+                              disabled={reply.isDeleted}
                               className="p-1 rounded-md text-xs flex items-center gap-0.5 text-muted-foreground/40 hover:text-primary"
                             >
                               <CornerDownRight className="h-3 w-3" /> Reply
                             </button>
+                            {reply.canEdit && !reply.isDeleted && (
+                              <button
+                                onClick={() => { setEditingReplyId(reply.id); setEditReplyInput(reply.content); }}
+                                className="p-1 rounded-md text-xs text-muted-foreground/40 hover:text-primary"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {reply.canDelete && !reply.isDeleted && (
+                              <button
+                                onClick={() => deleteReply(reply.id)}
+                                className="p-1 rounded-md text-xs text-muted-foreground/40 hover:text-red-500"
+                              >
+                                Delete
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>

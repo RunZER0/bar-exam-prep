@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
-import { ATP_UNITS, TOPICS_BY_UNIT } from '@/lib/constants/legal-content';
+import { ATP_UNITS } from '@/lib/constants/legal-content';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import EngagingLoader from '@/components/EngagingLoader';
 import {
@@ -76,6 +76,16 @@ export default function StudyPage() {
   const [aiPrompt, setAiPrompt] = useState('');
   const aiInputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Syllabus nodes from DB
+  const [syllabusNodes, setSyllabusNodes] = useState<Record<string, Array<{
+    id: string; topicName: string; subtopicName: string | null;
+    weekNumber: number; isHighYield: boolean; isDraftingNode: boolean;
+    sectionReference: string | null; hasNotes: boolean;
+  }>>>({});
+  const [nodesTotal, setNodesTotal] = useState(0);
+  const [nodesLoading, setNodesLoading] = useState(true);
+  const [topicSearch, setTopicSearch] = useState('');
+
   // Saved Notes
   const [savedNotesIndex, setSavedNotesIndex] = useState<Array<{ key: string; skillName: string; unitName: string; savedAt: string }>>([]);
   const [viewingSavedNote, setViewingSavedNote] = useState<{ skillName: string; unitName: string; sections: any[]; savedAt: string } | null>(null);
@@ -104,6 +114,24 @@ export default function StudyPage() {
       setViewingSavedNote(parsed);
     }
   }, []);
+
+  // Fetch syllabus nodes from DB on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await getIdToken();
+        const res = await fetch('/api/study/syllabus-nodes', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setSyllabusNodes(data.nodes || {});
+          setNodesTotal(data.total || 0);
+        }
+      } catch { /* silent */ }
+      finally { setNodesLoading(false); }
+    })();
+  }, [getIdToken]);
 
   // Fetch case of the day on mount
   useEffect(() => {
@@ -726,14 +754,47 @@ export default function StudyPage() {
             )}
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
               <Layers className="h-3.5 w-3.5" />
-              Course Outlines • {ATP_UNITS.length} Units
+              Syllabus Topics • {nodesLoading ? '...' : `${nodesTotal} nodes across ${ATP_UNITS.length} units`}
             </h2>
+
+            {/* Search filter */}
+            <div className="relative mb-2">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+              <input
+                type="text"
+                value={topicSearch}
+                onChange={e => setTopicSearch(e.target.value)}
+                placeholder="Search topics..."
+                className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-border/30 bg-card/50 focus:outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground/40"
+              />
+              {topicSearch && (
+                <button onClick={() => setTopicSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                  <X className="h-3 w-3 text-muted-foreground/50 hover:text-foreground" />
+                </button>
+              )}
+            </div>
 
             <div className="space-y-1">
               {ATP_UNITS.map(unit => {
                 const Icon = ICON_MAP[unit.icon] || BookOpen;
-                const topics = TOPICS_BY_UNIT[unit.id] || [];
+                // Map unit.id (atp-100) to DB unit_code (ATP100)
+                const dbKey = unit.id.replace(/-/g, '').toUpperCase();
+                const dbTopics = syllabusNodes[dbKey] || [];
                 const isExpanded = expandedUnits.has(unit.id);
+
+                // Filter topics by search
+                const searchLower = topicSearch.toLowerCase();
+                const filteredTopics = topicSearch
+                  ? dbTopics.filter(t =>
+                      t.topicName.toLowerCase().includes(searchLower) ||
+                      (t.subtopicName && t.subtopicName.toLowerCase().includes(searchLower)) ||
+                      (t.sectionReference && t.sectionReference.toLowerCase().includes(searchLower))
+                    )
+                  : dbTopics;
+
+                // Auto-expand units with search matches
+                const shouldExpand = isExpanded || (topicSearch && filteredTopics.length > 0);
+                if (topicSearch && filteredTopics.length === 0) return null;
 
                 return (
                   <div key={unit.id} className="rounded-lg border border-border/30 overflow-hidden transition-all">
@@ -752,29 +813,85 @@ export default function StudyPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[10px] text-muted-foreground">{topics.length}</span>
-                        <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground/40 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                        <span className="text-[10px] text-muted-foreground">
+                          {topicSearch ? `${filteredTopics.length}/${dbTopics.length}` : dbTopics.length || (nodesLoading ? '...' : '0')}
+                        </span>
+                        <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground/40 transition-transform duration-200 ${shouldExpand ? 'rotate-180' : ''}`} />
                       </div>
                     </button>
 
                     {/* Topics Dropdown */}
-                    {isExpanded && topics.length > 0 && (
-                      <div className="border-t border-border/20 bg-muted/20 animate-in fade-in slide-in-from-top-1 duration-200">
-                        {topics.map((topic, idx) => (
-                          <button
-                            key={topic.id}
-                            onClick={() => selectTopic(unit, topic)}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 pl-12 hover:bg-card/60 transition-colors group border-b border-border/10 last:border-0"
-                          >
-                            <div className="w-5 h-5 rounded-md bg-primary/5 flex items-center justify-center shrink-0 text-[9px] font-semibold text-primary/50 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                              {idx + 1}
-                            </div>
-                            <div className="flex-1 text-left min-w-0">
-                              <p className="text-xs font-medium group-hover:text-primary transition-colors truncate">{topic.name}</p>
-                            </div>
-                            <Play className="h-3 w-3 text-muted-foreground/20 group-hover:text-primary shrink-0 transition-colors" />
-                          </button>
-                        ))}
+                    {shouldExpand && filteredTopics.length > 0 && (
+                      <div className="border-t border-border/20 bg-muted/20 animate-in fade-in slide-in-from-top-1 duration-200 max-h-[60vh] overflow-y-auto">
+                        {filteredTopics.map((node, idx) => {
+                          const displayName = node.subtopicName
+                            ? `${node.topicName}: ${node.subtopicName}`
+                            : node.topicName;
+                          return (
+                            <button
+                              key={node.id}
+                              onClick={() => {
+                                setSelectedUnit(unit);
+                                setSelectedTopic({ id: node.id, name: displayName, description: '' });
+                                setNotesError(null);
+                                setView('loading');
+                                setNotesLoading(true);
+                                getIdToken().then(token => {
+                                  fetch('/api/study/notes', {
+                                    method: 'POST',
+                                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      nodeId: node.id,
+                                      topicName: displayName,
+                                      unitName: unit.name,
+                                      unitId: unit.id,
+                                      depth: 'standard',
+                                      withAssessment: false,
+                                    }),
+                                  }).then(async res => {
+                                    const data = await res.json().catch(() => ({}));
+                                    if (res.ok && data.notes) {
+                                      setNotes(data.notes);
+                                      setNotesMeta({ topicName: data.topicName || displayName, unitName: data.unitName || unit.name });
+                                      setAvailableTopics([]);
+                                      setView('notes');
+                                    } else {
+                                      setNotesError(data.error || 'Failed to load notes. Please try again.');
+                                      setView('error');
+                                    }
+                                  }).catch(() => {
+                                    setNotesError('Network error. Please check your connection.');
+                                    setView('error');
+                                  }).finally(() => setNotesLoading(false));
+                                }).catch(() => { setNotesError('Authentication error.'); setView('error'); setNotesLoading(false); });
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 pl-12 hover:bg-card/60 transition-colors group border-b border-border/10 last:border-0"
+                            >
+                              <div className="w-5 h-5 rounded-md bg-primary/5 flex items-center justify-center shrink-0 text-[9px] font-semibold text-primary/50 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                {idx + 1}
+                              </div>
+                              <div className="flex-1 text-left min-w-0">
+                                <p className="text-xs font-medium group-hover:text-primary transition-colors truncate">{displayName}</p>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  {node.isHighYield && (
+                                    <span className="text-[9px] px-1 py-0.5 rounded bg-amber-500/10 text-amber-600 font-medium">High Yield</span>
+                                  )}
+                                  {node.isDraftingNode && (
+                                    <span className="text-[9px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-600 font-medium">Drafting</span>
+                                  )}
+                                  {node.sectionReference && (
+                                    <span className="text-[9px] text-muted-foreground/60 truncate">{node.sectionReference}</span>
+                                  )}
+                                </div>
+                              </div>
+                              {node.hasNotes ? (
+                                <Play className="h-3 w-3 text-muted-foreground/20 group-hover:text-primary shrink-0 transition-colors" />
+                              ) : (
+                                <Sparkles className="h-3 w-3 text-muted-foreground/20 group-hover:text-amber-500 shrink-0 transition-colors" />
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

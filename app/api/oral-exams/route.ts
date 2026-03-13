@@ -682,9 +682,10 @@ RULES:
         apiMessages.push({ role: 'system' as const, content: timeCtx });
       }
 
-      // Determine response length hint — randomize to encourage variety
+      // Determine response length hint — heavily biased toward SHORT punchy responses
+      // Devil's advocate should jab, not lecture
       const lengthRoll = Math.random();
-      const maxTokens = lengthRoll < 0.3 ? 150 : lengthRoll < 0.7 ? 400 : 700;
+      const maxTokens = lengthRoll < 0.45 ? 120 : lengthRoll < 0.80 ? 250 : 450;
 
       // If no messages, generate opening challenge
       if (messages.length === 0) {

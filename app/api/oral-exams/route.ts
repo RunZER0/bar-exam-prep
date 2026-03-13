@@ -212,6 +212,62 @@ function stripSpeakerPrefix(text: string, panelistName?: string): string {
   return cleaned;
 }
 
+function normalizeForComparison(text: string): string {
+  return (text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isLowQualityExaminerTurn(text: string, previousAssistantText: string): boolean {
+  const normalized = normalizeForComparison(text);
+  const previous = normalizeForComparison(previousAssistantText);
+
+  if (!normalized) return true;
+  if (/let us begin/.test(normalized)) return true;
+  if (/state your understanding of the first principle/.test(normalized)) return true;
+  if (normalized.length < 25) return true;
+
+  if (previous) {
+    if (normalized === previous) return true;
+    if (previous.includes(normalized) || normalized.includes(previous)) return true;
+  }
+
+  return false;
+}
+
+function summarizeForPrompt(text: string, maxWords: number = 16): string {
+  const words = (text || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+  if (words.length === 0) return 'no clear answer provided yet';
+  return words.slice(0, maxWords).join(' ');
+}
+
+function buildContinuityFallbackQuestion(
+  panelist: typeof PANELISTS[0],
+  lastUserText: string,
+  previousAssistantText: string,
+  unitId?: string,
+): string {
+  const unit = unitId ? ATP_UNITS.find(u => u.id === unitId) : null;
+  const area = unit?.name || 'this issue';
+  const userSummary = summarizeForPrompt(lastUserText);
+
+  if (panelist.id === 'justice-mwangi') {
+    return `On your last answer (${userSummary}), identify the precise legal test that governs ${area}, then cite one exact section or constitutional article and apply it to facts.`;
+  }
+  if (panelist.id === 'advocate-amara') {
+    return `You said: "${userSummary}". Now give me the next procedural move, the legal basis, and one consequence if counsel gets it wrong in practice.`;
+  }
+  if (panelist.id === 'prof-otieno') {
+    return `Building on your response (${userSummary}), distinguish the core rule from its policy rationale, then support both with one authority relevant to ${area}.`;
+  }
+
+  return previousAssistantText
+    ? `Following your previous answer (${userSummary}), respond directly to the issue raised and support your position with one specific legal authority.`
+    : `Build on your previous point (${userSummary}) and support it with a specific legal authority.`;
+}
+
 /* ================================================================
    POST — Handle oral exam conversation
    ================================================================ */
@@ -416,6 +472,16 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         ...messages.map((m: any) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
       ];
 
+      const previousAssistantText = [...messages].reverse().find((m: any) => m.role === 'assistant')?.content || '';
+      const lastUserText = [...messages].reverse().find((m: any) => m.role === 'user')?.content || '';
+
+      if (lastUserText) {
+        apiMessages.push({
+          role: 'system' as const,
+          content: `CONTINUITY REQUIREMENT: The student's latest answer was: "${summarizeForPrompt(lastUserText, 30)}". Your next turn MUST explicitly engage that answer (correct it, deepen it, or challenge it). Do not restart with a generic opening.`
+        });
+      }
+
       // Inject session timing context
       const examRemaining = Math.max(0, sessionMaxMinutes - elapsedMinutes);
       if (elapsedMinutes > 0 && messages.length > 0) {
@@ -440,7 +506,6 @@ Be specific and reference actual moments from the conversation. Keep it conversa
       }
 
       // Determine next panelist (round-robin with occasional same-panelist follow-up)
-      const lastUserText = [...messages].reverse().find((m: any) => m.role === 'user')?.content || '';
       const clarificationRequested = /what do you mean|clarify|not clear|which principle|explain/i.test(lastUserText);
       const shouldFollowUp = messages.length > 0 && (clarificationRequested || Math.random() < 0.55);
       const nextPanelistIndex = shouldFollowUp
@@ -489,9 +554,12 @@ Be specific and reference actual moments from the conversation. Keep it conversa
 
               // Send final complete message
               const cleanedContent = stripSpeakerPrefix(fullContent, currentPanelist.name);
+              const finalContent = isLowQualityExaminerTurn(cleanedContent, previousAssistantText)
+                ? buildContinuityFallbackQuestion(currentPanelist, lastUserText, previousAssistantText, unitId)
+                : cleanedContent;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'done',
-                fullContent: cleanedContent,
+                fullContent: finalContent,
               })}\n\n`));
 
               controller.close();
@@ -522,10 +590,13 @@ Be specific and reference actual moments from the conversation. Keep it conversa
 
         const response = completion.choices[0]?.message?.content || buildContextualFallbackQuestion(currentPanelist, messages, unitId);
         const cleanedResponse = stripSpeakerPrefix(response, currentPanelist.name);
+        const finalResponse = isLowQualityExaminerTurn(cleanedResponse, previousAssistantText)
+          ? buildContinuityFallbackQuestion(currentPanelist, lastUserText, previousAssistantText, unitId)
+          : cleanedResponse;
 
         return NextResponse.json({
           type: 'examiner',
-          content: cleanedResponse,
+          content: finalResponse,
           panelist: {
             id: currentPanelist.id,
             name: currentPanelist.name,

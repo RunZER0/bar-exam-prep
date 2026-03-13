@@ -238,7 +238,6 @@ Be specific and reference actual moments from the conversation. Keep it conversa
       const completion = await openai.chat.completions.create({
         model: MINI_MODEL,
         messages: summaryMessages,
-        temperature: 0.7,
         max_completion_tokens: 2000,
       });
 
@@ -285,7 +284,6 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         const streamResponse = await openai.chat.completions.create({
           model: MINI_MODEL,
           messages: apiMessages,
-          temperature: 0.8,
           max_completion_tokens: maxTokens,
           stream: true,
         });
@@ -344,7 +342,6 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         const completion = await openai.chat.completions.create({
           model: MINI_MODEL,
           messages: apiMessages,
-          temperature: 0.8,
           max_completion_tokens: maxTokens,
         });
 
@@ -403,7 +400,6 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         const streamResponse = await openai.chat.completions.create({
           model: MINI_MODEL,
           messages: apiMessages,
-          temperature: 0.8,
           max_completion_tokens: examMaxTokens,
           stream: true,
         });
@@ -468,7 +464,6 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         const completion = await openai.chat.completions.create({
           model: MINI_MODEL,
           messages: apiMessages,
-          temperature: 0.8,
           max_completion_tokens: examMaxTokens,
         });
 

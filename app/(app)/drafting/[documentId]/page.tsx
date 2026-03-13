@@ -176,6 +176,35 @@ export default function DraftingDocumentPage() {
   );
 }
 
+function sanitizeExamScenario(raw: string): string {
+  let text = (raw || '')
+    .replace(/^SCENARIO:\s*/i, '')
+    .replace(/\*\*/g, '')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^>\s?/gm, '')
+    .replace(/^---+$/gm, '')
+    .replace(/\u2014/g, '-')
+    .trim();
+
+  const forbiddenMarkers = [
+    /\n\s*PROPER LEGAL STRUCTURE/i,
+    /\n\s*PRACTICAL EXAM GUIDANCE/i,
+    /\n\s*TEMPLATE/i,
+    /\n\s*DRAFTING TEMPLATE/i,
+    /\n\s*If you want,? I can/i,
+    /\n\s*Show Drafting Hints/i,
+  ];
+
+  for (const marker of forbiddenMarkers) {
+    const m = text.match(marker);
+    if (m && m.index !== undefined) {
+      text = text.slice(0, m.index).trim();
+    }
+  }
+
+  return text;
+}
+
 /* ====== LEARN MODE ====== */
 
 function LearnModePanel({
@@ -633,9 +662,6 @@ function PracticeModePanel({
   const ivRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoSubmitRef = useRef(false);
   const [timeExpired, setTimeExpired] = useState(false);
-  const [guidanceOpen, setGuidanceOpen] = useState(false);
-  const [guidance, setGuidance] = useState<string | null>(null);
-  const [loadingGuidance, setLoadingGuidance] = useState(false);
   const draftRef = useRef<HTMLDivElement>(null);
   const MINS = 45;
 
@@ -685,11 +711,13 @@ function PracticeModePanel({
         'Self-contained with all information needed. 3-5 key issues. Under 250 words.',
         'Begin directly with the facts.',
         '',
-        'FORMATTING RULES:',
-        '- Output PLAIN TEXT only. Do NOT use any markdown (no **, no ##, no >, no ---, no bullet chars).',
+        'STRICT EXAM MODE RULES (MANDATORY):',
+        '- Output ONLY the factual scenario and issues for drafting.',
+        '- Do NOT include drafting templates, structures, sample headings, or legal form examples.',
+        '- Do NOT include guidance, coaching, hints, examiner notes, or follow-up offers.',
+        '- Do NOT include phrases like "If you want, I can draft..." or "Show Drafting Hints".',
+        '- Output PLAIN TEXT only. No markdown, no bullet symbols except numbered issues as "1)" "2)".',
         '- Use regular hyphens (-) instead of em dashes. Never use the character \u2014.',
-        '- Separate paragraphs with blank lines.',
-        '- Number key issues as "1)" "2)" etc.',
       ].join('\n');
 
       const res = await fetch('/api/ai/chat', {
@@ -710,13 +738,7 @@ function PracticeModePanel({
       }
       const data = await res.json();
       // Strip any leftover markdown formatting from AI
-      let cleanScenario = data.response
-        .replace(/^SCENARIO:\s*/i, '')
-        .replace(/\*\*/g, '')
-        .replace(/^#{1,6}\s+/gm, '')
-        .replace(/^>\s?/gm, '')
-        .replace(/^---+$/gm, '')
-        .replace(/\u2014/g, '-');
+      const cleanScenario = sanitizeExamScenario(data.response);
       setScenario(cleanScenario);
       if (choice === 'timed') {
         setTimeLeft(MINS * 60);
@@ -814,7 +836,6 @@ function PracticeModePanel({
   const newScenario = () => {
     setTiming(null); setScenario(null); setDraft('');
     setSubmitted(false); setGrade(null); setActiveAnn(null);
-    setGuidance(null); setGuidanceOpen(false);
     setTimeExpired(false); autoSubmitRef.current = false;
   };
 
@@ -822,30 +843,6 @@ function PracticeModePanel({
   const execCmd = (cmd: string, val?: string) => {
     document.execCommand(cmd, false, val);
     draftRef.current?.focus();
-  };
-
-  /* ── Load guidance for untimed mode ── */
-  const loadGuidance = async () => {
-    if (guidance) { setGuidanceOpen(prev => !prev); return; }
-    setLoadingGuidance(true);
-    try {
-      const token = await getIdToken();
-      const prompt = [
-        'Give brief drafting hints for a "' + doc.name + '" under Kenyan law.',
-        'Provide 5-7 short bullet-point reminders (key elements to include, common mistakes, structure tips).',
-        'Keep each bullet under 20 words. No markdown formatting - just plain text with dashes.',
-        'Do not use em dashes. Use regular hyphens only.',
-      ].join('\n');
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ message: prompt, competencyType: 'drafting', context: { documentType: doc.name, mode: 'guidance-hints' } }),
-      });
-      const data = await res.json();
-      setGuidance(data.response?.replace(/\*\*/g, '').replace(/\u2014/g, '-') || 'No guidance available.');
-      setGuidanceOpen(true);
-    } catch { setGuidance('Unable to load guidance.'); setGuidanceOpen(true); }
-    finally { setLoadingGuidance(false); }
   };
 
   /* timing selection */
@@ -1065,24 +1062,6 @@ function PracticeModePanel({
             {scenario || 'You chose to use your own case scenario. Draft your ' + doc.name.toLowerCase() + ' based on facts you are familiar with. Include all required legal elements and Kenyan law references.'}
           </div>
 
-          {/* Guidance - untimed only */}
-          {timing === 'untimed' && (
-            <div className="mt-6 pt-4 border-t border-border/15">
-              <button
-                onClick={loadGuidance}
-                disabled={loadingGuidance}
-                className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-              >
-                {loadingGuidance ? <Loader2 className="h-3 w-3 animate-spin" /> : <Lightbulb className="h-3 w-3" />}
-                {guidanceOpen ? 'Hide Hints' : 'Show Drafting Hints'}
-              </button>
-              {guidanceOpen && guidance && (
-                <div className="mt-3 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap animate-content-enter">
-                  {guidance}
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Editor area with formatting toolbar */}

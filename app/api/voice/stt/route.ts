@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
-import { transcribeAudio } from '@/lib/voice/transcribe';
 import { logSTTRequest } from '@/lib/ai/telemetry';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -16,23 +15,27 @@ export const POST = withAuth(async (req: NextRequest, user) => {
       return NextResponse.json({ error: 'Audio file required' }, { status: 400 });
     }
 
-    const result = await transcribeAudio(openai, {
+    const start = Date.now();
+    const result = await openai.audio.transcriptions.create({
       file: audioFile,
+      model: 'whisper-1',
       language: 'en',
+      response_format: 'json',
     });
+    const latencyMs = Date.now() - start;
 
     // Log telemetry
     logSTTRequest({
       userId: user.id,
-      model: result.model,
-      fallback: result.model === 'whisper-1',
-      latency_ms: result.latency_ms,
+      model: 'whisper-1',
+      fallback: true,
+      latency_ms: latencyMs,
     });
 
     return NextResponse.json({
       text: result.text,
       success: true,
-      model: result.model,
+      model: 'whisper-1',
     });
   } catch (error: any) {
     console.error('STT error:', error);

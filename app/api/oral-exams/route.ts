@@ -237,6 +237,40 @@ function isLowQualityExaminerTurn(text: string, previousAssistantText: string): 
   return false;
 }
 
+function isLowQualityDevilsTurn(text: string, previousAssistantText: string): boolean {
+  const normalized = normalizeForComparison(text);
+  const previous = normalizeForComparison(previousAssistantText);
+
+  if (!normalized) return true;
+  if (normalized.length < 20) return true;
+  if (/i challenge you to state your position/.test(normalized)) return true;
+  if (/state your position/.test(normalized) && normalized.length < 45) return true;
+  if (/state your case/.test(normalized) && normalized.length < 45) return true;
+
+  if (previous) {
+    if (normalized === previous) return true;
+    if (previous.includes(normalized) || normalized.includes(previous)) return true;
+  }
+
+  return false;
+}
+
+function buildDevilsContinuityFallback(lastUserText: string, unitId?: string): string {
+  const unit = unitId ? ATP_UNITS.find(u => u.id === unitId) : null;
+  const area = unit?.name || 'this issue';
+  const summary = summarizeForPrompt(lastUserText, 18);
+
+  if (!lastUserText?.trim()) {
+    return `Let us begin. In ${area}, state your position on one concrete legal issue, cite one specific authority, and explain why the opposing argument fails.`;
+  }
+
+  if (/what do you mean|clarify|in what|which issue|not clear|explain/i.test(lastUserText)) {
+    return `Fair challenge. Be specific on this point: identify the exact legal rule you rely on in ${area}, cite the section or article, then apply it to one practical fact pattern.`;
+  }
+
+  return `You just argued: "${summary}". Now defend that position with one specific Kenyan authority and address the strongest counterargument against you.`;
+}
+
 function summarizeForPrompt(text: string, maxWords: number = 16): string {
   const words = (text || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
   if (words.length === 0) return 'no clear answer provided yet';
@@ -390,6 +424,8 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         { role: 'system' as const, content: systemPrompt },
         ...messages.map((m: any) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
       ];
+      const previousAssistantText = [...messages].reverse().find((m: any) => m.role === 'assistant')?.content || '';
+      const lastUserText = [...messages].reverse().find((m: any) => m.role === 'user')?.content || '';
 
       // Inject session timing context
       const remaining = Math.max(0, sessionMaxMinutes - elapsedMinutes);
@@ -457,9 +493,12 @@ Be specific and reference actual moments from the conversation. Keep it conversa
 
               // Send final complete message
               const cleanedContent = stripSpeakerPrefix(fullContent, 'Devil\'s Advocate');
+              const finalContent = isLowQualityDevilsTurn(cleanedContent, previousAssistantText)
+                ? buildDevilsContinuityFallback(lastUserText, unitId)
+                : cleanedContent;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'done',
-                fullContent: cleanedContent,
+                fullContent: finalContent,
               })}\n\n`));
 
               controller.close();
@@ -488,12 +527,15 @@ Be specific and reference actual moments from the conversation. Keep it conversa
           max_completion_tokens: maxTokens,
         });
 
-        const response = completion.choices[0]?.message?.content || 'I challenge you to state your position.';
+        const response = completion.choices[0]?.message?.content || buildDevilsContinuityFallback(lastUserText, unitId);
         const cleanedResponse = stripSpeakerPrefix(response, 'Devil\'s Advocate');
+        const finalResponse = isLowQualityDevilsTurn(cleanedResponse, previousAssistantText)
+          ? buildDevilsContinuityFallback(lastUserText, unitId)
+          : cleanedResponse;
 
         return NextResponse.json({
           type: 'devils-advocate',
-          content: cleanedResponse,
+          content: finalResponse,
           voice: 'onyx',
           sessionEnded: remaining <= 0,
         });

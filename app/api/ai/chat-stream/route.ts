@@ -221,7 +221,6 @@ export async function POST(req: NextRequest) {
       model: selectedModel,
       messages,
       stream: true,
-      temperature: 0.7,
       max_completion_tokens: maxTokens,
     });
 

@@ -59,7 +59,6 @@ CRITICAL DIFFICULTY REQUIREMENTS:
         { role: 'user', content: prompt },
       ],
       stream: true,
-      temperature: 0.8,
       max_completion_tokens: Math.max(count * 500, 4000),
     });
 

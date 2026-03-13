@@ -197,6 +197,7 @@ export default function QuizzesPage() {
   const [loadingMoreQuestions, setLoadingMoreQuestions] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [totalAnswered, setTotalAnswered] = useState(0); // Running counter for infinity mode
+  const [generationError, setGenerationError] = useState<string | null>(null);
   // SmartDrill state
   const [dragOrder, setDragOrder] = useState<number[]>([]);
   const [textAnswer, setTextAnswer] = useState('');
@@ -374,7 +375,55 @@ Rules:
 - Output ONLY the JSON array`;
   };
 
-  const fetchQuestions = async (count: number, append = false): Promise<TriviaQuestion[]> => {
+  const normalizeQuestions = useCallback((items: any[]): TriviaQuestion[] => {
+    return items
+      .map((q) => {
+        const questionType = (q.questionType || 'mcq') as 'mcq' | 'ordering' | 'text-entry';
+        const options = Array.isArray(q.options) ? q.options.filter(Boolean).slice(0, 8) : [];
+        const correct = Number.isInteger(q.correct) ? q.correct : 0;
+        const explanation = typeof q.explanation === 'string' ? q.explanation : 'Review the governing legal authority and reasoning.';
+
+        if (!q?.question || typeof q.question !== 'string') return null;
+        if (questionType === 'mcq' && options.length < 4) return null;
+        if (questionType === 'ordering' && options.length < 3) return null;
+        if (questionType === 'text-entry' && (!Array.isArray(q.acceptableAnswers) || q.acceptableAnswers.length === 0)) return null;
+
+        return {
+          question: q.question.trim(),
+          options,
+          correct: Math.max(0, Math.min(correct, Math.max(0, options.length - 1))),
+          explanation: explanation.trim(),
+          difficulty: (q.difficulty === 'easy' || q.difficulty === 'medium' || q.difficulty === 'hard') ? q.difficulty : 'hard',
+          questionType,
+          correctOrder: Array.isArray(q.correctOrder) ? q.correctOrder : undefined,
+          acceptableAnswers: Array.isArray(q.acceptableAnswers) ? q.acceptableAnswers.map((a: string) => String(a).trim()).filter(Boolean) : undefined,
+        } as TriviaQuestion;
+      })
+      .filter((q): q is TriviaQuestion => Boolean(q));
+  }, []);
+
+  const extractJSONArray = useCallback((raw: string): any[] => {
+    const cleaned = raw.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
+    try {
+      const parsed = JSON.parse(cleaned);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      const start = cleaned.indexOf('[');
+      const end = cleaned.lastIndexOf(']');
+      if (start >= 0 && end > start) {
+        try {
+          const sliced = cleaned.slice(start, end + 1);
+          const parsed = JSON.parse(sliced);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    }
+  }, []);
+
+  const fetchQuestions = async (count: number): Promise<TriviaQuestion[]> => {
     const token = await getIdToken();
     const unitInfo = selectedUnit !== 'all' ? ATP_UNITS.find((u) => u.id === selectedUnit) : null;
 
@@ -399,13 +448,8 @@ Rules:
 
     if (!res.ok) throw new Error('Failed');
     const data = await res.json();
-    const content = data.response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const parsed = JSON.parse(content) as TriviaQuestion[];
-    // Ensure questionType is set
-    return parsed.map((q) => ({
-      ...q,
-      questionType: q.questionType || 'mcq',
-    }));
+    const parsed = extractJSONArray(String(data.response || ''));
+    return normalizeQuestions(parsed).slice(0, count);
   };
 
   /* ── Streaming quiz fetch — first question shows instantly ── */
@@ -440,7 +484,9 @@ Rules:
           try {
             const data = JSON.parse(line.slice(6));
             if (data.type === 'question' && data.question) {
-              setQuestions((prev) => [...prev, data.question]);
+              const normalized = normalizeQuestions([data.question]);
+              if (normalized.length === 0) continue;
+              setQuestions((prev) => [...prev, normalized[0]]);
               questionCount++;
               if (questionCount === 1) {
                 onFirstQuestion();
@@ -456,6 +502,7 @@ Rules:
 
   const startQuiz = useCallback(async () => {
     setLoading(true);
+    setGenerationError(null);
     setSection('playing');
     setShowModal(false);
     setCurrentIndex(0);
@@ -474,100 +521,78 @@ Rules:
     setQuizSessionId(crypto.randomUUID());
 
     try {
-      const unitKey = selectedUnit !== 'all' ? selectedUnit : 'all';
-      
-      // Try preloaded questions first (instant start)
-      const preloaded = await getPreloaded(unitKey, undefined, 'quiz');
-      if (preloaded?.found && preloaded.content?.questions?.length > 0) {
-        const qs = preloaded.content.questions.slice(0, effectiveCount).map((q: any) => ({
-          ...q,
-          questionType: q.questionType || 'mcq',
-        }));
-        setQuestions(qs);
-        setLoading(false);
-        return;
-      }
-
       // Use streaming API — first question shows instantly, rest arrive in background
       const streamedCount = await fetchQuestionsStreaming(effectiveCount, () => {
         // Called when the very first question arrives
         setLoading(false);
       });
 
-      // If streaming delivered too few questions (< 3), supplement with batch fallback
-      if (streamedCount === 0) {
-        // No questions at all — try batch
-        const qs = await fetchQuestions(effectiveCount);
-        setQuestions(qs);
-        setLoading(false);
-      } else if (streamedCount < 3) {
-        // Partial streaming — supplement with batch (don't replace, append)
-        try {
-          const supplement = await fetchQuestions(Math.max(effectiveCount - streamedCount, 5));
-          setQuestions((prev) => [...prev, ...supplement]);
-        } catch { /* at least we have some questions */ }
-        setLoading(false);
+      // Enforce exact selected count for non-infinity mode
+      let total = streamedCount;
+      let retries = 0;
+      while (total < effectiveCount && retries < 3) {
+        const need = effectiveCount - total;
+        const supplement = await fetchQuestions(need);
+        if (supplement.length === 0) {
+          retries++;
+          continue;
+        }
+        setQuestions((prev) => [...prev, ...supplement.slice(0, need)]);
+        total += Math.min(supplement.length, need);
       }
-    } catch {
-      setQuestions([
-        {
-          question: 'A client instructs you to file a plaint in the High Court challenging an administrative decision. Under Order 53 of the Civil Procedure Rules, what must be obtained before leave to apply for judicial review is granted?',
-          options: ['A) A certificate of urgency signed by the Attorney General', 'B) Leave of the court obtained ex parte, supported by a verifying affidavit', 'C) Written consent of all respondents to the proceedings', 'D) A mandatory pre-action mediation certificate under Section 59B of the CPA'],
-          correct: 1,
-          explanation: 'Under Order 53 Rule 1 of the Civil Procedure Rules, an application for judicial review requires leave of the court, which is obtained ex parte and must be supported by a statement and verifying affidavit setting out the grounds and relief sought.',
-          questionType: 'mcq',
-          difficulty: 'hard',
-        },
-        {
-          question: 'During cross-examination, opposing counsel objects to a question on the basis that it is a leading question. Under what circumstances does Section 143 of the Evidence Act (Cap 80) permit leading questions in cross-examination?',
-          options: ['A) Only when the witness is declared hostile by the court', 'B) Leading questions are generally permitted in cross-examination as of right', 'C) Only with prior written leave of the court for each question', 'D) Only when the witness is an expert witness giving opinion evidence'],
-          correct: 1,
-          explanation: 'Section 143 of the Evidence Act (Cap 80) provides that leading questions may be asked in cross-examination as a matter of right, unlike in examination-in-chief where they are restricted under Section 141.',
-          questionType: 'mcq',
-          difficulty: 'hard',
-        },
-        {
-          question: 'A vendor executes a transfer of land registered under the Registration of Titles Act (RTA) but the purchaser delays registration. Before registration occurs, a third party obtains a charging order over the same property. Who has priority?',
-          options: ['A) The purchaser, because equity regards as done that which ought to be done', 'B) The third party with the charging order, because under Section 23 of the RTA the register is conclusive', 'C) The vendor, because title only passes on completion of full payment', 'D) Neither - the matter must be referred to the National Land Commission for adjudication'],
-          correct: 1,
-          explanation: 'Under Section 23 of the Registration of Titles Act (Cap 281), the certificate of title is conclusive evidence of proprietorship. The registered interest prevails over unregistered equitable interests (Obiero v Opiyo [1972] EA 227).',
-          questionType: 'mcq',
-          difficulty: 'hard',
-        },
-        {
-          question: 'Your client is charged with robbery with violence under Section 296(2) of the Penal Code. At trial, the prosecution relies solely on identification evidence from a single witness under difficult conditions. What principle from the Court of Appeal must the trial court apply?',
-          options: ['A) The Andan v R principle requiring corroboration of confession evidence', 'B) The Abdalla Bin Wendo principle on dying declarations', 'C) The Turnbull guidelines as adopted in Wamunga v Republic requiring the court to warn itself of the dangers of conviction on disputed identification', 'D) The Woolmington v DPP presumption of innocence only'],
-          correct: 2,
-          explanation: 'In Wamunga v Republic [1989] KLR 424, the Court of Appeal adopted the Turnbull guidelines, holding that where identification is in issue, the court must warn itself of the special need for caution, examine the circumstances of identification (lighting, distance, duration), and consider if there is supporting evidence.',
-          questionType: 'mcq',
-          difficulty: 'hard',
-        },
-        {
-          question: 'A testator executes a will leaving all property to a charitable trust. The testator\'s spouse, who was not provided for, files a claim under the Law of Succession Act (Cap 160). Under Section 26, what is the court\'s power regarding the disposition?',
-          options: ['A) The court has no power to interfere with a validly executed will', 'B) The court may order reasonable provision for the dependant from the net estate, varying the will as necessary', 'C) The court can only award maintenance from the income, not the capital, of the estate', 'D) The spouse must first apply to the Public Trustee for mediation before court intervention'],
-          correct: 1,
-          explanation: 'Section 26 of the Law of Succession Act (Cap 160) empowers the court to make reasonable provision for a dependant from the net estate where the disposition by will does not make such provision, regardless of the testator\'s wishes.',
-          questionType: 'mcq',
-          difficulty: 'hard',
-        },
-      ]);
+
+      if (total === 0) {
+        throw new Error('No quiz questions generated.');
+      }
+
+      if (!isInfinityMode && total < effectiveCount) {
+        throw new Error(`Generated ${total}/${effectiveCount} questions. Please retry.`);
+      }
+      setLoading(false);
+
+      // Keep infinite mode pouring in the background
+      if (isInfinityMode) {
+        setTimeout(() => {
+          loadMoreQuestions();
+        }, 2000);
+      }
+    } catch (err: any) {
+      console.error('Quiz generation failed:', err);
+      setGenerationError(err?.message || 'Failed to generate quiz questions. Please try again.');
+      setQuestions([]);
+      setSection('menu');
       setLoading(false);
     }
-  }, [getIdToken, mode, selectedUnit, userPerformance, effectiveCount, isInfinityMode]);
+  }, [mode, selectedUnit, effectiveCount, isInfinityMode, loadMoreQuestions, fetchQuestions]);
 
   // Infinity mode — load more questions when nearing the end
   const loadMoreQuestions = useCallback(async () => {
     if (loadingMoreQuestions) return;
     setLoadingMoreQuestions(true);
     try {
-      const newQs = await fetchQuestions(10);
-      setQuestions((prev) => [...prev, ...newQs]);
+      let batch = await fetchQuestions(15);
+      if (batch.length < 10) {
+        const extra = await fetchQuestions(15 - batch.length);
+        batch = [...batch, ...extra];
+      }
+      if (batch.length > 0) {
+        setQuestions((prev) => [...prev, ...batch]);
+      }
     } catch {
       // Silent fail
     } finally {
       setLoadingMoreQuestions(false);
     }
-  }, [getIdToken, mode, selectedUnit, userPerformance, loadingMoreQuestions]);
+  }, [fetchQuestions, loadingMoreQuestions]);
+
+  // Infinite mode: keep queue full in background
+  useEffect(() => {
+    if (section !== 'playing' || !isInfinityMode) return;
+    const remaining = questions.length - currentIndex;
+    if (remaining < 8 && !loadingMoreQuestions) {
+      loadMoreQuestions();
+    }
+  }, [section, isInfinityMode, questions.length, currentIndex, loadingMoreQuestions, loadMoreQuestions]);
 
   // Speed blitz timer
   useEffect(() => {
@@ -808,6 +833,9 @@ Rules:
             <p className="text-muted-foreground max-w-xl mx-auto">
               Challenge yourself with fun, engaging quizzes. Pick a mode, choose a topic, and let&apos;s go!
             </p>
+            {generationError && (
+              <p className="text-sm text-red-500 mt-2">{generationError}</p>
+            )}
             {userPerformance && (
               <div className="flex items-center justify-center gap-2 mt-3">
                 <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${

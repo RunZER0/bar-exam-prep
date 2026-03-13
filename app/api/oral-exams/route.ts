@@ -161,7 +161,28 @@ ${interruptionInstructions}
 
 ${feedbackInstructions}
 
-IMPORTANT: Responses will be read aloud via TTS. Be natural and conversational. No bullet points or markdown. Use short paragraphs. Prefix your response with your name like this: "${panelist.name}: [your question/comment]"`;
+IMPORTANT: Responses will be read aloud via TTS. Be natural and conversational. No bullet points or markdown. Use short paragraphs. Do NOT prefix with your name or title (the UI already shows speaker identity). Start directly with the question/challenge.`;
+}
+
+function stripSpeakerPrefix(text: string, panelistName?: string): string {
+  if (!text) return text;
+  const names = [
+    panelistName,
+    'Justice Mwangi',
+    'Advocate Amara',
+    'Prof. Otieno',
+    'Professor Otieno',
+    'Devil\'s Advocate',
+    'Examiner',
+  ].filter(Boolean) as string[];
+
+  let cleaned = text.trim();
+  for (const name of names) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`^${escaped}\s*[:\-–—]\s*`, 'i');
+    cleaned = cleaned.replace(re, '').trim();
+  }
+  return cleaned;
 }
 
 /* ================================================================
@@ -314,9 +335,10 @@ Be specific and reference actual moments from the conversation. Keep it conversa
               }
 
               // Send final complete message
+              const cleanedContent = stripSpeakerPrefix(fullContent, 'Devil\'s Advocate');
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'done',
-                fullContent,
+                fullContent: cleanedContent,
               })}\n\n`));
 
               controller.close();
@@ -346,10 +368,11 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         });
 
         const response = completion.choices[0]?.message?.content || 'I challenge you to state your position.';
+        const cleanedResponse = stripSpeakerPrefix(response, 'Devil\'s Advocate');
 
         return NextResponse.json({
           type: 'devils-advocate',
-          content: response,
+          content: cleanedResponse,
           voice: 'onyx',
         });
       }
@@ -436,9 +459,10 @@ Be specific and reference actual moments from the conversation. Keep it conversa
               }
 
               // Send final complete message
+              const cleanedContent = stripSpeakerPrefix(fullContent, currentPanelist.name);
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'done',
-                fullContent,
+                fullContent: cleanedContent,
               })}\n\n`));
 
               controller.close();
@@ -467,11 +491,12 @@ Be specific and reference actual moments from the conversation. Keep it conversa
           max_completion_tokens: examMaxTokens,
         });
 
-        const response = completion.choices[0]?.message?.content || `${currentPanelist.name}: Let us begin. State your understanding of the first principle.`;
+        const response = completion.choices[0]?.message?.content || 'Let us begin. State your understanding of the first principle.';
+        const cleanedResponse = stripSpeakerPrefix(response, currentPanelist.name);
 
         return NextResponse.json({
           type: 'examiner',
-          content: response,
+          content: cleanedResponse,
           panelist: {
             id: currentPanelist.id,
             name: currentPanelist.name,

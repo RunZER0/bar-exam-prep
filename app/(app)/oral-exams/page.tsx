@@ -379,6 +379,27 @@ export default function OralExamsPage() {
     return res.json();
   }, [authFetch]);
 
+  const sanitizeAssistantContent = useCallback((text: string, panelistName?: string) => {
+    if (!text) return text;
+    const names = [
+      panelistName,
+      'Justice Mwangi',
+      'Advocate Amara',
+      'Prof. Otieno',
+      'Professor Otieno',
+      "Devil's Advocate",
+      'Examiner',
+    ].filter(Boolean) as string[];
+
+    let cleaned = text.trim();
+    for (const name of names) {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(`^${escaped}\\s*[:\\-–—]\\s*`, 'i');
+      cleaned = cleaned.replace(re, '').trim();
+    }
+    return cleaned;
+  }, []);
+
   /* ================================================================
      TTS — Play AI response (with prefetch support for sync)
      ================================================================ */
@@ -549,14 +570,15 @@ export default function OralExamsPage() {
     // Helper: process a successful AI response (non-streaming or fallback)
     const handleAIResponse = async (data: any) => {
       if (handleFeatureLimit(data)) return;
+      const cleaned = sanitizeAssistantContent(data.content, data.panelist?.name);
       const voice = data.panelist?.voice || data.voice || 'onyx';
       const pid = data.panelist?.id || (examType === 'devils-advocate' ? 'devils-advocate' : undefined);
       // Start TTS fetch in parallel with rendering the message
-      const audioPromise = prefetchTTS(data.content, voice, pid);
+      const audioPromise = prefetchTTS(cleaned, voice, pid);
       const aiMsg: Message = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: data.content,
+        content: cleaned,
         timestamp: new Date(),
         panelist: data.panelist || undefined,
       };
@@ -647,11 +669,11 @@ export default function OralExamsPage() {
 
                   if (data.type === 'chunk') {
                     fullContent += data.content;
-                    setStreamingContent(fullContent);
+                    setStreamingContent(sanitizeAssistantContent(fullContent, metadata?.panelist?.name));
                   }
 
                   if (data.type === 'done') {
-                    const finalContent = data.fullContent || fullContent;
+                    const finalContent = sanitizeAssistantContent(data.fullContent || fullContent, metadata?.panelist?.name);
                     const voice = metadata?.panelist?.voice || metadata?.voice || 'onyx';
                     const pid = metadata?.panelist?.id || (examType === 'devils-advocate' ? 'devils-advocate' : undefined);
                     // Start TTS fetch immediately in parallel with UI updates
@@ -689,13 +711,14 @@ export default function OralExamsPage() {
 
           // If stream completed but we never got a 'done' event and there IS accumulated content, use it
           if (!streamingSucceeded && fullContent.trim()) {
+            const cleanedFallback = sanitizeAssistantContent(fullContent, metadata?.panelist?.name);
             const voice = metadata?.panelist?.voice || metadata?.voice || 'onyx';
             const pid = metadata?.panelist?.id || (examType === 'devils-advocate' ? 'devils-advocate' : undefined);
-            const audioPromise = prefetchTTS(fullContent, voice, pid);
+            const audioPromise = prefetchTTS(cleanedFallback, voice, pid);
             const aiMsg: Message = {
               id: `a-${Date.now()}`,
               role: 'assistant',
-              content: fullContent,
+              content: cleanedFallback,
               timestamp: new Date(),
               panelist: metadata?.panelist || undefined,
             };
@@ -764,7 +787,7 @@ export default function OralExamsPage() {
       setIsStreaming(false);
       setStreamingContent('');
     }
-  }, [messages, examType, mode, feedbackMode, selectedUnit, panelistCount, currentPanelistIndex, isLoading, isStreaming, enableStreaming, authFetchJSON, playTTS, prefetchTTS, playAudio, getIdToken, sessionElapsedSec]);
+  }, [messages, examType, mode, feedbackMode, selectedUnit, panelistCount, currentPanelistIndex, isLoading, isStreaming, enableStreaming, authFetchJSON, playTTS, prefetchTTS, playAudio, getIdToken, sessionElapsedSec, sanitizeAssistantContent]);
 
   /* ================================================================
      START SESSION
@@ -815,7 +838,7 @@ export default function OralExamsPage() {
       const aiMsg: Message = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: data.content,
+        content: sanitizeAssistantContent(data.content, data.panelist?.name),
         timestamp: new Date(),
         panelist: data.panelist || undefined,
       };
@@ -823,7 +846,7 @@ export default function OralExamsPage() {
       const voice = data.panelist?.voice || data.voice || 'onyx';
       const pid = data.panelist?.id || (examType === 'devils-advocate' ? 'devils-advocate' : undefined);
       // Start TTS fetch in parallel with rendering  
-      const audioPromise = prefetchTTS(data.content, voice, pid);
+      const audioPromise = prefetchTTS(aiMsg.content, voice, pid);
       setMessages([aiMsg]);
 
       if (data.nextPanelistIndex !== undefined) {
@@ -849,7 +872,7 @@ export default function OralExamsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [examType, mode, feedbackMode, selectedUnit, panelistCount, authFetchJSON, playTTS, prefetchTTS, playAudio, startSessionRecording, stopSessionRecording, autoRecord]);
+  }, [examType, mode, feedbackMode, selectedUnit, panelistCount, authFetchJSON, playTTS, prefetchTTS, playAudio, startSessionRecording, stopSessionRecording, autoRecord, sanitizeAssistantContent]);
 
   /* ================================================================
      END SESSION — get summary

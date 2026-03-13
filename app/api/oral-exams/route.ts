@@ -103,9 +103,7 @@ IMPORTANT: Your responses will be read aloud via TTS. Keep language natural and 
    ================================================================ */
 function buildExaminerPrompt(panelist: typeof PANELISTS[0], mode: string, unitContext: string, feedbackMode: string, otherPanelists: string[], enableInterruptions: boolean = true) {
   const modeInstructions = getModeInstructions(mode);
-  const feedbackInstructions = feedbackMode === 'per-exchange'
-    ? `After the student answers, briefly assess their response (1-2 sentences) before asking your next question. Note: "Strong cite of Section X" or "You missed the key authority here".`
-    : `Do NOT provide assessment during the session. Only ask questions and probe answers.`;
+  const feedbackInstructions = `At the start of EVERY turn after a student response, give a concise assessment first (max 1 sentence), then ask the next question. If the answer is inaccurate, contradictory, evasive, or likely fabricated, state that directly and require correction before proceeding.`;
 
   const interruptionInstructions = enableInterruptions ? `
 
@@ -152,8 +150,11 @@ EXAMINATION GUIDELINES:
    - ~40% MEDIUM (3-4 sentences): Standard questioning with brief context.
    - ~30% LONGER (5-7 sentences): Scenario-based questions or detailed probing.
    Never give uniformly long responses.
+8b. COST + QUALITY RULE: Keep answers concise. Target 2-4 sentences total per turn while preserving quality.
 9. NEVER ask vague prompts like "state your understanding of the first principle". Name the exact principle, statute, article, case, or procedural step you are asking about.
 10. If the student asks for clarification, answer the clarification directly and then restate the question in precise terms.
+11. Cross-panel continuity is mandatory: where relevant, reference a prior panelist's question or contradiction before your next question.
+12. If you detect inconsistency with the student's prior answer, call it out briefly before asking the next question.
 
 SESSION TIMING:
 - Sessions last approximately 15 minutes.
@@ -566,7 +567,13 @@ Be specific and reference actual moments from the conversation. Keep it conversa
       const systemPrompt = buildExaminerPrompt(currentPanelist, mode, unitContext, feedbackMode, otherNames, true);
       const apiMessages = [
         { role: 'system' as const, content: systemPrompt },
-        ...messages.map((m: any) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+        ...messages.map((m: any) => {
+          if (m.role === 'assistant') {
+            const speaker = m.panelistId || 'examiner';
+            return { role: 'assistant' as const, content: `[From ${speaker}] ${m.content}` };
+          }
+          return { role: 'user' as const, content: m.content };
+        }),
       ];
 
       const previousAssistantText = [...messages].reverse().find((m: any) => m.role === 'assistant')?.content || '';
@@ -578,6 +585,18 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         apiMessages.push({
           role: 'system' as const,
           content: `CONTINUITY REQUIREMENT: The student's latest answer was: "${summarizeForPrompt(lastUserText, 30)}". Your next turn MUST explicitly engage that answer (correct it, deepen it, or challenge it). Do not restart with a generic opening.`
+        });
+      }
+
+      const recentPanelTurns = [...messages]
+        .filter((m: any) => m.role === 'assistant')
+        .slice(-3)
+        .map((m: any) => `- ${m.panelistId || 'examiner'} asked: "${summarizeForPrompt(m.content || '', 18)}"`)
+        .join('\n');
+      if (recentPanelTurns) {
+        apiMessages.push({
+          role: 'system' as const,
+          content: `Recent panel context:\n${recentPanelTurns}\nReference this context where relevant and avoid asking disconnected questions.`
         });
       }
 
@@ -601,7 +620,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
 
       // Vary response length
       const examLengthRoll = Math.random();
-      const examMaxTokens = examLengthRoll < 0.3 ? 120 : examLengthRoll < 0.7 ? 350 : 550;
+      const examMaxTokens = examLengthRoll < 0.35 ? 120 : examLengthRoll < 0.8 ? 220 : 320;
 
       // Opening question if no messages
       if (messages.length === 0) {
@@ -614,7 +633,10 @@ Be specific and reference actual moments from the conversation. Keep it conversa
       // Determine next panelist (round-robin with occasional same-panelist follow-up)
       const clarificationRequested = /what do you mean|clarify|not clear|which principle|explain/i.test(lastUserText);
       const shouldPivotTopic = !clarificationRequested && assistantTurnCount > 0 && assistantTurnCount % 3 === 0;
-      const shouldFollowUp = messages.length > 0 && (clarificationRequested || (Math.random() < 0.5 && trailingSamePanelist < 2));
+      const shouldFollowUp = messages.length > 0 && (
+        clarificationRequested ||
+        (trailingSamePanelist < 2 && assistantTurnCount % 2 === 1)
+      );
       const nextPanelistIndex = shouldFollowUp
         ? currentPanelistIndex
         : (currentPanelistIndex + 1) % activePanelists.length;

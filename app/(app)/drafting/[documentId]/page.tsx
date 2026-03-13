@@ -770,51 +770,31 @@ function PracticeModePanel({
     setTimerOn(false);
     try {
       const token = await getIdToken();
-      const gradePrompt = [
-        'Grade this student draft of a "' + doc.name + '" under Kenyan law.',
-        '',
-        'SCENARIO:',
-        scenario || '',
-        '',
-        'STUDENT DRAFT:',
-        draft,
-        '',
-        'Return ONLY a JSON object (no markdown fences):',
-        '{',
-        '  "overallScore": 72,',
-        '  "grade": "B",',
-        '  "summary": "One-paragraph assessment...",',
-        '  "categories": { "structure": 75, "substance": 70, "legalAccuracy": 68, "language": 80, "formatting": 65 },',
-        '  "annotations": [{ "category": "structure", "severity": "needs-improvement", "text": "exact phrase from the draft", "comment": "Specific feedback" }],',
-        '  "strengths": ["Good identification of parties"],',
-        '  "improvements": ["Missing verification clause"]',
-        '}',
-        '',
-        'Provide 5-10 annotations pointing to EXACT phrases from the draft.',
-        'Be constructive and thorough.',
-      ].join('\n');
 
-      const res = await fetch('/api/ai/chat', {
+      const res = await fetch('/api/drafting/grade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({
-          message: gradePrompt,
-          competencyType: 'drafting',
-          context: { documentType: doc.name, mode: 'grade' },
+          draft,
+          documentType: doc.name,
+          scenario: scenario || '',
         }),
       });
       const data = await res.json();
-      let parsed: GradeResult;
-      try {
-        const m = data.response.match(/\{[\s\S]*\}/);
-        parsed = m ? JSON.parse(m[0]) : JSON.parse(data.response);
-      } catch {
-        parsed = {
-          overallScore: 0, grade: '?', summary: data.response,
-          categories: { structure: 0, substance: 0, legalAccuracy: 0, language: 0, formatting: 0 },
-          annotations: [], strengths: [], improvements: [],
-        };
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Grading failed');
       }
+
+      const parsed: GradeResult = {
+        overallScore: data.overallScore ?? 0,
+        grade: data.grade ?? '?',
+        summary: data.summary ?? '',
+        categories: data.categories ?? { structure: 0, substance: 0, legalAccuracy: 0, language: 0, formatting: 0 },
+        annotations: data.annotations ?? [],
+        strengths: data.strengths ?? [],
+        improvements: data.improvements ?? [],
+      };
       setGrade(parsed);
     } catch {
       setGrade({

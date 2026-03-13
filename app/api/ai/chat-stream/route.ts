@@ -19,29 +19,34 @@ const PERSONALITIES: Record<string, string> = {
   clarification: `You are a warm, patient mentor helping a Kenyan law student who is stuck on something. Think of yourself as that approachable senior advocate who always has time for questions.
 
 Your style:
+- Get straight to the answer in the FIRST sentence — then explain if needed
+- Keep responses SHORT: aim for 2-4 paragraphs maximum. If the answer fits in 2 sentences, stop there
 - ONLY address what was asked — do not volunteer extra information, tips, or tangents
-- Address the problem directly — no filler, no preamble
-- Be concise but thorough. If someone asks a simple question, give a simple answer
 - Use plain language first, then introduce the legal terms
 - When citing law, weave it naturally: "Under Section 107 of the Evidence Act..." not "As provided for in..."
 - If they share an image or document, focus on what's confusing in it specifically
+- DO NOT use headings, bullet-heavy formatting, or structured research layouts — just talk naturally like a person
 - DO NOT add "You might also want to know..." or unsolicited follow-ups
 - Never say "Great question!" or "I'd be happy to help" — just help
 - Never use words like "generate", "output", "parameters", "processing" — you're a person, not a machine
 - Be honest when something is genuinely tricky: "This trips up a lot of people because..."`,
 
-  research: `You are a thorough legal research assistant for Kenyan law. Think of yourself as a seasoned law librarian who knows exactly where to find everything.
+  research: `You are a senior legal research agent specialising in Kenyan law. You conduct deep, exhaustive research — not surface-level summaries. Think of yourself as the associate who spends hours in the library and comes back with a thorough research memo.
 
-Your style:
-- Structure your research findings clearly with proper headings
-- ALWAYS cite specific sections, articles, and case law — this is non-negotiable
-- Use only verified and credible sources: Constitution of Kenya 2010, Acts of Parliament, Kenya Law Reports, East African Law Reports
-- When citing cases, include: case name, year, court, and the key principle
-- If you're uncertain about a citation, say so rather than fabricating one
-- Present findings in a logical flow: statutory framework → case law → analysis → practical application
-- Never invent case names or statute references
-- Include the practical implication: "In practice, this means..."
-- Cross-reference related provisions where helpful`,
+Your mandate:
+- Use web search aggressively to find real statutes, case law, and authoritative commentary
+- ALWAYS structure your findings with clear Markdown headings (##, ###)
+- Open with a brief Executive Summary (3-4 sentences framing the legal position)
+- Then provide the FULL analysis: statutory framework, case law, doctrinal commentary, comparative perspectives where relevant
+- Every legal claim MUST be grounded in a specific source: statute section, case citation (name, year, court, principle), or authoritative text
+- When citing cases, include: full case name, [year] or (year), court, and the ratio decidendi
+- Use only real, verified sources — Constitution of Kenya 2010, Acts of Parliament, Kenya Law Reports, East African Law Reports, High Court and Court of Appeal decisions
+- If you cannot verify a citation, say so explicitly — NEVER fabricate case names or statute references
+- Cross-reference related provisions and show how they interact
+- Include practical implications: "In practice, this means a litigant must..."
+- End with a Conclusion that directly answers the research question
+- Be thorough — a good research memo is 800-2000 words, not a tweet
+- If the topic is contentious, present both sides with their supporting authorities`,
 
   general: `You are a helpful, warm study companion for a Kenyan law student. You're knowledgeable but approachable.
 
@@ -269,10 +274,117 @@ export async function POST(req: NextRequest) {
       selectedModel = MINI_MODEL;
     }
 
-    // Token budget: frontier gets 4000, mini gets 2000, research always 4000
-    const maxTokens = selectedModel === MINI_MODEL
-      ? (competencyType === 'research' ? 4000 : 2000)
-      : 4000;
+    // ── RESEARCH PATH: Responses API with web search agent ──
+    if (competencyType === 'research') {
+      const researchInstructions = `${KENYA_CONTEXT}\n\n${personality}`;
+
+      // Build input array for Responses API (instructions go separately)
+      const researchInput: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+      if (sessionId) {
+        const history = await getConversationHistory(sessionId, user.id);
+        for (const h of history) {
+          researchInput.push({ role: h.role, content: h.content });
+        }
+      }
+      researchInput.push({ role: 'user', content: userContent });
+
+      const researchStream = await openai.responses.create({
+        model: selectedModel,
+        instructions: researchInstructions,
+        input: researchInput as any,
+        tools: [{ type: 'web_search_preview' as const }],
+        stream: true,
+        max_output_tokens: 8000,
+      });
+
+      const encoder = new TextEncoder();
+      let fullContent = '';
+
+      const readable = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const event of researchStream) {
+              if ((event as any).type === 'response.output_text.delta') {
+                const delta = (event as any).delta as string;
+                fullContent += delta;
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: delta })}\n\n`));
+              }
+            }
+
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', fullContent, model: selectedModel })}\n\n`));
+            controller.close();
+
+            // Save to chat history in background
+            try {
+              const effectiveSessionId = sessionId || crypto.randomUUID();
+
+              await db.insert(chatHistory).values({
+                userId: user.id,
+                sessionId: effectiveSessionId,
+                competencyType: 'research' as any,
+                message,
+                response: fullContent,
+                wasFiltered: false,
+                metadata: { context, streaming: true, webSearch: true },
+              });
+
+              const [existingSession] = await db
+                .select({ id: chatSessions.id })
+                .from(chatSessions)
+                .where(eq(chatSessions.id, effectiveSessionId))
+                .limit(1);
+
+              if (!existingSession) {
+                const title = message.replace(/\[.*?\]\s*/g, '').trim().substring(0, 60) || 'Research';
+                try {
+                  await db.insert(chatSessions).values({
+                    id: effectiveSessionId,
+                    userId: user.id,
+                    title,
+                    competencyType: 'research' as any,
+                    context: context?.source || null,
+                  });
+                } catch { /* race condition — safe to ignore */ }
+              } else {
+                await db.update(chatSessions)
+                  .set({ lastMessageAt: new Date() })
+                  .where(eq(chatSessions.id, effectiveSessionId));
+              }
+
+              await db.insert(chatMessages).values([
+                {
+                  sessionId: effectiveSessionId,
+                  role: 'user',
+                  content: message,
+                  metadata: attachments?.length
+                    ? { attachments: attachments.map((a: any) => ({ type: a.type, fileName: a.fileName })), attachmentContext }
+                    : null,
+                },
+                {
+                  sessionId: effectiveSessionId,
+                  role: 'assistant',
+                  content: fullContent,
+                },
+              ]);
+            } catch { /* silent fail for history save */ }
+          } catch (err) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'Research stream failed' })}\n\n`));
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    }
+
+    // ── NON-RESEARCH PATH: Chat Completions (clarify / general) ──
+    const maxTokens = selectedModel === MINI_MODEL ? 1500 : 4000;
 
     const stream = await openai.chat.completions.create({
       model: selectedModel,

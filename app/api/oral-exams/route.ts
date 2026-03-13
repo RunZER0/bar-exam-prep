@@ -15,8 +15,8 @@ const PANELISTS = [
     id: 'justice-mwangi',
     name: 'Justice Mwangi',
     title: 'Retired High Court Judge',
-    voice: 'onyx' as const,
-    style: 'Formal, measured, authoritative. Probes constitutional foundations and procedural correctness. Expects precision in statutory citations.',
+    voice: 'cedar' as const,
+    style: 'Formal, measured, authoritative. Probes constitutional foundations and procedural correctness. Expects precision in statutory citations. Will not tolerate hand-waving — demands the specific section, article, or case name before moving on.',
     avatar: '⚖️',
     specialties: ['Civil Litigation', 'Constitutional Law', 'Probate and Administration'],
   },
@@ -24,8 +24,8 @@ const PANELISTS = [
     id: 'advocate-amara',
     name: 'Advocate Amara',
     title: 'Senior Litigation Counsel',
-    voice: 'nova' as const,
-    style: 'Sharp, rapid-fire, practical. Focuses on courtroom strategy, cross-examination technique, and real-world application. Interrupts when answers are vague.',
+    voice: 'coral' as const,
+    style: 'Sharp, rapid-fire, practical. Focuses on courtroom strategy, cross-examination technique, and real-world application. Interrupts when answers are vague. Thinks like a trial lawyer — always asks "so what happens next in practice?"',
     avatar: '🔥',
     specialties: ['Criminal Litigation', 'Trial Advocacy', 'Commercial Transactions'],
   },
@@ -33,8 +33,8 @@ const PANELISTS = [
     id: 'prof-otieno',
     name: 'Prof. Otieno',
     title: 'Professor of Law, University of Nairobi',
-    voice: 'echo' as const,
-    style: 'Academic, Socratic, theoretical. Pushes for deeper analysis, policy rationale, and comparative perspectives. Asks follow-up questions that build on answers.',
+    voice: 'sage' as const,
+    style: 'Academic, Socratic, theoretical. Pushes for deeper analysis, policy rationale, and comparative perspectives. Asks follow-up questions that build on answers. Loves to say "but why?" and "what is the policy rationale?"',
     avatar: '📚',
     specialties: ['Professional Ethics', 'Legal Writing and Drafting', 'Legal Practice Management', 'Conveyancing'],
   },
@@ -64,38 +64,54 @@ function buildDevilsAdvocatePrompt(mode: string, unitContext: string, feedbackMo
     ? `After each student response, provide brief targeted feedback in a separate "📝 Feedback" section: what was strong, what was weak, and what case/provision they should have cited. Then continue the debate.`
     : `Do NOT provide feedback during the session. Focus purely on challenging and debating. Feedback will be provided at the end.`;
 
-  return `You are the DEVIL'S ADVOCATE — an AI legal debate opponent for Kenya School of Law ATP students preparing for bar exams.
+  return `You are the DEVIL'S ADVOCATE — a relentless AI legal debate opponent for Kenya School of Law ATP students.
 
-YOUR ROLE: Take the opposing position on every legal issue. Challenge the student's reasoning. Force them to defend their positions with authority (statute, case law, constitutional provisions). Identify logical fallacies and weak arguments.
+YOUR IDENTITY: You are the toughest opposing counsel this student will ever face. You do not concede. You do not let vague answers pass. You do not ask questions you already asked. Every response from the student is an opportunity to dismantle their argument, force deeper reasoning, or expose a gap they didn't know existed.
+
+YOUR PURPOSE: Create moments where the student realizes they don't know something they assumed they knew — those "wait, I actually don't know this" moments that force real learning. Every exchange should leave them sharper than before.
 
 ${modeInstructions}
 
 CONTEXT: ${unitContext}
 
+CONVERSATION AWARENESS — CRITICAL:
+- You MUST read and directly engage with what the student JUST said. Never ignore their specific argument.
+- If the student cited a case, challenge the ratio or distinguish the facts.
+- If the student cited a section, demand they explain the proviso, exception, or limitation.
+- If the student was vague, quote their exact vague phrase back at them and demand specifics.
+- If the student contradicts something they said earlier in the session, call it out: "Earlier you said X, but now you're arguing Y. Which is it?"
+- Track the student's argument arc across the conversation. Build pressure by connecting threads.
+
 SESSION STRUCTURE:
 - Sessions last approximately 15 minutes. Pace yourself accordingly.
-- You will be told the elapsed time and remaining time in the session.
 - When the session time is nearly up (final 2 minutes), begin wrapping up naturally: "Let me put one final challenge to you..." or "Before we close, I want to test one last point..."
 - When time is completely up, end the session gracefully: "Time's up, Counsel. That concludes our debate."
 
 RESPONSE LENGTH — CRITICAL:
-- Vary your response lengths significantly to keep the debate dynamic and realistic.
-- About 30% of responses should be SHORT (1-2 sentences): quick challenges, pushbacks, or sharp questions. Examples: "Under which specific section?", "That's wrong. The Court of Appeal held otherwise in Mwangi v Republic.", "So you're saying Section 63 doesn't apply here? Defend that."
-- About 40% should be MEDIUM (3-5 sentences): standard rebuttals with a counter-argument and a follow-up question.
-- About 30% should be LONGER (6-8 sentences): detailed counter-arguments with case citations when making a substantive legal point.
-- NEVER give consistently long responses. Real debate has rhythm — quick jabs followed by developed arguments.
+- About 30% SHORT (1-2 sentences): "Under which specific section?", "That's wrong. The Court of Appeal held otherwise.", "Prove it."
+- About 40% MEDIUM (3-5 sentences): A counter-argument that cites authority, then a follow-up trap.
+- About 30% LONGER (6-8 sentences): A developed counter-position with case law that forces the student to rethink.
+- Real debate has rhythm — quick jabs, then a devastating counter-argument.
+
+CHALLENGE TECHNIQUES:
+1. The Flip: Take their own authority and show it supports the opposite conclusion.
+2. The Hypothetical Twist: "What if the facts were slightly different — say the contract was oral, not written?"
+3. The Authority Challenge: "You cited Section 3 of the Law of Contract Act. But did you read the proviso? What does it say?"
+4. The Precedent Trap: Cite a real Kenyan case that appears to contradict them and demand they distinguish it.
+5. The Policy Attack: "Even if the law says that, is that just? What's the policy rationale? Would you argue this before the Supreme Court?"
+6. The Practical Hammer: "Your client is sitting across the table. How do you explain this to them in plain language?"
 
 RULES:
-1. Always take the contrary position, even if the student is correct — force them to prove it.
-2. Cite counter-authority when challenging (cases, statutory provisions, constitutional articles).
-3. Ask pointed questions: "Under which provision?", "What did the court say in...?", "How do you reconcile that with...?"
-4. Stay within Kenyan law context. Reference actual Kenyan cases, statutes, and the 2010 Constitution.
-5. If the student makes a strong point, shift to a related but harder angle rather than conceding too easily.
+1. Always take the contrary position — force them to prove every assertion with authority.
+2. Cite real counter-authority when challenging: actual Kenyan cases, statutory provisions, constitutional articles, Commonwealth authorities where relevant.
+3. Stay within Kenyan law context but draw on Commonwealth comparisons (UK, India, South Africa) when devastating.
+4. If the student makes a truly strong point, acknowledge it in ONE word ("Granted.") then immediately pivot to a harder angle.
+5. NEVER repeat a challenge you already made. Track what you've already asked and escalate.
 6. Keep responses conversational — this is a spoken debate, not a written essay.
 
 ${feedbackInstructions}
 
-IMPORTANT: Your responses will be read aloud via TTS. Keep language natural and spoken. Avoid formatting like bullet points or asterisks. Use short paragraphs.`;
+IMPORTANT: Your responses will be read aloud via TTS. Keep language natural and spoken. No bullet points, no asterisks, no markdown. Use short paragraphs. Sound like a real opposing counsel in a moot court.`;
 }
 
 /* ================================================================
@@ -139,29 +155,39 @@ CONTEXT: ${unitContext}
 
 OTHER PANELISTS: ${otherPanelists.join(', ')}
 
-EXAMINATION GUIDELINES:
-1. Ask focused, exam-style questions that test both knowledge and application.
-2. Build on previous answers — if the student mentioned a case, dig deeper into it.
-3. Occasionally reference what another panelist asked: "Following up on ${otherPanelists[0] || 'my colleague'}'s question..."
-4. You may interject if the student contradicts something they said earlier.
-5. Ask practical scenario questions: "A client walks into your office and..."
-6. Test statutory recall: "Under which specific section...?"
-7. Keep questions conversational — this is a spoken exam.
-8. CRITICAL — Vary response length to simulate a real exam panel:
-   - ~30% SHORT (1-2 sentences): Quick follow-ups, redirections, or pointed questions.
-   - ~40% MEDIUM (3-4 sentences): Standard questioning with brief context.
-   - ~30% LONGER (5-7 sentences): Scenario-based questions or detailed probing.
-   Never give uniformly long responses.
-8b. COST + QUALITY RULE: Keep answers concise. Target 2-4 sentences total per turn while preserving quality.
-9. NEVER ask vague prompts like "state your understanding of the first principle". Name the exact principle, statute, article, case, or procedural step you are asking about.
-10. If the student asks for clarification, answer the clarification directly and then restate the question in precise terms.
-11. Cross-panel continuity is mandatory: where relevant, reference a prior panelist's question or contradiction before your next question.
-12. If you detect inconsistency with the student's prior answer, call it out briefly before asking the next question.
+CONTEXT AWARENESS — CRITICAL:
+- You MUST directly engage with the student's LATEST answer. Never ask a question that ignores what they just said.
+- If the student cited a case or section, probe deeper into THAT specific authority — ask about the ratio, the facts, the exceptions, or how it applies.
+- If the student gave a vague answer, quote their exact words back and demand precision: "You said 'there are procedures.' Which procedures? Under which rule?"
+- If the student contradicts an earlier answer, call it out: "A moment ago you told ${otherPanelists[0] || 'us'} that X. Now you're saying Y. Clarify."
+- Track what has ALREADY been asked in this session. Do NOT re-ask the same question, the same topic angle, or the same statutory provision. ALWAYS escalate or shift.
+- Each question must feel like the natural next step from the student's answer, not a random jump.
+
+EXAMINATION TECHNIQUES:
+1. The Follow-Up Drill: Take a specific claim from the student's last answer and drill into it. "You mentioned Order 40. Walk me through the three conditions for a temporary injunction."
+2. The Scenario Shift: "Now suppose the facts change — the plaintiff delayed filing for 18 months. Does your analysis still hold?"
+3. The Cross-Panel Reference: "${otherPanelists[0] || 'My colleague'} earlier asked about X. Your answer then was Y. How does that reconcile with what you just told me?"
+4. The Authority Check: "You cited Section 107 of the Evidence Act. What is the proviso to that section? What exception applies?"
+5. The Practical Application: "A client walks into your office tomorrow with these exact facts. What is the FIRST thing you do? Be specific — which form, which court, which fee?"
+6. The Policy Probe: "That's the black-letter rule. But what is the policy rationale behind it? Would you argue for reform?"
+
+RESPONSE LENGTH — VARY NATURALLY:
+- ~30% SHORT (1-2 sentences): Quick follow-ups, pointed redirections.
+- ~40% MEDIUM (3-4 sentences): Standard questioning with context.
+- ~30% LONGER (5-7 sentences): Scenario-based questions or detailed probing.
+- Target 2-4 sentences per turn. Never give uniformly long responses.
+
+HARD RULES:
+1. NEVER ask vague prompts like "state your understanding of the first principle." Name the EXACT principle, statute, article, case, or procedural step.
+2. NEVER repeat a question already asked in this session — the panel tracks what has been covered.
+3. If the student asks for clarification, answer directly and restate the question in precise terms.
+4. Cross-panel continuity is mandatory: reference prior panelists' questions where relevant.
+5. Call out inconsistencies — "Earlier you said X. Now you say Y."
 
 SESSION TIMING:
 - Sessions last approximately 15 minutes.
-- When time is nearly up (final 2 minutes), wrap up naturally: "${panelist.name}: We have time for one final question..."
-- When time is completely up, close the session: "${panelist.name}: Thank you, Counsel. That will be all for today."
+- When time is nearly up (final 2 minutes), wrap up naturally: "We have time for one final question..."
+- When time is completely up, close the session: "Thank you, Counsel. That will be all for today."
 ${interruptionInstructions}
 
 ${feedbackInstructions}
@@ -556,35 +582,63 @@ async function handlePost(req: NextRequest, user: AuthUser): Promise<Response> {
 
     // Summary generation at end of session
     if (generateSummary) {
-      const summaryPrompt = `You are an expert legal examiner reviewing an oral examination session. Analyze the entire conversation and provide a comprehensive assessment.
+      const examinerCount = messages.filter((m: any) => m.role === 'assistant').length;
+      const studentCount = messages.filter((m: any) => m.role === 'user').length;
 
-PROVIDE:
-1. Overall Performance Score (out of 100)
-2. Strengths — What the student did well
-3. Weaknesses — Areas needing improvement  
-4. Knowledge Gaps — Specific topics/provisions they missed or got wrong
-5. Cases & Provisions They Should Study — Specific statutory sections and case law they need to review
-6. Exam Readiness Assessment — How prepared are they for the actual oral exam?
-7. Recommended Study Focus — Top 3 areas to prioritize
+      const summaryPrompt = `You are a senior legal examiner producing the official session report for a Kenya School of Law oral examination.
 
-Be specific and reference actual moments from the conversation. Keep it conversational since this will be read aloud.`;
+THE SESSION: ${type === 'devils-advocate' ? "Devil's Advocate debate" : 'Oral examination panel'} with ${examinerCount} examiner turns and ${studentCount} student responses.
+
+INSTRUCTIONS — PRODUCE A STRUCTURED REPORT:
+
+Start with the score line EXACTLY like this (mandatory format):
+"Overall Performance Score: [NUMBER]/100"
+
+Then provide these sections:
+
+STRENGTHS
+- List 2-4 specific things the student did well. Quote what they actually said or did. Be concrete.
+
+WEAKNESSES
+- List 2-4 specific areas where the student struggled. Reference actual moments from the conversation.
+
+KNOWLEDGE GAPS
+- List specific topics, provisions, cases, or rules the student either got wrong, missed, or couldn't cite when asked.
+
+CASES & PROVISIONS TO STUDY
+- List 3-5 specific statutes (with section numbers), cases, or constitutional articles the student should review based on gaps revealed in this session.
+
+EXAM READINESS
+- One paragraph assessing how prepared they are for the actual ATP oral examination. Be honest and direct.
+
+RECOMMENDED STUDY FOCUS
+- Top 3 specific areas to prioritize before the next session.
+
+RULES:
+1. The score line "Overall Performance Score: [NUMBER]/100" MUST appear in the first line. This is non-negotiable.
+2. Be specific — reference actual moments from the conversation, not generic advice.
+3. Keep language natural and conversational since this will be read aloud.
+4. Do not use markdown formatting, bullet symbols, or asterisks. Use plain text with line breaks.
+5. Keep the entire report under 600 words.`;
 
       const summaryMessages = [
         { role: 'system' as const, content: summaryPrompt },
         ...messages.map((m: any) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-        { role: 'user' as const, content: 'Please provide my comprehensive session summary and feedback.' },
+        { role: 'user' as const, content: 'The session has ended. Please produce my comprehensive performance report with score.' },
       ];
 
       const completion = await openai.chat.completions.create({
         model: MINI_MODEL,
         messages: summaryMessages,
-        max_completion_tokens: 2000,
+        max_completion_tokens: 3000,
       });
+
+      const summaryContent = completion.choices[0]?.message?.content || 'Unable to generate summary.';
 
       return NextResponse.json({
         type: 'summary',
-        content: completion.choices[0]?.message?.content || 'Unable to generate summary.',
-        score: extractScore(completion.choices[0]?.message?.content || ''),
+        content: summaryContent,
+        score: extractScore(summaryContent),
       });
     }
 
@@ -597,6 +651,18 @@ Be specific and reference actual moments from the conversation. Keep it conversa
       ];
       const previousAssistantText = [...messages].reverse().find((m: any) => m.role === 'assistant')?.content || '';
       const lastUserText = [...messages].reverse().find((m: any) => m.role === 'user')?.content || '';
+
+      // Inject anti-repetition tracking — ALL questions asked so far
+      const questionsAsked = buildQuestionsAskedSummary(messages);
+      if (questionsAsked) {
+        apiMessages.push({ role: 'system' as const, content: questionsAsked });
+      }
+
+      // Inject student performance pattern
+      const perfContext = buildStudentPerformanceContext(messages);
+      if (perfContext) {
+        apiMessages.push({ role: 'system' as const, content: perfContext });
+      }
 
       // Inject session timing context
       const remaining = Math.max(0, sessionMaxMinutes - elapsedMinutes);
@@ -804,6 +870,18 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         });
       }
 
+      // Inject FULL anti-repetition tracking — ALL questions asked in this session
+      const questionsAsked = buildQuestionsAskedSummary(messages);
+      if (questionsAsked) {
+        apiMessages.push({ role: 'system' as const, content: questionsAsked });
+      }
+
+      // Inject student performance pattern for targeted questioning
+      const perfContext = buildStudentPerformanceContext(messages);
+      if (perfContext) {
+        apiMessages.push({ role: 'system' as const, content: perfContext });
+      }
+
       // Inject session timing context
       const examPhaseCtx = elapsedMinutes < 2
         ? '[SESSION PHASE: OPENING. Brief welcome, then one concrete exam question with a clearly named legal issue.]'
@@ -986,9 +1064,63 @@ Be specific and reference actual moments from the conversation. Keep it conversa
 /* ================================================================
    HELPERS
    ================================================================ */
+
+/** Build a concise summary of ALL questions asked so far to prevent repetition */
+function buildQuestionsAskedSummary(messages: any[]): string {
+  const assistantTurns = messages
+    .filter((m: any) => m.role === 'assistant' && m.content?.trim())
+    .map((m: any, i: number) => {
+      const speaker = m.panelistId ? getPanelistDisplayName(m.panelistId) : 'Examiner';
+      return `${i + 1}. [${speaker}]: ${summarizeForPrompt(m.content, 20)}`;
+    });
+
+  if (assistantTurns.length === 0) return '';
+  return `QUESTIONS ALREADY ASKED (DO NOT REPEAT OR REPHRASE ANY OF THESE):\n${assistantTurns.join('\n')}`;
+}
+
+/** Build a summary of the student's performance patterns across the session */
+function buildStudentPerformanceContext(messages: any[]): string {
+  const userTurns = messages.filter((m: any) => m.role === 'user' && m.content?.trim());
+  if (userTurns.length === 0) return '';
+
+  const strongPoints: string[] = [];
+  const weakPoints: string[] = [];
+
+  for (const turn of userTurns) {
+    const text = turn.content || '';
+    if (hasLegalAuthoritySignal(text) && hasStructuredAnswerSignal(text)) {
+      strongPoints.push(summarizeForPrompt(text, 12));
+    } else if (hasVaguenessSignal(text) || countWords(text) < 15) {
+      weakPoints.push(summarizeForPrompt(text, 12));
+    }
+  }
+
+  const parts: string[] = [];
+  if (strongPoints.length > 0) {
+    parts.push(`Student showed strength on: ${strongPoints.slice(-3).join('; ')}`);
+  }
+  if (weakPoints.length > 0) {
+    parts.push(`Student was weak/vague on: ${weakPoints.slice(-3).join('; ')} — PRESS HARDER on these areas`);
+  }
+  if (parts.length === 0) return '';
+  return `STUDENT PERFORMANCE PATTERN:\n${parts.join('\n')}`;
+}
+
 function extractScore(text: string): number | null {
-  const match = text.match(/(\d{1,3})\s*(?:out of|\/)\s*100/i);
-  return match ? parseInt(match[1], 10) : null;
+  // Try structured patterns first
+  const patterns = [
+    /(?:overall\s+)?(?:performance\s+)?score\s*[:=]\s*(\d{1,3})\s*(?:\/\s*100|out\s+of\s+100)?/i,
+    /(\d{1,3})\s*(?:out of|\/)\s*100/i,
+    /(\d{1,3})\s*%/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      const score = parseInt(match[1], 10);
+      if (score >= 0 && score <= 100) return score;
+    }
+  }
+  return null;
 }
 
 export const POST = withAuth(handlePost);

@@ -14,7 +14,8 @@ import {
   ArrowLeft, ArrowRight, Clock, CheckCircle2, XCircle, Loader2, BarChart3,
   RotateCcw, BookOpen, Lightbulb, ChevronDown, ChevronUp, Trophy, Target,
   Brain, TrendingUp, AlertTriangle, Sparkles, GraduationCap, FileText, Zap,
-  PanelLeftClose, PanelLeftOpen, Lock,
+  PanelLeftClose, PanelLeftOpen, Lock, Bold, Italic, Underline as UnderlineIcon,
+  AlignLeft, AlignCenter, AlignRight, Indent, Outdent, List, ListOrdered,
 } from 'lucide-react';
 import TrialLimitReached from '@/components/TrialLimitReached';
 import PremiumGate, { usePremiumGate } from '@/components/PremiumGate';
@@ -128,7 +129,12 @@ export default function ExamSessionPage() {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const autoSubmitRef = useRef(false);
   const loadedRef = useRef(false);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
+
+  const execCmd = (cmd: string, val?: string) => {
+    document.execCommand(cmd, false, val);
+    editorRef.current?.focus();
+  };
 
   // Collapse sidebar on mount for focused exam view, restore on unmount
   useEffect(() => {
@@ -338,6 +344,14 @@ Rules:
 
   const currentQ = questions[currentIndex];
   const answeredCount = Object.keys(answers).length;
+
+  useEffect(() => {
+    if (!currentQ?.id || !editorRef.current) return;
+    const val = answers[currentQ.id] || '';
+    if (editorRef.current.innerText !== val) {
+      editorRef.current.innerText = val;
+    }
+  }, [currentQ?.id, answers]);
 
   const navigateTo = (idx: number) => {
     if (idx === currentIndex) return;
@@ -965,7 +979,7 @@ Respond with ONLY valid JSON:
                   {currentQ?.marks} marks
                 </span>
               </div>
-              <div className="prose prose-sm dark:prose-invert max-w-none">
+              <div className="prose prose-sm dark:prose-invert max-w-none max-h-[34vh] overflow-y-auto pr-1">
                 <p className="text-sm leading-relaxed font-medium text-foreground">
                   {currentQ?.question}
                 </p>
@@ -1036,49 +1050,59 @@ Respond with ONLY valid JSON:
               {/* Premium Writing Area */}
               <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Formatting toolbar */}
-                <div className="px-6 py-2 border-b border-border/10 flex items-center gap-1 bg-muted/5 shrink-0">
-                  <span className="text-[10px] font-medium text-muted-foreground mr-2 uppercase tracking-wider">Insert:</span>
-                  {[
-                    { label: 'IRAC', tip: 'IRAC Template', text: '\n\nISSUE:\n[Identify the legal issue]\n\nRULE:\n[State the applicable law/statute/case]\n\nAPPLICATION:\n[Apply the law to the facts]\n\nCONCLUSION:\n[State your conclusion]\n' },
-                    { label: 'Intro', tip: 'Opening Paragraph', text: '\nThe central issue in this matter is whether... This question engages the provisions of...\n' },
-                    { label: 'Citation', tip: 'Case Citation', text: ' (see [Case Name] [Year] eKLR)' },
-                    { label: 'Section', tip: 'Statute Reference', text: ' Section __ of the __ Act (Cap __) provides that...' },
-                    { label: 'Conclude', tip: 'Conclusion', text: '\n\nIn conclusion, based on the foregoing analysis, it is submitted that...\n' },
-                  ].map((btn) => (
-                    <button
-                      key={btn.label}
-                      title={btn.tip}
-                      onClick={() => {
-                        const ta = textareaRef.current;
-                        if (!ta) return;
-                        const start = ta.selectionStart;
-                        const current = answers[currentQ?.id] || '';
-                        const newText = current.slice(0, start) + btn.text + current.slice(ta.selectionEnd);
-                        setAnswers((prev) => ({ ...prev, [currentQ.id]: newText }));
-                        setTimeout(() => {
-                          ta.focus();
-                          ta.selectionStart = ta.selectionEnd = start + btn.text.length;
-                        }, 0);
-                      }}
-                      className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors border border-transparent hover:border-border/30"
-                    >
-                      {btn.label}
-                    </button>
-                  ))}
+                <div className="px-6 py-2 border-b border-border/10 flex items-center gap-0.5 bg-muted/5 shrink-0 overflow-x-auto">
+                  <button type="button" onClick={() => execCmd('bold')} title="Bold" className="p-1.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
+                    <Bold className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={() => execCmd('italic')} title="Italic" className="p-1.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
+                    <Italic className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={() => execCmd('underline')} title="Underline" className="p-1.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
+                    <UnderlineIcon className="h-3.5 w-3.5" />
+                  </button>
+                  <div className="w-px h-4 bg-border/30 mx-1" />
+                  <button type="button" onClick={() => execCmd('justifyLeft')} title="Align Left" className="p-1.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
+                    <AlignLeft className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={() => execCmd('justifyCenter')} title="Align Center" className="p-1.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
+                    <AlignCenter className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={() => execCmd('justifyRight')} title="Align Right" className="p-1.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
+                    <AlignRight className="h-3.5 w-3.5" />
+                  </button>
+                  <div className="w-px h-4 bg-border/30 mx-1" />
+                  <button type="button" onClick={() => execCmd('indent')} title="Indent" className="p-1.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
+                    <Indent className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={() => execCmd('outdent')} title="Outdent" className="p-1.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
+                    <Outdent className="h-3.5 w-3.5" />
+                  </button>
+                  <div className="w-px h-4 bg-border/30 mx-1" />
+                  <button type="button" onClick={() => execCmd('insertUnorderedList')} title="Bullet List" className="p-1.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
+                    <List className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={() => execCmd('insertOrderedList')} title="Numbered List" className="p-1.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
+                    <ListOrdered className="h-3.5 w-3.5" />
+                  </button>
                   <div className="flex-1" />
                   <span className="text-[10px] tabular-nums text-muted-foreground/60">
                     {((answers[currentQ?.id] || '').match(/\S+/g) || []).length} words
                   </span>
                 </div>
 
-                {/* Textarea */}
+                {/* Drafting editor */}
                 <div className="flex-1 p-6 overflow-y-auto">
-                  <textarea
-                    ref={textareaRef}
-                    placeholder="Write your answer here using IRAC format where applicable. Use the toolbar above to quickly insert templates…"
-                    value={answers[currentQ?.id] || ''}
-                    onChange={(e) => setAnswers((prev) => ({ ...prev, [currentQ.id]: e.target.value }))}
-                    className="w-full h-full min-h-[300px] resize-none bg-transparent text-base leading-relaxed outline-none placeholder:text-muted-foreground/40 font-[system-ui]"
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={() => {
+                      const value = editorRef.current?.innerText || '';
+                      if (!currentQ?.id) return;
+                      setAnswers((prev) => ({ ...prev, [currentQ.id]: value }));
+                    }}
+                    data-placeholder="Write your answer here using IRAC format where applicable."
+                    className="w-full h-full min-h-[300px] bg-transparent text-base leading-relaxed outline-none font-[system-ui] whitespace-pre-wrap break-words empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/40"
                     style={{ tabSize: 4 }}
                   />
                 </div>

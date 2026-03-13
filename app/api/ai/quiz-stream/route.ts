@@ -46,6 +46,11 @@ You must output ONLY a JSON array — no markdown, no extra text.
 Start outputting immediately — every character counts for speed.
 
 CRITICAL: You MUST generate EXACTLY the number of questions requested. Not fewer. Count carefully.
+SPEED REQUIREMENTS:
+- Keep each question stem concise (max ~32 words).
+- Keep each option concise (max ~14 words).
+- Keep each explanation concise (max ~20 words) while still citing authority.
+- Output compact JSON with no extra whitespace and no commentary.
 
 CRITICAL DIFFICULTY REQUIREMENTS:
 - These questions are for POSTGRADUATE law students preparing for the Kenya Bar Exam, NOT undergraduates or beginners.
@@ -59,7 +64,7 @@ CRITICAL DIFFICULTY REQUIREMENTS:
         { role: 'user', content: prompt },
       ],
       stream: true,
-      max_completion_tokens: Math.max(count * 500, 4000),
+      max_completion_tokens: Math.min(9000, Math.max(count * 140, 1400)),
     });
 
     const encoder = new TextEncoder();

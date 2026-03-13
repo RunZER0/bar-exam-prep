@@ -103,7 +103,9 @@ IMPORTANT: Your responses will be read aloud via TTS. Keep language natural and 
    ================================================================ */
 function buildExaminerPrompt(panelist: typeof PANELISTS[0], mode: string, unitContext: string, feedbackMode: string, otherPanelists: string[], enableInterruptions: boolean = true) {
   const modeInstructions = getModeInstructions(mode);
-  const feedbackInstructions = `At the start of EVERY turn after a student response, give a concise assessment first (max 1 sentence), then ask the next question. If the answer is inaccurate, contradictory, evasive, or likely fabricated, state that directly and require correction before proceeding.`;
+  const feedbackInstructions = feedbackMode === 'per-exchange'
+    ? `Give micro-feedback selectively, not mechanically. Use it on roughly half of turns, especially when correcting inaccuracies, weak authority, contradictions, or advocacy structure. If the student answer is strong and precise, skip praise and move straight to a harder follow-up.`
+    : `Do not give routine micro-feedback each turn. Only intervene with explicit correction when the student is inaccurate, contradictory, evasive, or likely fabricating authority.`;
 
   const interruptionInstructions = enableInterruptions ? `
 
@@ -350,6 +352,158 @@ function getTrailingPanelistStreak(messages: any[], panelistId: string): number 
   return streak;
 }
 
+function countWords(text: string): number {
+  return (text || '').trim().split(/\s+/).filter(Boolean).length;
+}
+
+function hasLegalAuthoritySignal(text: string): boolean {
+  return /\b(section|s\.|article|order|rule|regulation|act|constitution|cap\.?|v\.?|vs\.?|court of appeal|supreme court|high court)\b/i.test(text || '');
+}
+
+function hasVaguenessSignal(text: string): boolean {
+  return /\b(basically|generally|usually|it depends|somehow|kind of|sort of|maybe|perhaps|in most cases)\b/i.test(text || '');
+}
+
+function hasClarificationSignal(text: string): boolean {
+  return /what do you mean|clarify|not clear|which principle|explain|repeat the question/i.test(text || '');
+}
+
+function hasStructuredAnswerSignal(text: string): boolean {
+  const lower = (text || '').toLowerCase();
+  const structureMarkers = [
+    'first',
+    'second',
+    'third',
+    'therefore',
+    'because',
+    'on the facts',
+    'applying this',
+    'in this scenario',
+    'the issue is',
+    'the rule is',
+    'the application is',
+    'the conclusion is',
+  ];
+  return structureMarkers.some(marker => lower.includes(marker));
+}
+
+function assistantRequestedDetail(previousAssistantText: string): boolean {
+  return /explain in detail|walk me through|step by step|give full analysis|take me through/i.test(previousAssistantText || '');
+}
+
+function hasPolarityConflict(previousUserText: string, lastUserText: string): boolean {
+  const prev = normalizeForComparison(previousUserText);
+  const last = normalizeForComparison(lastUserText);
+  if (!prev || !last) return false;
+
+  const conflictPairs = [
+    ['must', 'need not'],
+    ['can', 'cannot'],
+    ['is required', 'is not required'],
+    ['mandatory', 'discretionary'],
+    ['constitutional', 'unconstitutional'],
+    ['admissible', 'inadmissible'],
+  ] as const;
+
+  return conflictPairs.some(([a, b]) =>
+    (prev.includes(a) && last.includes(b)) || (prev.includes(b) && last.includes(a))
+  );
+}
+
+type ExaminerTurnMode = 'opening' | 'clarify' | 'correction' | 'authority-demand' | 'interruption-trim' | 'probe' | 'pivot' | 'handoff';
+
+type ConversationAct = 'launch' | 'bridge-probe' | 'pressure-test' | 'repair' | 'pivot-scenario' | 'closeout';
+
+function chooseExaminerTurnMode(params: {
+  lastUserText: string;
+  previousUserText: string;
+  previousAssistantText: string;
+  assistantTurnCount: number;
+  trailingSamePanelist: number;
+}): ExaminerTurnMode {
+  const { lastUserText, previousUserText, previousAssistantText, assistantTurnCount, trailingSamePanelist } = params;
+  if (!lastUserText?.trim()) return 'opening';
+  if (hasClarificationSignal(lastUserText)) return 'clarify';
+  if (hasPolarityConflict(previousUserText, lastUserText)) return 'correction';
+
+  const words = countWords(lastUserText);
+  const authority = hasLegalAuthoritySignal(lastUserText);
+  const vague = hasVaguenessSignal(lastUserText);
+  const structured = hasStructuredAnswerSignal(lastUserText);
+  const detailRequested = assistantRequestedDetail(previousAssistantText);
+
+  if (words > 110 && !authority && !structured && !detailRequested) return 'interruption-trim';
+  if (words > 140 && authority && structured && !vague) return 'probe';
+  if (!authority || vague) return 'authority-demand';
+  if (assistantTurnCount > 0 && assistantTurnCount % 4 === 0) return 'pivot';
+  if (trailingSamePanelist >= 2) return 'handoff';
+  return 'probe';
+}
+
+function chooseFeedbackStyle(feedbackMode: string, turnMode: ExaminerTurnMode, assistantTurnCount: number): 'none' | 'brief' | 'critical' {
+  if (turnMode === 'correction' || turnMode === 'authority-demand' || turnMode === 'interruption-trim') {
+    return 'critical';
+  }
+  if (feedbackMode !== 'per-exchange') return 'none';
+  return assistantTurnCount % 2 === 0 ? 'brief' : 'none';
+}
+
+function pickSpecialistPanelistIndex(activePanelists: typeof PANELISTS, lastUserText: string, fallbackIndex: number): number {
+  const lower = (lastUserText || '').toLowerCase();
+  const preferredId =
+    /(constitution|article|rights|judicial review|injunction|jurisdiction|probate)/.test(lower) ? 'justice-mwangi'
+    : /(cross examination|objection|trial|plea|criminal|commercial|procedure|summons)/.test(lower) ? 'advocate-amara'
+    : /(policy|ethics|drafting|theory|rationale|professional)/.test(lower) ? 'prof-otieno'
+    : null;
+
+  if (!preferredId) return fallbackIndex;
+  const idx = activePanelists.findIndex(p => p.id === preferredId);
+  return idx >= 0 ? idx : fallbackIndex;
+}
+
+function getPanelistDisplayName(panelistId?: string): string {
+  if (!panelistId) return 'my colleague';
+  return PANELISTS.find(p => p.id === panelistId)?.name || 'my colleague';
+}
+
+function getPreviousAssistantTurn(messages: any[]): { panelistId?: string; content: string } | null {
+  const lastAssistant = [...messages].reverse().find((m: any) => m.role === 'assistant');
+  if (!lastAssistant) return null;
+  return {
+    panelistId: lastAssistant.panelistId,
+    content: lastAssistant.content || '',
+  };
+}
+
+function chooseConversationAct(params: {
+  turnMode: ExaminerTurnMode;
+  isCrossPanelHandover: boolean;
+  examRemaining: number;
+  assistantTurnCount: number;
+}): ConversationAct {
+  const { turnMode, isCrossPanelHandover, examRemaining, assistantTurnCount } = params;
+  if (examRemaining <= 2) return 'closeout';
+  if (assistantTurnCount === 0) return 'launch';
+  if (turnMode === 'clarify' || turnMode === 'correction' || turnMode === 'authority-demand' || turnMode === 'interruption-trim') return 'repair';
+  if (turnMode === 'pivot') return 'pivot-scenario';
+  if (isCrossPanelHandover) return 'bridge-probe';
+  return 'pressure-test';
+}
+
+function buildHandoverDirective(params: {
+  isCrossPanelHandover: boolean;
+  previousPanelistName: string;
+  previousPanelistPoint: string;
+  conversationAct: ConversationAct;
+}): string {
+  const { isCrossPanelHandover, previousPanelistName, previousPanelistPoint, conversationAct } = params;
+  if (!isCrossPanelHandover) {
+    return `FLOW STYLE: Keep natural spoken rhythm. Use one core question, optional one-line challenge, then stop.`;
+  }
+
+  return `HANDOVER STYLE: Start with a brief spoken bridge (6-14 words) that explicitly links from ${previousPanelistName}'s point: "Picking up from ${previousPanelistName} on ${previousPanelistPoint}, ..." then ask one focused question. Do not sound scripted. Do not over-explain the transition. Keep total response to 2-3 short sentences. CURRENT ACT: ${conversationAct}.`;
+}
+
 /* ================================================================
    POST — Handle oral exam conversation
    ================================================================ */
@@ -578,8 +732,58 @@ Be specific and reference actual moments from the conversation. Keep it conversa
 
       const previousAssistantText = [...messages].reverse().find((m: any) => m.role === 'assistant')?.content || '';
       const lastUserText = [...messages].reverse().find((m: any) => m.role === 'user')?.content || '';
+      const previousUserText = [...messages]
+        .filter((m: any) => m.role === 'user')
+        .slice(-2, -1)[0]?.content || '';
+      const previousAssistantTurn = getPreviousAssistantTurn(messages);
+      const previousPanelistName = getPanelistDisplayName(previousAssistantTurn?.panelistId);
+      const isCrossPanelHandover = Boolean(
+        previousAssistantTurn?.panelistId && previousAssistantTurn.panelistId !== currentPanelist.id
+      );
+      const previousPanelistPoint = summarizeForPrompt(previousAssistantTurn?.content || '', 10);
       const assistantTurnCount = messages.filter((m: any) => m.role === 'assistant').length;
       const trailingSamePanelist = getTrailingPanelistStreak(messages, currentPanelist.id);
+      const turnMode = chooseExaminerTurnMode({
+        lastUserText,
+        previousUserText,
+        previousAssistantText,
+        assistantTurnCount,
+        trailingSamePanelist,
+      });
+      const feedbackStyle = chooseFeedbackStyle(feedbackMode, turnMode, assistantTurnCount);
+      const examRemaining = Math.max(0, sessionMaxMinutes - elapsedMinutes);
+      const conversationAct = chooseConversationAct({
+        turnMode,
+        isCrossPanelHandover,
+        examRemaining,
+        assistantTurnCount,
+      });
+
+      apiMessages.push({
+        role: 'system' as const,
+        content: `REALISM DIRECTIVE: Current turn mode is "${turnMode}". Behave like a live panel, not a checklist bot. One core question per turn. If correcting, do it directly in one line and demand authority. If clarifying, restate tightly and continue. If probing, escalate difficulty with a concrete fact twist. If pivoting, link to prior answer then shift to adjacent issue.`
+      });
+      apiMessages.push({
+        role: 'system' as const,
+        content: `CONVERSATION ACT: ${conversationAct}. Keep spoken cadence natural: short bridge -> targeted challenge -> stop. Avoid stacked multi-question dumps.`
+      });
+      apiMessages.push({
+        role: 'system' as const,
+        content: buildHandoverDirective({
+          isCrossPanelHandover,
+          previousPanelistName,
+          previousPanelistPoint,
+          conversationAct,
+        })
+      });
+      apiMessages.push({
+        role: 'system' as const,
+        content: feedbackStyle === 'none'
+          ? 'FEEDBACK CADENCE: Do not add routine feedback on this turn. Move straight into substantive questioning unless you must correct a clear inaccuracy.'
+          : feedbackStyle === 'brief'
+          ? 'FEEDBACK CADENCE: Give at most one short feedback sentence, then ask one focused question.'
+          : 'FEEDBACK CADENCE: Give one direct corrective sentence (identify the defect: inaccuracy, contradiction, or lack of authority), then ask a precise recovery question.'
+      });
 
       if (lastUserText) {
         apiMessages.push({
@@ -601,7 +805,6 @@ Be specific and reference actual moments from the conversation. Keep it conversa
       }
 
       // Inject session timing context
-      const examRemaining = Math.max(0, sessionMaxMinutes - elapsedMinutes);
       const examPhaseCtx = elapsedMinutes < 2
         ? '[SESSION PHASE: OPENING. Brief welcome, then one concrete exam question with a clearly named legal issue.]'
         : examRemaining <= 2
@@ -618,9 +821,18 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         apiMessages.push({ role: 'system' as const, content: timeCtx });
       }
 
-      // Vary response length
-      const examLengthRoll = Math.random();
-      const examMaxTokens = examLengthRoll < 0.35 ? 120 : examLengthRoll < 0.8 ? 220 : 320;
+      // Vary response budget based on turn mode for realism + cost control
+      const examMaxTokens = turnMode === 'interruption-trim'
+        ? 100
+        : turnMode === 'clarify'
+        ? 130
+        : turnMode === 'correction' || turnMode === 'authority-demand'
+        ? 170
+        : turnMode === 'pivot' || turnMode === 'handoff'
+        ? 190
+        : isCrossPanelHandover
+        ? 185
+        : 165;
 
       // Opening question if no messages
       if (messages.length === 0) {
@@ -630,16 +842,14 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         });
       }
 
-      // Determine next panelist (round-robin with occasional same-panelist follow-up)
-      const clarificationRequested = /what do you mean|clarify|not clear|which principle|explain/i.test(lastUserText);
-      const shouldPivotTopic = !clarificationRequested && assistantTurnCount > 0 && assistantTurnCount % 3 === 0;
-      const shouldFollowUp = messages.length > 0 && (
-        clarificationRequested ||
-        (trailingSamePanelist < 2 && assistantTurnCount % 2 === 1)
-      );
-      const nextPanelistIndex = shouldFollowUp
+      // Determine next panelist using adaptive realism rules
+      const shouldPivotTopic = turnMode === 'pivot';
+      const shouldStayWithCurrent = turnMode === 'clarify' || turnMode === 'correction' || turnMode === 'authority-demand' || turnMode === 'interruption-trim';
+      const baselineRotateIndex = (currentPanelistIndex + 1) % activePanelists.length;
+      const specialistRotateIndex = pickSpecialistPanelistIndex(activePanelists, lastUserText, baselineRotateIndex);
+      const nextPanelistIndex = shouldStayWithCurrent && trailingSamePanelist < 2
         ? currentPanelistIndex
-        : (currentPanelistIndex + 1) % activePanelists.length;
+        : specialistRotateIndex;
 
       if (shouldPivotTopic) {
         apiMessages.push({

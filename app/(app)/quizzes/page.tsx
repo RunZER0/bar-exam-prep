@@ -424,103 +424,69 @@ Rules:
     }
   }, []);
 
-  const fetchQuestions = async (count: number): Promise<TriviaQuestion[]> => {
+  const fetchQuestions = async (count: number, timeoutMs: number = 12000): Promise<TriviaQuestion[]> => {
     const token = await getIdToken();
-    const unitInfo = selectedUnit !== 'all' ? ATP_UNITS.find((u) => u.id === selectedUnit) : null;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const collected: TriviaQuestion[] = [];
 
-    const res = await fetch('/api/ai/chat', {
+    try {
+      const res = await fetch('/api/ai/quiz-stream', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
+      signal: controller.signal,
       body: JSON.stringify({
-        message: buildPrompt(count),
-        competencyType: 'research',
-        context: {
-          topicArea: unitInfo?.name || 'General Kenyan Law',
-          quizMode: mode.id,
-          quizGeneration: true,
-          userLevel: userPerformance?.currentLevel || 'unknown',
-          weakAreas: userPerformance?.weakAreas || [],
-        },
+        prompt: buildPrompt(count),
+        count,
       }),
     });
-
-    if (!res.ok) throw new Error('Failed');
-    const data = await res.json();
-    const parsed = extractJSONArray(String(data.response || ''));
-    return normalizeQuestions(parsed).slice(0, count);
-  };
-
-  /* ── Streaming quiz fetch — first question shows instantly ── */
-  const fetchQuestionsStreaming = async (
-    count: number,
-    minReadyCount: number,
-    onReady: () => void,
-    timeoutMs: number = 35000,
-  ): Promise<number> => {
-    const token = await getIdToken();
-    const controller = new AbortController();
-    let questionCount = 0;
-    let readySignaled = false;
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-      const res = await fetch('/api/ai/quiz-stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          prompt: buildPrompt(count),
-          count,
-        }),
-      });
 
       if (!res.ok) throw new Error('Failed');
 
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
+      let sseBuffer = '';
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const text = decoder.decode(value, { stream: true });
-          const lines = text.split('\n');
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.type === 'question' && data.question) {
-                const normalized = normalizeQuestions([data.question]);
-                if (normalized.length === 0) continue;
-                setQuestions((prev) => [...prev, normalized[0]]);
-                questionCount++;
-                if (!readySignaled && questionCount >= minReadyCount) {
-                  readySignaled = true;
-                  onReady();
+      if (!reader) return [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split('\n');
+        sseBuffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'question' && data.question) {
+              const normalized = normalizeQuestions([data.question]);
+              if (normalized.length > 0) {
+                collected.push(normalized[0]);
+                if (collected.length >= count) {
+                  return collected.slice(0, count);
                 }
               }
-            } catch { /* skip partial */ }
+            }
+          } catch {
+            // skip partial chunks
           }
         }
       }
+
+      return collected.slice(0, count);
     } catch (err: any) {
       const isAbort = err?.name === 'AbortError' || String(err?.message || '').toLowerCase().includes('aborted');
-      if (!isAbort) {
-        throw err;
+      if (isAbort) {
+        return collected.slice(0, count);
       }
-      // Timeout/abort is recoverable: return whatever streamed so far,
-      // and caller will supplement with non-stream generation.
+      throw err;
     } finally {
       clearTimeout(timeout);
     }
-
-    return questionCount;
   };
 
   // Infinity mode — load more questions when nearing the end
@@ -528,9 +494,9 @@ Rules:
     if (loadingMoreQuestions) return;
     setLoadingMoreQuestions(true);
     try {
-      let batch = await fetchQuestions(15);
+      let batch = await fetchQuestions(12, 10000);
       if (batch.length < 10) {
-        const extra = await fetchQuestions(15 - batch.length);
+        const extra = await fetchQuestions(12 - batch.length, 9000);
         batch = [...batch, ...extra];
       }
       if (batch.length > 0) {
@@ -566,37 +532,37 @@ Rules:
     try {
       const minReadyCount = Math.min(3, effectiveCount);
 
-      // Use streaming API — first question shows instantly, rest arrive in background
-      const streamedCount = await fetchQuestionsStreaming(effectiveCount, minReadyCount, () => {
-        // Called once first three (or requested minimum) are available
-        setLoading(false);
-      });
-
-      // Enforce exact selected count for non-infinity mode
-      let total = streamedCount;
-      let retries = 0;
-      while (total < effectiveCount && retries < 3) {
-        const need = effectiveCount - total;
-        const supplement = await fetchQuestions(need);
-        if (supplement.length === 0) {
-          retries++;
-          continue;
-        }
-        setQuestions((prev) => [...prev, ...supplement.slice(0, need)]);
-        total += Math.min(supplement.length, need);
-        if (total >= minReadyCount) {
-          setLoading(false);
-        }
-      }
-
-      if (total === 0) {
+      // PHASE 1 (foreground): get first 3 questions fast, then render immediately.
+      const initial = await fetchQuestions(minReadyCount, 9000);
+      if (initial.length === 0) {
         throw new Error('No quiz questions generated.');
       }
-
-      if (!isInfinityMode && total < effectiveCount) {
-        throw new Error(`Generated ${total}/${effectiveCount} questions. Please retry.`);
-      }
+      setQuestions(initial);
       setLoading(false);
+
+      // PHASE 2 (background): continue filling remaining questions without blocking UI.
+      void (async () => {
+        let total = initial.length;
+        let retries = 0;
+
+        while (total < effectiveCount && retries < 2) {
+          const need = effectiveCount - total;
+          const batchSize = Math.min(12, need);
+          const supplement = await fetchQuestions(batchSize, 10000);
+          if (supplement.length === 0) {
+            retries++;
+            continue;
+          }
+
+          const take = supplement.slice(0, need);
+          setQuestions((prev) => [...prev, ...take]);
+          total += take.length;
+        }
+
+        if (!isInfinityMode && total < effectiveCount) {
+          setGenerationError(`Generated ${total}/${effectiveCount} questions. You can continue while more load.`);
+        }
+      })();
 
       // Keep infinite mode pouring in the background
       if (isInfinityMode) {

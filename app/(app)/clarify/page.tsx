@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import TrialLimitReached from '@/components/TrialLimitReached';
 import PremiumGate from '@/components/PremiumGate';
+import AiThinkingIndicator from '@/components/AiThinkingIndicator';
 import { 
   MessageCircleQuestion, Send, Image, Mic, MicOff, 
   X, FileText, Paperclip, StopCircle, Sparkles, Loader2,
@@ -747,9 +748,15 @@ export default function ClarifyPage() {
                     )}
                     {message.role === 'assistant' ? (
                       <>
-                        <MarkdownRenderer content={message.content} size="sm" />
-                        {message.isStreaming && (
-                          <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
+                        {message.isStreaming && !message.content ? (
+                          <AiThinkingIndicator variant="inline" messageSet="thinking" />
+                        ) : (
+                          <>
+                            <MarkdownRenderer content={message.content} size="sm" />
+                            {message.isStreaming && (
+                              <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
+                            )}
+                          </>
                         )}
                       </>
                     ) : (

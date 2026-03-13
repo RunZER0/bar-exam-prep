@@ -34,6 +34,8 @@ const RESTRICTED_PATHS = [
   '/clarify',
 ];
 
+const FLOATING_CHAT_SESSION_KEY = 'ynai-floating-chat-session-id';
+
 export default function FloatingChat() {
   const pathname = usePathname();
   const { getIdToken } = useAuth();
@@ -41,7 +43,11 @@ export default function FloatingChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId] = useState(() => crypto.randomUUID()); // Session for context awareness
+  const [sessionId] = useState(() => {
+    if (typeof window === 'undefined') return crypto.randomUUID();
+    const existing = window.localStorage.getItem(FLOATING_CHAT_SESSION_KEY);
+    return existing || crypto.randomUUID();
+  }); // Session for context awareness
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -60,6 +66,12 @@ export default function FloatingChat() {
     window.addEventListener('ynai:openChat', handler);
     return () => window.removeEventListener('ynai:openChat', handler);
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(FLOATING_CHAT_SESSION_KEY, sessionId);
+    }
+  }, [sessionId]);
 
   // Drag state for the floating button
   const [bubblePos, setBubblePos] = useState<{ x: number; y: number } | null>(null);

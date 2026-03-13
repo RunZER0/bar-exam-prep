@@ -24,6 +24,12 @@ export async function GET(
       .orderBy(desc(roomMessages.createdAt))
       .limit(limit);
 
+    const replyCountMap = new Map<string, number>();
+    for (const msg of messages) {
+      if (!msg.parentId) continue;
+      replyCountMap.set(msg.parentId, (replyCountMap.get(msg.parentId) || 0) + 1);
+    }
+
     // Get user details for each message
     const messagesWithUsers = await Promise.all(
       messages.map(async (msg) => {
@@ -43,6 +49,8 @@ export async function GET(
 
         return {
           id: msg.id,
+          parentId: msg.parentId,
+          replyCount: replyCountMap.get(msg.id) || 0,
           userId: msg.userId,
           displayName: userData?.communityUsername || userData?.displayName || 'Anonymous',
           photoURL: userData?.photoURL,
@@ -110,7 +118,8 @@ export async function POST(
 
     const hasImage = safeAttachments.some((a: any) => a.type === 'image');
     const hasAudio = safeAttachments.some((a: any) => a.type === 'audio');
-    const messageType = hasAudio ? 'audio' : hasImage ? 'image' : 'text';
+    const hasDocument = safeAttachments.some((a: any) => a.type === 'document');
+    const messageType = hasAudio ? 'audio' : hasImage ? 'image' : hasDocument ? 'document' : 'text';
 
     // Insert the message
     const [newMessage] = await db.insert(roomMessages).values({
@@ -126,6 +135,8 @@ export async function POST(
     return NextResponse.json({
       message: {
         id: newMessage.id,
+        parentId: newMessage.parentId,
+        replyCount: 0,
         userId: newMessage.userId,
         displayName: user.displayName || 'Anonymous',
         content: newMessage.content,

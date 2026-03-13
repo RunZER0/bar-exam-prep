@@ -63,21 +63,87 @@ Criminal Procedure Code (Cap 75), Law of Contract Act (Cap 23), Companies Act 20
 Employment Act 2007, and all other relevant Kenyan statutes and subsidiary legislation.
 Always ground your responses in Kenyan law specifically.`;
 
-async function getConversationHistory(sessionId: string) {
+async function getConversationHistory(sessionId: string, userId: string) {
   try {
+    const [session] = await db
+      .select({ id: chatSessions.id })
+      .from(chatSessions)
+      .where(and(eq(chatSessions.id, sessionId), eq(chatSessions.userId, userId)))
+      .limit(1);
+
+    if (!session) return [];
+
     const messages = await db
-      .select({ role: chatHistory.message, content: chatHistory.response })
+      .select({
+        role: chatMessages.role,
+        content: chatMessages.content,
+        metadata: chatMessages.metadata,
+      })
+      .from(chatMessages)
+      .where(eq(chatMessages.sessionId, sessionId))
+      .orderBy(desc(chatMessages.createdAt))
+      .limit(14);
+
+    if (messages.length > 0) {
+      return messages
+        .reverse()
+        .map((m) => {
+          const msgRole = m.role === 'assistant' ? 'assistant' : 'user';
+          const metadata = (m.metadata as any) || {};
+          const attachmentContext = typeof metadata?.attachmentContext === 'string'
+            ? metadata.attachmentContext.trim()
+            : '';
+
+          let content = m.content || '';
+          if (msgRole === 'user' && attachmentContext && !content.includes(attachmentContext)) {
+            content = `${attachmentContext}\n\n${content}`;
+          }
+
+          if (content.length > 8000) {
+            content = `${content.slice(0, 8000)}\n[Truncated for context]`;
+          }
+
+          return { role: msgRole as 'user' | 'assistant', content };
+        })
+        .filter((m) => m.content);
+    }
+
+    const legacy = await db
+      .select({ message: chatHistory.message, response: chatHistory.response })
       .from(chatHistory)
       .where(eq(chatHistory.sessionId, sessionId))
       .orderBy(desc(chatHistory.createdAt))
       .limit(8);
-    return messages.reverse().flatMap(m => [
-      { role: 'user' as const, content: m.role || '' },
-      { role: 'assistant' as const, content: m.content || '' },
+
+    return legacy.reverse().flatMap(m => [
+      { role: 'user' as const, content: m.message || '' },
+      { role: 'assistant' as const, content: m.response || '' },
     ]).filter(m => m.content);
   } catch {
     return [];
   }
+}
+
+function buildAttachmentContext(attachments?: any[]): string {
+  if (!attachments?.length) return '';
+
+  return attachments
+    .map((a: any) => {
+      if (a.type === 'audio' && a.transcription) {
+        return `[Voice note: "${a.transcription}"]`;
+      }
+      if (a.type === 'image') {
+        return `[Image attached: ${a.fileName || 'image'}]`;
+      }
+      if (a.content) {
+        return `[Document: ${a.fileName || 'file'}]\n--- Document Content ---\n${a.content}\n--- End Document ---`;
+      }
+      if (a.transcription) {
+        return `[Document: ${a.fileName || 'file'}]\n--- Document Content ---\n${a.transcription}\n--- End Document ---`;
+      }
+      return `[File attached: ${a.fileName || 'document'}]`;
+    })
+    .join('\n');
 }
 
 export async function POST(req: NextRequest) {
@@ -144,24 +210,15 @@ export async function POST(req: NextRequest) {
 
     // Add conversation history
     if (sessionId) {
-      const history = await getConversationHistory(sessionId);
+      const history = await getConversationHistory(sessionId, user.id);
       for (const h of history) {
         messages.push(h);
       }
     }
 
     // Build user message with attachment context
-    let userContent = message;
-    if (attachments?.length) {
-      const attDesc = attachments.map((a: any) => {
-        if (a.type === 'audio' && a.transcription) return `[Voice note: "${a.transcription}"]`;
-        if (a.type === 'image') return `[Image attached: ${a.fileName || 'image'}]`;
-        if (a.content) return `[Document: ${a.fileName || 'file'}]\n--- Document Content ---\n${a.content}\n--- End Document ---`;
-        if (a.transcription) return `[Document: ${a.fileName || 'file'}]\n--- Document Content ---\n${a.transcription}\n--- End Document ---`;
-        return `[File attached: ${a.fileName || 'document'}]`;
-      }).join('\n');
-      userContent = `${attDesc}\n\n${message}`;
-    }
+    const attachmentContext = buildAttachmentContext(attachments);
+    const userContent = attachmentContext ? `${attachmentContext}\n\n${message}` : message;
 
     // Handle image attachments for vision
     const hasImageData = attachments?.some((a: any) => a.type === 'image' && a.dataUrl);
@@ -291,7 +348,12 @@ export async function POST(req: NextRequest) {
                 sessionId: effectiveSessionId,
                 role: 'user',
                 content: message,
-                metadata: attachments?.length ? { attachments: attachments.map((a: any) => ({ type: a.type, fileName: a.fileName })) } : null,
+                metadata: attachments?.length
+                  ? {
+                      attachments: attachments.map((a: any) => ({ type: a.type, fileName: a.fileName })),
+                      attachmentContext,
+                    }
+                  : null,
               },
               {
                 sessionId: effectiveSessionId,

@@ -181,9 +181,11 @@ const THREAD_CATEGORIES = [
 
 interface RoomMessage {
   id: string;
+  parentId?: string | null;
+  replyCount?: number;
   content: string;
   messageType?: string;
-  attachments?: Array<{ type: 'image' | 'audio'; url: string; name?: string }>;
+  attachments?: Array<{ type: 'image' | 'audio' | 'document'; url: string; name?: string }>;
   userId: string | null;
   displayName: string;
   photoURL: string | null;
@@ -192,6 +194,14 @@ interface RoomMessage {
   createdAt: string;
   isPinned: boolean;
   reactions: Record<string, string[]>;
+}
+
+interface RoomMember {
+  userId: string;
+  name: string;
+  photoURL: string | null;
+  role: string;
+  joinedAt: string;
 }
 
 /* ================================================================
@@ -309,6 +319,9 @@ export default function CommunityPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [activeRoom, setActiveRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<RoomMessage[]>([]);
+  const [roomMembersList, setRoomMembersList] = useState<RoomMember[]>([]);
+  const [showRoomMembers, setShowRoomMembers] = useState(false);
+  const [loadingRoomMembers, setLoadingRoomMembers] = useState(false);
   const [msgInput, setMsgInput] = useState('');
   const [sendingMsg, setSendingMsg] = useState(false);
   const [showCreateRoom, setShowCreateRoom] = useState(false);
@@ -384,7 +397,9 @@ export default function CommunityPage() {
 
   const [chatIsRecording, setChatIsRecording] = useState(false);
   const [chatRecordingTime, setChatRecordingTime] = useState(0);
-  const [chatAttachments, setChatAttachments] = useState<Array<{ id: string; file: File; type: 'image' | 'audio'; preview?: string }>>([]);
+  const [chatAttachments, setChatAttachments] = useState<Array<{ id: string; file: File; type: 'image' | 'audio' | 'document'; preview?: string }>>([]);
+  const [replyToMessage, setReplyToMessage] = useState<RoomMessage | null>(null);
+  const [activeRoomThreadId, setActiveRoomThreadId] = useState<string | null>(null);
   // Track which context we're in: 'room' or 'dm'
   const [chatInputContext, setChatInputContext] = useState<'room' | 'dm'>('room');
 
@@ -394,7 +409,11 @@ export default function CommunityPage() {
     const newAtts = Array.from(files).map(file => ({
       id: crypto.randomUUID(),
       file,
-      type: file.type.startsWith('audio/') ? 'audio' as const : 'image' as const,
+      type: file.type.startsWith('audio/')
+        ? 'audio' as const
+        : file.type.startsWith('image/')
+          ? 'image' as const
+          : 'document' as const,
       ...(file.type.startsWith('image/') ? { preview: URL.createObjectURL(file) } : {}),
     }));
     setChatAttachments(prev => [...prev, ...newAtts]);
@@ -409,7 +428,11 @@ export default function CommunityPage() {
   }), []);
 
   const removeChatAttachment = useCallback((id: string) => {
-    setChatAttachments(prev => prev.filter(a => a.id !== id));
+    setChatAttachments(prev => {
+      const item = prev.find(a => a.id === id);
+      if (item?.preview) URL.revokeObjectURL(item.preview);
+      return prev.filter(a => a.id !== id);
+    });
   }, []);
 
   const startChatRecording = useCallback(async (setInput: (fn: (prev: string) => string) => void) => {
@@ -422,6 +445,14 @@ export default function CommunityPage() {
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
         const audioBlob = new Blob(chatAudioChunksRef.current, { type: 'audio/webm' });
+
+        const audioFile = new File([audioBlob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
+        setChatAttachments(prev => [...prev, {
+          id: crypto.randomUUID(),
+          file: audioFile,
+          type: 'audio',
+        }]);
+
         try {
           const token = await getIdToken();
           const formData = new FormData();
@@ -609,6 +640,10 @@ export default function CommunityPage() {
     if (!room.isJoined) await joinRoom(room.id);
     setActiveRoom(room);
     setMessages([]);
+    setReplyToMessage(null);
+    setActiveRoomThreadId(null);
+    setChatAttachments([]);
+    setMsgInput('');
     // Load messages from API
     try {
       const res = await apiFetch(`/api/community/rooms/${room.id}/messages`);
@@ -618,6 +653,23 @@ export default function CommunityPage() {
       }
     } catch (err) {
       console.error('Failed to load messages:', err);
+    }
+  };
+
+  const openRoomMembers = async () => {
+    if (!activeRoom) return;
+    setShowRoomMembers(true);
+    setLoadingRoomMembers(true);
+    try {
+      const res = await apiFetch(`/api/community/rooms/${activeRoom.id}/members`);
+      if (res.ok) {
+        const data = await res.json();
+        setRoomMembersList(data.members || []);
+      }
+    } catch (err) {
+      console.error('Failed to load room members:', err);
+    } finally {
+      setLoadingRoomMembers(false);
     }
   };
 
@@ -634,13 +686,16 @@ export default function CommunityPage() {
       );
       const res = await apiFetch(`/api/community/rooms/${activeRoom.id}/messages`, {
         method: 'POST',
-        body: JSON.stringify({ content: msgInput.trim(), attachments: payloadAttachments }),
+        body: JSON.stringify({ content: msgInput.trim(), attachments: payloadAttachments, replyToId: replyToMessage?.id || null }),
       });
       if (res.ok) {
         const data = await res.json();
         setMessages(prev => [...prev, data.message]);
         setMsgInput('');
         setChatAttachments([]);
+        const repliedTo = replyToMessage;
+        setReplyToMessage(null);
+        if (repliedTo?.id) setActiveRoomThreadId(repliedTo.id);
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
       }
     } catch (err) {
@@ -888,6 +943,69 @@ export default function CommunityPage() {
   };
 
   const orderedThreadReplies = useMemo(() => orderRepliesHierarchically(threadReplies), [threadReplies]);
+  const roomMessagesById = useMemo(() => new Map(messages.map(m => [m.id, m])), [messages]);
+  const roomChildMap = useMemo(() => {
+    const map = new Map<string, RoomMessage[]>();
+    for (const msg of messages) {
+      if (!msg.parentId) continue;
+      const existing = map.get(msg.parentId) || [];
+      existing.push(msg);
+      map.set(msg.parentId, existing);
+    }
+    for (const children of map.values()) {
+      children.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    }
+    return map;
+  }, [messages]);
+
+  const countThreadReplies = useCallback((rootId: string): number => {
+    const visited = new Set<string>();
+    const walk = (id: string): number => {
+      const children = roomChildMap.get(id) || [];
+      let total = 0;
+      for (const child of children) {
+        if (visited.has(child.id)) continue;
+        visited.add(child.id);
+        total += 1 + walk(child.id);
+      }
+      return total;
+    };
+    return walk(rootId);
+  }, [roomChildMap]);
+
+  const getThreadRootId = useCallback((msg: RoomMessage): string => {
+    let current = msg;
+    let guard = 0;
+    while (current.parentId && guard < 30) {
+      const parent = roomMessagesById.get(current.parentId);
+      if (!parent) break;
+      current = parent;
+      guard += 1;
+    }
+    return current.id;
+  }, [roomMessagesById]);
+
+  const activeThreadRoot = useMemo(
+    () => (activeRoomThreadId ? roomMessagesById.get(activeRoomThreadId) || null : null),
+    [activeRoomThreadId, roomMessagesById]
+  );
+
+  const activeThreadMessages = useMemo(() => {
+    if (!activeRoomThreadId) return [] as RoomMessage[];
+    const result: RoomMessage[] = [];
+    const visited = new Set<string>();
+    const walk = (id: string) => {
+      const children = roomChildMap.get(id) || [];
+      for (const child of children) {
+        if (visited.has(child.id)) continue;
+        visited.add(child.id);
+        result.push(child);
+        walk(child.id);
+      }
+    };
+    walk(activeRoomThreadId);
+    return result;
+  }, [activeRoomThreadId, roomChildMap]);
 
   const voteReply = async (replyId: string, vote: 'up' | 'down' | 'none') => {
     const prevReplies = [...threadReplies];
@@ -1276,7 +1394,12 @@ export default function CommunityPage() {
               <Hash className="h-3.5 w-3.5 text-muted-foreground" />
               {activeRoom.name}
             </h2>
-            <p className="text-[11px] text-muted-foreground">{activeRoom.memberCount} members</p>
+            <button
+              onClick={openRoomMembers}
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {activeRoom.memberCount} members
+            </button>
           </div>
           <button
             onClick={() => leaveRoom(activeRoom.id)}
@@ -1299,6 +1422,8 @@ export default function CommunityPage() {
             const showHeader = !prev || prev.userId !== msg.userId || 
               (new Date(msg.createdAt).getTime() - new Date(prev.createdAt).getTime() > 5 * 60 * 1000);
             const isMe = msg.isCurrentUser;
+            const repliedMessage = msg.parentId ? roomMessagesById.get(msg.parentId) : null;
+            const threadReplyCount = countThreadReplies(msg.id);
 
             return (
               <div key={msg.id} className={`flex gap-2.5 ${showHeader ? 'mt-3 first:mt-0' : 'mt-0.5'} ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -1337,7 +1462,24 @@ export default function CommunityPage() {
                       : isMe 
                         ? 'bg-primary text-primary-foreground rounded-tr-md' 
                         : 'bg-card border border-border/20 text-foreground rounded-tl-md'
-                  } ${!showHeader && !isMe ? 'rounded-tl-2xl' : ''} ${!showHeader && isMe ? 'rounded-tr-2xl' : ''}`}>
+                  } ${!showHeader && !isMe ? 'rounded-tl-2xl' : ''} ${!showHeader && isMe ? 'rounded-tr-2xl' : ''} ${!msg.isAgent ? 'cursor-pointer hover:opacity-95 transition-opacity' : ''}`}
+                  onClick={() => {
+                    if (msg.isAgent) return;
+                    const rootId = getThreadRootId(msg);
+                    setActiveRoomThreadId(rootId);
+                    const rootMessage = roomMessagesById.get(rootId);
+                    if (rootMessage) setReplyToMessage(rootMessage);
+                  }}>
+                    {repliedMessage && (
+                      <div className={`mb-2 px-2 py-1 rounded-lg border text-xs ${
+                        isMe
+                          ? 'border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground/80'
+                          : 'border-border/30 bg-muted/30 text-muted-foreground'
+                      }`}>
+                        <div className="font-medium truncate">Replying to {repliedMessage.displayName || 'message'}</div>
+                        <div className="truncate opacity-90">{repliedMessage.content || (repliedMessage.attachments?.length ? '[Attachment]' : '[Message]')}</div>
+                      </div>
+                    )}
                     {msg.content && <p>{msg.content}</p>}
                     {msg.attachments && msg.attachments.length > 0 && (
                       <div className="mt-2 space-y-2">
@@ -1345,6 +1487,16 @@ export default function CommunityPage() {
                           <div key={`${msg.id}-${i}`}>
                             {att.type === 'image' ? (
                               <img src={att.url} alt={att.name || 'image'} className="max-h-64 rounded-lg border border-border/20 object-cover" />
+                            ) : att.type === 'document' ? (
+                              <a
+                                href={att.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-2 px-2.5 py-2 rounded-lg border border-border/30 bg-muted/30 hover:bg-muted/45 text-xs"
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                                <span className="truncate max-w-[220px]">{att.name || 'Document'}</span>
+                              </a>
                             ) : (
                               <audio controls src={att.url} className="w-full max-w-xs" />
                             )}
@@ -1353,6 +1505,20 @@ export default function CommunityPage() {
                       </div>
                     )}
                   </div>
+                  {!msg.isAgent && (
+                    <button
+                      onClick={() => {
+                        const rootId = getThreadRootId(msg);
+                        setActiveRoomThreadId(rootId);
+                        const rootMessage = roomMessagesById.get(rootId);
+                        if (rootMessage) setReplyToMessage(rootMessage);
+                      }}
+                      className={`mt-1 inline-flex items-center gap-1 text-[11px] ${isMe ? 'text-primary/80 hover:text-primary' : 'text-muted-foreground hover:text-foreground'} transition-colors`}
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      {threadReplyCount > 0 ? `${threadReplyCount} ${threadReplyCount === 1 ? 'reply' : 'replies'} · View thread` : 'Reply in thread'}
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -1360,8 +1526,70 @@ export default function CommunityPage() {
           <div ref={messagesEndRef} />
         </div>
 
+        {activeThreadRoot && (
+          <div className="px-4 pb-2">
+            <div className="rounded-xl border border-border/30 bg-card/60 backdrop-blur-sm overflow-hidden">
+              <div className="px-3 py-2 border-b border-border/20 flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <MessageCircle className="h-3.5 w-3.5 text-primary" />
+                  Thread
+                  <span className="text-muted-foreground font-normal">· {activeThreadMessages.length} {activeThreadMessages.length === 1 ? 'reply' : 'replies'}</span>
+                </div>
+                <button onClick={() => { setActiveRoomThreadId(null); setReplyToMessage(null); }} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
+              </div>
+
+              <div className="max-h-56 overflow-y-auto p-3 space-y-2">
+                <div className="rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-2">
+                  <p className="text-[11px] font-semibold text-primary truncate">{activeThreadRoot.displayName || 'Message'}</p>
+                  <p className="text-xs text-foreground/90 whitespace-pre-wrap break-words">{activeThreadRoot.content || (activeThreadRoot.attachments?.length ? '[Attachment]' : '[Message]')}</p>
+                </div>
+
+                {activeThreadMessages.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-2">No replies yet. Be the first to reply.</p>
+                ) : (
+                  activeThreadMessages.map((msg) => (
+                    <div key={msg.id} className="rounded-lg border border-border/20 bg-background/60 px-2.5 py-2">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="text-[11px] font-medium text-foreground truncate">{msg.displayName || 'Anonymous'}</p>
+                        <span className="text-[10px] text-muted-foreground">{new Date(msg.createdAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <p className="text-xs text-foreground/90 whitespace-pre-wrap break-words">{msg.content || (msg.attachments?.length ? '[Attachment]' : '[Message]')}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Message input */}
         <div className="px-4 py-3 border-t border-border/20 bg-card/50">
+          {replyToMessage && (
+            <div className="mb-2 px-3 py-2 rounded-xl border border-border/30 bg-muted/25 flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-foreground">Replying to {replyToMessage.displayName || 'message'}</p>
+                <p className="text-xs text-muted-foreground truncate">{replyToMessage.content || (replyToMessage.attachments?.length ? '[Attachment]' : '[Message]')}</p>
+              </div>
+              <button
+                onClick={() => setReplyToMessage(null)}
+                className="p-1 rounded-md hover:bg-muted transition-colors"
+                title="Cancel reply"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
+          {chatIsRecording && chatInputContext === 'room' && (
+            <div className="mb-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-xs text-red-600">Recording voice note… {Math.floor(chatRecordingTime / 60)}:{String(chatRecordingTime % 60).padStart(2, '0')}</span>
+              </div>
+              <button onClick={stopChatRecording} className="text-xs px-2 py-1 rounded-md bg-red-600 text-white hover:bg-red-700">Stop</button>
+            </div>
+          )}
+
           {/* Attachment Preview */}
           {chatInputContext === 'room' && chatAttachments.length > 0 && (
             <div className="flex gap-2 mb-2 flex-wrap">
@@ -1369,6 +1597,10 @@ export default function CommunityPage() {
                 <div key={att.id} className="relative group">
                   {att.type === 'image' && att.preview ? (
                     <img src={att.preview} alt="" className="h-14 w-14 rounded-lg object-cover border" />
+                  ) : att.type === 'document' ? (
+                    <div className="h-14 w-14 rounded-lg border bg-muted flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                    </div>
                   ) : (
                     <div className="h-14 w-14 rounded-lg border bg-muted flex items-center justify-center">
                       <Mic className="h-5 w-5 text-muted-foreground" />
@@ -1381,14 +1613,33 @@ export default function CommunityPage() {
               ))}
             </div>
           )}
+          <input ref={chatFileInputRef} type="file" className="hidden" accept="image/*,audio/*,.pdf,.doc,.docx,.txt,.rtf" multiple onChange={handleChatFileSelect} />
           <div className="flex gap-2 items-end">
-            <div className="flex items-center gap-0.5 shrink-0">
+            <div className="flex items-center gap-1 shrink-0">
               <button
-                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                className="p-2 rounded-xl bg-muted/30 hover:bg-muted text-foreground transition-colors"
                 title="Attach file"
                 onClick={() => { setChatInputContext('room'); chatFileInputRef.current?.click(); }}
               >
                 <Paperclip className="h-4 w-4" />
+              </button>
+              <button
+                className="p-2 rounded-xl bg-muted/30 hover:bg-muted text-foreground transition-colors"
+                title="Upload image"
+                onClick={() => { setChatInputContext('room'); chatFileInputRef.current?.click(); }}
+              >
+                <ImageIcon className="h-4 w-4" />
+              </button>
+              <button
+                className={`p-2 rounded-xl transition-colors ${chatIsRecording ? 'bg-red-500/15 text-red-600' : 'bg-muted/30 hover:bg-muted text-foreground'}`}
+                title={chatIsRecording ? 'Stop recording' : 'Record voice note'}
+                onClick={() => {
+                  setChatInputContext('room');
+                  if (chatIsRecording) stopChatRecording();
+                  else startChatRecording(setMsgInput);
+                }}
+              >
+                {chatIsRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
               </button>
             </div>
             <textarea
@@ -1414,6 +1665,42 @@ export default function CommunityPage() {
             </button>
           </div>
         </div>
+
+        {showRoomMembers && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowRoomMembers(false)}>
+            <div className="w-full max-w-md rounded-2xl bg-card border border-border/20 shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="px-4 py-3 border-b border-border/20 flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Room Members</h3>
+                <button onClick={() => setShowRoomMembers(false)} className="p-1.5 rounded-lg hover:bg-muted/40">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="max-h-96 overflow-y-auto p-3 space-y-2">
+                {loadingRoomMembers ? (
+                  <div className="py-8 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                ) : roomMembersList.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-6">No members found.</p>
+                ) : (
+                  roomMembersList.map((member) => (
+                    <div key={member.userId} className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-muted/25">
+                      {member.photoURL ? (
+                        <img src={member.photoURL} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
+                          {member.name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{member.name}</p>
+                        <p className="text-[11px] text-muted-foreground capitalize">{member.role}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

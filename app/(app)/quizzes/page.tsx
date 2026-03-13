@@ -458,32 +458,33 @@ Rules:
     count: number,
     minReadyCount: number,
     onReady: () => void,
-    timeoutMs: number = 20000,
+    timeoutMs: number = 35000,
   ): Promise<number> => {
     const token = await getIdToken();
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    const res = await fetch('/api/ai/quiz-stream', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        prompt: buildPrompt(count),
-        count,
-      }),
-    });
-
-    if (!res.ok) throw new Error('Failed');
-
-    const reader = res.body?.getReader();
-    const decoder = new TextDecoder();
     let questionCount = 0;
     let readySignaled = false;
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
+      const res = await fetch('/api/ai/quiz-stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          prompt: buildPrompt(count),
+          count,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed');
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
@@ -508,8 +509,13 @@ Rules:
           }
         }
       }
-    } catch {
-      // Return whatever streamed before timeout/network interruption
+    } catch (err: any) {
+      const isAbort = err?.name === 'AbortError' || String(err?.message || '').toLowerCase().includes('aborted');
+      if (!isAbort) {
+        throw err;
+      }
+      // Timeout/abort is recoverable: return whatever streamed so far,
+      // and caller will supplement with non-stream generation.
     } finally {
       clearTimeout(timeout);
     }

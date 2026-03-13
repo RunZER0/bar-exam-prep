@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
+import { useSearchParams } from 'next/navigation';
 
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import TrialLimitReached from '@/components/TrialLimitReached';
 import PremiumGate from '@/components/PremiumGate';
+import AiThinkingIndicator from '@/components/AiThinkingIndicator';
 import {
   Search,
   Loader2,
@@ -27,6 +29,12 @@ import {
   X,
   Mic,
   Square,
+  PanelLeftOpen,
+  PanelLeftClose,
+  Plus,
+  Trash2,
+  Clock,
+  MessageSquare,
 } from 'lucide-react';
 
 interface Message {
@@ -36,6 +44,28 @@ interface Message {
   filtered?: boolean;
   sources?: string[];
   isStreaming?: boolean;
+}
+
+type ConversationItem = {
+  id: string;
+  title: string;
+  competencyType: string;
+  lastMessageAt: string;
+  createdAt: string;
+  messageCount: number;
+};
+
+function timeAgo(dateString: string): string {
+  const diff = Date.now() - new Date(dateString).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return new Date(dateString).toLocaleDateString('en-KE', { month: 'short', day: 'numeric' });
 }
 
 const RESEARCH_SUGGESTIONS = [
@@ -63,12 +93,19 @@ const RESEARCH_SUGGESTIONS = [
 
 export default function ResearchPage() {
   const { getIdToken } = useAuth();
+  const searchParams = useSearchParams();
   useTimeTracker('research');
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
-  const [sessionId] = useState(() => crypto.randomUUID());
+  const [sessionId, setSessionId] = useState(() => searchParams.get('session') || crypto.randomUUID());
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(searchParams.get('session'));
+  const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loadingConversations, setLoadingConversations] = useState(false);
+  const [loadingSession, setLoadingSession] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [copied, setCopied] = useState(false);
   const topicFilter = 'general';
   const [webSearchEnabled, setWebSearchEnabled] = useState(true);
@@ -82,6 +119,7 @@ export default function ResearchPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const conversationsLoadedRef = useRef(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -92,6 +130,91 @@ export default function ResearchPage() {
       if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
     };
   }, []);
+
+  const loadConversations = async () => {
+    try {
+      setLoadingConversations(true);
+      const token = await getIdToken();
+      const res = await fetch('/api/chat/sessions?type=research', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setConversations(data.sessions || []);
+      }
+    } catch (e) {
+      console.error('Failed to load conversations:', e);
+    } finally {
+      setLoadingConversations(false);
+      conversationsLoadedRef.current = true;
+    }
+  };
+
+  useEffect(() => {
+    if (sidebarOpen && !conversationsLoadedRef.current) {
+      loadConversations();
+    }
+  }, [sidebarOpen]);
+
+  const loadConversation = async (convId: string) => {
+    try {
+      setLoadingSession(true);
+      const token = await getIdToken();
+      const res = await fetch(`/api/chat/sessions/${convId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setActiveSessionId(convId);
+      setSessionId(convId);
+      setMessages(data.messages.map((m: any) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        isStreaming: false,
+      })));
+      setInput('');
+      setAttachments([]);
+      window.history.replaceState(null, '', `/research?session=${convId}`);
+      if (window.innerWidth < 768) setSidebarOpen(false);
+    } catch (e) {
+      console.error('Failed to load conversation:', e);
+    } finally {
+      setLoadingSession(false);
+    }
+  };
+
+  const startNewChat = () => {
+    const newId = crypto.randomUUID();
+    setSessionId(newId);
+    setActiveSessionId(null);
+    setMessages([]);
+    setInput('');
+    setAttachments([]);
+    window.history.replaceState(null, '', '/research');
+    if (window.innerWidth < 768) setSidebarOpen(false);
+  };
+
+  const deleteConversation = async (convId: string, e: any) => {
+    e.stopPropagation();
+    try {
+      const token = await getIdToken();
+      await fetch(`/api/chat/sessions/${convId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setConversations(prev => prev.filter(c => c.id !== convId));
+      if (convId === activeSessionId) {
+        startNewChat();
+      }
+    } catch (e) {
+      console.error('Failed to delete conversation:', e);
+    }
+  };
+
+  const filteredConversations = searchQuery.trim()
+    ? conversations.filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    : conversations;
 
   /* ---- Voice Recording ---- */
   const startRecording = async () => {
@@ -314,6 +437,11 @@ Question: ${enhancedMessage}`
       setMessages(prev => prev.map(m =>
         m.id === aiMsgId ? { ...m, isStreaming: false } : m
       ));
+
+      if (!activeSessionId) {
+        setActiveSessionId(sessionId);
+        window.history.replaceState(null, '', `/research?session=${sessionId}`);
+      }
     } catch {
       setMessages(prev => prev.map(m =>
         m.id === aiMsgId
@@ -322,6 +450,9 @@ Question: ${enhancedMessage}`
       ));
     } finally {
       setSending(false);
+      if (conversationsLoadedRef.current) {
+        loadConversations();
+      }
     }
   };
 
@@ -352,7 +483,90 @@ Question: ${enhancedMessage}`
 
   return (
     <PremiumGate feature="research">
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen">
+    <div className="flex h-[calc(100vh-3.5rem)] md:h-screen">
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/40 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      <div
+        className={`
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:-translate-x-full'}
+          fixed md:relative z-40 md:z-auto
+          w-72 h-full
+          bg-card border-r border-border/20
+          flex flex-col
+          transition-transform duration-200 ease-in-out
+          ${sidebarOpen ? 'md:w-72 md:min-w-[18rem]' : 'md:w-0 md:min-w-0 md:overflow-hidden md:border-r-0'}
+        `}
+      >
+        <div className="shrink-0 p-3 border-b border-border/20">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-foreground">Research History</h3>
+            <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg hover:bg-muted/40 transition-colors" title="Close sidebar">
+              <PanelLeftClose className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+          <button
+            onClick={startNewChat}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-primary/10 hover:bg-primary/15 text-primary text-sm font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Research
+          </button>
+        </div>
+
+        <div className="shrink-0 px-3 pt-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search history..."
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-muted/20 border border-border/20 outline-none focus:ring-1 focus:ring-primary/20"
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+          {loadingConversations ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredConversations.length === 0 ? (
+            <div className="text-center py-8 px-3">
+              <MessageSquare className="w-8 h-8 mx-auto text-muted-foreground/30 mb-2" />
+              <p className="text-xs text-muted-foreground">{searchQuery ? 'No matching research threads' : 'No research history yet'}</p>
+            </div>
+          ) : (
+            filteredConversations.map(conv => (
+              <button
+                key={conv.id}
+                onClick={() => loadConversation(conv.id)}
+                className={`group w-full text-left px-3 py-2.5 rounded-xl transition-colors relative ${
+                  activeSessionId === conv.id ? 'bg-primary/10 text-primary' : 'hover:bg-muted/30 text-foreground'
+                }`}
+              >
+                <p className="text-xs font-medium truncate pr-6">{conv.title}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Clock className="w-2.5 h-2.5 text-muted-foreground/50" />
+                  <span className="text-[10px] text-muted-foreground/60">{timeAgo(conv.lastMessageAt)}</span>
+                  <span className="text-[10px] text-muted-foreground/40">·</span>
+                  <span className="text-[10px] text-muted-foreground/60">{conv.messageCount} msgs</span>
+                </div>
+                <button
+                  onClick={(e) => deleteConversation(conv.id, e)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
+                  title="Delete"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
+    <div className="flex-1 flex flex-col min-w-0 relative">
       {featureLimitHit && (
         <TrialLimitReached
           feature="research"
@@ -367,6 +581,11 @@ Question: ${enhancedMessage}`
       {/* Top bar */}
       <div className="border-b border-border/20 px-4 md:px-6 py-3 flex items-center justify-between shrink-0 bg-gradient-to-r from-teal-500/5 via-background to-cyan-500/5">
         <div className="flex items-center gap-3">
+          {!sidebarOpen && (
+            <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-xl hover:bg-muted/40 transition-colors" title="Research history">
+              <PanelLeftOpen className="w-4 h-4 text-muted-foreground" />
+            </button>
+          )}
           <div className="p-2 rounded-xl bg-gradient-to-br from-teal-500/15 to-cyan-500/10">
             <Search className="h-4 w-4 text-teal-600 dark:text-teal-400" />
           </div>
@@ -398,6 +617,15 @@ Question: ${enhancedMessage}`
           </button>
         </div>
       </div>
+
+      {loadingSession && (
+        <div className="absolute inset-0 bg-background/60 z-20 flex items-center justify-center">
+          <div className="text-center space-y-2">
+            <Loader2 className="w-5 h-5 animate-spin text-primary mx-auto" />
+            <p className="text-xs text-muted-foreground">Loading research thread...</p>
+          </div>
+        </div>
+      )}
 
 
 
@@ -455,9 +683,15 @@ Question: ${enhancedMessage}`
                   )}
                   {msg.role === 'assistant' ? (
                     <>
-                      <MarkdownRenderer content={msg.content} size="sm" />
-                      {msg.isStreaming && (
-                        <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
+                      {msg.isStreaming && !msg.content ? (
+                        <AiThinkingIndicator variant="inline" messageSet="research" />
+                      ) : (
+                        <>
+                          <MarkdownRenderer content={msg.content} size="sm" />
+                          {msg.isStreaming && (
+                            <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
+                          )}
+                        </>
                       )}
                     </>
                   ) : (
@@ -563,6 +797,7 @@ Question: ${enhancedMessage}`
           {webSearchEnabled ? 'Deep search on · ' : ''}All citations verified against primary sources
         </p>
       </div>
+    </div>
     </div>
     </PremiumGate>
   );

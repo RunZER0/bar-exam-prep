@@ -2,19 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { userFriends, friendSuggestions, users, userProgress, studyRooms, roomMembers } from '@/lib/db/schema';
 import { eq, and, or, desc, sql, ne, count } from 'drizzle-orm';
-import { verifyIdToken } from '@/lib/firebase/admin';
+import { withAuth } from '@/lib/auth/middleware';
 
 // GET - Fetch friends list and suggestions
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest, user) => {
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    const decodedToken = await verifyIdToken(token);
-    const userId = decodedToken.uid;
+    const userId = user.id;
 
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type'); // 'friends' | 'suggestions' | 'pending' | 'all'
@@ -192,19 +185,12 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 // POST - Send, accept, reject friend requests
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, user) => {
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    const decodedToken = await verifyIdToken(token);
-    const userId = decodedToken.uid;
+    const userId = user.id;
 
     const body = await req.json();
     const { action, targetUserId, requestId } = body;
@@ -341,7 +327,7 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 // AI-driven friend suggestion generation
 async function generateAISuggestions(userId: string) {

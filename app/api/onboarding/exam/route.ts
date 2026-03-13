@@ -44,25 +44,66 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Check if profile already exists
+    // Check if profile already exists (idempotent behavior)
     const [existingProfile] = await db.select().from(userExamProfiles)
       .where(eq(userExamProfiles.userId, user.id))
       .limit(1);
 
     if (existingProfile) {
-      return NextResponse.json(
-        { error: 'Exam profile already exists. Use exam/profile API to update.' },
-        { status: 400 }
-      );
+      const [existingCycle] = await db.select().from(examCycles)
+        .where(eq(examCycles.id, existingProfile.cycleId))
+        .limit(1);
+
+      const events = existingCycle
+        ? await db.select().from(examEvents).where(eq(examEvents.cycleId, existingCycle.id))
+        : [];
+
+      const writtenEvent = events.find(e => e.eventType === 'WRITTEN');
+      const oralEvent = events.find(e => e.eventType === 'ORAL');
+      const daysToExam = writtenEvent?.startsAt
+        ? Math.ceil((new Date(writtenEvent.startsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        : null;
+
+      const phase = daysToExam
+        ? daysToExam > 180 ? 'foundation'
+          : daysToExam > 60 ? 'intensive'
+          : daysToExam > 14 ? 'revision'
+          : 'final'
+        : 'foundation';
+
+      return NextResponse.json({
+        success: true,
+        alreadyExists: true,
+        profile: {
+          id: existingProfile.id,
+          cycleId: existingProfile.cycleId,
+          candidateType: existingCycle?.candidateType || null,
+          recommendedMinutes: null,
+        },
+        cycle: existingCycle ? {
+          id: existingCycle.id,
+          label: existingCycle.label,
+          candidateType: existingCycle.candidateType,
+          year: existingCycle.year,
+          writtenStartDate: writtenEvent?.startsAt,
+          writtenEndDate: writtenEvent?.endsAt,
+          oralStartDate: oralEvent?.startsAt,
+        } : null,
+        exam: {
+          daysToWritten: daysToExam,
+          daysToOral: oralEvent?.startsAt
+            ? Math.ceil((new Date(oralEvent.startsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            : null,
+          phase,
+        },
+        sessionsCreated: 0,
+        message: 'Exam profile already configured',
+      });
     }
 
     // Find the appropriate exam cycle
     // RESIT candidates → April 2026 cycle
     // FIRST_TIME candidates → November 2026 cycle
-    const cycleFilter = candidateType === 'RESIT' 
-      ? 'April'
-      : 'November';
-
     const [cycle] = await db.select().from(examCycles)
       .where(and(
         eq(examCycles.isActive, true),
@@ -217,14 +258,14 @@ export async function GET(req: NextRequest) {
 
     if (!result) {
       // User completed profile survey but hasn't selected exam track yet.
-      // Must complete exam track selection for proper candidate profiling.
+      // Do NOT force global onboarding redirect loop; treat as soft-incomplete.
       return NextResponse.json({
         examOnboardingComplete: false,
-        needsOnboarding: true,
+        needsOnboarding: false,
         profile: null,
         cycle: null,
         countdown: null,
-        message: 'Please select your exam track (First Time or Resit)',
+        message: 'Exam track not selected yet',
       });
     }
 

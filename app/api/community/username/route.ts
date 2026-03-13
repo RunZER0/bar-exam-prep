@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 
 // GET - Get user's community profile
 export const GET = withAuth(async (req: NextRequest, user) => {
@@ -22,7 +22,7 @@ export const GET = withAuth(async (req: NextRequest, user) => {
       communityUsername: users.communityUsername,
       communityBio: users.communityBio,
       communityJoinedAt: users.communityJoinedAt,
-    }).from(users).where(eq(users.firebaseUid, user.firebaseUid)).limit(1);
+    }).from(users).where(eq(users.id, user.id)).limit(1);
 
     if (!dbUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -63,22 +63,26 @@ export const POST = withAuth(async (req: NextRequest, user) => {
     // Check if taken
     const [existing] = await db.select({
       id: users.id,
-      firebaseUid: users.firebaseUid,
-    }).from(users).where(eq(users.communityUsername, clean)).limit(1);
+    }).from(users).where(and(eq(users.communityUsername, clean), ne(users.id, user.id))).limit(1);
 
-    if (existing && existing.firebaseUid !== user.firebaseUid) {
+    if (existing) {
       return NextResponse.json({ error: 'Username already taken', taken: true }, { status: 409 });
     }
 
     // Set username
-    await db.update(users)
+    const updated = await db.update(users)
       .set({
         communityUsername: clean,
         communityBio: bio?.trim() || null,
         communityJoinedAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(eq(users.firebaseUid, user.firebaseUid));
+      .where(eq(users.id, user.id))
+      .returning({ id: users.id, communityUsername: users.communityUsername });
+
+    if (!updated || updated.length === 0) {
+      return NextResponse.json({ error: 'Unable to save username' }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true, username: clean });
   } catch (error) {
@@ -102,10 +106,9 @@ export const PUT = withAuth(async (req: NextRequest, user) => {
 
     const [existing] = await db.select({
       id: users.id,
-      firebaseUid: users.firebaseUid,
-    }).from(users).where(eq(users.communityUsername, clean)).limit(1);
+    }).from(users).where(and(eq(users.communityUsername, clean), ne(users.id, user.id))).limit(1);
 
-    const available = !existing || existing.firebaseUid === user.firebaseUid;
+    const available = !existing;
     return NextResponse.json({ available, reason: available ? null : 'Already taken' });
   } catch {
     return NextResponse.json({ available: false, reason: 'Check failed' });

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { userProfiles, users, microSkills, witnesses, studyStreaks } from '@/lib/db/schema';
+import { userProfiles, users, microSkills, witnesses, studyStreaks, userExamProfiles, examCycles } from '@/lib/db/schema';
 import { masteryState } from '@/lib/db/mastery-schema';
-import { eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { ORCHESTRATOR_MODEL } from '@/lib/ai/model-config';
+import { createDailySessions } from '@/lib/services/session-orchestrator';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -48,6 +49,58 @@ function derivePace(commitment: string): 'relaxed' | 'moderate' | 'intensive' {
     case 'intensive': return 'intensive';
     default: return 'moderate';
   }
+}
+
+async function ensureExamProfile(userId: string, candidateType: 'FIRST_TIME' | 'RESIT') {
+  const [existingProfile] = await db.select({
+    id: userExamProfiles.id,
+    cycleId: userExamProfiles.cycleId,
+  }).from(userExamProfiles)
+    .where(eq(userExamProfiles.userId, userId))
+    .limit(1);
+
+  if (existingProfile) return existingProfile;
+
+  let [cycle] = await db.select({ id: examCycles.id }).from(examCycles)
+    .where(and(eq(examCycles.candidateType, candidateType), eq(examCycles.isActive, true)))
+    .orderBy(desc(examCycles.year), desc(examCycles.createdAt))
+    .limit(1);
+
+  if (!cycle) {
+    [cycle] = await db.select({ id: examCycles.id }).from(examCycles)
+      .where(eq(examCycles.candidateType, candidateType))
+      .orderBy(desc(examCycles.isActive), desc(examCycles.year), desc(examCycles.createdAt))
+      .limit(1);
+  }
+
+  if (!cycle) {
+    throw new Error(`No exam cycle configured for candidate type ${candidateType}`);
+  }
+
+  const inserted = await db.insert(userExamProfiles).values({
+    userId,
+    cycleId: cycle.id,
+    timezone: 'Africa/Nairobi',
+    autopilotEnabled: false,
+  }).onConflictDoNothing().returning({
+    id: userExamProfiles.id,
+    cycleId: userExamProfiles.cycleId,
+  });
+
+  if (inserted.length > 0) return inserted[0];
+
+  const [createdByOtherRequest] = await db.select({
+    id: userExamProfiles.id,
+    cycleId: userExamProfiles.cycleId,
+  }).from(userExamProfiles)
+    .where(eq(userExamProfiles.userId, userId))
+    .limit(1);
+
+  if (!createdByOtherRequest) {
+    throw new Error('Failed to create exam profile');
+  }
+
+  return createdByOtherRequest;
 }
 
 export async function POST(req: NextRequest) {
@@ -136,8 +189,14 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // Mark onboarding complete on the user record
-    await db.update(users).set({ onboardingCompleted: true }).where(eq(users.id, user.id));
+    // Ensure exam-track profile exists BEFORE marking onboarding complete.
+    const candidateType = data.isResit ? 'RESIT' : 'FIRST_TIME';
+    await ensureExamProfile(user.id, candidateType);
+
+    // Mark onboarding complete on the user record only after exam profile is guaranteed.
+    await db.update(users)
+      .set({ onboardingCompleted: true, updatedAt: new Date() })
+      .where(eq(users.id, user.id));
 
     console.log(`[Onboarding] Profile saved for ${user.id} — path: ${data.examPath}, pace: ${studyPace}, weak: [${data.weakUnits}], strong: [${data.strongUnits}], coverage: ${data.coverageTarget}, learning: ${data.learningStyle}`);
 
@@ -265,6 +324,12 @@ Output valid JSON:
       }
     } catch (msErr) {
       console.warn('[Onboarding] Mastery state seeding skipped (tables may not exist):', msErr);
+    }
+
+    try {
+      await createDailySessions(user.id);
+    } catch (sessionErr) {
+      console.warn('[Onboarding] Session seeding skipped:', sessionErr);
     }
 
     return NextResponse.json({

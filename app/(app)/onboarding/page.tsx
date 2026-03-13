@@ -426,7 +426,7 @@ export default function OnboardingPage() {
         coverageTarget: formData.coverageTarget,
       };
       
-      await fetch('/api/onboarding', {
+      const res = await fetch('/api/onboarding', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -434,11 +434,17 @@ export default function OnboardingPage() {
         },
         body: JSON.stringify(apiData),
       });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.error || 'Failed to complete onboarding');
+      }
       
       // Always go to mastery hub — the whole platform IS the AI mentor
       router.push('/mastery');
     } catch (error) {
       console.error('Onboarding error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to complete onboarding. Please try again.');
       setIsSubmitting(false);
       setShowConfetti(false);
     }

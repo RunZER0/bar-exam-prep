@@ -38,6 +38,7 @@ interface OnboardingData {
   yearsInLaw: string;
   // Experience
   hasAttemptedBar: boolean | null;
+  examTrack: '' | 'FIRST_TIME' | 'RESIT';
   previousAttempts: string;
   lawSchool: string;
   // Study Preferences
@@ -123,6 +124,17 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     options: [
       { id: 'true', label: 'Yes, I have', emoji: '✋', description: 'First attempt or retake' },
       { id: 'false', label: 'No, this is my first time', emoji: '🌟', description: 'Fresh start!' },
+    ],
+  },
+  {
+    id: 'examtrack',
+    question: 'Select your exam track',
+    subtitle: 'This determines your exam cycle, prep timeline, and session pacing.',
+    type: 'single',
+    field: 'examTrack',
+    options: [
+      { id: 'FIRST_TIME', label: 'First-Time Sitting', description: 'November 12, 2026 written sitting', emoji: '🌟' },
+      { id: 'RESIT', label: 'Resit Sitting', description: 'April 9, 2026 written sitting', emoji: '🔄' },
     ],
   },
   {
@@ -310,6 +322,7 @@ export default function OnboardingPage() {
     currentOccupation: '',
     yearsInLaw: '',
     hasAttemptedBar: null,
+    examTrack: '',
     previousAttempts: '',
     lawSchool: '',
     preferredStudyTime: '',
@@ -352,6 +365,12 @@ export default function OnboardingPage() {
     // Handle boolean fields
     if (field === 'hasAttemptedBar') {
       setFormData(prev => ({ ...prev, [field]: optionId === 'true' }));
+    } else if (field === 'examTrack') {
+      setFormData(prev => ({
+        ...prev,
+        examTrack: optionId as OnboardingData['examTrack'],
+        hasAttemptedBar: optionId === 'RESIT',
+      }));
     } else {
       setFormData(prev => ({ ...prev, [field]: optionId }));
     }
@@ -404,14 +423,15 @@ export default function OnboardingPage() {
       const token = await getIdToken();
       
       // Transform data for API — send EVERYTHING the form collected
-      const isResit = formData.hasAttemptedBar === true;
+      const selectedTrack = formData.examTrack || (formData.hasAttemptedBar ? 'RESIT' : 'FIRST_TIME');
+      const isResit = selectedTrack === 'RESIT';
       const apiData = {
         fullName: formData.fullName,
         currentOccupation: formData.currentOccupation,
         yearsInLaw: parseInt(formData.yearsInLaw.replace('+', '')) || 0,
         llbOrigin: formData.llbOrigin || 'LOCAL',
         isResit,
-        examPath: isResit ? 'APRIL_2026' : 'NOVEMBER_2026',
+        examPath: selectedTrack === 'RESIT' ? 'APRIL_2026' : 'NOVEMBER_2026',
         previousAttempts: parseInt(formData.previousAttempts.replace('+', '')) || 0,
         preferredStudyTime: formData.preferredStudyTime,
         dailyStudyHours: parseInt(formData.dailyStudyHours.replace('+', '')) || 2,

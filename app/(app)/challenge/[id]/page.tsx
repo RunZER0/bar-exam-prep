@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import EngagingLoader from '@/components/EngagingLoader';
 import {
   ArrowLeft, Loader2, Trophy, Send, Clock, BookOpen,
   Zap, Target, FileText, Search, Shield, CheckCircle2,
@@ -219,10 +220,7 @@ export default function ChallengePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-3.5rem)] bg-background">
-        <div className="text-center space-y-3">
-          <Loader2 className="h-6 w-6 mx-auto animate-spin text-primary/50" />
-          <p className="text-sm text-muted-foreground">Loading challenge...</p>
-        </div>
+        <EngagingLoader size="md" showFacts={false} message="Loading challenge assessment..." />
       </div>
     );
   }

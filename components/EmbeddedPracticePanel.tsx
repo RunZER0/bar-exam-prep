@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import InteractiveStudyNotes, { StudySection } from "@/components/InteractiveStudyNotes";
-import EngagingLoader from "@/components/EngagingLoader";import AiThinkingIndicator from '@/components/AiThinkingIndicator';import {
+import EngagingLoader from "@/components/EngagingLoader";
+import { LogoIcon } from '@/components/Logo';
+import {
   Loader2,
   CheckCircle,
   ArrowRight,
@@ -79,6 +81,27 @@ interface EmbeddedPracticePanelProps {
 
 type Phase = "loading" | "study" | "question" | "answering" | "grading" | "feedback";
 
+function withCheckpointSection(sections: StudySection[], skillName: string, keyPoints?: string[]) {
+  const hasCheckpoint = sections.some(s => /checkpoint|quick check|knowledge check/i.test(s.title || ''));
+  if (hasCheckpoint) return sections;
+
+  const bullets = (keyPoints && keyPoints.length > 0 ? keyPoints.slice(0, 3) : [
+    'State the controlling legal rule for this topic and its statutory anchor.',
+    'Apply the rule to a short fact pattern using IRAC.',
+    'Identify one common exam trap and how to avoid it.',
+  ]).map((point, idx) => `${idx + 1}. ${point}`).join('\n');
+
+  return [
+    ...sections,
+    {
+      id: 'in-notes-checkpoint',
+      title: 'In-Notes Checkpoint',
+      content: `### Quick Checkpoint\n\nUse these quick prompts before moving to the question:\n\n${bullets}`,
+      examTips: 'Answer these checkpoint prompts in 2-3 minutes to prime recall before the graded attempt.',
+    },
+  ];
+}
+
 export default function EmbeddedPracticePanel({ task, onComplete, onClose }: EmbeddedPracticePanelProps) {
   const { getIdToken } = useAuth();
 
@@ -143,7 +166,7 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
 
       const resolvedSections: StudySection[] =
         notesData.sections && notesData.sections.length > 0
-          ? notesData.sections
+          ? withCheckpointSection(notesData.sections, task.skillName, itemData?.item?.keyPoints || itemData?.keyPoints)
           : [
               {
                 id: "client-fallback",
@@ -194,7 +217,9 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
       clearTimeout(timeout);
       if (response.ok) {
         const data = await response.json();
-        const nextSections = data.sections && data.sections.length > 0 ? data.sections : notesSections;
+        const nextSections = data.sections && data.sections.length > 0
+          ? withCheckpointSection(data.sections, task.skillName, item?.keyPoints)
+          : notesSections;
         setNotesSections(nextSections);
         if (nextSections.length > 0) setExpandedNoteId(nextSections[0].id);
       } else {
@@ -371,9 +396,8 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
             </p>
 
             {notesLoading ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
-                <span className="ml-2 text-sm text-blue-600">Loading notes...</span>
+              <div className="py-2">
+                <EngagingLoader size="sm" showFacts={false} message="Loading notes and checkpoints..." />
               </div>
             ) : notesSections.length > 0 ? (
               <div className="space-y-2">
@@ -542,7 +566,7 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
         )}
 
         {phase === "grading" && (
-          <AiThinkingIndicator variant="card" messageSet="grading" />
+          <EngagingLoader size="sm" showFacts={false} message="Grading your assessment..." />
         )}
 
         {phase === "feedback" && result && (
@@ -560,6 +584,9 @@ export default function EmbeddedPracticePanel({ task, onComplete, onClose }: Emb
                 <Lightbulb className="h-10 w-10 text-amber-600 dark:text-amber-400 flex-shrink-0" />
               )}
               <div className="flex-1">
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-background/70 text-[10px] text-muted-foreground mb-1">
+                  <LogoIcon size="sm" /> Ynai Feedback
+                </div>
                 <p
                   className={`font-bold text-lg ${
                     result.summary.passed ? "text-green-800 dark:text-green-200" : "text-amber-800 dark:text-amber-200"

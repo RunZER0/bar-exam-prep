@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { userProfiles, users, microSkills, witnesses, studyStreaks, userExamProfiles, examCycles } from '@/lib/db/schema';
+import { userProfiles, users, microSkills, witnesses, studyStreaks, userExamProfiles, examCycles, examEvents } from '@/lib/db/schema';
 import { masteryState } from '@/lib/db/mastery-schema';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
@@ -103,6 +103,32 @@ async function ensureExamProfile(userId: string, candidateType: 'FIRST_TIME' | '
   return createdByOtherRequest;
 }
 
+async function resolveExamDateLabel(candidateType: 'FIRST_TIME' | 'RESIT') {
+  try {
+    const [cycle] = await db.select({ id: examCycles.id }).from(examCycles)
+      .where(and(eq(examCycles.candidateType, candidateType), eq(examCycles.isActive, true)))
+      .orderBy(desc(examCycles.year), desc(examCycles.createdAt))
+      .limit(1);
+
+    if (!cycle) return candidateType === 'RESIT' ? 'April 9, 2026' : 'November 12, 2026';
+
+    const [written] = await db.select({ startsAt: examEvents.startsAt }).from(examEvents)
+      .where(and(eq(examEvents.cycleId, cycle.id), eq(examEvents.eventType, 'WRITTEN')))
+      .limit(1);
+
+    if (!written?.startsAt) return candidateType === 'RESIT' ? 'April 9, 2026' : 'November 12, 2026';
+
+    return new Date(written.startsAt).toLocaleDateString('en-KE', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'Africa/Nairobi',
+    });
+  } catch {
+    return candidateType === 'RESIT' ? 'April 9, 2026' : 'November 12, 2026';
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
@@ -136,6 +162,8 @@ export async function POST(req: NextRequest) {
 
     const professionalExposure = deriveExposure(data.currentOccupation);
     const studyPace = derivePace(data.commitmentLevel);
+    const candidateType: 'FIRST_TIME' | 'RESIT' = data.isResit ? 'RESIT' : 'FIRST_TIME';
+    const examDateLabel = await resolveExamDateLabel(candidateType);
 
     // Build the extended snapshot — stored in `goals` jsonb for extra signals
     const snapshot = {
@@ -190,7 +218,6 @@ export async function POST(req: NextRequest) {
     });
 
     // Ensure exam-track profile exists BEFORE marking onboarding complete.
-    const candidateType = data.isResit ? 'RESIT' : 'FIRST_TIME';
     await ensureExamProfile(user.id, candidateType);
 
     // Mark onboarding complete on the user record only after exam profile is guaranteed.
@@ -207,7 +234,7 @@ You are the "Senior Partner" at a top Kenyan law firm, mentoring a Bar Exam cand
 FULL CANDIDATE PROFILE:
 - Name: ${data.fullName}
 - Path: ${data.examPath} (${data.isResit ? 'RESIT Candidate' : 'First-Time Candidate'})
-- Exam Date: ${data.examPath === 'APRIL_2026' ? 'April 9, 2026' : 'November 12, 2026'}
+- Exam Date: ${examDateLabel}
 - Occupation: ${data.currentOccupation} (${data.yearsInLaw} years in law)
 - LLB Origin: ${data.llbOrigin}
 - Previous Attempts: ${data.previousAttempts || 0}

@@ -118,7 +118,8 @@ interface DMMessage {
   senderId: string;
   recipientId: string;
   content: string;
-  messageType: 'message' | 'invite';
+  messageType: 'message' | 'invite' | 'media';
+  attachments?: Array<{ type: 'image' | 'audio'; url: string; name?: string }>;
   read: boolean;
   createdAt: string;
 }
@@ -181,6 +182,8 @@ const THREAD_CATEGORIES = [
 interface RoomMessage {
   id: string;
   content: string;
+  messageType?: string;
+  attachments?: Array<{ type: 'image' | 'audio'; url: string; name?: string }>;
   userId: string | null;
   displayName: string;
   photoURL: string | null;
@@ -381,7 +384,7 @@ export default function CommunityPage() {
 
   const [chatIsRecording, setChatIsRecording] = useState(false);
   const [chatRecordingTime, setChatRecordingTime] = useState(0);
-  const [chatAttachments, setChatAttachments] = useState<Array<{ id: string; file: File; type: string; preview?: string }>>([]);
+  const [chatAttachments, setChatAttachments] = useState<Array<{ id: string; file: File; type: 'image' | 'audio'; preview?: string }>>([]);
   // Track which context we're in: 'room' or 'dm'
   const [chatInputContext, setChatInputContext] = useState<'room' | 'dm'>('room');
 
@@ -391,12 +394,19 @@ export default function CommunityPage() {
     const newAtts = Array.from(files).map(file => ({
       id: crypto.randomUUID(),
       file,
-      type: file.type.startsWith('image/') ? 'image' as const : 'document' as const,
+      type: file.type.startsWith('audio/') ? 'audio' as const : 'image' as const,
       ...(file.type.startsWith('image/') ? { preview: URL.createObjectURL(file) } : {}),
     }));
     setChatAttachments(prev => [...prev, ...newAtts]);
     e.target.value = '';
   }, []);
+
+  const toDataUrl = useCallback((file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  }), []);
 
   const removeChatAttachment = useCallback((id: string) => {
     setChatAttachments(prev => prev.filter(a => a.id !== id));
@@ -612,17 +622,25 @@ export default function CommunityPage() {
   };
 
   const sendMessage = async () => {
-    if (!msgInput.trim() || !activeRoom || sendingMsg) return;
+    if ((!msgInput.trim() && chatAttachments.length === 0) || !activeRoom || sendingMsg) return;
     setSendingMsg(true);
     try {
+      const payloadAttachments = await Promise.all(
+        chatAttachments.map(async (att) => ({
+          type: att.type,
+          url: await toDataUrl(att.file),
+          name: att.file.name,
+        }))
+      );
       const res = await apiFetch(`/api/community/rooms/${activeRoom.id}/messages`, {
         method: 'POST',
-        body: JSON.stringify({ content: msgInput.trim() }),
+        body: JSON.stringify({ content: msgInput.trim(), attachments: payloadAttachments }),
       });
       if (res.ok) {
         const data = await res.json();
         setMessages(prev => [...prev, data.message]);
         setMsgInput('');
+        setChatAttachments([]);
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
       }
     } catch (err) {
@@ -979,17 +997,25 @@ export default function CommunityPage() {
   };
 
   const sendDm = async () => {
-    if (!dmInput.trim() || !activeDmPartner || sendingDm) return;
+    if ((!dmInput.trim() && chatAttachments.length === 0) || !activeDmPartner || sendingDm) return;
     setSendingDm(true);
     try {
+      const payloadAttachments = await Promise.all(
+        chatAttachments.map(async (att) => ({
+          type: att.type,
+          url: await toDataUrl(att.file),
+          name: att.file.name,
+        }))
+      );
       const res = await apiFetch('/api/community/dm', {
         method: 'POST',
-        body: JSON.stringify({ recipientId: activeDmPartner.id, content: dmInput.trim() }),
+        body: JSON.stringify({ recipientId: activeDmPartner.id, content: dmInput.trim(), attachments: payloadAttachments }),
       });
       if (res.ok) {
         const d = await res.json();
         setDmMessages(prev => [...prev, d.message]);
         setDmInput('');
+        setChatAttachments([]);
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
       } else {
         const d = await res.json();
@@ -1051,7 +1077,20 @@ export default function CommunityPage() {
                       <Zap className="h-3 w-3" /> Invite Message
                     </p>
                   )}
-                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  {msg.content && <p className="whitespace-pre-wrap break-words">{msg.content}</p>}
+                  {msg.attachments && msg.attachments.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      {msg.attachments.map((att, i) => (
+                        <div key={`${msg.id}-${i}`}>
+                          {att.type === 'image' ? (
+                            <img src={att.url} alt={att.name || 'image'} className="max-h-64 rounded-lg border border-border/20 object-cover" />
+                          ) : (
+                            <audio controls src={att.url} className="w-full max-w-xs" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <p className={`text-[10px] mt-1 ${isMe ? 'text-primary-foreground/60' : 'text-muted-foreground/60'}`}>
                     {new Date(msg.createdAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}
                   </p>
@@ -1073,7 +1112,7 @@ export default function CommunityPage() {
                     <img src={att.preview} alt="" className="h-14 w-14 rounded-lg object-cover border" />
                   ) : (
                     <div className="h-14 w-14 rounded-lg border bg-muted flex items-center justify-center">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
+                      <Mic className="h-5 w-5 text-muted-foreground" />
                     </div>
                   )}
                   <button onClick={() => removeChatAttachment(att.id)} className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1083,7 +1122,7 @@ export default function CommunityPage() {
               ))}
             </div>
           )}
-          <input ref={chatFileInputRef} type="file" className="hidden" accept="image/*,.pdf,.doc,.docx,.txt" multiple onChange={handleChatFileSelect} />
+          <input ref={chatFileInputRef} type="file" className="hidden" accept="image/*,audio/*" multiple onChange={handleChatFileSelect} />
           <div className="flex gap-2 items-end">
             <div className="flex items-center gap-0.5 shrink-0">
               <button
@@ -1110,7 +1149,7 @@ export default function CommunityPage() {
             />
             <button
               onClick={sendDm}
-              disabled={!dmInput.trim() || sendingDm}
+              disabled={(!dmInput.trim() && chatAttachments.length === 0) || sendingDm}
               className="px-3 py-2 rounded-xl bg-primary text-primary-foreground disabled:opacity-30 transition-opacity shrink-0"
             >
               {sendingDm ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -1299,7 +1338,20 @@ export default function CommunityPage() {
                         ? 'bg-primary text-primary-foreground rounded-tr-md' 
                         : 'bg-card border border-border/20 text-foreground rounded-tl-md'
                   } ${!showHeader && !isMe ? 'rounded-tl-2xl' : ''} ${!showHeader && isMe ? 'rounded-tr-2xl' : ''}`}>
-                    {msg.content}
+                    {msg.content && <p>{msg.content}</p>}
+                    {msg.attachments && msg.attachments.length > 0 && (
+                      <div className="mt-2 space-y-2">
+                        {msg.attachments.map((att, i) => (
+                          <div key={`${msg.id}-${i}`}>
+                            {att.type === 'image' ? (
+                              <img src={att.url} alt={att.name || 'image'} className="max-h-64 rounded-lg border border-border/20 object-cover" />
+                            ) : (
+                              <audio controls src={att.url} className="w-full max-w-xs" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1319,7 +1371,7 @@ export default function CommunityPage() {
                     <img src={att.preview} alt="" className="h-14 w-14 rounded-lg object-cover border" />
                   ) : (
                     <div className="h-14 w-14 rounded-lg border bg-muted flex items-center justify-center">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
+                      <Mic className="h-5 w-5 text-muted-foreground" />
                     </div>
                   )}
                   <button onClick={() => removeChatAttachment(att.id)} className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1355,7 +1407,7 @@ export default function CommunityPage() {
             />
             <button
               onClick={sendMessage}
-              disabled={!msgInput.trim() || sendingMsg}
+              disabled={(!msgInput.trim() && chatAttachments.length === 0) || sendingMsg}
               className="px-3 py-2 rounded-xl bg-primary text-primary-foreground disabled:opacity-30 transition-opacity shrink-0"
             >
               {sendingMsg ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

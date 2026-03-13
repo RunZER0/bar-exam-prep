@@ -47,6 +47,8 @@ export async function GET(
           displayName: userData?.communityUsername || userData?.displayName || 'Anonymous',
           photoURL: userData?.photoURL,
           content: msg.content,
+          messageType: msg.messageType || 'text',
+          attachments: msg.attachments || [],
           createdAt: msg.createdAt,
           isPinned: msg.isPinned,
           isAgent: !msg.userId,
@@ -94,17 +96,29 @@ export async function POST(
     }
 
     const body = await req.json();
-    const { content, replyToId } = body;
+    const { content, replyToId, attachments } = body;
+    const safeContent = (content || '').trim();
+    const safeAttachments = Array.isArray(attachments)
+      ? attachments
+          .filter((a: any) => a && typeof a.url === 'string' && typeof a.type === 'string')
+          .slice(0, 5)
+      : [];
 
-    if (!content?.trim()) {
-      return NextResponse.json({ error: 'Message content required' }, { status: 400 });
+    if (!safeContent && safeAttachments.length === 0) {
+      return NextResponse.json({ error: 'Message content or attachment required' }, { status: 400 });
     }
+
+    const hasImage = safeAttachments.some((a: any) => a.type === 'image');
+    const hasAudio = safeAttachments.some((a: any) => a.type === 'audio');
+    const messageType = hasAudio ? 'audio' : hasImage ? 'image' : 'text';
 
     // Insert the message
     const [newMessage] = await db.insert(roomMessages).values({
       roomId,
       userId: user.id,
-      content: content.trim(),
+      content: safeContent,
+      messageType,
+      attachments: safeAttachments,
       parentId: replyToId || null,
       isPinned: false,
     }).returning();
@@ -115,6 +129,8 @@ export async function POST(
         userId: newMessage.userId,
         displayName: user.displayName || 'Anonymous',
         content: newMessage.content,
+        messageType: newMessage.messageType || 'text',
+        attachments: newMessage.attachments || [],
         createdAt: newMessage.createdAt,
         isPinned: false,
         isAgent: false,

@@ -10,6 +10,21 @@ import { directMessages, userFriends, users } from '@/lib/db/schema';
 import { eq, and, or, desc, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 
+function parseMessageEnvelope(content: string, messageType: string) {
+  if (messageType !== 'media') {
+    return { content, attachments: [] as Array<{ type: string; url: string; name?: string }> };
+  }
+  try {
+    const parsed = JSON.parse(content);
+    return {
+      content: typeof parsed.text === 'string' ? parsed.text : '',
+      attachments: Array.isArray(parsed.attachments) ? parsed.attachments : [],
+    };
+  } catch {
+    return { content, attachments: [] as Array<{ type: string; url: string; name?: string }> };
+  }
+}
+
 // GET - Fetch conversations or messages with a specific user
 export async function GET(req: NextRequest) {
   try {
@@ -20,7 +35,15 @@ export async function GET(req: NextRequest) {
 
     const token = authHeader.substring(7);
     const decodedToken = await verifyIdToken(token);
-    const userId = decodedToken.uid;
+    const [currentUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.firebaseUid, decodedToken.uid))
+      .limit(1);
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    const userId = currentUser.id;
 
     const { searchParams } = new URL(req.url);
     const partnerId = searchParams.get('partnerId');
@@ -55,7 +78,12 @@ export async function GET(req: NextRequest) {
           eq(directMessages.read, false)
         ));
 
-      return NextResponse.json({ messages });
+      return NextResponse.json({
+        messages: messages.map((m) => {
+          const parsed = parseMessageEnvelope(m.content, m.messageType);
+          return { ...m, content: parsed.content, attachments: parsed.attachments };
+        }),
+      });
     }
 
     // Fetch conversation list (latest message per conversation partner)
@@ -106,7 +134,7 @@ export async function GET(req: NextRequest) {
           partnerId,
           displayName: partner?.displayName || 'Unknown',
           photoURL: partner?.photoURL || null,
-          lastMessage: lastMsg.content,
+          lastMessage: lastMsg.messageType === 'media' ? '📎 Media message' : lastMsg.content,
           lastMessageAt: lastMsg.createdAt,
           isLastFromMe: lastMsg.senderId === userId,
           unreadCount: unreadCounts.get(partnerId) || 0,
@@ -131,12 +159,24 @@ export async function POST(req: NextRequest) {
 
     const token = authHeader.substring(7);
     const decodedToken = await verifyIdToken(token);
-    const userId = decodedToken.uid;
+    const [currentUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.firebaseUid, decodedToken.uid))
+      .limit(1);
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    const userId = currentUser.id;
 
-    const { recipientId, content } = await req.json();
+    const { recipientId, content, attachments } = await req.json();
+    const safeContent = (content || '').trim();
+    const safeAttachments = Array.isArray(attachments)
+      ? attachments.filter((a: any) => a && typeof a.url === 'string' && typeof a.type === 'string').slice(0, 5)
+      : [];
 
-    if (!recipientId || !content?.trim()) {
-      return NextResponse.json({ error: 'Recipient and content are required' }, { status: 400 });
+    if (!recipientId || (!safeContent && safeAttachments.length === 0)) {
+      return NextResponse.json({ error: 'Recipient and message content or attachment are required' }, { status: 400 });
     }
 
     if (recipientId === userId) {
@@ -180,22 +220,28 @@ export async function POST(req: NextRequest) {
       const [message] = await db.insert(directMessages).values({
         senderId: userId,
         recipientId,
-        content: content.trim().slice(0, 500), // Limit invite length
+        content: safeContent.slice(0, 500), // Limit invite length
         messageType: 'invite',
       }).returning();
 
       return NextResponse.json({ message, type: 'invite' });
     }
 
+    const messageType = safeAttachments.length > 0 ? 'media' : 'message';
+    const payload = messageType === 'media'
+      ? JSON.stringify({ text: safeContent, attachments: safeAttachments })
+      : safeContent;
+
     // Friends can send unlimited messages
     const [message] = await db.insert(directMessages).values({
       senderId: userId,
       recipientId,
-      content: content.trim(),
-      messageType: 'message',
+      content: payload,
+      messageType,
     }).returning();
 
-    return NextResponse.json({ message, type: 'message' });
+    const parsed = parseMessageEnvelope(message.content, message.messageType);
+    return NextResponse.json({ message: { ...message, content: parsed.content, attachments: parsed.attachments }, type: messageType });
   } catch (error) {
     console.error('Error sending DM:', error);
     return NextResponse.json({ error: 'Failed to send message' }, { status: 500 });

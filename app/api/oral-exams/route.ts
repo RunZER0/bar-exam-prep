@@ -152,6 +152,8 @@ EXAMINATION GUIDELINES:
    - ~40% MEDIUM (3-4 sentences): Standard questioning with brief context.
    - ~30% LONGER (5-7 sentences): Scenario-based questions or detailed probing.
    Never give uniformly long responses.
+9. NEVER ask vague prompts like "state your understanding of the first principle". Name the exact principle, statute, article, case, or procedural step you are asking about.
+10. If the student asks for clarification, answer the clarification directly and then restate the question in precise terms.
 
 SESSION TIMING:
 - Sessions last approximately 15 minutes.
@@ -162,6 +164,31 @@ ${interruptionInstructions}
 ${feedbackInstructions}
 
 IMPORTANT: Responses will be read aloud via TTS. Be natural and conversational. No bullet points or markdown. Use short paragraphs. Do NOT prefix with your name or title (the UI already shows speaker identity). Start directly with the question/challenge.`;
+}
+
+function buildContextualOpeningQuestion(panelist: typeof PANELISTS[0], unitId?: string): string {
+  const unit = unitId ? ATP_UNITS.find(u => u.id === unitId) : null;
+  const unitLabel = unit ? `${unit.code}: ${unit.name}` : 'Kenyan legal practice';
+
+  const openings: Record<string, (label: string) => string> = {
+    'justice-mwangi': (label) =>
+      `Counsel, let us begin with ${label}. Identify the governing legal test and cite one controlling constitutional provision or statutory section that the court must apply.` ,
+    'advocate-amara': (label) =>
+      `You have a client problem in ${label}. Give me your first procedural step, the legal basis for it, and one risk if you get that step wrong.` ,
+    'prof-otieno': (label) =>
+      `Start with ${label}. Explain the core legal principle, then justify it with one authority and the policy rationale behind it.` ,
+  };
+
+  return (openings[panelist.id] || openings['justice-mwangi'])(unitLabel);
+}
+
+function buildContextualFallbackQuestion(panelist: typeof PANELISTS[0], messages: any[], unitId?: string): string {
+  const lastUser = [...messages].reverse().find((m: any) => m.role === 'user')?.content || '';
+  const asksClarify = /what do you mean|clarify|not clear|which principle|explain/i.test(lastUser);
+  if (asksClarify) {
+    return `Fair question. Let me be precise: state the exact legal rule you rely on, cite the section or article, and apply it to a concrete client scenario in two steps.`;
+  }
+  return buildContextualOpeningQuestion(panelist, unitId);
 }
 
 function stripSpeakerPrefix(text: string, panelistName?: string): string {
@@ -408,12 +435,14 @@ Be specific and reference actual moments from the conversation. Keep it conversa
       if (messages.length === 0) {
         apiMessages.push({
           role: 'user' as const,
-          content: `I'm ready for my oral examination${unitId ? ` on ${ATP_UNITS.find(u => u.id === unitId)?.name || 'this topic'}` : ''}. Please begin.`,
+          content: `I'm ready for my oral examination${unitId ? ` on ${ATP_UNITS.find(u => u.id === unitId)?.name || 'this topic'}` : ''}. Begin with a specific, concrete legal question. Do not use vague wording like "first principle".`,
         });
       }
 
       // Determine next panelist (round-robin with occasional same-panelist follow-up)
-      const shouldFollowUp = Math.random() < 0.3 && messages.length > 0;
+      const lastUserText = [...messages].reverse().find((m: any) => m.role === 'user')?.content || '';
+      const clarificationRequested = /what do you mean|clarify|not clear|which principle|explain/i.test(lastUserText);
+      const shouldFollowUp = messages.length > 0 && (clarificationRequested || Math.random() < 0.55);
       const nextPanelistIndex = shouldFollowUp
         ? currentPanelistIndex
         : (currentPanelistIndex + 1) % activePanelists.length;
@@ -491,7 +520,7 @@ Be specific and reference actual moments from the conversation. Keep it conversa
           max_completion_tokens: examMaxTokens,
         });
 
-        const response = completion.choices[0]?.message?.content || 'Let us begin. State your understanding of the first principle.';
+        const response = completion.choices[0]?.message?.content || buildContextualFallbackQuestion(currentPanelist, messages, unitId);
         const cleanedResponse = stripSpeakerPrefix(response, currentPanelist.name);
 
         return NextResponse.json({

@@ -32,6 +32,7 @@ const RESTRICTED_PATHS = [
   '/exams',
   '/quizzes',
   '/clarify',
+  '/community',
 ];
 
 const FLOATING_CHAT_SESSION_KEY = 'ynai-floating-chat-session-id';

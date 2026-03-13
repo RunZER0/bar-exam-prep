@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 import { usePreloading } from '@/lib/services/preloading';
+import EngagingLoader from '@/components/EngagingLoader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -453,14 +454,22 @@ Rules:
   };
 
   /* ── Streaming quiz fetch — first question shows instantly ── */
-  const fetchQuestionsStreaming = async (count: number, onFirstQuestion: () => void): Promise<number> => {
+  const fetchQuestionsStreaming = async (
+    count: number,
+    minReadyCount: number,
+    onReady: () => void,
+    timeoutMs: number = 20000,
+  ): Promise<number> => {
     const token = await getIdToken();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     const res = await fetch('/api/ai/quiz-stream', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
+      signal: controller.signal,
       body: JSON.stringify({
         prompt: buildPrompt(count),
         count,
@@ -472,29 +481,37 @@ Rules:
     const reader = res.body?.getReader();
     const decoder = new TextDecoder();
     let questionCount = 0;
+    let readySignaled = false;
 
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const text = decoder.decode(value, { stream: true });
-        const lines = text.split('\n');
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === 'question' && data.question) {
-              const normalized = normalizeQuestions([data.question]);
-              if (normalized.length === 0) continue;
-              setQuestions((prev) => [...prev, normalized[0]]);
-              questionCount++;
-              if (questionCount === 1) {
-                onFirstQuestion();
+    try {
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const text = decoder.decode(value, { stream: true });
+          const lines = text.split('\n');
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.type === 'question' && data.question) {
+                const normalized = normalizeQuestions([data.question]);
+                if (normalized.length === 0) continue;
+                setQuestions((prev) => [...prev, normalized[0]]);
+                questionCount++;
+                if (!readySignaled && questionCount >= minReadyCount) {
+                  readySignaled = true;
+                  onReady();
+                }
               }
-            }
-          } catch { /* skip partial */ }
+            } catch { /* skip partial */ }
+          }
         }
       }
+    } catch {
+      // Return whatever streamed before timeout/network interruption
+    } finally {
+      clearTimeout(timeout);
     }
 
     return questionCount;
@@ -541,9 +558,11 @@ Rules:
     setQuizSessionId(crypto.randomUUID());
 
     try {
+      const minReadyCount = Math.min(3, effectiveCount);
+
       // Use streaming API — first question shows instantly, rest arrive in background
-      const streamedCount = await fetchQuestionsStreaming(effectiveCount, () => {
-        // Called when the very first question arrives
+      const streamedCount = await fetchQuestionsStreaming(effectiveCount, minReadyCount, () => {
+        // Called once first three (or requested minimum) are available
         setLoading(false);
       });
 
@@ -559,6 +578,9 @@ Rules:
         }
         setQuestions((prev) => [...prev, ...supplement.slice(0, need)]);
         total += Math.min(supplement.length, need);
+        if (total >= minReadyCount) {
+          setLoading(false);
+        }
       }
 
       if (total === 0) {
@@ -584,6 +606,14 @@ Rules:
       setLoading(false);
     }
   }, [mode, selectedUnit, effectiveCount, isInfinityMode, loadMoreQuestions, fetchQuestions]);
+
+  useEffect(() => {
+    if (section !== 'playing' || !loading) return;
+    const minReadyCount = Math.min(3, effectiveCount);
+    if (questions.length >= minReadyCount) {
+      setLoading(false);
+    }
+  }, [section, loading, questions.length, effectiveCount]);
 
   // Infinite mode: keep queue full in background
   useEffect(() => {
@@ -1124,42 +1154,13 @@ Rules:
   //  RENDER: LOADING (personality-filled)
   // ═══════════════════════════════════
   if (loading) {
-    const ModeIcon = mode.icon;
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 px-6">
-        {/* Animated mode icon */}
-        <div className={`relative p-5 rounded-3xl bg-gradient-to-br ${mode.gradient} text-white shadow-2xl animate-pulse`}>
-          <ModeIcon className="h-10 w-10" />
-          <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-card flex items-center justify-center">
-            <Loader2 className="h-3 w-3 animate-spin text-primary" />
-          </div>
-        </div>
-
-        {/* Mode & topic label */}
-        <div className="text-center space-y-1">
-          <h2 className={`text-xl font-bold bg-gradient-to-r ${mode.gradient} bg-clip-text text-transparent`}>
-            {mode.name}
-          </h2>
-          <p className="text-xs text-muted-foreground">{unitName} · {isInfinityMode ? 'Endless' : `${questionCount} questions`}</p>
-        </div>
-
-        {/* Personality message — fades & cycles */}
-        <div className="max-w-sm text-center animate-fade-in" key={loadingMessage}>
-          <p className="text-sm font-medium text-muted-foreground italic leading-relaxed">
-            &ldquo;{loadingMessage}&rdquo;
-          </p>
-        </div>
-
-        {/* Pulsing dots */}
-        <div className="flex gap-1.5">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className={`h-2 w-2 rounded-full bg-gradient-to-r ${mode.gradient}`}
-              style={{ animation: `pulse 1.4s ease-in-out ${i * 0.2}s infinite` }}
-            />
-          ))}
-        </div>
+      <div className="min-h-[60vh] flex items-center justify-center px-6">
+        <EngagingLoader
+          size="md"
+          message={`${mode.name} · ${unitName} · ${isInfinityMode ? 'Endless' : `${questionCount} questions`} — loading first 3 questions...`}
+          showFacts={true}
+        />
       </div>
     );
   }

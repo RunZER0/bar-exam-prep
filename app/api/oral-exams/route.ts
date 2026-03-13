@@ -268,6 +268,33 @@ function buildContinuityFallbackQuestion(
     : `Build on your previous point (${userSummary}) and support it with a specific legal authority.`;
 }
 
+function buildPivotQuestion(panelist: typeof PANELISTS[0], unitId?: string): string {
+  const unit = unitId ? ATP_UNITS.find(u => u.id === unitId) : null;
+  const area = unit?.name || 'this subject area';
+
+  if (panelist.id === 'justice-mwangi') {
+    return `Let us pivot slightly within ${area}. Distinguish jurisdiction from remedy, then identify one situation where a court has jurisdiction but declines the specific remedy sought.`;
+  }
+  if (panelist.id === 'advocate-amara') {
+    return `New angle in ${area}: your client now has adverse facts. Give me your best tactical adjustment, the legal basis, and the litigation risk you would disclose immediately.`;
+  }
+  return `Let us shift perspective in ${area}. Contrast the black-letter rule with its policy objective, then show how that tension appears in practice.`;
+}
+
+function getTrailingPanelistStreak(messages: any[], panelistId: string): number {
+  let streak = 0;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role !== 'assistant') continue;
+    if (msg.panelistId === panelistId) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
 /* ================================================================
    POST — Handle oral exam conversation
    ================================================================ */
@@ -474,6 +501,8 @@ Be specific and reference actual moments from the conversation. Keep it conversa
 
       const previousAssistantText = [...messages].reverse().find((m: any) => m.role === 'assistant')?.content || '';
       const lastUserText = [...messages].reverse().find((m: any) => m.role === 'user')?.content || '';
+      const assistantTurnCount = messages.filter((m: any) => m.role === 'assistant').length;
+      const trailingSamePanelist = getTrailingPanelistStreak(messages, currentPanelist.id);
 
       if (lastUserText) {
         apiMessages.push({
@@ -507,10 +536,18 @@ Be specific and reference actual moments from the conversation. Keep it conversa
 
       // Determine next panelist (round-robin with occasional same-panelist follow-up)
       const clarificationRequested = /what do you mean|clarify|not clear|which principle|explain/i.test(lastUserText);
-      const shouldFollowUp = messages.length > 0 && (clarificationRequested || Math.random() < 0.55);
+      const shouldPivotTopic = !clarificationRequested && assistantTurnCount > 0 && assistantTurnCount % 3 === 0;
+      const shouldFollowUp = messages.length > 0 && (clarificationRequested || (Math.random() < 0.5 && trailingSamePanelist < 2));
       const nextPanelistIndex = shouldFollowUp
         ? currentPanelistIndex
         : (currentPanelistIndex + 1) % activePanelists.length;
+
+      if (shouldPivotTopic) {
+        apiMessages.push({
+          role: 'system' as const,
+          content: `PROGRESSION REQUIREMENT: Pivot to a NEW adjacent angle now. Do not stay on the exact same sub-question thread. Keep continuity, then shift to a fresh, concrete issue within the same unit.`
+        });
+      }
 
       if (stream) {
         // STREAMING mode
@@ -555,7 +592,9 @@ Be specific and reference actual moments from the conversation. Keep it conversa
               // Send final complete message
               const cleanedContent = stripSpeakerPrefix(fullContent, currentPanelist.name);
               const finalContent = isLowQualityExaminerTurn(cleanedContent, previousAssistantText)
-                ? buildContinuityFallbackQuestion(currentPanelist, lastUserText, previousAssistantText, unitId)
+                ? (shouldPivotTopic
+                    ? buildPivotQuestion(currentPanelist, unitId)
+                    : buildContinuityFallbackQuestion(currentPanelist, lastUserText, previousAssistantText, unitId))
                 : cleanedContent;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'done',
@@ -591,7 +630,9 @@ Be specific and reference actual moments from the conversation. Keep it conversa
         const response = completion.choices[0]?.message?.content || buildContextualFallbackQuestion(currentPanelist, messages, unitId);
         const cleanedResponse = stripSpeakerPrefix(response, currentPanelist.name);
         const finalResponse = isLowQualityExaminerTurn(cleanedResponse, previousAssistantText)
-          ? buildContinuityFallbackQuestion(currentPanelist, lastUserText, previousAssistantText, unitId)
+          ? (shouldPivotTopic
+              ? buildPivotQuestion(currentPanelist, unitId)
+              : buildContinuityFallbackQuestion(currentPanelist, lastUserText, previousAssistantText, unitId))
           : cleanedResponse;
 
         return NextResponse.json({

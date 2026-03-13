@@ -500,6 +500,26 @@ Rules:
     return questionCount;
   };
 
+  // Infinity mode — load more questions when nearing the end
+  const loadMoreQuestions = useCallback(async () => {
+    if (loadingMoreQuestions) return;
+    setLoadingMoreQuestions(true);
+    try {
+      let batch = await fetchQuestions(15);
+      if (batch.length < 10) {
+        const extra = await fetchQuestions(15 - batch.length);
+        batch = [...batch, ...extra];
+      }
+      if (batch.length > 0) {
+        setQuestions((prev) => [...prev, ...batch]);
+      }
+    } catch {
+      // Silent fail
+    } finally {
+      setLoadingMoreQuestions(false);
+    }
+  }, [fetchQuestions, loadingMoreQuestions]);
+
   const startQuiz = useCallback(async () => {
     setLoading(true);
     setGenerationError(null);
@@ -564,26 +584,6 @@ Rules:
       setLoading(false);
     }
   }, [mode, selectedUnit, effectiveCount, isInfinityMode, loadMoreQuestions, fetchQuestions]);
-
-  // Infinity mode — load more questions when nearing the end
-  const loadMoreQuestions = useCallback(async () => {
-    if (loadingMoreQuestions) return;
-    setLoadingMoreQuestions(true);
-    try {
-      let batch = await fetchQuestions(15);
-      if (batch.length < 10) {
-        const extra = await fetchQuestions(15 - batch.length);
-        batch = [...batch, ...extra];
-      }
-      if (batch.length > 0) {
-        setQuestions((prev) => [...prev, ...batch]);
-      }
-    } catch {
-      // Silent fail
-    } finally {
-      setLoadingMoreQuestions(false);
-    }
-  }, [fetchQuestions, loadingMoreQuestions]);
 
   // Infinite mode: keep queue full in background
   useEffect(() => {

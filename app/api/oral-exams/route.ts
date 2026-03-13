@@ -168,7 +168,20 @@ IMPORTANT: Responses will be read aloud via TTS. Be natural and conversational. 
 
 function buildContextualOpeningQuestion(panelist: typeof PANELISTS[0], unitId?: string): string {
   const unit = unitId ? ATP_UNITS.find(u => u.id === unitId) : null;
-  const unitLabel = unit ? `${unit.code}: ${unit.name}` : 'Kenyan legal practice';
+  const unitLabel = unit ? `${unit.code}: ${unit.name}` : null;
+
+  if (!unitLabel) {
+    const genericOpenings: Record<string, string> = {
+      'justice-mwangi':
+        `Counsel, assume an applicant seeks a temporary injunction in the High Court under Order 40 of the Civil Procedure Rules. State the governing legal test, cite one controlling authority, and apply that test to a disputed land sale in two concise steps.`,
+      'advocate-amara':
+        `Your client has just been served with summons in a civil suit and a hearing date is fixed in 7 days. Give me your first procedural step, the exact legal basis, and one litigation risk if you get that step wrong.`,
+      'prof-otieno':
+        `An employee is terminated without a disciplinary hearing and files suit. Identify the core legal principle, cite one controlling provision, and explain the policy rationale in Kenyan law.`
+    };
+
+    return genericOpenings[panelist.id] || genericOpenings['justice-mwangi'];
+  }
 
   const openings: Record<string, (label: string) => string> = {
     'justice-mwangi': (label) =>
@@ -226,6 +239,9 @@ function isLowQualityExaminerTurn(text: string, previousAssistantText: string): 
 
   if (!normalized) return true;
   if (/let us begin/.test(normalized)) return true;
+  if (/kenyan legal practice/.test(normalized)) return true;
+  if (/start with kenyan legal practice/.test(normalized)) return true;
+  if (/client problem in kenyan legal practice/.test(normalized)) return true;
   if (/state your understanding of the first principle/.test(normalized)) return true;
   if (normalized.length < 25) return true;
 

@@ -32,7 +32,7 @@ const PANELISTS = [
   {
     id: 'prof-otieno',
     name: 'Prof. Otieno',
-    title: 'Professor of Law, University of Nairobi',
+    title: 'Professor of Law',
     voice: 'sage' as const,
     style: 'Academic, Socratic, theoretical. Pushes for deeper analysis, policy rationale, and comparative perspectives. Asks follow-up questions that build on answers. Loves to say "but why?" and "what is the policy rationale?"',
     avatar: '📚',
@@ -147,13 +147,20 @@ You: "${panelist.name}: I'll stop you there. Which specific rule under the Civil
 
 YOUR PERSONA: ${panelist.style}
 
-YOUR SPECIALIZATIONS: ${panelist.specialties.join(', ')}
+YOUR ANALYTICAL LENS: ${panelist.specialties.join(', ')}
+You apply this expertise as YOUR unique perspective on whatever topic the panel is currently examining. You do NOT only ask about these areas — you bring your angle to the topic already under discussion.
 
 ${modeInstructions}
 
 CONTEXT: ${unitContext}
 
 OTHER PANELISTS: ${otherPanelists.join(', ')}
+
+TOPIC THREADING — ABSOLUTE RULE:
+- The panel examines ONE legal issue at a time. ALL panelists discuss the SAME topic thread until a deliberate transition.
+- When you take over from another panelist, you MUST continue examining the SAME legal issue they were exploring. Bring YOUR unique perspective to THEIR topic — do NOT switch to your own specialty area.
+- Example: If the panel was discussing temporary injunctions, you don't switch to employment law — you probe the SAME injunction issue from YOUR angle (procedural, practical, theoretical, or policy).
+- NEVER introduce a new unrelated topic unless: (a) the student has been thoroughly examined on the current topic (at least 3 exchanges on it), AND (b) you explicitly signal the transition: "Let us move on to a different area..."
 
 CONTEXT AWARENESS — CRITICAL:
 - You MUST directly engage with the student's LATEST answer. Never ask a question that ignores what they just said.
@@ -230,6 +237,11 @@ function buildContextualFallbackQuestion(panelist: typeof PANELISTS[0], messages
   if (asksClarify) {
     return `Fair question. Let me be precise: state the exact legal rule you rely on, cite the section or article, and apply it to a concrete client scenario in two steps.`;
   }
+  // Use the student's last answer to build a contextual follow-up instead of a canned opening
+  const summary = summarizeForPrompt(lastUser, 20);
+  if (summary && summary !== 'no clear answer provided yet') {
+    return `You mentioned ${summary}. What specific statutory provision or case authority supports that position? Give me the exact section number.`;
+  }
   return buildContextualOpeningQuestion(panelist, unitId);
 }
 
@@ -272,7 +284,7 @@ function isLowQualityExaminerTurn(text: string, previousAssistantText: string): 
   if (/start with kenyan legal practice/.test(normalized)) return true;
   if (/client problem in kenyan legal practice/.test(normalized)) return true;
   if (/state your understanding of the first principle/.test(normalized)) return true;
-  if (normalized.length < 25) return true;
+  if (normalized.length < 15) return true;
 
   if (previous) {
     if (normalized === previous) return true;
@@ -332,23 +344,19 @@ function buildContinuityFallbackQuestion(
     return buildContextualOpeningQuestion(panelist, unitId);
   }
 
-  const unit = unitId ? ATP_UNITS.find(u => u.id === unitId) : null;
-  const area = unit?.name || 'this issue';
   const userSummary = summarizeForPrompt(lastUserText);
+  const hasAuthority = hasLegalAuthoritySignal(lastUserText);
 
-  if (panelist.id === 'justice-mwangi') {
-    return `On your last answer (${userSummary}), identify the precise legal test that governs ${area}, then cite one exact section or constitutional article and apply it to facts.`;
-  }
-  if (panelist.id === 'advocate-amara') {
-    return `You said: "${userSummary}". Now give me the next procedural move, the legal basis, and one consequence if counsel gets it wrong in practice.`;
-  }
-  if (panelist.id === 'prof-otieno') {
-    return `Building on your response (${userSummary}), distinguish the core rule from its policy rationale, then support both with one authority relevant to ${area}.`;
+  // Dynamic follow-ups based on answer quality, not panelist identity
+  if (!hasAuthority) {
+    return `You mentioned ${userSummary}, but you have not cited any statutory provision or case authority. What is the specific legal basis for that position?`;
   }
 
-  return previousAssistantText
-    ? `Following your previous answer (${userSummary}), respond directly to the issue raised and support your position with one specific legal authority.`
-    : `Build on your previous point (${userSummary}) and support it with a specific legal authority.`;
+  if (hasVaguenessSignal(lastUserText)) {
+    return `You said "${userSummary}" — that is too general. Give me the exact section number, the specific test the court applies, and how it works on these facts.`;
+  }
+
+  return `Building on your point about ${userSummary}: what is the strongest counterargument against that position, and how would you distinguish it?`;
 }
 
 function buildPivotQuestion(panelist: typeof PANELISTS[0], unitId?: string): string {
@@ -527,7 +535,11 @@ function buildHandoverDirective(params: {
     return `FLOW STYLE: Keep natural spoken rhythm. Use one core question, optional one-line challenge, then stop.`;
   }
 
-  return `HANDOVER STYLE: Start with a brief spoken bridge (6-14 words) that explicitly links from ${previousPanelistName}'s point: "Picking up from ${previousPanelistName} on ${previousPanelistPoint}, ..." then ask one focused question. Do not sound scripted. Do not over-explain the transition. Keep total response to 2-3 short sentences. CURRENT ACT: ${conversationAct}.`;
+  return `HANDOVER — TOPIC CONTINUITY MANDATORY:
+${previousPanelistName} was examining: "${previousPanelistPoint}".
+You MUST continue examining the SAME legal issue from YOUR unique perspective. Do NOT switch to a different topic or your own default specialty question.
+Start with a brief spoken bridge (6-14 words) linking to what was just discussed, then ask one focused question that deepens or challenges the student on THIS SAME issue from your angle.
+CURRENT ACT: ${conversationAct}.`;
 }
 
 /* ================================================================
@@ -855,7 +867,7 @@ RULES:
       if (lastUserText) {
         apiMessages.push({
           role: 'system' as const,
-          content: `CONTINUITY REQUIREMENT: The student's latest answer was: "${summarizeForPrompt(lastUserText, 30)}". Your next turn MUST explicitly engage that answer (correct it, deepen it, or challenge it). Do not restart with a generic opening.`
+          content: `CONTINUITY REQUIREMENT: The student's latest answer was: "${summarizeForPrompt(lastUserText, 30)}". Your next turn MUST explicitly engage THAT answer — correct it, deepen it, or challenge it. Stay on the SAME legal topic. Do not restart with a generic opening or switch to an unrelated area.`
         });
       }
 
@@ -902,16 +914,16 @@ RULES:
 
       // Vary response budget based on turn mode for realism + cost control
       const examMaxTokens = turnMode === 'interruption-trim'
-        ? 100
+        ? 180
         : turnMode === 'clarify'
-        ? 130
+        ? 220
         : turnMode === 'correction' || turnMode === 'authority-demand'
-        ? 170
+        ? 280
         : turnMode === 'pivot' || turnMode === 'handoff'
-        ? 190
+        ? 320
         : isCrossPanelHandover
-        ? 185
-        : 165;
+        ? 300
+        : 260;
 
       // Opening question if no messages
       if (messages.length === 0) {

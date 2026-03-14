@@ -371,18 +371,15 @@ function isLowQualityExaminerTurn(text: string, previousAssistantText: string): 
   const normalized = normalizeForComparison(text);
   const previous = normalizeForComparison(previousAssistantText);
 
+  // Only flag truly degenerate responses — don't second-guess the AI
   if (!normalized) return true;
-  if (/let us begin/.test(normalized)) return true;
-  if (/kenyan legal practice/.test(normalized)) return true;
-  if (/start with kenyan legal practice/.test(normalized)) return true;
-  if (/client problem in kenyan legal practice/.test(normalized)) return true;
-  if (/state your understanding of the first principle/.test(normalized)) return true;
   if (normalized.length < 15) return true;
 
-  if (previous) {
-    if (normalized === previous) return true;
-    if (previous.includes(normalized) || normalized.includes(previous)) return true;
-  }
+  // Only flag if the ENTIRE response is essentially one of these vague phrases (not substring match)
+  if (/^(let us begin|kenyan legal practice|state your understanding|client problem in kenyan legal practice)\b/.test(normalized) && normalized.length < 60) return true;
+
+  // Only flag exact duplicates, not substring overlaps
+  if (previous && normalized === previous) return true;
 
   return false;
 }
@@ -391,16 +388,15 @@ function isLowQualityDevilsTurn(text: string, previousAssistantText: string): bo
   const normalized = normalizeForComparison(text);
   const previous = normalizeForComparison(previousAssistantText);
 
+  // Only flag truly degenerate responses — empty, tiny, or exact duplicate
   if (!normalized) return true;
   if (normalized.length < 20) return true;
-  if (/i challenge you to state your position/.test(normalized)) return true;
-  if (/state your position/.test(normalized) && normalized.length < 45) return true;
-  if (/state your case/.test(normalized) && normalized.length < 45) return true;
 
-  if (previous) {
-    if (normalized === previous) return true;
-    if (previous.includes(normalized) || normalized.includes(previous)) return true;
-  }
+  // Only flag if the ENTIRE response is essentially just a vague phrase
+  if (/^(i challenge you to state your position|state your (position|case))/.test(normalized) && normalized.length < 60) return true;
+
+  // Only flag exact duplicates, not substring overlaps
+  if (previous && normalized === previous) return true;
 
   return false;
 }
@@ -824,14 +820,15 @@ RULES:
         apiMessages.push({ role: 'system' as const, content: timeCtx });
       }
 
-      // Determine response length hint — heavily biased toward SHORT punchy responses
+      // Determine response length hint — biased toward SHORT punchy responses
       // Devil's advocate should jab, not lecture
       // But opening turns and scenario proposals need more room
       const isOpening = messages.length === 0;
       const isScenarioRequest = messages.length > 0 && isMetaRequest(lastUserText);
       const lengthRoll = Math.random();
+      // Floor raised from 120→220 — 120 tokens caused constant truncation which triggered fallbacks
       const maxTokens = (isOpening || isScenarioRequest) ? 450
-        : lengthRoll < 0.45 ? 120 : lengthRoll < 0.80 ? 250 : 450;
+        : lengthRoll < 0.45 ? 220 : lengthRoll < 0.80 ? 300 : 450;
 
       // If no messages, generate opening challenge with a concrete scenario
       if (messages.length === 0) {
@@ -1047,17 +1044,18 @@ RULES:
       }
 
       // Vary response budget based on turn mode for realism + cost control
+      // Floors raised — previous limits (180-260) caused truncation that triggered fallbacks
       const examMaxTokens = turnMode === 'interruption-trim'
-        ? 180
-        : turnMode === 'clarify'
         ? 220
-        : turnMode === 'correction' || turnMode === 'authority-demand'
+        : turnMode === 'clarify'
         ? 280
-        : turnMode === 'pivot' || turnMode === 'handoff'
+        : turnMode === 'correction' || turnMode === 'authority-demand'
         ? 320
+        : turnMode === 'pivot' || turnMode === 'handoff'
+        ? 350
         : isCrossPanelHandover
-        ? 300
-        : 260;
+        ? 320
+        : 300;
 
       // Opening question if no messages
       if (messages.length === 0) {

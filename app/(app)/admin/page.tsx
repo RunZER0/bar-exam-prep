@@ -40,6 +40,13 @@ interface AnalyticsData {
   overview: AnalyticsOverview;
   recentActivity: RecentActivity[];
   competencyDistribution: { competencyType: string; count: number }[];
+  engagement?: {
+    totalStudyMinutes: number;
+    avgDailyMinutes: number;
+    featureUsage: { section: string; totalMinutes: number; visitCount: number }[];
+    dailyActiveUsers: { date: string; count: number }[];
+    sessionTypeBreakdown: { type: string; count: number }[];
+  };
 }
 
 interface KslTimeline {

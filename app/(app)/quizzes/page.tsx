@@ -424,7 +424,7 @@ Rules:
     }
   }, []);
 
-  const fetchQuestions = async (count: number, timeoutMs: number = 12000): Promise<TriviaQuestion[]> => {
+  const fetchQuestions = async (count: number, timeoutMs: number = 30000): Promise<TriviaQuestion[]> => {
     const token = await getIdToken();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -494,9 +494,9 @@ Rules:
     if (loadingMoreQuestions) return;
     setLoadingMoreQuestions(true);
     try {
-      let batch = await fetchQuestions(12, 10000);
+      let batch = await fetchQuestions(12, 25000);
       if (batch.length < 10) {
-        const extra = await fetchQuestions(12 - batch.length, 9000);
+        const extra = await fetchQuestions(12 - batch.length, 20000);
         batch = [...batch, ...extra];
       }
       if (batch.length > 0) {
@@ -530,54 +530,86 @@ Rules:
     setQuizSessionId(crypto.randomUUID());
 
     try {
-      const minReadyCount = Math.min(3, effectiveCount);
+      const token = await getIdToken();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 40000);
+      let receivedCount = 0;
 
-      // PHASE 1 (foreground): get first 3 questions fast, then render immediately.
-      const initial = await fetchQuestions(minReadyCount, 9000);
-      if (initial.length === 0) {
-        throw new Error('No quiz questions generated.');
+      const res = await fetch('/api/ai/quiz-stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          prompt: buildPrompt(effectiveCount),
+          count: effectiveCount,
+        }),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        let parsed: any = {};
+        try { parsed = JSON.parse(errBody); } catch {}
+        throw new Error(parsed?.error || `Quiz generation failed (${res.status})`);
       }
-      setQuestions(initial);
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No response stream');
+
+      const decoder = new TextDecoder();
+      let sseBuffer = '';
+
+      // Stream questions directly into state — each one renders as it arrives
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split('\n');
+        sseBuffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'question' && data.question) {
+              const normalized = normalizeQuestions([data.question]);
+              if (normalized.length > 0) {
+                setQuestions(prev => [...prev, normalized[0]]);
+                receivedCount++;
+              }
+            }
+          } catch {
+            // skip partial SSE chunks
+          }
+        }
+      }
+
+      clearTimeout(timeoutId);
+
+      if (receivedCount === 0) {
+        throw new Error('No quiz questions generated. Please try again.');
+      }
+
+      // Ensure loading is cleared (useEffect also handles this after 3 arrive)
       setLoading(false);
 
-      // PHASE 2 (background): continue filling remaining questions without blocking UI.
-      void (async () => {
-        let total = initial.length;
-        let retries = 0;
-
-        while (total < effectiveCount && retries < 2) {
-          const need = effectiveCount - total;
-          const batchSize = Math.min(12, need);
-          const supplement = await fetchQuestions(batchSize, 10000);
-          if (supplement.length === 0) {
-            retries++;
-            continue;
-          }
-
-          const take = supplement.slice(0, need);
-          setQuestions((prev) => [...prev, ...take]);
-          total += take.length;
-        }
-
-        if (!isInfinityMode && total < effectiveCount) {
-          setGenerationError(`Generated ${total}/${effectiveCount} questions. You can continue while more load.`);
-        }
-      })();
-
-      // Keep infinite mode pouring in the background
+      // Infinity mode: queue more in background
       if (isInfinityMode) {
-        setTimeout(() => {
-          loadMoreQuestions();
-        }, 2000);
+        setTimeout(() => loadMoreQuestions(), 2000);
       }
     } catch (err: any) {
       console.error('Quiz generation failed:', err);
-      setGenerationError(err?.message || 'Failed to generate quiz questions. Please try again.');
-      setQuestions([]);
-      setSection('menu');
       setLoading(false);
+      if (err?.name === 'AbortError') {
+        // Timeout — if we got some questions, keep playing
+        setGenerationError('Generation timed out — playing with questions received so far.');
+      } else {
+        setGenerationError(err?.message || 'Failed to generate quiz questions. Please try again.');
+        setSection('menu');
+      }
     }
-  }, [mode, selectedUnit, effectiveCount, isInfinityMode, loadMoreQuestions, fetchQuestions]);
+  }, [mode, selectedUnit, effectiveCount, isInfinityMode, loadMoreQuestions, normalizeQuestions, getIdToken]);
 
   useEffect(() => {
     if (section !== 'playing' || !loading) return;

@@ -64,7 +64,7 @@ CRITICAL DIFFICULTY REQUIREMENTS:
         { role: 'user', content: prompt },
       ],
       stream: true,
-      max_completion_tokens: Math.min(9000, Math.max(count * 140, 1400)),
+      max_completion_tokens: Math.min(12000, Math.max(count * 300, 2500)),
     });
 
     const encoder = new TextEncoder();

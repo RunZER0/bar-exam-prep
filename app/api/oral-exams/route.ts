@@ -116,7 +116,14 @@ RULES:
 
 ${feedbackInstructions}
 
-IMPORTANT: Your responses will be read aloud via TTS. Keep language natural and spoken. No bullet points, no asterisks, no markdown. Use short paragraphs. Sound like a real opposing counsel in a moot court.`;
+IMPORTANT: Your responses will be read aloud via TTS. Keep language natural and spoken. No bullet points, no asterisks, no markdown. Use short paragraphs. Sound like a real opposing counsel in a moot court.
+
+RESPONSE QUALITY — ABSOLUTE RULES:
+- NEVER produce a response that is just a generic prompt like "State your position" or "I challenge you to state your case." Every response must engage with SPECIFIC legal content.
+- NEVER repeat your previous response. Each turn must advance the debate.
+- Every challenge must reference a SPECIFIC legal provision, case, fact, or principle. No vague prompts.
+- If the student gave you something substantive, your counter-argument must be equally substantive.
+- Complete your thought. Do not trail off mid-sentence. If you're making an argument, finish it.`;
 }
 
 /* ================================================================
@@ -217,7 +224,14 @@ SPOKEN DELIVERY — THIS IS A LIVE ORAL EXAM, NOT A WRITTEN DOCUMENT:
 - Vary your sentence structure. Mix short punchy reactions with longer probing questions. A real person doesn't speak in uniformly structured sentences.
 - Use direct address naturally: "Counsel", "tell me", "walk me through", "what would you actually do".
 - Show personality: mild frustration when answers are vague, genuine interest when a student makes a sharp point, surprise when they cite an unexpected authority.
-- Do NOT prefix with your name or title (the UI already shows speaker identity). Start directly with your reaction or question.`;
+- Do NOT prefix with your name or title (the UI already shows speaker identity). Start directly with your reaction or question.
+
+RESPONSE QUALITY — ABSOLUTE RULES:
+- NEVER produce a generic opener like "Let us begin with Kenyan legal practice" or "State your understanding of the first principle." Every question must be SPECIFIC: name the statute, the section, the scenario, or the legal test.
+- NEVER repeat a question or response you already gave earlier in the session. Track what you've asked and always escalate or shift.
+- Every question must contain SPECIFIC legal content — a provision, a case name, a factual scenario, or a concrete procedural step.
+- Complete your thought. Do not trail off mid-sentence. Finish your question fully.
+- If the student pushes back, you MUST rephrase with a concrete, answerable question. Never parrot their words back at them.`;
 }
 
 function buildContextualOpeningQuestion(panelist: typeof PANELISTS[0], unitId?: string): string {
@@ -304,31 +318,7 @@ function buildContextualOpeningQuestion(panelist: typeof PANELISTS[0], unitId?: 
   return (fallbackOpenings[panelist.id] || fallbackOpenings['justice-mwangi'])(unitLabel!);
 }
 
-function buildContextualFallbackQuestion(panelist: typeof PANELISTS[0], messages: any[], unitId?: string): string {
-  const lastUser = [...messages].reverse().find((m: any) => m.role === 'user')?.content || '';
 
-  // If the student is pushing back, asking for clarification, or frustrated — rephrase and give a concrete scenario
-  if (isPushbackOrClarification(lastUser)) {
-    const unit = unitId ? ATP_UNITS.find(u => u.id === unitId) : null;
-    const area = unit?.name || 'legal practice';
-    const rephrases: Record<string, string> = {
-      'justice-mwangi': `Fair point, Counsel — let me be more specific. Here is your scenario in ${area}: suppose a party files an application and the opposing side argues it is time-barred. Under which specific provision is the limitation period calculated, and what is the consequence of filing out of time?`,
-      'advocate-amara': `That's on me — let me sharpen the question. Forget the theory for a moment. You walk into court tomorrow morning for a bail application. Your client was arrested last night. Tell me the exact steps — which court, which section do you cite, and what do you say to the magistrate?`,
-      'prof-otieno': `You're right to push back on vagueness — let me give you something concrete. A client comes to your office wanting to sue their former business partner for breach of a verbal agreement. The agreement was never reduced to writing. Is this contract enforceable? Under which specific Act and section?`,
-    };
-    return rephrases[panelist.id] || rephrases['justice-mwangi'];
-  }
-
-  // Use the student's last answer to build a contextual follow-up
-  const summary = summarizeForPrompt(lastUser, 20);
-  if (summary && summary !== 'no clear answer provided yet') {
-    // Only build on substantive answers, not conversational pushback
-    if (hasLegalAuthoritySignal(lastUser) || lastUser.length > 60) {
-      return `You mentioned ${summary}. Now, what specific statutory provision or case supports that? Give me the exact section number.`;
-    }
-  }
-  return buildContextualOpeningQuestion(panelist, unitId);
-}
 
 /**
  * Detect when a student is pushing back, asking for clarification, expressing frustration,
@@ -367,39 +357,7 @@ function normalizeForComparison(text: string): string {
     .trim();
 }
 
-function isLowQualityExaminerTurn(text: string, previousAssistantText: string): boolean {
-  const normalized = normalizeForComparison(text);
-  const previous = normalizeForComparison(previousAssistantText);
 
-  // Only flag truly degenerate responses — don't second-guess the AI
-  if (!normalized) return true;
-  if (normalized.length < 15) return true;
-
-  // Only flag if the ENTIRE response is essentially one of these vague phrases (not substring match)
-  if (/^(let us begin|kenyan legal practice|state your understanding|client problem in kenyan legal practice)\b/.test(normalized) && normalized.length < 60) return true;
-
-  // Only flag exact duplicates, not substring overlaps
-  if (previous && normalized === previous) return true;
-
-  return false;
-}
-
-function isLowQualityDevilsTurn(text: string, previousAssistantText: string): boolean {
-  const normalized = normalizeForComparison(text);
-  const previous = normalizeForComparison(previousAssistantText);
-
-  // Only flag truly degenerate responses — empty, tiny, or exact duplicate
-  if (!normalized) return true;
-  if (normalized.length < 20) return true;
-
-  // Only flag if the ENTIRE response is essentially just a vague phrase
-  if (/^(i challenge you to state your position|state your (position|case))/.test(normalized) && normalized.length < 60) return true;
-
-  // Only flag exact duplicates, not substring overlaps
-  if (previous && normalized === previous) return true;
-
-  return false;
-}
 
 function isMetaRequest(text: string): boolean {
   return /give me a (scenario|topic|question|hypothetical|issue|problem)|come up with|suggest a|propose a|start (the|a) debate|what (should|can|do) (we|i) (talk|discuss|debate|argue)|pick (a|the) topic|choose (a|the) (topic|scenario)|give me something|set (up|the) (a |the )?(scenario|debate)/i.test(text || '');
@@ -448,55 +406,7 @@ function summarizeForPrompt(text: string, maxWords: number = 16): string {
   return words.slice(0, maxWords).join(' ');
 }
 
-function buildContinuityFallbackQuestion(
-  panelist: typeof PANELISTS[0],
-  lastUserText: string,
-  previousAssistantText: string,
-  unitId?: string,
-): string {
-  if (!lastUserText?.trim()) {
-    return buildContextualOpeningQuestion(panelist, unitId);
-  }
 
-  // If student is pushing back or asking for clarification — rephrase, don't parrot
-  if (isPushbackOrClarification(lastUserText)) {
-    const unit = unitId ? ATP_UNITS.find(u => u.id === unitId) : null;
-    const area = unit?.name || 'this area';
-    const rephrases: Record<string, string> = {
-      'justice-mwangi': `You're right to demand precision, Counsel. Let me reframe. In ${area}, give me the specific statutory provision that governs the limitation period for filing a suit. What is the section number, and what happens if you file one day late?`,
-      'advocate-amara': `Fair enough — that was too open-ended. Let me put it this way. You're in court at 9 AM tomorrow for a mention. Your client's case is up for directions. The judge asks you: what are you seeking? What do you actually say — step by step?`,
-      'prof-otieno': `I take your point — let me narrow it down. In ${area}, explain to me the difference between a mandatory and a directory statutory provision. Give me one example of each from Kenyan legislation, and tell me why the distinction matters.`,
-    };
-    return rephrases[panelist.id] || rephrases['justice-mwangi'];
-  }
-
-  const userSummary = summarizeForPrompt(lastUserText);
-  const hasAuthority = hasLegalAuthoritySignal(lastUserText);
-
-  // Dynamic follow-ups based on answer quality
-  if (!hasAuthority) {
-    return `You've made an assertion, Counsel, but I need the law behind it. What specific section, article, or case authority supports your position? Give me a number.`;
-  }
-
-  if (hasVaguenessSignal(lastUserText)) {
-    return `That's in the right direction, but it's too general. Be precise — which specific section? What is the exact test the court applies? Walk me through it step by step.`;
-  }
-
-  return `Interesting. Now, building on your point about ${userSummary} — what is the strongest argument against that position, and how would you deal with it?`;
-}
-
-function buildPivotQuestion(panelist: typeof PANELISTS[0], unitId?: string): string {
-  const unit = unitId ? ATP_UNITS.find(u => u.id === unitId) : null;
-  const area = unit?.name || 'this subject area';
-
-  if (panelist.id === 'justice-mwangi') {
-    return `Good. Now let me shift slightly within ${area}. Tell me — is there a situation where a court has jurisdiction but still declines to grant the specific remedy sought? Walk me through that.`;
-  }
-  if (panelist.id === 'advocate-amara') {
-    return `Right, new angle. Suppose the facts turn against your client in ${area}. What is your best tactical adjustment, and what risk do you immediately disclose to the client?`;
-  }
-  return `Interesting. Now let me come at ${area} from a different perspective. The black-letter rule says one thing, but the policy objective might pull in another direction. Where does that tension show up in practice?`;
-}
 
 function getTrailingPanelistStreak(messages: any[], panelistId: string): number {
   let streak = 0;
@@ -872,14 +782,11 @@ RULES:
                 }
               }
 
-              // Send final complete message
+              // Send final complete message — trust the AI's output
               const cleanedContent = stripSpeakerPrefix(fullContent, 'Devil\'s Advocate');
-              const finalContent = isLowQualityDevilsTurn(cleanedContent, previousAssistantText)
-                ? buildDevilsContinuityFallback(lastUserText, unitId)
-                : cleanedContent;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'done',
-                fullContent: finalContent,
+                fullContent: cleanedContent || buildDevilsContinuityFallback(lastUserText, unitId),
               })}\n\n`));
 
               controller.close();
@@ -910,9 +817,7 @@ RULES:
 
         const response = completion.choices[0]?.message?.content || buildDevilsContinuityFallback(lastUserText, unitId);
         const cleanedResponse = stripSpeakerPrefix(response, 'Devil\'s Advocate');
-        const finalResponse = isLowQualityDevilsTurn(cleanedResponse, previousAssistantText)
-          ? buildDevilsContinuityFallback(lastUserText, unitId)
-          : cleanedResponse;
+        const finalResponse = cleanedResponse || buildDevilsContinuityFallback(lastUserText, unitId);
 
         return NextResponse.json({
           type: 'devils-advocate',
@@ -1121,16 +1026,11 @@ RULES:
                 }
               }
 
-              // Send final complete message
+              // Send final complete message — trust the AI's output
               const cleanedContent = stripSpeakerPrefix(fullContent, currentPanelist.name);
-              const finalContent = isLowQualityExaminerTurn(cleanedContent, previousAssistantText)
-                ? (shouldPivotTopic
-                    ? buildPivotQuestion(currentPanelist, unitId)
-                    : buildContinuityFallbackQuestion(currentPanelist, lastUserText, previousAssistantText, unitId))
-                : cleanedContent;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'done',
-                fullContent: finalContent,
+                fullContent: cleanedContent || buildContextualOpeningQuestion(currentPanelist, unitId),
               })}\n\n`));
 
               controller.close();
@@ -1159,17 +1059,9 @@ RULES:
           max_completion_tokens: examMaxTokens,
         });
 
-        const response = completion.choices[0]?.message?.content || buildContextualFallbackQuestion(currentPanelist, messages, unitId);
-        const cleanedResponse = stripSpeakerPrefix(response, currentPanelist.name);
-        const finalResponse = messages.length === 0
-          ? (isLowQualityExaminerTurn(cleanedResponse, previousAssistantText)
-              ? buildContextualOpeningQuestion(currentPanelist, unitId)
-              : cleanedResponse)
-          : (isLowQualityExaminerTurn(cleanedResponse, previousAssistantText)
-              ? (shouldPivotTopic
-                  ? buildPivotQuestion(currentPanelist, unitId)
-                  : buildContinuityFallbackQuestion(currentPanelist, lastUserText, previousAssistantText, unitId))
-              : cleanedResponse);
+        const response = completion.choices[0]?.message?.content;
+        const cleanedResponse = response ? stripSpeakerPrefix(response, currentPanelist.name) : '';
+        const finalResponse = cleanedResponse || buildContextualOpeningQuestion(currentPanelist, unitId);
 
         return NextResponse.json({
           type: 'examiner',

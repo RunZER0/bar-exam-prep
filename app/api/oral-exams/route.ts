@@ -74,6 +74,11 @@ ${modeInstructions}
 
 CONTEXT: ${unitContext}
 
+SCENARIO PROPOSALS — IMPORTANT:
+- If the student asks you to propose a scenario, give them a topic, suggest a hypothetical, or start the debate — you MUST comply. Present a concrete legal hypothetical with specific facts and ask them to take a position. Example: "Here's your scenario: A landlord in Nairobi terminates a commercial lease mid-term without notice, citing non-payment. The tenant says they tendered payment but it was refused. You represent the tenant. What is your primary cause of action, and under what statutory provision?"
+- NEVER treat a request for a scenario as a legal argument. "Give me a scenario" is NOT an argument to counter — it is a request you must fulfill.
+- If the student's message is conversational (asking for help, clarification, or setup), respond conversationally and helpfully before resuming adversarial mode.
+
 CONVERSATION AWARENESS — CRITICAL:
 - You MUST read and directly engage with what the student JUST said. Never ignore their specific argument.
 - If the student cited a case, challenge the ratio or distinguish the facts.
@@ -320,13 +325,38 @@ function isLowQualityDevilsTurn(text: string, previousAssistantText: string): bo
   return false;
 }
 
+function isMetaRequest(text: string): boolean {
+  return /give me a (scenario|topic|question|hypothetical|issue|problem)|come up with|suggest a|propose a|start (the|a) debate|what (should|can|do) (we|i) (talk|discuss|debate|argue)|pick (a|the) topic|choose (a|the) (topic|scenario)|give me something|set (up|the) (a |the )?(scenario|debate)/i.test(text || '');
+}
+
+const DEVIL_SCENARIO_BANK = [
+  { area: 'Civil Litigation', scenario: `Here's your scenario. A commercial tenant in Nairobi has been paying rent consistently for three years. The landlord suddenly serves a notice to vacate, giving only 14 days, claiming they need the property for personal use. The tenant has an unexpired lease with 18 months remaining. You represent the tenant. What is your primary cause of action, and under which specific statutory provision do you anchor it?` },
+  { area: 'Criminal Litigation', scenario: `Let me set the scene. Your client is arrested at 2 AM and held at Central Police Station. By the time you're contacted, 36 hours have passed and no charges have been filed. The OCS says they're still investigating. You arrive at the station and demand to see your client. What are the specific constitutional provisions being violated, and what is the most effective legal remedy you seek — and in which court?` },
+  { area: 'Constitutional Law', scenario: `Here's your problem. A county government passes legislation imposing a new levy on all agricultural produce transported across county borders. Farmers argue this violates their constitutional rights. You represent the farmers' cooperative. What specific articles of the Constitution of Kenya 2010 are being violated, and what orders would you seek from the court?` },
+  { area: 'Commercial Transactions', scenario: `Consider this. A buyer in Mombasa contracts to purchase 500 tonnes of cement from a manufacturer in Nairobi, payment by letter of credit. The goods arrive but 30% are defective — substandard grade that fails the Kenya Bureau of Standards specifications. The seller demands full payment under the LC. You represent the buyer. What is your legal position, under which Act, and what remedies are available to you?` },
+  { area: 'Professional Ethics', scenario: `Here's a tricky one. An advocate discovers mid-trial that their client has been lying about a material fact — the client fabricated a key document that has already been admitted into evidence. The client insists the advocate continue with the case and not disclose anything. What are your professional obligations under the Advocates Act and the LSK Code of Ethics, and what do you actually do in that courtroom tomorrow morning?` },
+  { area: 'Probate and Administration', scenario: `Your scenario. A wealthy businessman dies intestate leaving three parcels of land, two wives — one in a customary marriage and one in a civil marriage — and seven children across both unions. The civil-marriage wife applies for letters of administration and seeks to exclude the customary-marriage wife entirely. You represent the customary-marriage wife. What is your legal basis for challenging this, and under which specific provisions of the Law of Succession Act?` },
+  { area: 'Conveyancing', scenario: `Here's the situation. Your client signed a sale agreement for a property in Karen, paid 40% of the purchase price, and the vendor now wants to rescind the agreement claiming they received a higher offer. Your client has been in possession and has made improvements worth 2 million shillings. What specific relief do you seek, in which court, and what is the legal doctrine that protects your client's interest?` },
+  { area: 'Legal Writing and Drafting', scenario: `Picture this. You're drafting a shareholders' agreement for a tech startup with three co-founders. One founder is contributing intellectual property, another is contributing capital, and the third is contributing operational expertise. They want equal shares but different vesting schedules. What are the critical clauses you must include to protect all parties, and what happens under Kenyan company law if one founder wants to exit after 18 months?` },
+];
+
 function buildDevilsContinuityFallback(lastUserText: string, unitId?: string): string {
   const unit = unitId ? ATP_UNITS.find(u => u.id === unitId) : null;
   const area = unit?.name || 'this issue';
   const summary = summarizeForPrompt(lastUserText, 18);
 
   if (!lastUserText?.trim()) {
-    return `Right, let's get started. In ${area}, pick one concrete legal issue, take a position on it, and tell me why the opposing argument fails. I'll be arguing the other side.`;
+    // Opening: propose a concrete scenario instead of asking the student to pick
+    const matched = unit ? DEVIL_SCENARIO_BANK.find(s => unit.name.toLowerCase().includes(s.area.toLowerCase())) : null;
+    const scenario = matched || DEVIL_SCENARIO_BANK[Math.floor(Date.now() / 86400000) % DEVIL_SCENARIO_BANK.length];
+    return scenario.scenario;
+  }
+
+  // Detect meta-requests: student asking for a scenario/topic
+  if (isMetaRequest(lastUserText)) {
+    const matched = unit ? DEVIL_SCENARIO_BANK.find(s => unit.name.toLowerCase().includes(s.area.toLowerCase())) : null;
+    const scenario = matched || DEVIL_SCENARIO_BANK[Math.floor(Date.now() / 86400000) % DEVIL_SCENARIO_BANK.length];
+    return scenario.scenario;
   }
 
   if (/what do you mean|clarify|in what|which issue|not clear|explain/i.test(lastUserText)) {
@@ -704,14 +734,18 @@ RULES:
 
       // Determine response length hint — heavily biased toward SHORT punchy responses
       // Devil's advocate should jab, not lecture
+      // But opening turns and scenario proposals need more room
+      const isOpening = messages.length === 0;
+      const isScenarioRequest = messages.length > 0 && isMetaRequest(lastUserText);
       const lengthRoll = Math.random();
-      const maxTokens = lengthRoll < 0.45 ? 120 : lengthRoll < 0.80 ? 250 : 450;
+      const maxTokens = (isOpening || isScenarioRequest) ? 450
+        : lengthRoll < 0.45 ? 120 : lengthRoll < 0.80 ? 250 : 450;
 
-      // If no messages, generate opening challenge
+      // If no messages, generate opening challenge with a concrete scenario
       if (messages.length === 0) {
         apiMessages.push({
           role: 'user' as const,
-          content: `I'm ready for the Devil's Advocate challenge${unitId ? ` on ${ATP_UNITS.find(u => u.id === unitId)?.name || 'this topic'}` : ''}. Start the debate.`,
+          content: `I'm ready for the Devil's Advocate challenge${unitId ? ` on ${ATP_UNITS.find(u => u.id === unitId)?.name || 'this topic'}` : ''}. Present me with a concrete legal hypothetical — give me specific facts and ask me to take a position. Then challenge whatever I say.`,
         });
       }
 

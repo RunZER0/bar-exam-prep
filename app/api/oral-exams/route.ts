@@ -16,7 +16,7 @@ const PANELISTS = [
     name: 'Justice Mwangi',
     title: 'Retired High Court Judge',
     voice: 'cedar' as const,
-    style: 'Formal, measured, authoritative. Probes constitutional foundations and procedural correctness. Expects precision in statutory citations. Will not tolerate hand-waving — demands the specific section, article, or case name before moving on.',
+    style: 'You speak like a senior judge — measured, deliberate, with natural authority. You listen carefully, react genuinely, and probe constitutional foundations with quiet intensity. You do not tolerate hand-waving. When a student is vague, your voice tightens and you say things like "Counsel, that is not good enough. Give me the section." When they are sharp, you nod and push deeper. You think before you speak — pauses are your signature.',
     avatar: '⚖️',
     specialties: ['Civil Litigation', 'Constitutional Law', 'Probate and Administration'],
   },
@@ -25,7 +25,7 @@ const PANELISTS = [
     name: 'Advocate Amara',
     title: 'Senior Litigation Counsel',
     voice: 'coral' as const,
-    style: 'Sharp, rapid-fire, practical. Focuses on courtroom strategy, cross-examination technique, and real-world application. Interrupts when answers are vague. Thinks like a trial lawyer — always asks "so what happens next in practice?"',
+    style: 'You speak like a sharp trial advocate — fast, direct, impatient with waffle. You think on your feet and react instantly. When a student hesitates, you jump in: "No, no — tell me what you actually DO. Not the theory, the practice." You are restless, skeptical, and occasionally amused when someone tries to bluff you. You challenge everything but give grudging respect when someone pushes back well.',
     avatar: '🔥',
     specialties: ['Criminal Litigation', 'Trial Advocacy', 'Commercial Transactions'],
   },
@@ -34,7 +34,7 @@ const PANELISTS = [
     name: 'Prof. Otieno',
     title: 'Professor of Law',
     voice: 'sage' as const,
-    style: 'Academic, Socratic, theoretical. Pushes for deeper analysis, policy rationale, and comparative perspectives. Asks follow-up questions that build on answers. Loves to say "but why?" and "what is the policy rationale?"',
+    style: 'You speak like a thoughtful professor — warm but intellectually demanding. You are genuinely curious about how students think, not just what they know. You lean forward, say "hmm, interesting" when they make a point, and then gently dismantle it: "But have you considered why the legislature chose that approach?" You build rapport before you challenge, and your disappointment when a student misses a key concept is palpable but never cruel.',
     avatar: '📚',
     specialties: ['Professional Ethics', 'Legal Writing and Drafting', 'Legal Practice Management', 'Conveyancing'],
   },
@@ -199,7 +199,15 @@ ${interruptionInstructions}
 
 ${feedbackInstructions}
 
-IMPORTANT: Responses will be read aloud via TTS. Be natural and conversational. No bullet points or markdown. Use short paragraphs. Do NOT prefix with your name or title (the UI already shows speaker identity). Start directly with the question/challenge.`;
+SPOKEN DELIVERY — THIS IS A LIVE ORAL EXAM, NOT A WRITTEN DOCUMENT:
+- Your responses will be read aloud via TTS. Write EXACTLY how a real Kenyan legal professional would SPEAK in a live examination room.
+- Use natural spoken language: contractions ("you've", "that's", "isn't"), conversational bridges ("now", "look", "right", "so tell me"), and thinking sounds ("hmm", "interesting").
+- Start with a human reaction to what the student just said BEFORE asking your next question. Examples: "Interesting point, but...", "Hmm, I'm not sure about that.", "That's partly right.", "Now hold on.", "Good, but you're missing something critical."
+- NEVER sound like a checklist or a form. No "Identify the X, then cite Y, then apply Z" triple-demand structures. Ask ONE thing at a time, the way a real examiner would in conversation.
+- Vary your sentence structure. Mix short punchy reactions with longer probing questions. A real person doesn't speak in uniformly structured sentences.
+- Use direct address naturally: "Counsel", "tell me", "walk me through", "what would you actually do".
+- Show personality: mild frustration when answers are vague, genuine interest when a student makes a sharp point, surprise when they cite an unexpected authority.
+- Do NOT prefix with your name or title (the UI already shows speaker identity). Start directly with your reaction or question.`;
 }
 
 function buildContextualOpeningQuestion(panelist: typeof PANELISTS[0], unitId?: string): string {
@@ -209,11 +217,11 @@ function buildContextualOpeningQuestion(panelist: typeof PANELISTS[0], unitId?: 
   if (!unitLabel) {
     const genericOpenings: Record<string, string> = {
       'justice-mwangi':
-        `Counsel, assume an applicant seeks a temporary injunction in the High Court under Order 40 of the Civil Procedure Rules. State the governing legal test, cite one controlling authority, and apply that test to a disputed land sale in two concise steps.`,
+        `Counsel, let us set the scene. An applicant comes before the High Court seeking a temporary injunction under Order 40 of the Civil Procedure Rules. Now, what is the legal test the court must apply before granting that order?`,
       'advocate-amara':
-        `Your client has just been served with summons in a civil suit and a hearing date is fixed in 7 days. Give me your first procedural step, the exact legal basis, and one litigation risk if you get that step wrong.`,
+        `Right, let's get into it. Your client has just been served with summons in a civil suit, and you have a hearing in 7 days. Tell me — what is the very first thing you do as their advocate, and why?`,
       'prof-otieno':
-        `An employee is terminated without a disciplinary hearing and files suit. Identify the core legal principle, cite one controlling provision, and explain the policy rationale in Kenyan law.`
+        `Now then, consider this scenario for me. An employee is terminated without any disciplinary hearing and decides to file suit. What is the core legal principle at play here under Kenyan law?`
     };
 
     return genericOpenings[panelist.id] || genericOpenings['justice-mwangi'];
@@ -221,11 +229,11 @@ function buildContextualOpeningQuestion(panelist: typeof PANELISTS[0], unitId?: 
 
   const openings: Record<string, (label: string) => string> = {
     'justice-mwangi': (label) =>
-      `Counsel, let us begin with ${label}. Identify the governing legal test and cite one controlling constitutional provision or statutory section that the court must apply.` ,
+      `Counsel, we shall begin with ${label}. Tell me — what is the governing legal test, and which constitutional provision or statutory section must the court apply?` ,
     'advocate-amara': (label) =>
-      `You have a client problem in ${label}. Give me your first procedural step, the legal basis for it, and one risk if you get that step wrong.` ,
+      `Right, let's start with ${label}. You have a client sitting across from you with a problem in this area. What is the first thing you do, and what is the legal basis for it?` ,
     'prof-otieno': (label) =>
-      `Start with ${label}. Explain the core legal principle, then justify it with one authority and the policy rationale behind it.` ,
+      `Let us begin with ${label}. Walk me through the core legal principle at work here, and explain the policy rationale behind it.` ,
   };
 
   return (openings[panelist.id] || openings['justice-mwangi'])(unitLabel);
@@ -235,12 +243,12 @@ function buildContextualFallbackQuestion(panelist: typeof PANELISTS[0], messages
   const lastUser = [...messages].reverse().find((m: any) => m.role === 'user')?.content || '';
   const asksClarify = /what do you mean|clarify|not clear|which principle|explain/i.test(lastUser);
   if (asksClarify) {
-    return `Fair question. Let me be precise: state the exact legal rule you rely on, cite the section or article, and apply it to a concrete client scenario in two steps.`;
+    return `Fair question — let me put it more precisely. What exact legal rule are you relying on? Give me the section or article, and then show me how it applies to a real client scenario.`;
   }
   // Use the student's last answer to build a contextual follow-up instead of a canned opening
   const summary = summarizeForPrompt(lastUser, 20);
   if (summary && summary !== 'no clear answer provided yet') {
-    return `You mentioned ${summary}. What specific statutory provision or case authority supports that position? Give me the exact section number.`;
+    return `You mentioned ${summary}. Now, what specific statutory provision or case supports that? Give me the exact section number.`;
   }
   return buildContextualOpeningQuestion(panelist, unitId);
 }
@@ -318,14 +326,14 @@ function buildDevilsContinuityFallback(lastUserText: string, unitId?: string): s
   const summary = summarizeForPrompt(lastUserText, 18);
 
   if (!lastUserText?.trim()) {
-    return `Let us begin. In ${area}, state your position on one concrete legal issue, cite one specific authority, and explain why the opposing argument fails.`;
+    return `Right, let's get started. In ${area}, pick one concrete legal issue, take a position on it, and tell me why the opposing argument fails. I'll be arguing the other side.`;
   }
 
   if (/what do you mean|clarify|in what|which issue|not clear|explain/i.test(lastUserText)) {
-    return `Fair challenge. Be specific on this point: identify the exact legal rule you rely on in ${area}, cite the section or article, then apply it to one practical fact pattern.`;
+    return `Fair enough — let me be more direct. In ${area}, what exact legal rule are you relying on? Give me the section, then show me how it applies to a real fact pattern. I'll attack whatever you say.`;
   }
 
-  return `You just argued: "${summary}". Now defend that position with one specific Kenyan authority and address the strongest counterargument against you.`;
+  return `You just argued: "${summary}". Interesting. Now defend that with one specific Kenyan authority, because I have a counterargument that's going to give you trouble.`;
 }
 
 function summarizeForPrompt(text: string, maxWords: number = 16): string {
@@ -349,14 +357,14 @@ function buildContinuityFallbackQuestion(
 
   // Dynamic follow-ups based on answer quality, not panelist identity
   if (!hasAuthority) {
-    return `You mentioned ${userSummary}, but you have not cited any statutory provision or case authority. What is the specific legal basis for that position?`;
+    return `Hmm, you mentioned ${userSummary}, but you haven't cited any authority for that. What is the actual legal basis — give me a section or a case.`;
   }
 
   if (hasVaguenessSignal(lastUserText)) {
-    return `You said "${userSummary}" — that is too general. Give me the exact section number, the specific test the court applies, and how it works on these facts.`;
+    return `You said "${userSummary}" — that's too general, Counsel. Be specific. Which section? What is the exact test the court applies?`;
   }
 
-  return `Building on your point about ${userSummary}: what is the strongest counterargument against that position, and how would you distinguish it?`;
+  return `Interesting. Now, building on your point about ${userSummary} — what is the strongest argument against that position, and how would you deal with it?`;
 }
 
 function buildPivotQuestion(panelist: typeof PANELISTS[0], unitId?: string): string {
@@ -364,12 +372,12 @@ function buildPivotQuestion(panelist: typeof PANELISTS[0], unitId?: string): str
   const area = unit?.name || 'this subject area';
 
   if (panelist.id === 'justice-mwangi') {
-    return `Let us pivot slightly within ${area}. Distinguish jurisdiction from remedy, then identify one situation where a court has jurisdiction but declines the specific remedy sought.`;
+    return `Good. Now let me shift slightly within ${area}. Tell me — is there a situation where a court has jurisdiction but still declines to grant the specific remedy sought? Walk me through that.`;
   }
   if (panelist.id === 'advocate-amara') {
-    return `New angle in ${area}: your client now has adverse facts. Give me your best tactical adjustment, the legal basis, and the litigation risk you would disclose immediately.`;
+    return `Right, new angle. Suppose the facts turn against your client in ${area}. What is your best tactical adjustment, and what risk do you immediately disclose to the client?`;
   }
-  return `Let us shift perspective in ${area}. Contrast the black-letter rule with its policy objective, then show how that tension appears in practice.`;
+  return `Interesting. Now let me come at ${area} from a different perspective. The black-letter rule says one thing, but the policy objective might pull in another direction. Where does that tension show up in practice?`;
 }
 
 function getTrailingPanelistStreak(messages: any[], panelistId: string): number {

@@ -760,13 +760,13 @@ export default function AdminPage() {
             </Card>
 
             {/* Feature Usage Ranking */}
-            {analytics.engagement.featureUsage && analytics.engagement.featureUsage.length > 0 && (
+            {analytics.engagement!.featureUsage && analytics.engagement!.featureUsage.length > 0 && (
               <Card>
                 <CardHeader><CardTitle className="text-lg">Most Used Features</CardTitle></CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {analytics.engagement.featureUsage.map((f: any, i: number) => {
-                      const maxMinutes = analytics.engagement.featureUsage[0]?.totalMinutes || 1;
+                    {analytics.engagement!.featureUsage.map((f: any, i: number) => {
+                      const maxMinutes = analytics.engagement!.featureUsage[0]?.totalMinutes || 1;
                       const width = Math.max((f.totalMinutes / maxMinutes) * 100, 8);
                       return (
                         <div key={f.section} className="space-y-1">
@@ -791,13 +791,13 @@ export default function AdminPage() {
             )}
 
             {/* Daily Active Users Trend */}
-            {analytics.engagement.dailyActiveUsers && analytics.engagement.dailyActiveUsers.length > 0 && (
+            {analytics.engagement!.dailyActiveUsers && analytics.engagement!.dailyActiveUsers.length > 0 && (
               <Card>
                 <CardHeader><CardTitle className="text-lg">Daily Active Users (14 days)</CardTitle></CardHeader>
                 <CardContent>
                   <div className="flex items-end justify-between gap-1.5 h-32">
-                    {analytics.engagement.dailyActiveUsers.map((d: any) => {
-                      const maxCount = Math.max(...analytics.engagement.dailyActiveUsers.map((x: any) => x.count), 1);
+                    {analytics.engagement!.dailyActiveUsers.map((d: any) => {
+                      const maxCount = Math.max(...analytics.engagement!.dailyActiveUsers.map((x: any) => x.count), 1);
                       const height = Math.max((d.count / maxCount) * 100, d.count > 0 ? 8 : 3);
                       const date = new Date(d.date);
                       return (

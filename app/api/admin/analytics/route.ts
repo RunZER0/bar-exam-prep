@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminAuth } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
-import { users, userProgress, practiceSessions, chatHistory } from '@/lib/db/schema';
-import { sql, desc, count } from 'drizzle-orm';
+import { users, userProgress, practiceSessions, chatHistory, studyStreaks } from '@/lib/db/schema';
+import { sql, desc, count, gte } from 'drizzle-orm';
 
 export const GET = withAdminAuth(async (req: NextRequest, user) => {
   try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
     // Total users
     const [{ totalUsers }] = await db
       .select({ totalUsers: count() })
       .from(users);
 
     // Active users (logged in within last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
     const [{ activeUsers }] = await db
       .select({ activeUsers: count() })
       .from(users)
@@ -54,6 +57,91 @@ export const GET = withAdminAuth(async (req: NextRequest, user) => {
       .from(practiceSessions)
       .groupBy(practiceSessions.competencyType);
 
+    // ── Feature usage analytics (anonymous, aggregated) ──
+
+    // Total study time (last 30 days)
+    const [{ totalStudyMinutes }] = await db
+      .select({ totalStudyMinutes: sql<number>`coalesce(sum(${studyStreaks.minutesStudied}), 0)` })
+      .from(studyStreaks)
+      .where(gte(studyStreaks.date, thirtyDaysAgo.toISOString().split('T')[0]));
+
+    // Average daily study time (last 7 days, per active user)
+    const [{ avgDailyMinutes }] = await db
+      .select({
+        avgDailyMinutes: sql<number>`coalesce(round(avg(${studyStreaks.minutesStudied})), 0)`,
+      })
+      .from(studyStreaks)
+      .where(gte(studyStreaks.date, sevenDaysAgo.toISOString().split('T')[0]));
+
+    // Feature usage from page_visits (anonymous — grouped by section, no user IDs)
+    let featureUsage: { section: string; totalMinutes: number; visitCount: number }[] = [];
+    try {
+      const tableCheck = await db.execute(
+        sql`SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'page_visits'`
+      );
+      if (((tableCheck as any).rows?.length ?? 0) > 0) {
+        const featureRows = await db.execute(sql`
+          SELECT 
+            section,
+            sum(minutes)::int as total_minutes,
+            count(*)::int as visit_count
+          FROM page_visits
+          WHERE visited_at > ${thirtyDaysAgo}
+          GROUP BY section
+          ORDER BY total_minutes DESC
+          LIMIT 20
+        `);
+        featureUsage = ((featureRows as any).rows || []).map((r: any) => ({
+          section: r.section,
+          totalMinutes: Number(r.total_minutes),
+          visitCount: Number(r.visit_count),
+        }));
+      }
+    } catch {
+      // page_visits table may not exist yet
+    }
+
+    // Daily active users trend (last 14 days)
+    let dailyActiveUsers: { date: string; count: number }[] = [];
+    try {
+      const fourteenDaysAgo = new Date();
+      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+      const dauRows = await db.execute(sql`
+        SELECT date, count(distinct user_id)::int as user_count
+        FROM study_streaks
+        WHERE date >= ${fourteenDaysAgo.toISOString().split('T')[0]}
+          AND minutes_studied > 0
+        GROUP BY date
+        ORDER BY date
+      `);
+      dailyActiveUsers = ((dauRows as any).rows || []).map((r: any) => ({
+        date: r.date,
+        count: Number(r.user_count),
+      }));
+    } catch {
+      // Silently skip if query fails
+    }
+
+    // Session type breakdown (last 30 days)
+    let sessionTypeBreakdown: { type: string; count: number }[] = [];
+    try {
+      const typeRows = await db
+        .select({
+          type: practiceSessions.competencyType,
+          count: count(),
+        })
+        .from(practiceSessions)
+        .where(gte(practiceSessions.createdAt, thirtyDaysAgo))
+        .groupBy(practiceSessions.competencyType);
+      sessionTypeBreakdown = typeRows.map(r => ({
+        type: r.type || 'unknown',
+        count: r.count,
+      }));
+    } catch {
+      // Silently skip
+    }
+
     return NextResponse.json({
       overview: {
         totalUsers,
@@ -61,6 +149,13 @@ export const GET = withAdminAuth(async (req: NextRequest, user) => {
         totalAttempts: totalAttempts || 0,
         completedSessions,
         aiInteractions,
+      },
+      engagement: {
+        totalStudyMinutes: totalStudyMinutes || 0,
+        avgDailyMinutes: avgDailyMinutes || 0,
+        featureUsage,
+        dailyActiveUsers,
+        sessionTypeBreakdown,
       },
       recentActivity: recentSessions,
       competencyDistribution,

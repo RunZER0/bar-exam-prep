@@ -9,6 +9,135 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Cases table now in Neon (migrated from Supabase)
 
+/**
+ * Resolve the actual Kenya Law case page URL from the scraped `cases` table.
+ * Matches by case name / parties / citation to find the real URL.
+ */
+async function resolveKenyaLawUrl(caseName: string, citation?: string): Promise<string | null> {
+  try {
+    // Extract primary party name for flexible matching
+    const raw = caseName
+      .replace(/\[.*?\]|\(.*?\)/g, '')
+      .trim();
+    const parts = raw
+      .split(/\s+v\.?\s+|\s+vs?\.?\s+/i)
+      .map((s: string) => s.trim())
+      .filter(Boolean);
+    const primary = (parts[0] || raw).slice(0, 50);
+    if (!primary) return null;
+
+    const searchPattern = `%${primary}%`;
+
+    // Try citation match first (most precise)
+    if (citation) {
+      const byCitation = await sql`
+        SELECT url FROM cases
+        WHERE citation ILIKE ${`%${citation}%`} AND url IS NOT NULL AND url != ''
+        LIMIT 1
+      `;
+      if (byCitation.length > 0 && byCitation[0].url) return byCitation[0].url;
+    }
+
+    // Fall back to title/parties search
+    const cases = await sql`
+      SELECT title, parties, citation, url
+      FROM cases
+      WHERE (title ILIKE ${searchPattern} OR parties ILIKE ${searchPattern})
+        AND url IS NOT NULL AND url != ''
+      ORDER BY year DESC NULLS LAST
+      LIMIT 5
+    `;
+    if (cases.length === 0) return null;
+
+    // Score: prefer rows matching both parties
+    let best = cases[0];
+    if (parts.length > 1) {
+      const scored = cases.map((c: any) => {
+        let score = 0;
+        const blob = `${c.title || ''} ${c.parties || ''}`.toLowerCase();
+        for (const p of parts) { if (blob.includes(p.toLowerCase())) score++; }
+        return { ...c, score };
+      });
+      scored.sort((a: any, b: any) => b.score - a.score);
+      best = scored[0];
+    }
+
+    return best.url || null;
+  } catch (e) {
+    console.error('[CaseOfDay] resolveKenyaLawUrl error:', e);
+    return null;
+  }
+}
+
+/**
+ * Fetch the verbatim judgment text from a Kenya Law URL.
+ */
+async function fetchVerbatimText(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'BarExamPrep/1.0 (Legal Research Bot)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) return null;
+
+    const html = await response.text();
+
+    // Kenya Law pages: judgment text is usually in a <div> with specific classes
+    // Try to extract the judgment body from known containers
+    const judgmentPatterns = [
+      /<div[^>]*class="[^"]*judgment[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      /<div[^>]*id="[^"]*judgment[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      /<div[^>]*class="[^"]*case-details[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      /<div[^>]*class="[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+    ];
+
+    let bodyHtml = '';
+    for (const pattern of judgmentPatterns) {
+      const match = html.match(pattern);
+      if (match && match[1] && match[1].length > 500) {
+        bodyHtml = match[1];
+        break;
+      }
+    }
+
+    // Fallback: extract all text between <body> tags
+    if (!bodyHtml) {
+      const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      bodyHtml = bodyMatch?.[1] || html;
+    }
+
+    // Strip HTML tags, scripts, styles → plain text
+    const text = bodyHtml
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
+      .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
+      .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
+      .replace(/<[^>]+>/g, '\n')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#?\w+;/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ \t]+/g, ' ')
+      .trim();
+
+    // Must be substantial text (at least ~200 chars) to be useful
+    if (text.length < 200) return null;
+
+    // Cap at ~15k chars to avoid bloating DB
+    return text.slice(0, 15000);
+  } catch (e) {
+    console.error('[CaseOfDay] fetchVerbatimText error:', e);
+    return null;
+  }
+}
+
 // Library of landmark Kenyan cases — focused on post-2010 Constitution era with verbatim excerpts
 const LANDMARK_CASES = [
   {
@@ -604,16 +733,18 @@ async function ensureTodaysCase(today: string): Promise<void> {
   if (available.length > 0) {
     const dayIndex = Math.floor(new Date(today).getTime() / 86400000) % available.length;
     const caseToInsert = available[dayIndex];
+    // Resolve actual Kenya Law URL from scraped cases table
+    const resolvedUrl = await resolveKenyaLawUrl(caseToInsert.case_name, caseToInsert.citation) || caseToInsert.source_url || null;
     await sql`
       INSERT INTO case_of_the_day (date, case_name, citation, court, year, unit_id, facts, issue, holding, ratio, significance, summary, keywords, full_text, source_url)
       VALUES (
         ${today}, ${caseToInsert.case_name}, ${caseToInsert.citation}, ${caseToInsert.court}, ${caseToInsert.year},
         ${caseToInsert.unit_id}, ${caseToInsert.facts}, ${caseToInsert.issue}, ${caseToInsert.holding},
         ${caseToInsert.ratio}, ${caseToInsert.significance}, ${caseToInsert.summary}, ${caseToInsert.keywords},
-        ${caseToInsert.full_text || null}, ${caseToInsert.source_url || null}
+        ${caseToInsert.full_text || null}, ${resolvedUrl}
       )
     `;
-    console.log(`[CaseOfDay] Seeded from library: ${caseToInsert.case_name}`);
+    console.log(`[CaseOfDay] Seeded from library: ${caseToInsert.case_name} → ${resolvedUrl}`);
     return;
   }
 
@@ -623,6 +754,8 @@ async function ensureTodaysCase(today: string): Promise<void> {
     const analysis = await generateCaseAnalysis({
       title: kbCase.title, citation: kbCase.citation, court: kbCase.court, year: kbCase.year, content: kbCase.content,
     });
+    // kbCase.source is a text label (e.g. "Kenya Law Reports"), NOT a URL — resolve from cases table
+    const resolvedUrl = await resolveKenyaLawUrl(kbCase.title, kbCase.citation || analysis.citation);
     await sql`
       INSERT INTO case_of_the_day (date, case_name, citation, court, year, unit_id, facts, issue, holding, ratio, significance, summary, keywords, full_text, source_url)
       VALUES (
@@ -630,14 +763,14 @@ async function ensureTodaysCase(today: string): Promise<void> {
         ${kbCase.year || new Date().getFullYear()}, ${'atp-100'},
         ${analysis.facts}, ${analysis.issue}, ${analysis.holding}, ${analysis.ratio},
         ${analysis.significance}, ${analysis.summary}, ${analysis.keywords || []},
-        ${kbCase.content || null}, ${kbCase.source || null}
+        ${kbCase.content || null}, ${resolvedUrl}
       )
     `;
-    console.log(`[CaseOfDay] Seeded from knowledge_base: ${kbCase.title}`);
+    console.log(`[CaseOfDay] Seeded from knowledge_base: ${kbCase.title} → ${resolvedUrl}`);
     return;
   }
 
-  // Source 3: Neon cases table (migrated Kenya Law data)
+  // Source 3: Neon cases table (migrated Kenya Law data) — url is already the scraped URL
   const neonCase = await fetchNeonCase(recentNames);
   if (neonCase) {
     const courtName = neonCase.court_code === 'SC' || neonCase.court_code === 'KESC' ? 'Supreme Court of Kenya'
@@ -656,23 +789,24 @@ async function ensureTodaysCase(today: string): Promise<void> {
         ${null}, ${neonCase.url || null}
       )
     `;
-    console.log(`[CaseOfDay] Seeded from Neon cases: ${neonCase.title}`);
+    console.log(`[CaseOfDay] Seeded from Neon cases: ${neonCase.title} → ${neonCase.url}`);
     return;
   }
 
   // Fallback: recycle from library
   const dayIndex = Math.floor(new Date(today).getTime() / 86400000) % LANDMARK_CASES.length;
   const fallback = LANDMARK_CASES[dayIndex];
+  const fallbackUrl = await resolveKenyaLawUrl(fallback.case_name, fallback.citation) || fallback.source_url || null;
   await sql`
     INSERT INTO case_of_the_day (date, case_name, citation, court, year, unit_id, facts, issue, holding, ratio, significance, summary, keywords, full_text, source_url)
     VALUES (
       ${today}, ${fallback.case_name}, ${fallback.citation}, ${fallback.court}, ${fallback.year},
       ${fallback.unit_id}, ${fallback.facts}, ${fallback.issue}, ${fallback.holding},
       ${fallback.ratio}, ${fallback.significance}, ${fallback.summary}, ${fallback.keywords},
-      ${fallback.full_text || null}, ${fallback.source_url || null}
+      ${fallback.full_text || null}, ${fallbackUrl}
     )
   `;
-  console.log(`[CaseOfDay] Recycled from library: ${fallback.case_name}`);
+  console.log(`[CaseOfDay] Recycled from library: ${fallback.case_name} → ${fallbackUrl}`);
 }
 
 // GET - Get today's case or a specific date's case
@@ -703,6 +837,15 @@ async function handleGet(req: NextRequest, user: AuthUser) {
       return NextResponse.json({ case: latest || null, isFallback: true });
     }
 
+    // Lazy-fix: if source_url is missing or not a valid URL, try to resolve it
+    if (!caseOfDay.source_url || !caseOfDay.source_url.startsWith('http')) {
+      const resolvedUrl = await resolveKenyaLawUrl(caseOfDay.case_name, caseOfDay.citation);
+      if (resolvedUrl) {
+        caseOfDay.source_url = resolvedUrl;
+        sql`UPDATE case_of_the_day SET source_url = ${resolvedUrl} WHERE id = ${caseOfDay.id}`.catch(() => {});
+      }
+    }
+
     return NextResponse.json({ case: caseOfDay, isFallback: false });
   } catch (queryError) {
     console.error('[CaseOfDay] DB query failed — returning inline fallback:', queryError);
@@ -722,3 +865,52 @@ async function handleGet(req: NextRequest, user: AuthUser) {
 }
 
 export const GET = withAuth(handleGet);
+
+// POST - Fetch verbatim judgment text on-demand for a case that doesn't have it yet
+async function handlePost(req: NextRequest, user: AuthUser) {
+  try {
+    const { caseId } = await req.json();
+    if (!caseId) {
+      return NextResponse.json({ error: 'caseId required' }, { status: 400 });
+    }
+
+    const [caseRow] = await sql`
+      SELECT id, source_url, full_text, case_name, citation FROM case_of_the_day WHERE id = ${caseId}
+    `;
+    if (!caseRow) {
+      return NextResponse.json({ error: 'Case not found' }, { status: 404 });
+    }
+
+    // If we already have full_text, return it
+    if (caseRow.full_text && caseRow.full_text.length > 200) {
+      return NextResponse.json({ full_text: caseRow.full_text, source_url: caseRow.source_url });
+    }
+
+    // Try to resolve a URL if we don't have one
+    let url = caseRow.source_url;
+    if (!url || !url.startsWith('http')) {
+      url = await resolveKenyaLawUrl(caseRow.case_name, caseRow.citation);
+      if (url) {
+        await sql`UPDATE case_of_the_day SET source_url = ${url} WHERE id = ${caseId}`;
+      }
+    }
+
+    if (!url) {
+      return NextResponse.json({ error: 'No source URL available', source_url: null });
+    }
+
+    // Fetch the judgment text from Kenya Law
+    const verbatimText = await fetchVerbatimText(url);
+    if (verbatimText) {
+      await sql`UPDATE case_of_the_day SET full_text = ${verbatimText} WHERE id = ${caseId}`;
+      return NextResponse.json({ full_text: verbatimText, source_url: url });
+    }
+
+    return NextResponse.json({ error: 'Could not fetch judgment text', source_url: url });
+  } catch (err) {
+    console.error('[CaseOfDay] POST error:', err);
+    return NextResponse.json({ error: 'Failed to fetch verbatim text' }, { status: 500 });
+  }
+}
+
+export const POST = withAuth(handlePost);

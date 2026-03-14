@@ -71,6 +71,7 @@ export default function StudyPage() {
   const [caseExpanded, setCaseExpanded] = useState(false);
   const [caseLoading, setCaseLoading] = useState(true);
   const [caseTab, setCaseTab] = useState<'summary' | 'analysis' | 'verbatim'>('summary');
+  const [verbatimLoading, setVerbatimLoading] = useState(false);
 
   // Ask AI
   const [aiPrompt, setAiPrompt] = useState('');
@@ -151,6 +152,29 @@ export default function StudyPage() {
       }
     } catch { /* silent */ }
     finally { setCaseLoading(false); }
+  };
+
+  const fetchVerbatimText = async () => {
+    if (!caseOfDay?.id || verbatimLoading) return;
+    setVerbatimLoading(true);
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/study/case-of-day', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ caseId: caseOfDay.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.full_text) {
+          setCaseOfDay(prev => prev ? { ...prev, full_text: data.full_text, source_url: data.source_url || prev.source_url } : prev);
+        }
+        if (data.source_url && (!caseOfDay.source_url || !caseOfDay.source_url.startsWith('http'))) {
+          setCaseOfDay(prev => prev ? { ...prev, source_url: data.source_url } : prev);
+        }
+      }
+    } catch { /* silent */ }
+    finally { setVerbatimLoading(false); }
   };
 
   const toggleUnit = (unitId: string) => {
@@ -620,7 +644,13 @@ export default function StudyPage() {
                 {(['summary', 'analysis', 'verbatim'] as const).map(t => (
                   <button
                     key={t}
-                    onClick={() => setCaseTab(t)}
+                    onClick={() => {
+                      setCaseTab(t);
+                      // Auto-fetch verbatim text when switching to that tab
+                      if (t === 'verbatim' && caseOfDay && !caseOfDay.full_text && !verbatimLoading) {
+                        setTimeout(fetchVerbatimText, 0);
+                      }
+                    }}
                     className={`flex-1 px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
                       caseTab === t ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
                     }`}
@@ -692,16 +722,27 @@ export default function StudyPage() {
                           {caseOfDay.full_text}
                         </p>
                       </div>
+                    ) : verbatimLoading ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <div className="h-8 w-8 mx-auto mb-2 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        <p className="text-xs">Fetching judgment from Kenya Law...</p>
+                      </div>
                     ) : (
                       <div className="text-center py-8 text-muted-foreground">
                         <FileText className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                        <p className="text-xs">Verbatim text not yet available for this case.</p>
+                        <p className="text-xs mb-3">Verbatim text not yet loaded for this case.</p>
+                        <button
+                          onClick={fetchVerbatimText}
+                          className="px-4 py-2 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
+                        >
+                          📖 Fetch Full Judgment from Kenya Law
+                        </button>
                       </div>
                     )}
                   </div>
                 )}
 
-                {caseOfDay.source_url && (
+                {caseOfDay.source_url && caseOfDay.source_url.startsWith('http') && (
                   <a
                     href={caseOfDay.source_url}
                     target="_blank"

@@ -15,6 +15,7 @@ import {
   searchItemsSemantic,
   searchKnowledgeBaseSemantic,
   searchLectureChunksSemantic,
+  searchAdminKnowledgeEntries,
   retrieveRAGContext,
   formatRAGContextForPrompt,
 } from './embedding-service';
@@ -233,21 +234,22 @@ async function executeSearchKnowledgeBase(args: Record<string, unknown>): Promis
     // Fall through to FTS
   }
 
-  // Fallback: full-text search
-  const ftsResults = await db.execute(sql`
-    SELECT id, title, source, citation, content, unit_id, entry_type
-    FROM knowledge_base
-    WHERE to_tsvector('english', title || ' ' || content) @@ websearch_to_tsquery('english', ${query})
-    ${unitId ? sql`AND unit_id = ${unitId}` : sql``}
-    ${entryType ? sql`AND entry_type = ${entryType}` : sql``}
-    ORDER BY ts_rank(to_tsvector('english', title || ' ' || content), websearch_to_tsquery('english', ${query})) DESC
-    LIMIT 6
-  `);
+  // Fallback: full-text search on knowledge_base + admin rag_knowledge_entries
+  const [ftsResults, adminResults] = await Promise.all([
+    db.execute(sql`
+      SELECT id, title, source, citation, content, unit_id, entry_type
+      FROM knowledge_base
+      WHERE to_tsvector('english', title || ' ' || content) @@ websearch_to_tsquery('english', ${query})
+      ${unitId ? sql`AND unit_id = ${unitId}` : sql``}
+      ${entryType ? sql`AND entry_type = ${entryType}` : sql``}
+      ORDER BY ts_rank(to_tsvector('english', title || ' ' || content), websearch_to_tsquery('english', ${query})) DESC
+      LIMIT 6
+    `).catch(() => ({ rows: [] })),
+    searchAdminKnowledgeEntries(query, { topK: 3, unitId, contentType: entryType }).catch(() => []),
+  ]);
 
-  return JSON.stringify({
-    source: 'full_text_search',
-    count: ftsResults.rows.length,
-    entries: (ftsResults.rows as any[]).map(r => ({
+  const allEntries = [
+    ...(ftsResults.rows as any[]).map(r => ({
       title: r.title,
       source: r.source,
       citation: r.citation,
@@ -255,6 +257,20 @@ async function executeSearchKnowledgeBase(args: Record<string, unknown>): Promis
       unitId: r.unit_id,
       type: r.entry_type,
     })),
+    ...adminResults.map(r => ({
+      title: r.title,
+      source: r.source,
+      citation: r.citation,
+      content: r.content,
+      unitId: undefined,
+      type: 'admin_curated',
+    })),
+  ];
+
+  return JSON.stringify({
+    source: 'full_text_search',
+    count: allEntries.length,
+    entries: allEntries,
   });
 }
 

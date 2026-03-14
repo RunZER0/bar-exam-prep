@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Get last 7 days of streaks
+    // Get last 7 days of streaks (for chart)
     const recentStreaks = await db
       .select()
       .from(studyStreaks)
@@ -45,12 +45,8 @@ export async function GET(request: NextRequest) {
       )
       .orderBy(desc(studyStreaks.date));
 
-    // Calculate current streak
+    // Calculate current streak — need to query beyond 7 days
     let currentStreak = 0;
-    const sortedDates = recentStreaks
-      .map(s => new Date(s.date))
-      .sort((a, b) => b.getTime() - a.getTime());
-
     const todayStr = today.toISOString().split('T')[0];
     const yesterdayStr = new Date(today.getTime() - 86400000).toISOString().split('T')[0];
     
@@ -59,11 +55,19 @@ export async function GET(request: NextRequest) {
     const hasStreakYesterday = recentStreaks.some(s => s.date === yesterdayStr && s.minutesStudied > 0);
     
     if (hasStreakToday || hasStreakYesterday) {
-      let checkDate = hasStreakToday ? today : new Date(today.getTime() - 86400000);
+      // Fetch up to 120 days for streak calculation
+      const allStreakDays = await db
+        .select({ date: studyStreaks.date, minutesStudied: studyStreaks.minutesStudied })
+        .from(studyStreaks)
+        .where(eq(studyStreaks.userId, dbUser.id))
+        .orderBy(desc(studyStreaks.date))
+        .limit(120);
+
+      let checkDate = hasStreakToday ? new Date(today) : new Date(today.getTime() - 86400000);
       
       for (let i = 0; i < 365; i++) {
         const dateStr = checkDate.toISOString().split('T')[0];
-        const hasStudy = recentStreaks.some(s => s.date === dateStr && s.minutesStudied > 0);
+        const hasStudy = allStreakDays.some(s => s.date === dateStr && s.minutesStudied > 0);
         
         if (hasStudy) {
           currentStreak++;

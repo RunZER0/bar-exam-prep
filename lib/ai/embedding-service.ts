@@ -303,6 +303,84 @@ export async function searchKnowledgeBaseSemantic(
 }
 
 // ============================================
+// ADMIN RAG KNOWLEDGE ENTRIES (rag_knowledge_entries table)
+// ============================================
+
+/**
+ * Search admin-curated RAG knowledge entries using full-text search.
+ * These are entries added by admins via the Knowledge Base admin tab
+ * (e.g., recent judgments, statute updates, practice notes).
+ */
+export async function searchAdminKnowledgeEntries(
+  query: string,
+  options: { topK?: number; unitId?: string; contentType?: string } = {}
+): Promise<Array<{
+  title: string;
+  content: string;
+  source: string;
+  citation: string | null;
+  similarity: number;
+}>> {
+  const { topK = 5, unitId, contentType } = options;
+
+  const unitFilter = unitId ? sql`AND unit_id = ${unitId}` : sql``;
+  const typeFilter = contentType ? sql`AND content_type = ${contentType}` : sql``;
+
+  try {
+    // Use full-text search since rag_knowledge_entries has no pgvector embeddings
+    const results = await db.execute(sql`
+      SELECT id, title, content, content_type, unit_id, citation, source_url, importance,
+             ts_rank(
+               to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, '')),
+               websearch_to_tsquery('english', ${query})
+             ) as rank
+      FROM rag_knowledge_entries
+      WHERE to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, ''))
+            @@ websearch_to_tsquery('english', ${query})
+        ${unitFilter}
+        ${typeFilter}
+      ORDER BY 
+        CASE WHEN importance = 'high' THEN 0 WHEN importance = 'medium' THEN 1 ELSE 2 END,
+        rank DESC
+      LIMIT ${topK}
+    `);
+
+    return (results.rows as any[]).map(r => ({
+      title: r.title,
+      content: r.content,
+      source: `Admin Knowledge (${r.content_type})`,
+      citation: r.citation,
+      similarity: Math.min(Number(r.rank) * 0.5 + 0.5, 1), // Normalize FTS rank to 0-1
+    }));
+  } catch (error) {
+    // Fallback: simple ILIKE search if FTS fails (e.g., query too short)
+    try {
+      const results = await db.execute(sql`
+        SELECT id, title, content, content_type, unit_id, citation, source_url, importance
+        FROM rag_knowledge_entries
+        WHERE (title ILIKE ${'%' + query + '%'} OR content ILIKE ${'%' + query + '%'})
+          ${unitFilter}
+          ${typeFilter}
+        ORDER BY 
+          CASE WHEN importance = 'high' THEN 0 WHEN importance = 'medium' THEN 1 ELSE 2 END,
+          created_at DESC
+        LIMIT ${topK}
+      `);
+
+      return (results.rows as any[]).map(r => ({
+        title: r.title,
+        content: r.content,
+        source: `Admin Knowledge (${r.content_type})`,
+        citation: r.citation,
+        similarity: 0.5,
+      }));
+    } catch {
+      return [];
+    }
+  }
+}
+
+// ============================================
 // UNIFIED RAG RETRIEVAL
 // ============================================
 
@@ -314,21 +392,33 @@ export interface RAGContext {
 
 /**
  * Retrieve full RAG context for a query
- * Aggregates results from skills, knowledge base, and lecture chunks
+ * Aggregates results from skills, knowledge base, lecture chunks,
+ * AND admin-curated RAG knowledge entries
  */
 export async function retrieveRAGContext(
   query: string,
   unitId?: string
 ): Promise<RAGContext> {
   try {
-    // Run all searches in parallel
-    const [skills, knowledgeEntries, lectureChunks] = await Promise.all([
+    // Run all searches in parallel — including admin knowledge entries
+    const [skills, knowledgeEntries, adminEntries, lectureChunks] = await Promise.all([
       searchSkillsSemantic(query, { topK: 3, unitId }).catch(() => []),
       searchKnowledgeBaseSemantic(query, { topK: 5, unitId }).catch(() => []),
+      searchAdminKnowledgeEntries(query, { topK: 3, unitId }).catch(() => []),
       searchLectureChunksSemantic(query, { topK: 3, unitId }).catch(() => []),
     ]);
 
-    return { skills, knowledgeEntries, lectureChunks };
+    // Merge knowledge_base results with admin-curated entries, deduplicating by title
+    const seenTitles = new Set(knowledgeEntries.map(e => e.title.toLowerCase()));
+    const mergedKnowledge = [...knowledgeEntries];
+    for (const entry of adminEntries) {
+      if (!seenTitles.has(entry.title.toLowerCase())) {
+        mergedKnowledge.push(entry);
+        seenTitles.add(entry.title.toLowerCase());
+      }
+    }
+
+    return { skills, knowledgeEntries: mergedKnowledge, lectureChunks };
   } catch (error) {
     console.error('[EmbeddingService] RAG retrieval failed:', error);
     return { skills: [], knowledgeEntries: [], lectureChunks: [] };

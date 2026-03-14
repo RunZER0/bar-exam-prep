@@ -12,6 +12,7 @@ import { autonomousPreload } from '@/lib/services/autonomous-preload';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { NotificationToast } from '@/components/NotificationBell';
+import SiteAnnouncement from '@/components/SiteAnnouncement';
 
 export default function AuthenticatedLayout({
   children,
@@ -105,6 +106,7 @@ export default function AuthenticatedLayout({
     <SubscriptionProvider>
       <NotificationProvider>
         <div className="min-h-screen bg-background">
+          <SiteAnnouncement />
           <Sidebar />
           <main className={`mt-14 md:mt-0 overflow-y-auto bg-background min-h-screen transition-all duration-300 ${mainMargin}`}>
             <div className="min-h-full">

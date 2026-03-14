@@ -728,6 +728,99 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Engagement Analytics */}
+        {analytics?.engagement && (
+          <>
+            <Card>
+              <CardHeader><CardTitle className="text-lg">Engagement Overview (30 days)</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                  <div className="text-center p-4 rounded-lg bg-secondary/30">
+                    <p className="text-2xl font-bold">{Math.round((analytics.engagement.totalStudyMinutes || 0) / 60)}h</p>
+                    <p className="text-xs text-muted-foreground">Total Study Hours</p>
+                  </div>
+                  <div className="text-center p-4 rounded-lg bg-secondary/30">
+                    <p className="text-2xl font-bold">{analytics.engagement.avgDailyMinutes || 0}m</p>
+                    <p className="text-xs text-muted-foreground">Avg Daily Study</p>
+                  </div>
+                  <div className="text-center p-4 rounded-lg bg-secondary/30">
+                    <p className="text-2xl font-bold">{analytics.engagement.featureUsage?.length || 0}</p>
+                    <p className="text-xs text-muted-foreground">Features Used</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Feature Usage Ranking */}
+            {analytics.engagement.featureUsage && analytics.engagement.featureUsage.length > 0 && (
+              <Card>
+                <CardHeader><CardTitle className="text-lg">Most Used Features</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {analytics.engagement.featureUsage.map((f: any, i: number) => {
+                      const maxMinutes = analytics.engagement.featureUsage[0]?.totalMinutes || 1;
+                      const width = Math.max((f.totalMinutes / maxMinutes) * 100, 8);
+                      return (
+                        <div key={f.section} className="space-y-1">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="capitalize font-medium">{f.section.replace(/-/g, ' ')}</span>
+                            <span className="text-muted-foreground text-xs">
+                              {Math.round(f.totalMinutes / 60)}h · {f.visitCount} visits
+                            </span>
+                          </div>
+                          <div className="h-2 bg-secondary rounded-full">
+                            <div
+                              className="h-full bg-primary/70 rounded-full transition-all"
+                              style={{ width: `${width}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Daily Active Users Trend */}
+            {analytics.engagement.dailyActiveUsers && analytics.engagement.dailyActiveUsers.length > 0 && (
+              <Card>
+                <CardHeader><CardTitle className="text-lg">Daily Active Users (14 days)</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="flex items-end justify-between gap-1.5 h-32">
+                    {analytics.engagement.dailyActiveUsers.map((d: any) => {
+                      const maxCount = Math.max(...analytics.engagement.dailyActiveUsers.map((x: any) => x.count), 1);
+                      const height = Math.max((d.count / maxCount) * 100, d.count > 0 ? 8 : 3);
+                      const date = new Date(d.date);
+                      return (
+                        <div key={d.date} className="flex-1 flex flex-col items-center gap-1 h-full group relative">
+                          <div className="w-full flex justify-center items-end flex-1">
+                            <div
+                              className="w-full max-w-8 rounded-t bg-primary/50 group-hover:bg-primary/80 transition-all"
+                              style={{ height: `${height}%` }}
+                            />
+                          </div>
+                          <span className="text-[9px] text-muted-foreground">
+                            {date.toLocaleDateString('en-KE', { day: 'numeric' })}
+                          </span>
+                          {d.count > 0 && (
+                            <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none">
+                              <div className="bg-popover border text-xs rounded-lg px-2 py-1 shadow-lg whitespace-nowrap">
+                                <div className="font-medium">{d.count} users</div>
+                                <div className="text-muted-foreground">{date.toLocaleDateString('en-KE', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
       </div>
     );
   };

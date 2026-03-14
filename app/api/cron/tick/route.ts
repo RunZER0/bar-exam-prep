@@ -17,6 +17,7 @@
 
 import { NextResponse } from 'next/server';
 import { processReminderTick, processWeeklyReports, processFunFactEmails, processTrialExpiryCheck } from '@/lib/services/notification-service';
+import { processRemindersWithPolicies } from '@/lib/services/reminder-policies';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import { headers } from 'next/headers';
 
@@ -101,6 +102,15 @@ export async function GET(request: Request) {
       trialExpiryResult.error = e instanceof Error ? e.message : 'Unknown error';
     }
 
+    // 5. Process policy-based reminders (MISSED_DAY, SESSION_READY, EXAM_COUNTDOWN)
+    let policyResult: { usersProcessed: number; emailsSent: number; pushSent: number; error?: string } = { usersProcessed: 0, emailsSent: 0, pushSent: 0 };
+    try {
+      policyResult = await processRemindersWithPolicies();
+    } catch (e) {
+      console.error('[cron/tick] processRemindersWithPolicies failed:', e);
+      policyResult.error = e instanceof Error ? e.message : 'Unknown error';
+    }
+
     const duration = Date.now() - startTime;
 
     return NextResponse.json({
@@ -111,6 +121,7 @@ export async function GET(request: Request) {
       weeklyReports: weeklyResult,
       funFacts: funFactResult,
       trialExpiry: trialExpiryResult,
+      policyReminders: policyResult,
     });
   } catch (error) {
     console.error('[cron/tick] Error:', error);

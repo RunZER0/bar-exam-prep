@@ -70,113 +70,69 @@ CRITICAL DIFFICULTY REQUIREMENTS:
     });
 
     const encoder = new TextEncoder();
-    let buffer = '';
-    let bracketDepth = 0;
-    let inString = false;
-    let escapeNext = false;
-    let questionCount = 0;
-    let objectStart = -1;
-    let startedArray = false;
 
     const readable = new ReadableStream({
       async start(controller) {
-        let rawAccumulator = '';  // Track ALL raw content for diagnostics
+        let rawContent = '';
         try {
+          // Phase 1: Accumulate ALL content from the model stream.
+          // gpt-5-mini is a reasoning model — it buffers internally during
+          // chain-of-thought, then outputs the response. A character-by-character
+          // streaming parser has state-corruption bugs across chunk boundaries,
+          // so we accumulate and parse once at the end.
           for await (const chunk of stream) {
             const delta = chunk.choices[0]?.delta?.content;
             if (!delta) continue;
-            buffer += delta;
-            rawAccumulator += delta;
-
-            // Parse buffer character by character to extract complete JSON objects
-            for (let i = 0; i < buffer.length; i++) {
-              const ch = buffer[i];
-
-              if (escapeNext) {
-                escapeNext = false;
-                continue;
-              }
-
-              if (ch === '\\' && inString) {
-                escapeNext = true;
-                continue;
-              }
-
-              if (ch === '"') {
-                inString = !inString;
-                continue;
-              }
-
-              if (inString) continue;
-
-              if (ch === '[' && !startedArray) {
-                startedArray = true;
-                continue;
-              }
-
-              if (ch === '{') {
-                if (bracketDepth === 0) {
-                  objectStart = i;
-                }
-                bracketDepth++;
-              } else if (ch === '}') {
-                bracketDepth--;
-                if (bracketDepth === 0 && objectStart !== -1) {
-                  // We have a complete JSON object
-                  const jsonStr = buffer.substring(objectStart, i + 1);
-                  try {
-                    const question = JSON.parse(jsonStr);
-                    // Normalize questionType
-                    question.questionType = question.questionType || 'mcq';
-                    questionCount++;
-                    // Send the question as an SSE event
-                    controller.enqueue(
-                      encoder.encode(
-                        `data: ${JSON.stringify({ type: 'question', index: questionCount - 1, question })}\n\n`
-                      )
-                    );
-                  } catch {
-                    // If parsing fails, we might have partial JSON — skip
-                  }
-                  // Trim buffer up to and including this object
-                  buffer = buffer.substring(i + 1);
-                  i = -1; // Reset loop index since we modified buffer
-                  objectStart = -1;
-                }
-              }
-            }
+            rawContent += delta;
           }
 
-          if (questionCount === 0) {
-            console.error('[QUIZ-STREAM] Model returned 0 parseable questions.', {
-              model: MINI_MODEL,
-              rawLength: rawAccumulator.length,
-              rawPreview: rawAccumulator.slice(0, 500),
-              count,
-            });
+          // Phase 2: Extract and parse the JSON array from the response.
+          // Handle potential markdown code blocks or preamble text.
+          let jsonText = rawContent.trim();
+          const codeBlockMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
+          if (codeBlockMatch) jsonText = codeBlockMatch[1].trim();
+
+          const arrayStart = jsonText.indexOf('[');
+          const arrayEnd = jsonText.lastIndexOf(']');
+          if (arrayStart === -1 || arrayEnd <= arrayStart) {
+            throw new Error('No JSON array found in model output');
+          }
+          jsonText = jsonText.substring(arrayStart, arrayEnd + 1);
+
+          const questions = JSON.parse(jsonText);
+          if (!Array.isArray(questions) || questions.length === 0) {
+            throw new Error('Parsed result is not a non-empty array');
+          }
+
+          // Phase 3: Send each question as an SSE event.
+          for (let i = 0; i < questions.length; i++) {
+            const q = questions[i];
+            q.questionType = q.questionType || 'mcq';
             controller.enqueue(
               encoder.encode(
-                `data: ${JSON.stringify({ type: 'error', message: `AI returned no valid quiz questions. Model: ${MINI_MODEL}. Raw length: ${rawAccumulator.length}. Preview: ${rawAccumulator.slice(0, 200)}` })}\n\n`
-              )
-            );
-          } else {
-            // Send completion event
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: 'done', totalQuestions: questionCount })}\n\n`
+                `data: ${JSON.stringify({ type: 'question', index: i, question: q })}\n\n`
               )
             );
           }
+
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ type: 'done', totalQuestions: questions.length })}\n\n`
+            )
+          );
           controller.close();
         } catch (err: any) {
-          console.error('[QUIZ-STREAM] Stream error:', err?.message || err, err?.status, err?.code);
+          console.error('[QUIZ-STREAM] Error:', err?.message || err, 'Raw length:', rawContent.length, 'Preview:', rawContent.slice(0, 500));
           const errMsg = err?.message || 'Unknown error';
           const isModelErr = err?.code === 'model_not_found' || errMsg.includes('does not exist');
           const isRateLimit = err?.status === 429;
+          const isParseErr = errMsg.includes('JSON') || errMsg.includes('array') || errMsg.includes('Unexpected');
           const friendlyMsg = isModelErr
             ? `Model "${MINI_MODEL}" not found — check MINI_MODEL config.`
             : isRateLimit
             ? 'AI is busy — please wait a moment and try again.'
+            : isParseErr
+            ? `AI returned unparseable quiz data. Raw length: ${rawContent.length}. Preview: ${rawContent.slice(0, 200)}`
             : `Quiz generation failed: ${errMsg.slice(0, 150)}`;
           controller.enqueue(
             encoder.encode(

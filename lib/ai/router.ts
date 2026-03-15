@@ -225,7 +225,7 @@ async function aiRouterCall(
         json_schema: ROUTER_JSON_SCHEMA,
       },
       temperature: 0,
-      max_completion_tokens: 150,
+      max_completion_tokens: 2000,
     });
 
     const raw = completion.choices[0]?.message?.content;

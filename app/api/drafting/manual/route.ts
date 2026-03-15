@@ -37,7 +37,7 @@ async function generateAndPersistManual(documentId: string) {
   const completion = await openai.chat.completions.create({
     model: MINI_MODEL,
     messages: [{ role: 'user', content: prompt }],
-    max_completion_tokens: 3500,
+    max_completion_tokens: 16000,
   });
 
   const content = completion.choices[0]?.message?.content || '[]';

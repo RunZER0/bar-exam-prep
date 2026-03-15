@@ -99,7 +99,7 @@ Be CREATIVE and VARIED - never repeat the same joke, fact, or case twice. Each r
           messages: [{ role: 'user', content: prompt }],
           stream: true,
           temperature: 0.9,
-          max_completion_tokens: 600,
+          max_completion_tokens: 4000,
         });
 
         const encoder = new TextEncoder();

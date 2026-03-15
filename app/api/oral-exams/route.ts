@@ -555,7 +555,7 @@ RULES:
       const completion = await openai.chat.completions.create({
         model: MINI_MODEL,
         messages: summaryMessages,
-        max_completion_tokens: 3000,
+        max_completion_tokens: 16000,
       });
 
       const summaryContent = completion.choices[0]?.message?.content || 'Unable to generate summary.';
@@ -613,9 +613,10 @@ RULES:
       const isOpening = messages.length === 0;
       const isScenarioRequest = messages.length > 0 && isMetaRequest(lastUserText);
       const lengthRoll = Math.random();
-      // Floor raised from 120→220 — 120 tokens caused constant truncation which triggered fallbacks
-      const maxTokens = (isOpening || isScenarioRequest) ? 450
-        : lengthRoll < 0.45 ? 220 : lengthRoll < 0.80 ? 300 : 450;
+      // gpt-5-mini is a reasoning model — internal chain-of-thought consumes
+      // max_completion_tokens budget. Need ~10x headroom over desired output length.
+      const maxTokens = (isOpening || isScenarioRequest) ? 4000
+        : lengthRoll < 0.45 ? 2000 : lengthRoll < 0.80 ? 3000 : 4000;
 
       // If no messages, generate opening challenge with a concrete scenario
       if (messages.length === 0) {
@@ -870,18 +871,19 @@ RULES:
       }
 
       // Vary response budget based on turn mode for realism + cost control
-      // Floors raised — previous limits (180-260) caused truncation that triggered fallbacks
+      // gpt-5-mini is a reasoning model — internal chain-of-thought consumes
+      // max_completion_tokens budget. Need ~10x headroom over desired output length.
       const examMaxTokens = turnMode === 'interruption-trim'
-        ? 220
+        ? 2000
         : turnMode === 'clarify'
-        ? 280
+        ? 2500
         : turnMode === 'correction' || turnMode === 'authority-demand'
-        ? 320
+        ? 3000
         : turnMode === 'pivot' || turnMode === 'handoff'
-        ? 350
+        ? 3500
         : isCrossPanelHandover
-        ? 320
-        : 300;
+        ? 3000
+        : 3000;
 
       // Opening question if no messages
       if (messages.length === 0) {

@@ -214,7 +214,7 @@ async function handlePost(req: NextRequest, user: AuthUser) {
           const openai = getOpenAI();
           const aiResponse = await openai.chat.completions.create({
             model: MINI_MODEL,
-            max_tokens: 50,
+            max_tokens: 1000,
             temperature: 0,
             messages: [{
               role: 'system',
@@ -363,7 +363,7 @@ Include model answers for all questions. Use proper Markdown formatting.` },
                 { role: 'user', content: `Generate assessment questions based on these study notes:\n\n${notes.slice(0, 3000)}` },
               ],
               temperature: 0.7,
-              max_completion_tokens: 2048,
+              max_completion_tokens: 10000,
             });
             assessmentBlock = '\n\n---\n\n## 📝 Assessment\n\n' + (assessCompletion.choices[0]?.message?.content || '');
           } catch (e) {
@@ -472,7 +472,7 @@ KENYAN LAW CONTEXT:
           { role: 'user', content: `Generate study notes on: ${topicContext}` },
         ],
         temperature: 0.7,
-        max_completion_tokens: 4096,
+        max_completion_tokens: 16000,
       });
 
       const notes = completion.choices[0]?.message?.content;

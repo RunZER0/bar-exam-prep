@@ -283,7 +283,7 @@ Respond in JSON only: {"challenges": [...]}`,
           ).join('\n')}\n\nEach challenge JSON: {"title":"...","description":"...","type":"...","unitId":"...","questions":[...],"totalPoints":50}`,
         },
       ],
-      max_completion_tokens: 6000,
+      max_completion_tokens: 20000,
       response_format: { type: 'json_object' },
     });
 
@@ -415,7 +415,7 @@ Respond in JSON only.`,
           content: `Review:\nTitle: ${title}\nDescription: ${description}\nQuestions: ${JSON.stringify(questions)}\n\nRespond: {"approved": true/false, "feedback": "...", "improvedTitle": "...", "improvedDescription": "..."}`,
         },
       ],
-      max_completion_tokens: 500,
+      max_completion_tokens: 4000,
       response_format: { type: 'json_object' },
     });
 
@@ -702,7 +702,7 @@ Respond in JSON: {"grades": [{"questionNumber": 1, "pointsEarned": 7, "feedback"
               { role: 'user', content: gradingPrompt },
             ],
             temperature: 0.2,
-            max_completion_tokens: 2000,
+            max_completion_tokens: 8000,
             response_format: { type: 'json_object' },
           });
 

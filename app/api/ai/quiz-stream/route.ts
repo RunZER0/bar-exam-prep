@@ -63,8 +63,10 @@ CRITICAL DIFFICULTY REQUIREMENTS:
         },
         { role: 'user', content: prompt },
       ],
+      // gpt-5-mini is a reasoning model — internal chain-of-thought tokens
+      // consume max_completion_tokens budget. Need ~3-4x headroom.
       stream: true,
-      max_completion_tokens: Math.min(12000, Math.max(count * 300, 2500)),
+      max_completion_tokens: Math.min(40000, Math.max(count * 1200, 10000)),
     });
 
     const encoder = new TextEncoder();

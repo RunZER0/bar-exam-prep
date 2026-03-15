@@ -384,7 +384,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── NON-RESEARCH PATH: Chat Completions (clarify / general) ──
-    const maxTokens = selectedModel === MINI_MODEL ? 1500 : 4000;
+    const maxTokens = selectedModel === MINI_MODEL ? 8000 : 16000;
 
     const stream = await openai.chat.completions.create({
       model: selectedModel,

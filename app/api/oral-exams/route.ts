@@ -368,8 +368,9 @@ function chooseExaminerTurnMode(params: {
   previousAssistantText: string;
   assistantTurnCount: number;
   trailingSamePanelist: number;
+  topicExhausted?: boolean;
 }): ExaminerTurnMode {
-  const { lastUserText, previousUserText, previousAssistantText, assistantTurnCount, trailingSamePanelist } = params;
+  const { lastUserText, previousUserText, previousAssistantText, assistantTurnCount, trailingSamePanelist, topicExhausted } = params;
   if (!lastUserText?.trim()) return 'opening';
   if (hasClarificationSignal(lastUserText)) return 'clarify';
   if (hasPolarityConflict(previousUserText, lastUserText)) return 'correction';
@@ -383,7 +384,8 @@ function chooseExaminerTurnMode(params: {
   if (words > 110 && !authority && !structured && !detailRequested) return 'interruption-trim';
   if (words > 140 && authority && structured && !vague) return 'probe';
   if (!authority || vague) return 'authority-demand';
-  if (assistantTurnCount > 0 && assistantTurnCount % 4 === 0) return 'pivot';
+  // Smart pivot: topic exhaustion detected OR mechanical fallback every 4th turn
+  if (topicExhausted || (assistantTurnCount > 0 && assistantTurnCount % 4 === 0)) return 'pivot';
   if (trailingSamePanelist >= 2) return 'handoff';
   return 'probe';
 }
@@ -590,22 +592,32 @@ RULES:
         apiMessages.push({ role: 'system' as const, content: perfContext });
       }
 
-      // Inject session timing context
+      // Inject session timing context — granular phases with pacing guidance
       const remaining = Math.max(0, sessionMaxMinutes - elapsedMinutes);
-      const phaseCtx = elapsedMinutes < 2
-        ? '[SESSION PHASE: OPENING. Give a brief 1-2 sentence welcome, then present a SHORT scenario (3-4 sentences max) with ONE clear question. Keep the ENTIRE opening under 80 words total. Do NOT write a full exam hypothetical.]'
-        : remaining <= 2
-        ? '[SESSION PHASE: CLOSING. Begin wrap-up naturally: one final challenge, then a concise conclusion.]'
-        : '[SESSION PHASE: DEEP DIVE. Probe the student answer with follow-ups and escalating difficulty.]';
-      apiMessages.push({ role: 'system' as const, content: phaseCtx });
+      const daAssistantTurnCount = messages.filter((m: any) => m.role === 'assistant').length;
 
-      if (elapsedMinutes > 0 && messages.length > 0) {
-        const timeCtx = remaining <= 0
-          ? `[SESSION TIME IS UP. You MUST end the session now. Say something like: "Time's up, Counsel. That concludes our debate. Let me generate your session summary." Do NOT ask any new questions.]`
-          : remaining <= 2
-          ? `[SESSION TIMING: ${Math.round(elapsedMinutes)} minutes elapsed, ~${Math.round(remaining)} minutes remaining. Begin wrapping up — ask one final question or make a closing challenge.]`
-          : `[SESSION TIMING: ${Math.round(elapsedMinutes)} minutes elapsed, ~${Math.round(remaining)} minutes remaining.]`;
-        apiMessages.push({ role: 'system' as const, content: timeCtx });
+      // Use the opening-specific prompt for the very first turn
+      if (elapsedMinutes < 2 && messages.length === 0) {
+        apiMessages.push({ role: 'system' as const, content: '[SESSION PHASE: OPENING. Give a brief 1-2 sentence welcome, then present a SHORT scenario (3-4 sentences max) with ONE clear question. Keep the ENTIRE opening under 80 words total. Do NOT write a full exam hypothetical.]' });
+      } else {
+        apiMessages.push({
+          role: 'system' as const,
+          content: buildGranularTimingContext(elapsedMinutes, sessionMaxMinutes, daAssistantTurnCount),
+        });
+      }
+
+      // Inject topic exhaustion detection for DA sessions too
+      const daExhaustion = detectTopicExhaustion(messages);
+      if (daExhaustion.exhausted) {
+        const reason = daExhaustion.reason === 'mastery_demonstrated'
+          ? 'The student has nailed this angle — shift to a completely different legal issue.'
+          : daExhaustion.reason === 'student_repeating'
+          ? 'The student is going in circles. Change the scenario entirely.'
+          : 'This topic thread is spent. Pivot to a new factual scenario with different legal issues.';
+        apiMessages.push({
+          role: 'system' as const,
+          content: `TOPIC EXHAUSTION: ${reason}`,
+        });
       }
 
       // Determine response length hint — biased toward SHORT punchy responses
@@ -781,12 +793,14 @@ RULES:
       const previousPanelistPoint = summarizeForPrompt(previousAssistantTurn?.content || '', 10);
       const assistantTurnCount = messages.filter((m: any) => m.role === 'assistant').length;
       const trailingSamePanelist = getTrailingPanelistStreak(messages, currentPanelist.id);
+      const topicExhaustion = detectTopicExhaustion(messages);
       const turnMode = chooseExaminerTurnMode({
         lastUserText,
         previousUserText,
         previousAssistantText,
         assistantTurnCount,
         trailingSamePanelist,
+        topicExhausted: topicExhaustion.exhausted,
       });
       const feedbackStyle = chooseFeedbackStyle(feedbackMode, turnMode, assistantTurnCount);
       const examRemaining = Math.max(0, sessionMaxMinutes - elapsedMinutes);
@@ -854,21 +868,29 @@ RULES:
         apiMessages.push({ role: 'system' as const, content: perfContext });
       }
 
-      // Inject session timing context
-      const examPhaseCtx = elapsedMinutes < 2
-        ? '[SESSION PHASE: OPENING. Brief welcome, then one concrete exam question with a clearly named legal issue.]'
-        : examRemaining <= 2
-        ? '[SESSION PHASE: CLOSING. Ask one final concise question, then close the session naturally.]'
-        : '[SESSION PHASE: DEEP DIVE. Continue probing student reasoning with targeted follow-ups.]';
-      apiMessages.push({ role: 'system' as const, content: examPhaseCtx });
+      // Inject FULL panel coverage map — cross-panelist awareness
+      const coverageMap = buildPanelCoverageMap(messages);
+      if (coverageMap) {
+        apiMessages.push({ role: 'system' as const, content: coverageMap });
+      }
 
-      if (elapsedMinutes > 0 && messages.length > 0) {
-        const timeCtx = examRemaining <= 0
-          ? `[SESSION TIME IS UP. End the session now. Say: "${currentPanelist.name}: Thank you, Counsel. That concludes today's examination." Do NOT ask new questions.]`
-          : examRemaining <= 2
-          ? `[SESSION TIMING: ${Math.round(elapsedMinutes)} minutes elapsed, ~${Math.round(examRemaining)} minutes remaining. Ask one final question and prepare to close.]`
-          : `[SESSION TIMING: ${Math.round(elapsedMinutes)} minutes elapsed, ~${Math.round(examRemaining)} minutes remaining.]`;
-        apiMessages.push({ role: 'system' as const, content: timeCtx });
+      // Inject granular session timing with pacing guidance
+      apiMessages.push({
+        role: 'system' as const,
+        content: buildGranularTimingContext(elapsedMinutes, sessionMaxMinutes, assistantTurnCount),
+      });
+
+      // Inject topic exhaustion signal
+      if (topicExhaustion.exhausted) {
+        const reason = topicExhaustion.reason === 'mastery_demonstrated'
+          ? `The student has given ${topicExhaustion.exchangeCount} strong, authoritative answers on this topic — they've demonstrated mastery. PIVOT to a NEW legal area now.`
+          : topicExhaustion.reason === 'student_repeating'
+          ? `The student is repeating themselves — they've said everything they know on this topic. PIVOT to a fresh area immediately.`
+          : `This topic has been explored for ${topicExhaustion.exchangeCount}+ exchanges. It's time to move on. PIVOT to a new legal issue.`;
+        apiMessages.push({
+          role: 'system' as const,
+          content: `TOPIC EXHAUSTION DETECTED: ${reason} Link briefly to the current thread, then introduce a completely different legal issue within the unit.`,
+        });
       }
 
       // Vary response budget based on turn mode for realism + cost control
@@ -1111,6 +1133,110 @@ function buildStudentPerformanceContext(messages: any[]): string {
   }
   if (parts.length === 0) return '';
   return `STUDENT PERFORMANCE PATTERN:\n${parts.join('\n')}`;
+}
+
+/** Build a map of what EACH panelist has covered so far — full cross-panel awareness */
+function buildPanelCoverageMap(messages: any[]): string {
+  const coverage: Record<string, string[]> = {};
+  for (const m of messages) {
+    if (m.role !== 'assistant' || !m.content?.trim()) continue;
+    const speaker = m.panelistId || 'examiner';
+    if (!coverage[speaker]) coverage[speaker] = [];
+    coverage[speaker].push(summarizeForPrompt(m.content, 14));
+  }
+  const entries = Object.entries(coverage);
+  if (entries.length === 0) return '';
+
+  const lines = entries.map(([id, topics]) => {
+    const name = getPanelistDisplayName(id);
+    return `- ${name} covered: ${topics.join(' → ')}`;
+  });
+  return `FULL PANEL COVERAGE MAP (what every panelist has examined so far):\n${lines.join('\n')}\nUse this to avoid re-examining settled topics and to build on what colleagues explored.`;
+}
+
+/** Detect whether the current topic thread is exhausted and should pivot */
+function detectTopicExhaustion(messages: any[]): { exhausted: boolean; exchangeCount: number; reason: string } {
+  // Look at the recent exchange thread — how many consecutive turns on the same topic
+  const recent = messages.slice(-10); // last 10 messages (5 exchanges max)
+  const assistantTurns = recent.filter((m: any) => m.role === 'assistant' && m.content?.trim());
+  const userTurns = recent.filter((m: any) => m.role === 'user' && m.content?.trim());
+
+  if (assistantTurns.length < 2) return { exhausted: false, exchangeCount: 0, reason: 'too_early' };
+
+  // Count how many consecutive strong answers the student gave
+  let consecutiveStrong = 0;
+  for (let i = userTurns.length - 1; i >= 0; i--) {
+    const text = userTurns[i].content || '';
+    if (hasLegalAuthoritySignal(text) && hasStructuredAnswerSignal(text) && countWords(text) > 30) {
+      consecutiveStrong++;
+    } else {
+      break;
+    }
+  }
+
+  // Count exchanges where the same general topic has been probed
+  // (indicated by student and examiner both referencing similar legal terms)
+  const recentExchangeCount = Math.min(assistantTurns.length, userTurns.length);
+
+  // Topic is exhausted if:
+  // 1. Student gave 3+ consecutive strong, authoritative answers (mastery demonstrated)
+  if (consecutiveStrong >= 3) {
+    return { exhausted: true, exchangeCount: recentExchangeCount, reason: 'mastery_demonstrated' };
+  }
+  // 2. 5+ exchanges on the thread (topic has been thoroughly explored regardless of quality)
+  if (recentExchangeCount >= 5) {
+    return { exhausted: true, exchangeCount: recentExchangeCount, reason: 'thoroughly_explored' };
+  }
+  // 3. Student is repeating themselves (last 2 answers share similar normalized content)
+  if (userTurns.length >= 2) {
+    const last = normalizeForComparison(userTurns[userTurns.length - 1]?.content || '');
+    const prev = normalizeForComparison(userTurns[userTurns.length - 2]?.content || '');
+    if (last && prev && last.length > 20 && prev.length > 20) {
+      const overlap = last.split(' ').filter(w => prev.includes(w)).length;
+      const ratio = overlap / Math.max(last.split(' ').length, 1);
+      if (ratio > 0.6) {
+        return { exhausted: true, exchangeCount: recentExchangeCount, reason: 'student_repeating' };
+      }
+    }
+  }
+
+  return { exhausted: false, exchangeCount: recentExchangeCount, reason: 'active' };
+}
+
+/** Build granular session timing context with pacing guidance */
+function buildGranularTimingContext(elapsedMinutes: number, sessionMaxMinutes: number, assistantTurnCount: number): string {
+  const remaining = Math.max(0, sessionMaxMinutes - elapsedMinutes);
+  const progress = sessionMaxMinutes > 0 ? elapsedMinutes / sessionMaxMinutes : 0;
+  const minsRemaining = Math.round(remaining);
+
+  if (remaining <= 0) {
+    return `[SESSION TIME IS UP. End the session now. Thank the student and close. Do NOT ask new questions.]`;
+  }
+
+  let phase: string;
+  let pacing: string;
+
+  if (elapsedMinutes < 2) {
+    phase = 'OPENING';
+    pacing = 'Brief welcome, then one concrete exam question. Set the tone.';
+  } else if (progress < 0.35) {
+    phase = 'EARLY EXPLORATION';
+    pacing = `Plenty of time. Establish a topic thread and probe deeply. ${minsRemaining} minutes remaining.`;
+  } else if (progress < 0.55) {
+    phase = 'MIDPOINT';
+    pacing = `Session is at the halfway mark. ${minsRemaining} minutes remaining. If the current topic feels well-covered, consider transitioning to a new area. Ensure breadth across the syllabus.`;
+  } else if (progress < 0.75) {
+    phase = 'SECOND HALF';
+    pacing = `${minsRemaining} minutes remaining. Time to cover any major topics not yet examined. Begin thinking about areas the student hasn't been tested on.`;
+  } else if (progress < 0.88) {
+    phase = 'WINDING DOWN';
+    pacing = `Only ${minsRemaining} minutes left. Wrap up the current thread within 1-2 more exchanges. Prioritize any critical gap you haven't tested yet.`;
+  } else {
+    phase = 'FINAL STRETCH';
+    pacing = `${minsRemaining} minute${minsRemaining !== 1 ? 's' : ''} remaining. Ask one final question, then prepare to close the session. Keep responses brief.`;
+  }
+
+  return `[SESSION PHASE: ${phase}. ${pacing}. Turns so far: ${assistantTurnCount}.]`;
 }
 
 function extractScore(text: string): number | null {

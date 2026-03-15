@@ -21,8 +21,11 @@ export const GRADING_MODEL = process.env.GRADING_MODEL || 'gpt-5.2';
 // === Fast Operations (downgraded from gpt-5.2 to mini for cost savings) ===
 export const FAST_MODEL = process.env.OPENAI_FAST_MODEL || 'gpt-5-mini';
 
-// === Minimum Floor Model — fast & cheap for streaming, quizzes, oral exams ===
+// === Minimum Floor Model — fast & cheap for streaming, oral exams ===
 export const MINI_MODEL = process.env.MINI_MODEL || 'gpt-5-mini';
+
+// === Quiz Model — non-reasoning model for structured JSON quiz generation ===
+export const QUIZ_MODEL = process.env.QUIZ_MODEL || 'gpt-4o-mini';
 
 // === Router Model — lightweight model for smart routing decisions ===
 export const ROUTER_MODEL = process.env.ROUTER_MODEL || 'gpt-5-mini';

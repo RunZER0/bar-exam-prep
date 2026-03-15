@@ -28,7 +28,6 @@ export const EXAMINER_PERSONAS: VoicePersona[] = [
   {
     panelistId: 'justice-mwangi',
     voice: 'cedar',
-    voiceVariants: ['onyx', 'cedar', 'ash'],
     instructions:
       'Speak in a deep, commanding, judicial tone with polished courtroom authority. ' +
       'Adopt a subtle Kenyan English accent with measured, deliberate pacing — like a High Court judge who weighs every word. ' +
@@ -42,7 +41,6 @@ export const EXAMINER_PERSONAS: VoicePersona[] = [
   {
     panelistId: 'advocate-amara',
     voice: 'coral',
-    voiceVariants: ['coral', 'nova', 'verse'],
     instructions:
       'Speak in a sharp, fast-paced, high-energy litigation style — like a top trial advocate in cross-examination. ' +
       'Punch key legal terms with strong emphasis and use rapid-fire delivery for pointed challenges. ' +
@@ -56,7 +54,6 @@ export const EXAMINER_PERSONAS: VoicePersona[] = [
   {
     panelistId: 'prof-otieno',
     voice: 'sage',
-    voiceVariants: ['sage', 'echo', 'marin'],
     instructions:
       'Speak in a warm, articulate, professorly tone with rich academic depth — like a distinguished law professor in a tutorial. ' +
       'Use natural Socratic rhythm: pose a question thoughtfully, pause to let the student think, then probe with gentle intensity. ' +
@@ -75,7 +72,6 @@ export const EXAMINER_PERSONAS: VoicePersona[] = [
 export const DEVILS_ADVOCATE_PERSONA: VoicePersona = {
   panelistId: 'devils-advocate',
   voice: 'onyx',
-  voiceVariants: ['onyx', 'ash', 'cedar'],
   instructions:
     'Speak in a cold, incisive, combative debate tone — like an adversarial opposing counsel who never concedes a point. ' +
     'Use controlled intensity with sharp emphasis on contradictions and weak arguments. ' +

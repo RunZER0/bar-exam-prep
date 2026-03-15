@@ -234,92 +234,6 @@ RESPONSE QUALITY — ABSOLUTE RULES:
 - If the student pushes back, you MUST rephrase with a concrete, answerable question. Never parrot their words back at them.`;
 }
 
-function buildContextualOpeningQuestion(panelist: typeof PANELISTS[0], unitId?: string): string {
-  const unit = unitId ? ATP_UNITS.find(u => u.id === unitId) : null;
-  const unitLabel = unit ? `${unit.code}: ${unit.name}` : null;
-
-  if (!unitLabel) {
-    const genericOpenings: Record<string, string> = {
-      'justice-mwangi':
-        `Counsel, let us set the scene. An applicant comes before the High Court seeking a temporary injunction under Order 40 of the Civil Procedure Rules. Now, what is the legal test the court must apply before granting that order?`,
-      'advocate-amara':
-        `Right, let's get into it. Your client has just been served with summons in a civil suit, and you have a hearing in 7 days. Tell me — what is the very first thing you do as their advocate, and why?`,
-      'prof-otieno':
-        `Now then, consider this scenario for me. An employee is terminated without any disciplinary hearing and decides to file suit. What is the core legal principle at play here under Kenyan law?`
-    };
-
-    return genericOpenings[panelist.id] || genericOpenings['justice-mwangi'];
-  }
-
-  // Unit-specific concrete opening questions — each poses a real legal scenario
-  const unitOpenings: Record<string, Record<string, string>> = {
-    'atp-100': { // Civil Litigation
-      'justice-mwangi': `Counsel, let us set the scene. A plaintiff files a suit in the High Court at Nairobi, but the cause of action arose entirely in Mombasa. The defendant raises a preliminary objection on jurisdiction. Under the Civil Procedure Act and the Civil Procedure Rules, what is the test for territorial jurisdiction, and which specific provision governs this?`,
-      'advocate-amara': `Right, let's get into it. Your client has been served with a plaint and summons. You believe the suit is frivolous and an abuse of process. Walk me through the exact application you would file to strike it out — cite the specific order and rule.`,
-      'prof-otieno': `Consider this for me. A party applies for summary judgment under Order 36 of the Civil Procedure Rules. The defendant says they have a triable defence. What is the legal test the court applies, and what must the defendant demonstrate to avoid summary judgment?`,
-    },
-    'atp-101': { // Criminal Litigation
-      'justice-mwangi': `Counsel, here is your scenario. An accused person is arrested on a Friday evening and brought before the court on Monday morning — 60 hours later. The prosecution says they needed time to investigate. Under Article 49 of the Constitution, what is the maximum period of detention before being brought to court, and what remedy does the accused seek?`,
-      'advocate-amara': `Your client is charged with robbery with violence under Section 296(2) of the Penal Code. At the plea, you want to apply for bail. The prosecution objects, citing the seriousness of the offence. What is the constitutional basis for your client's right to bail, and what does the court consider in deciding whether to grant it?`,
-      'prof-otieno': `An accused person makes a confession to a police officer at a police station. At trial, you want to challenge the admissibility of that confession. Under what specific provisions of the Evidence Act and the Constitution can a confession be excluded, and what must you prove?`,
-    },
-    'atp-102': { // Probate and Administration
-      'justice-mwangi': `Counsel, a man dies intestate leaving a widow, three children, and a brother who claims to be entitled to a share of the estate. The widow applies for letters of administration. Under the Law of Succession Act, who are the persons entitled to apply, and what is the order of priority?`,
-      'advocate-amara': `Your client's father died leaving a will that was signed by only one witness instead of two. Another relative is challenging the will's validity. Under Section 11 of the Law of Succession Act, what are the formal requirements for a valid will, and can this will be saved?`,
-      'prof-otieno': `A surviving spouse seeks to inherit the matrimonial home outright, but the deceased's adult children from a previous marriage object. Under the Law of Succession Act, what is the spouse's entitlement to the matrimonial home, and which specific section protects this right?`,
-    },
-    'atp-103': { // Legal Writing and Drafting
-      'justice-mwangi': `Counsel, I have before me a plaint that contains no material facts — only conclusions of law. You're the defendant's advocate. On what basis do you apply to strike out the plaint, and what is the distinction between material facts and evidence in pleading?`,
-      'advocate-amara': `You're drafting a commercial lease agreement for your client, the tenant. The landlord's draft contains a clause allowing termination with only 7 days' notice at any time. What specific protections do you negotiate for your client, and which statutory provisions guide your drafting?`,
-      'prof-otieno': `Walk me through the essential components of a well-drafted legal opinion. Your client is a company director who wants to know whether a proposed transaction constitutes a conflict of interest. How do you structure this opinion, and what must it contain?`,
-    },
-    'atp-104': { // Trial Advocacy
-      'justice-mwangi': `Counsel, you are cross-examining a key prosecution witness who has given damaging testimony against your client. The witness has made a prior statement to the police that contradicts their testimony in court. Under Section 163 of the Evidence Act, how do you use that prior inconsistent statement?`,
-      'advocate-amara': `Your client is the defendant in a civil case. The plaintiff's advocate is asking your client leading questions during cross-examination, and your client is getting flustered. When exactly do you object, on what basis, and what is the distinction between permissible and impermissible leading questions?`,
-      'prof-otieno': `You are making closing submissions in a murder trial. The prosecution's case relies entirely on circumstantial evidence. What legal principles govern the sufficiency of circumstantial evidence for a conviction, and which landmark Kenyan or East African case sets the standard?`,
-    },
-    'atp-105': { // Professional Ethics
-      'justice-mwangi': `Counsel, an advocate discovers during trial that their client has committed perjury on the witness stand. The client insists the advocate continue and not reveal anything. Under the Advocates Act and the LSK Code of Ethics, what are the advocate's professional obligations, and what must they do?`,
-      'advocate-amara': `You're acting for a buyer in a conveyancing transaction. Midway through, the seller approaches you separately and asks you to also act for them to save costs. Under the professional conduct rules, can you act for both parties, and what is the specific rule that governs this?`,
-      'prof-otieno': `An advocate receives 5 million shillings from a client for a land purchase. The vendor falls through and the client asks for the money back. The advocate has already used 2 million from the client account for personal expenses. What provisions of the Advocates Act and the Accounts Rules have been breached, and what are the consequences?`,
-    },
-    'atp-106': { // Legal Practice Management
-      'justice-mwangi': `Counsel, a sole practitioner dies unexpectedly leaving active client matters, trust account funds, and pending court dates. Under the Advocates Act, what mechanisms exist for the protection of the deceased advocate's clients, and who takes custody of the files and trust funds?`,
-      'advocate-amara': `You're setting up a new law firm. A prospective client wants to pay your retainer fee in cryptocurrency. Can you accept it? What are the requirements under the Advocates (Accounts) Rules for receiving and holding client money, and what compliance issues arise?`,
-      'prof-otieno': `A law firm partner wants to advertise their services on social media and billboards. Under the current regulatory framework and the Advocates Act, what restrictions exist on advocate advertising in Kenya, and how have these rules evolved?`,
-    },
-    'atp-107': { // Conveyancing
-      'justice-mwangi': `Counsel, your client wants to purchase a parcel of agricultural land in a rural area. The seller produces a title deed, but your search reveals a caution registered against the land by a third party. Under the Land Registration Act 2012, what is the legal effect of that caution, and how does your client proceed?`,
-      'advocate-amara': `You're acting for a buyer who discovers, after completion, that the land they purchased has an overriding interest in favour of a person in actual occupation. Under Section 28 of the Land Registration Act 2012, what are overriding interests, and is your client bound by this interest despite it not appearing on the register?`,
-      'prof-otieno': `A vendor of land enters into a sale agreement but dies before the transfer is registered. The vendor's family refuses to complete the transaction. Your client, the buyer, has paid the full purchase price. What is the legal doctrine that protects the buyer's interest, and how do you enforce the sale agreement?`,
-    },
-    'atp-108': { // Commercial Transactions
-      'justice-mwangi': `Counsel, a buyer purchases goods from a seller, and the goods turn out to be defective — they are not of merchantable quality. Under the Sale of Goods Act, what implied conditions protect the buyer, which specific section applies, and what remedies are available?`,
-      'advocate-amara': `Your client signed a hire purchase agreement for a commercial vehicle. After paying 60% of the price, the finance company wants to repossess the vehicle claiming the client missed one instalment. Under the Hire Purchase Act, what protections does the hirer have against repossession at this stage?`,
-      'prof-otieno': `Two partners have been running a business together without a written partnership agreement. One partner wants to dissolve the partnership unilaterally. Under the Partnership Act, what are the grounds for dissolution, and how are the partnership assets distributed?`,
-    },
-  };
-
-  const unitQuestions = unitOpenings[unit?.id || ''];
-  if (unitQuestions && unitQuestions[panelist.id]) {
-    return unitQuestions[panelist.id];
-  }
-
-  // Fallback: still better than the old vague template
-  const fallbackOpenings: Record<string, (label: string) => string> = {
-    'justice-mwangi': (label) =>
-      `Counsel, we shall begin with ${label}. Let me put a specific scenario to you. ${unit?.statutes?.[0] ? `Under the ${unit.statutes[0]}, ` : ''}give me the legal test a court applies when a party raises a preliminary objection to jurisdiction.`,
-    'advocate-amara': (label) =>
-      `Right, let's start with ${label}. A client walks into your office with a dispute in this area. Walk me through the first three concrete steps you take — and tell me which specific provisions you rely on.`,
-    'prof-otieno': (label) =>
-      `Let us begin with ${label}. ${unit?.statutes?.[0] ? `Looking at the ${unit.statutes[0]}, ` : ''}there is often a tension between the black-letter rule and practical justice. Give me a concrete example of where that tension arises in this area of practice.`,
-  };
-
-  return (fallbackOpenings[panelist.id] || fallbackOpenings['justice-mwangi'])(unitLabel!);
-}
-
-
-
 /**
  * Detect when a student is pushing back, asking for clarification, expressing frustration,
  * or telling the examiner the question was vague/unclear.
@@ -343,7 +257,7 @@ function stripSpeakerPrefix(text: string, panelistName?: string): string {
   let cleaned = text.trim();
   for (const name of names) {
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const re = new RegExp(`^${escaped}\s*[:\-–—]\s*`, 'i');
+    const re = new RegExp(`^${escaped}\\s*[:\\-–—]\\s*`, 'i');
     cleaned = cleaned.replace(re, '').trim();
   }
   return cleaned;
@@ -361,43 +275,6 @@ function normalizeForComparison(text: string): string {
 
 function isMetaRequest(text: string): boolean {
   return /give me a (scenario|topic|question|hypothetical|issue|problem)|come up with|suggest a|propose a|start (the|a) debate|what (should|can|do) (we|i) (talk|discuss|debate|argue)|pick (a|the) topic|choose (a|the) (topic|scenario)|give me something|set (up|the) (a |the )?(scenario|debate)/i.test(text || '');
-}
-
-const DEVIL_SCENARIO_BANK = [
-  { area: 'Civil Litigation', scenario: `Here's your scenario. A commercial tenant in Nairobi has been paying rent consistently for three years. The landlord suddenly serves a notice to vacate, giving only 14 days, claiming they need the property for personal use. The tenant has an unexpired lease with 18 months remaining. You represent the tenant. What is your primary cause of action, and under which specific statutory provision do you anchor it?` },
-  { area: 'Criminal Litigation', scenario: `Let me set the scene. Your client is arrested at 2 AM and held at Central Police Station. By the time you're contacted, 36 hours have passed and no charges have been filed. The OCS says they're still investigating. You arrive at the station and demand to see your client. What are the specific constitutional provisions being violated, and what is the most effective legal remedy you seek — and in which court?` },
-  { area: 'Constitutional Law', scenario: `Here's your problem. A county government passes legislation imposing a new levy on all agricultural produce transported across county borders. Farmers argue this violates their constitutional rights. You represent the farmers' cooperative. What specific articles of the Constitution of Kenya 2010 are being violated, and what orders would you seek from the court?` },
-  { area: 'Commercial Transactions', scenario: `Consider this. A buyer in Mombasa contracts to purchase 500 tonnes of cement from a manufacturer in Nairobi, payment by letter of credit. The goods arrive but 30% are defective — substandard grade that fails the Kenya Bureau of Standards specifications. The seller demands full payment under the LC. You represent the buyer. What is your legal position, under which Act, and what remedies are available to you?` },
-  { area: 'Professional Ethics', scenario: `Here's a tricky one. An advocate discovers mid-trial that their client has been lying about a material fact — the client fabricated a key document that has already been admitted into evidence. The client insists the advocate continue with the case and not disclose anything. What are your professional obligations under the Advocates Act and the LSK Code of Ethics, and what do you actually do in that courtroom tomorrow morning?` },
-  { area: 'Probate and Administration', scenario: `Your scenario. A wealthy businessman dies intestate leaving three parcels of land, two wives — one in a customary marriage and one in a civil marriage — and seven children across both unions. The civil-marriage wife applies for letters of administration and seeks to exclude the customary-marriage wife entirely. You represent the customary-marriage wife. What is your legal basis for challenging this, and under which specific provisions of the Law of Succession Act?` },
-  { area: 'Conveyancing', scenario: `Here's the situation. Your client signed a sale agreement for a property in Karen, paid 40% of the purchase price, and the vendor now wants to rescind the agreement claiming they received a higher offer. Your client has been in possession and has made improvements worth 2 million shillings. What specific relief do you seek, in which court, and what is the legal doctrine that protects your client's interest?` },
-  { area: 'Legal Writing and Drafting', scenario: `Picture this. You're drafting a shareholders' agreement for a tech startup with three co-founders. One founder is contributing intellectual property, another is contributing capital, and the third is contributing operational expertise. They want equal shares but different vesting schedules. What are the critical clauses you must include to protect all parties, and what happens under Kenyan company law if one founder wants to exit after 18 months?` },
-];
-
-function buildDevilsContinuityFallback(lastUserText: string, unitId?: string): string {
-  const unit = unitId ? ATP_UNITS.find(u => u.id === unitId) : null;
-  const area = unit?.name || 'this issue';
-  const summary = summarizeForPrompt(lastUserText, 18);
-
-  if (!lastUserText?.trim()) {
-    // Opening: propose a concrete scenario instead of asking the student to pick
-    const matched = unit ? DEVIL_SCENARIO_BANK.find(s => unit.name.toLowerCase().includes(s.area.toLowerCase())) : null;
-    const scenario = matched || DEVIL_SCENARIO_BANK[Math.floor(Date.now() / 86400000) % DEVIL_SCENARIO_BANK.length];
-    return scenario.scenario;
-  }
-
-  // Detect meta-requests: student asking for a scenario/topic
-  if (isMetaRequest(lastUserText)) {
-    const matched = unit ? DEVIL_SCENARIO_BANK.find(s => unit.name.toLowerCase().includes(s.area.toLowerCase())) : null;
-    const scenario = matched || DEVIL_SCENARIO_BANK[Math.floor(Date.now() / 86400000) % DEVIL_SCENARIO_BANK.length];
-    return scenario.scenario;
-  }
-
-  if (/what do you mean|clarify|in what|which issue|not clear|explain/i.test(lastUserText)) {
-    return `Fair enough — let me be more direct. In ${area}, what exact legal rule are you relying on? Give me the section, then show me how it applies to a real fact pattern. I'll attack whatever you say.`;
-  }
-
-  return `You just argued: "${summary}". Interesting. Now defend that with one specific Kenyan authority, because I have a counterargument that's going to give you trouble.`;
 }
 
 function summarizeForPrompt(text: string, maxWords: number = 16): string {
@@ -784,10 +661,18 @@ RULES:
 
               // Send final complete message — trust the AI's output
               const cleanedContent = stripSpeakerPrefix(fullContent, 'Devil\'s Advocate');
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'done',
-                fullContent: cleanedContent || buildDevilsContinuityFallback(lastUserText, unitId),
-              })}\n\n`));
+              if (!cleanedContent) {
+                console.error('[ORAL-DA-STREAM] AI returned empty content. Model:', MINI_MODEL, 'Messages count:', apiMessages.length, 'maxTokens:', maxTokens);
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'error',
+                  error: 'AI returned an empty response. Please try sending your message again.',
+                })}\n\n`));
+              } else {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'done',
+                  fullContent: cleanedContent,
+                })}\n\n`));
+              }
 
               controller.close();
             } catch (error) {
@@ -815,13 +700,30 @@ RULES:
           max_completion_tokens: maxTokens,
         });
 
-        const response = completion.choices[0]?.message?.content || buildDevilsContinuityFallback(lastUserText, unitId);
+        const response = completion.choices[0]?.message?.content;
+        if (!response) {
+          console.error('[ORAL-DA] AI returned empty content.', {
+            model: MINI_MODEL,
+            finishReason: completion.choices[0]?.finish_reason,
+            refusal: (completion.choices[0]?.message as any)?.refusal,
+            msgCount: apiMessages.length,
+            maxTokens,
+          });
+          return NextResponse.json({
+            error: 'AI returned an empty response. Please try again.',
+          }, { status: 502 });
+        }
         const cleanedResponse = stripSpeakerPrefix(response, 'Devil\'s Advocate');
-        const finalResponse = cleanedResponse || buildDevilsContinuityFallback(lastUserText, unitId);
+        if (!cleanedResponse) {
+          console.error('[ORAL-DA] stripSpeakerPrefix removed all content. Original:', response.slice(0, 200));
+          return NextResponse.json({
+            error: 'AI returned an empty response. Please try again.',
+          }, { status: 502 });
+        }
 
         return NextResponse.json({
           type: 'devils-advocate',
-          content: finalResponse,
+          content: cleanedResponse,
           voice: 'onyx',
           sessionEnded: remaining <= 0,
         });
@@ -1028,10 +930,18 @@ RULES:
 
               // Send final complete message — trust the AI's output
               const cleanedContent = stripSpeakerPrefix(fullContent, currentPanelist.name);
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'done',
-                fullContent: cleanedContent || buildContextualOpeningQuestion(currentPanelist, unitId),
-              })}\n\n`));
+              if (!cleanedContent) {
+                console.error('[ORAL-EXAM-STREAM] AI returned empty content. Model:', MINI_MODEL, 'Panelist:', currentPanelist.id, 'Messages count:', apiMessages.length, 'maxTokens:', examMaxTokens);
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'error',
+                  error: 'AI returned an empty response. Please try sending your message again.',
+                })}\n\n`));
+              } else {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'done',
+                  fullContent: cleanedContent,
+                })}\n\n`));
+              }
 
               controller.close();
             } catch (error) {
@@ -1060,12 +970,30 @@ RULES:
         });
 
         const response = completion.choices[0]?.message?.content;
-        const cleanedResponse = response ? stripSpeakerPrefix(response, currentPanelist.name) : '';
-        const finalResponse = cleanedResponse || buildContextualOpeningQuestion(currentPanelist, unitId);
+        if (!response) {
+          console.error('[ORAL-EXAM] AI returned empty content.', {
+            model: MINI_MODEL,
+            panelist: currentPanelist.id,
+            finishReason: completion.choices[0]?.finish_reason,
+            refusal: (completion.choices[0]?.message as any)?.refusal,
+            msgCount: apiMessages.length,
+            maxTokens: examMaxTokens,
+          });
+          return NextResponse.json({
+            error: 'AI returned an empty response. Please try again.',
+          }, { status: 502 });
+        }
+        const cleanedResponse = stripSpeakerPrefix(response, currentPanelist.name);
+        if (!cleanedResponse) {
+          console.error('[ORAL-EXAM] stripSpeakerPrefix removed all content. Original:', response.slice(0, 200));
+          return NextResponse.json({
+            error: 'AI returned an empty response. Please try again.',
+          }, { status: 502 });
+        }
 
         return NextResponse.json({
           type: 'examiner',
-          content: finalResponse,
+          content: cleanedResponse,
           panelist: {
             id: currentPanelist.id,
             name: currentPanelist.name,

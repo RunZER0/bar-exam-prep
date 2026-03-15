@@ -76,6 +76,7 @@ export default function OralExamsPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentPanelistIndex, setCurrentPanelistIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingPanelist, setStreamingPanelist] = useState<any>(null);
@@ -890,6 +891,7 @@ export default function OralExamsPage() {
 
     setIsLoading(true);
     setError(null);
+    setLoadingMessage('Generating your performance report...');
     stopAudio();
 
     // Stop session recording (if it was started)
@@ -908,13 +910,14 @@ export default function OralExamsPage() {
       setPhase('summary');
 
       // Save session to backend
+      setLoadingMessage('Saving session...');
       await saveSession(data.content, data.score);
     } catch (err) {
       console.error('Summary error:', err);
       setError('Couldn\'t prepare your summary. Please try again.');
-      setIsLoading(false);
     } finally {
       setIsLoading(false);
+      setLoadingMessage('');
     }
   }, [messages, examType, mode, feedbackMode, authFetchJSON, stopAudio, stopSessionRecording, saveSession, autoRecord]);
 
@@ -1693,7 +1696,9 @@ export default function OralExamsPage() {
           <AiThinkingIndicator
             variant="inline"
             message={
-              examType === 'examiner'
+              loadingMessage
+                ? loadingMessage
+                : examType === 'examiner'
                 ? `${PANELISTS_INFO[currentPanelistIndex % PANELISTS_INFO.length]?.name || 'Examiner'} is thinking...`
                 : 'Preparing challenge...'
             }

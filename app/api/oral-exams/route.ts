@@ -3,7 +3,7 @@ import { withAuth, type AuthUser } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 import { getSubscriptionInfo, incrementFeatureUsage } from '@/lib/services/subscription';
-import { MINI_MODEL } from '@/lib/ai/model-config';
+import { MINI_MODEL, SUMMARY_MODEL } from '@/lib/ai/model-config';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -556,9 +556,10 @@ RULES:
       ];
 
       const completion = await openai.chat.completions.create({
-        model: MINI_MODEL,
+        model: SUMMARY_MODEL,
         messages: summaryMessages,
-        max_completion_tokens: 16000,
+        max_tokens: 2000,
+        temperature: 0.4,
       });
 
       const summaryContent = completion.choices[0]?.message?.content || 'Unable to generate summary.';

@@ -27,6 +27,9 @@ export const MINI_MODEL = process.env.MINI_MODEL || 'gpt-5-mini';
 // === Quiz Model — non-reasoning model for structured JSON quiz generation ===
 export const QUIZ_MODEL = process.env.QUIZ_MODEL || 'gpt-4o-mini';
 
+// === Summary Model — non-reasoning model for session reports (must be fast, <30s on Render free) ===
+export const SUMMARY_MODEL = process.env.SUMMARY_MODEL || 'gpt-4o-mini';
+
 // === Router Model — lightweight model for smart routing decisions ===
 export const ROUTER_MODEL = process.env.ROUTER_MODEL || 'gpt-5-mini';
 

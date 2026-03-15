@@ -693,24 +693,43 @@ RULES:
           },
         });
       } else {
-        // NON-STREAMING mode (existing)
-        const completion = await openai.chat.completions.create({
-          model: MINI_MODEL,
-          messages: apiMessages,
-          max_completion_tokens: maxTokens,
-        });
-
-        const response = completion.choices[0]?.message?.content;
-        if (!response) {
-          console.error('[ORAL-DA] AI returned empty content.', {
+        // NON-STREAMING mode — Devil's Advocate
+        // Retry once if empty
+        let completion: any = null;
+        let response: string | null = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          completion = await openai.chat.completions.create({
             model: MINI_MODEL,
+            messages: apiMessages,
+            max_completion_tokens: maxTokens,
+          });
+          response = completion.choices[0]?.message?.content || null;
+          if (response?.trim()) break;
+          console.error(`[ORAL-DA] Attempt ${attempt + 1} returned empty.`, {
+            model: MINI_MODEL,
+            choicesLen: completion.choices?.length,
             finishReason: completion.choices[0]?.finish_reason,
             refusal: (completion.choices[0]?.message as any)?.refusal,
+            role: completion.choices[0]?.message?.role,
+            contentType: typeof completion.choices[0]?.message?.content,
+            contentValue: JSON.stringify(completion.choices[0]?.message?.content),
             msgCount: apiMessages.length,
             maxTokens,
           });
+        }
+
+        if (!response?.trim()) {
+          const diag = {
+            model: MINI_MODEL,
+            finish_reason: completion?.choices?.[0]?.finish_reason || 'N/A',
+            choices_length: completion?.choices?.length ?? 0,
+            content_type: typeof completion?.choices?.[0]?.message?.content,
+            content_value: JSON.stringify(completion?.choices?.[0]?.message?.content),
+            refusal: (completion?.choices?.[0]?.message as any)?.refusal || 'none',
+            msg_count: apiMessages.length,
+          };
           return NextResponse.json({
-            error: 'AI returned an empty response. Please try again.',
+            error: `AI returned empty after 2 attempts. Diagnostics: ${JSON.stringify(diag)}`,
           }, { status: 502 });
         }
         const cleanedResponse = stripSpeakerPrefix(response, 'Devil\'s Advocate');
@@ -962,25 +981,45 @@ RULES:
           },
         });
       } else {
-        // NON-STREAMING mode (existing)
-        const completion = await openai.chat.completions.create({
-          model: MINI_MODEL,
-          messages: apiMessages,
-          max_completion_tokens: examMaxTokens,
-        });
-
-        const response = completion.choices[0]?.message?.content;
-        if (!response) {
-          console.error('[ORAL-EXAM] AI returned empty content.', {
+        // NON-STREAMING mode — Examiner
+        // Retry once if empty
+        let completion: any = null;
+        let response: string | null = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          completion = await openai.chat.completions.create({
+            model: MINI_MODEL,
+            messages: apiMessages,
+            max_completion_tokens: examMaxTokens,
+          });
+          response = completion.choices[0]?.message?.content || null;
+          if (response?.trim()) break;
+          console.error(`[ORAL-EXAM] Attempt ${attempt + 1} returned empty.`, {
             model: MINI_MODEL,
             panelist: currentPanelist.id,
+            choicesLen: completion.choices?.length,
             finishReason: completion.choices[0]?.finish_reason,
             refusal: (completion.choices[0]?.message as any)?.refusal,
+            role: completion.choices[0]?.message?.role,
+            contentType: typeof completion.choices[0]?.message?.content,
+            contentValue: JSON.stringify(completion.choices[0]?.message?.content),
             msgCount: apiMessages.length,
             maxTokens: examMaxTokens,
           });
+        }
+
+        if (!response?.trim()) {
+          const diag = {
+            model: MINI_MODEL,
+            panelist: currentPanelist.id,
+            finish_reason: completion?.choices?.[0]?.finish_reason || 'N/A',
+            choices_length: completion?.choices?.length ?? 0,
+            content_type: typeof completion?.choices?.[0]?.message?.content,
+            content_value: JSON.stringify(completion?.choices?.[0]?.message?.content),
+            refusal: (completion?.choices?.[0]?.message as any)?.refusal || 'none',
+            msg_count: apiMessages.length,
+          };
           return NextResponse.json({
-            error: 'AI returned an empty response. Please try again.',
+            error: `AI returned empty after 2 attempts. Diagnostics: ${JSON.stringify(diag)}`,
           }, { status: 502 });
         }
         const cleanedResponse = stripSpeakerPrefix(response, currentPanelist.name);

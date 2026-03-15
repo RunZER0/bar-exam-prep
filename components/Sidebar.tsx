@@ -44,7 +44,7 @@ const NAV_ITEMS = [
   { href: '/research', label: 'Research', icon: Search },
   { href: '/clarify', label: 'Get Clarification', icon: MessageCircleQuestion },
   { href: '/banter', label: 'Legal Banter', icon: Coffee },
-  { href: '/history', label: 'Chat History', icon: History },
+  { href: '/history', label: 'Activity Log', icon: History },
 ];
 
 const PREMIUM_ITEM = { href: '/subscribe', label: 'Upgrade', icon: Crown };

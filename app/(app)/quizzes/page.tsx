@@ -462,6 +462,10 @@ Rules:
           if (!line.startsWith('data: ')) continue;
           try {
             const data = JSON.parse(line.slice(6));
+            if (data.type === 'error') {
+              console.error('[Quiz fetchQuestions] Server error:', data.message);
+              break;
+            }
             if (data.type === 'question' && data.question) {
               const normalized = normalizeQuestions([data.question]);
               if (normalized.length > 0) {
@@ -572,6 +576,9 @@ Rules:
           if (!line.startsWith('data: ')) continue;
           try {
             const data = JSON.parse(line.slice(6));
+            if (data.type === 'error') {
+              throw new Error(data.message || 'Quiz generation failed on the server.');
+            }
             if (data.type === 'question' && data.question) {
               const normalized = normalizeQuestions([data.question]);
               if (normalized.length > 0) {
@@ -579,7 +586,10 @@ Rules:
                 receivedCount++;
               }
             }
-          } catch {
+          } catch (parseErr: any) {
+            if (parseErr?.message && !parseErr.message.includes('JSON')) {
+              throw parseErr;
+            }
             // skip partial SSE chunks
           }
         }

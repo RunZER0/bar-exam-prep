@@ -78,11 +78,13 @@ CRITICAL DIFFICULTY REQUIREMENTS:
 
     const readable = new ReadableStream({
       async start(controller) {
+        let rawAccumulator = '';  // Track ALL raw content for diagnostics
         try {
           for await (const chunk of stream) {
             const delta = chunk.choices[0]?.delta?.content;
             if (!delta) continue;
             buffer += delta;
+            rawAccumulator += delta;
 
             // Parse buffer character by character to extract complete JSON objects
             for (let i = 0; i < buffer.length; i++) {
@@ -143,17 +145,40 @@ CRITICAL DIFFICULTY REQUIREMENTS:
             }
           }
 
-          // Send completion event
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({ type: 'done', totalQuestions: questionCount })}\n\n`
-            )
-          );
+          if (questionCount === 0) {
+            console.error('[QUIZ-STREAM] Model returned 0 parseable questions.', {
+              model: MINI_MODEL,
+              rawLength: rawAccumulator.length,
+              rawPreview: rawAccumulator.slice(0, 500),
+              count,
+            });
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: 'error', message: `AI returned no valid quiz questions. Model: ${MINI_MODEL}. Raw length: ${rawAccumulator.length}. Preview: ${rawAccumulator.slice(0, 200)}` })}\n\n`
+              )
+            );
+          } else {
+            // Send completion event
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: 'done', totalQuestions: questionCount })}\n\n`
+              )
+            );
+          }
           controller.close();
-        } catch (err) {
+        } catch (err: any) {
+          console.error('[QUIZ-STREAM] Stream error:', err?.message || err, err?.status, err?.code);
+          const errMsg = err?.message || 'Unknown error';
+          const isModelErr = err?.code === 'model_not_found' || errMsg.includes('does not exist');
+          const isRateLimit = err?.status === 429;
+          const friendlyMsg = isModelErr
+            ? `Model "${MINI_MODEL}" not found — check MINI_MODEL config.`
+            : isRateLimit
+            ? 'AI is busy — please wait a moment and try again.'
+            : `Quiz generation failed: ${errMsg.slice(0, 150)}`;
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ type: 'error', message: 'Generation failed' })}\n\n`
+              `data: ${JSON.stringify({ type: 'error', message: friendlyMsg })}\n\n`
             )
           );
           controller.close();

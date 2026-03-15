@@ -21,8 +21,10 @@ import {
   MENTOR_MODEL,
   AUDITOR_MODEL,
   FAST_MODEL,
+  SMART_CHAT_ROUTER_ENABLED,
   getAnthropicKey,
 } from '@/lib/ai/model-config';
+import { routeQuery } from '@/lib/ai/router';
 
 let _openai: OpenAI | null = null;
 const getOpenAI = () => {
@@ -720,8 +722,17 @@ Provide a helpful, context-aware response:`;
         unitId: context?.unitId,
       });
     } catch (toolError) {
-      console.warn('[Guardrails] Tool-use path failed, falling back to plain AI:', toolError);
-      content = await callAI(fullPrompt, 3000);
+      console.warn('[Guardrails] Tool-use path failed, falling back to routed AI:', toolError);
+      // Fall back to smart-routed call (mini for simple, 5.2 for complex)
+      if (SMART_CHAT_ROUTER_ENABLED) {
+        const routed = await callAIRouted(fullPrompt, message, {
+          competencyType,
+          attachments: attachments?.map((a: any) => ({ type: a.type })),
+        });
+        content = routed.content;
+      } else {
+        content = await callAI(fullPrompt, 3000);
+      }
     }
 
     const guardrails = await validateResponse(message, content, 'research');
@@ -763,6 +774,36 @@ async function callAI(prompt: string, maxTokens: number = 2000): Promise<string>
   });
   
   return response.output_text || '';
+}
+
+/**
+ * Routed AI call — uses the smart router to pick gpt-5-mini or gpt-5.2
+ * based on query complexity. Used by the floating chat / Ask AI.
+ */
+export async function callAIRouted(
+  prompt: string,
+  message: string,
+  options: { competencyType?: string; attachments?: Array<{ type: string }> } = {},
+): Promise<{ content: string; route: string }> {
+  const openai = getOpenAI();
+  if (!openai) throw new Error('AI_NOT_CONFIGURED');
+
+  // Route the query
+  const decision = await routeQuery(message, openai, {
+    competencyType: options.competencyType,
+    attachments: options.attachments,
+  });
+
+  const model = decision.route === 'frontier' ? MENTOR_MODEL : FAST_MODEL;
+  console.log(`[SmartChat] Route: ${decision.route} → ${model} (${decision.reason})`);
+
+  const response = await openai.responses.create({
+    model,
+    input: prompt,
+    tools: [{ type: 'web_search_preview' as const }],
+  });
+
+  return { content: response.output_text || '', route: decision.route };
 }
 
 /**
@@ -967,7 +1008,14 @@ CITATION REQUIREMENT:
 
 Be supportive and encouraging - remember they're seeking help because they're stuck.`;
 
-    const content = await callAI(fullPrompt, 3000);
+    // Use smart router: gpt-5-mini for simple questions, gpt-5.2 for complex ones
+    let content: string;
+    if (SMART_CHAT_ROUTER_ENABLED) {
+      const routed = await callAIRouted(fullPrompt, prompt, { competencyType: 'clarification' });
+      content = routed.content;
+    } else {
+      content = await callAI(fullPrompt, 3000);
+    }
     const guardrails = await validateResponse(prompt, content, 'research');
 
     return {

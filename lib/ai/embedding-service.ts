@@ -410,7 +410,7 @@ export async function retrieveRAGContext(
 
     // Merge knowledge_base results with admin-curated entries, deduplicating by title
     const seenTitles = new Set(knowledgeEntries.map(e => e.title.toLowerCase()));
-    const mergedKnowledge = [...knowledgeEntries];
+    const mergedKnowledge: RAGContext['knowledgeEntries'] = [...knowledgeEntries];
     for (const entry of adminEntries) {
       if (!seenTitles.has(entry.title.toLowerCase())) {
         mergedKnowledge.push(entry);

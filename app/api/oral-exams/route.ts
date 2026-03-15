@@ -93,10 +93,11 @@ SESSION STRUCTURE:
 - When time is completely up, end the session gracefully: "Time's up, Counsel. That concludes our debate."
 
 RESPONSE LENGTH — CRITICAL:
+- OPENING SCENARIO: Maximum 4-5 sentences total. A brief welcome (1 sentence), a short fact pattern (2-3 sentences), and ONE question. Never write a full exam hypothetical for the opening.
 - About 30% SHORT (1-2 sentences): "Under which specific section?", "That's wrong. The Court of Appeal held otherwise.", "Prove it."
 - About 40% MEDIUM (3-5 sentences): A counter-argument that cites authority, then a follow-up trap.
 - About 30% LONGER (6-8 sentences): A developed counter-position with case law that forces the student to rethink.
-- Real debate has rhythm — quick jabs, then a devastating counter-argument.
+- HARD LIMIT: Never exceed 8 sentences in any single response. Real debate has rhythm — quick jabs, then a devastating counter-argument.
 
 CHALLENGE TECHNIQUES:
 1. The Flip: Take their own authority and show it supports the opposite conclusion.
@@ -592,7 +593,7 @@ RULES:
       // Inject session timing context
       const remaining = Math.max(0, sessionMaxMinutes - elapsedMinutes);
       const phaseCtx = elapsedMinutes < 2
-        ? '[SESSION PHASE: OPENING. Start with a brief welcome line, then ask a precise first question tied to the chosen unit.]'
+        ? '[SESSION PHASE: OPENING. Give a brief 1-2 sentence welcome, then present a SHORT scenario (3-4 sentences max) with ONE clear question. Keep the ENTIRE opening under 80 words total. Do NOT write a full exam hypothetical.]'
         : remaining <= 2
         ? '[SESSION PHASE: CLOSING. Begin wrap-up naturally: one final challenge, then a concise conclusion.]'
         : '[SESSION PHASE: DEEP DIVE. Probe the student answer with follow-ups and escalating difficulty.]';
@@ -622,7 +623,7 @@ RULES:
       if (messages.length === 0) {
         apiMessages.push({
           role: 'user' as const,
-          content: `I'm ready for the Devil's Advocate challenge${unitId ? ` on ${ATP_UNITS.find(u => u.id === unitId)?.name || 'this topic'}` : ''}. Present me with a concrete legal hypothetical — give me specific facts and ask me to take a position. Then challenge whatever I say.`,
+          content: `I'm ready for the Devil's Advocate challenge${unitId ? ` on ${ATP_UNITS.find(u => u.id === unitId)?.name || 'this topic'}` : ''}. Give me a short scenario — 3 to 4 sentences of facts, then one pointed question. Keep it brief.`,
         });
       }
 
@@ -889,7 +890,7 @@ RULES:
       if (messages.length === 0) {
         apiMessages.push({
           role: 'user' as const,
-          content: `I'm ready for my oral examination${unitId ? ` on ${ATP_UNITS.find(u => u.id === unitId)?.name || 'this topic'}` : ''}. Begin with a specific, concrete legal question. Do not use vague wording like "first principle".`,
+          content: `I'm ready for my oral examination${unitId ? ` on ${ATP_UNITS.find(u => u.id === unitId)?.name || 'this topic'}` : ''}. Ask me one specific, concrete legal question in 2-3 sentences. Keep it short and direct.`,
         });
       }
 

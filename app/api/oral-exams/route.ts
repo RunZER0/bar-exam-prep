@@ -93,11 +93,11 @@ SESSION STRUCTURE:
 - When time is completely up, end the session gracefully: "Time's up, Counsel. That concludes our debate."
 
 RESPONSE LENGTH — CRITICAL:
-- OPENING SCENARIO: Maximum 4-5 sentences total. A brief welcome (1 sentence), a short fact pattern (2-3 sentences), and ONE question. Never write a full exam hypothetical for the opening.
-- About 30% SHORT (1-2 sentences): "Under which specific section?", "That's wrong. The Court of Appeal held otherwise.", "Prove it."
-- About 40% MEDIUM (3-5 sentences): A counter-argument that cites authority, then a follow-up trap.
-- About 30% LONGER (6-8 sentences): A developed counter-position with case law that forces the student to rethink.
-- HARD LIMIT: Never exceed 8 sentences in any single response. Real debate has rhythm — quick jabs, then a devastating counter-argument.
+- OPENING SCENARIO: Maximum 80 words total. A one-sentence welcome, a 2-3 sentence fact pattern, and ONE question.
+- ALL follow-up responses: 40-60 words MAXIMUM. This is a rapid-fire spoken debate, not an essay.
+- Think bar-for-bar: the student hits, you hit back — short, sharp, devastating.
+- Typical response: one punchy counter-argument or challenge in 2-3 sentences, then ONE follow-up question or demand.
+- HARD LIMIT: Never exceed 60 words in any follow-up response. If you can say it in 30 words, do it in 30.
 
 CHALLENGE TECHNIQUES:
 1. The Flip: Take their own authority and show it supports the opposite conclusion.
@@ -476,6 +476,7 @@ async function handlePost(req: NextRequest, user: AuthUser): Promise<Response> {
       stream = false, // Enable SSE streaming
       elapsedMinutes = 0,     // current session elapsed time
       sessionMaxMinutes = 15, // session duration limit
+      daVoice,        // 'male' | 'female' — DA voice gender
     } = body;
 
     // ── Subscription gate: check access on NEW sessions (no messages yet) ──
@@ -573,6 +574,9 @@ RULES:
 
     if (type === 'devils-advocate') {
       // ----- DEVIL'S ADVOCATE -----
+      // Resolve DA voice from gender selection
+      const daVoiceName = daVoice === 'female' ? 'nova' : 'onyx';
+
       const systemPrompt = buildDevilsAdvocatePrompt(mode, unitContext, feedbackMode);
       const apiMessages = [
         { role: 'system' as const, content: systemPrompt },
@@ -605,6 +609,8 @@ RULES:
           role: 'system' as const,
           content: buildGranularTimingContext(elapsedMinutes, sessionMaxMinutes, daAssistantTurnCount),
         });
+        // Reinforce brevity on every follow-up turn
+        apiMessages.push({ role: 'system' as const, content: '[WORD LIMIT: Your response MUST be 40-60 words. This is a rapid spoken debate — hit back short and sharp. No essays.]' });
       }
 
       // Inject topic exhaustion detection for DA sessions too
@@ -626,11 +632,10 @@ RULES:
       // But opening turns and scenario proposals need more room
       const isOpening = messages.length === 0;
       const isScenarioRequest = messages.length > 0 && isMetaRequest(lastUserText);
-      const lengthRoll = Math.random();
       // gpt-5-mini is a reasoning model — internal chain-of-thought consumes
       // max_completion_tokens budget. Need ~10x headroom over desired output length.
-      const maxTokens = (isOpening || isScenarioRequest) ? 4000
-        : lengthRoll < 0.45 ? 2000 : lengthRoll < 0.80 ? 3000 : 4000;
+      // 40-60 word responses ≈ 80-120 tokens output, so 1500 gives plenty of reasoning room.
+      const maxTokens = (isOpening || isScenarioRequest) ? 2000 : 1500;
 
       // If no messages, generate opening challenge with a concrete scenario
       if (messages.length === 0) {
@@ -658,7 +663,7 @@ RULES:
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'metadata',
                 examType: 'devils-advocate',
-                voice: 'onyx',
+                voice: daVoiceName,
                 sessionEnded: remaining <= 0,
               })}\n\n`));
 
@@ -758,7 +763,7 @@ RULES:
         return NextResponse.json({
           type: 'devils-advocate',
           content: cleanedResponse,
-          voice: 'onyx',
+          voice: daVoiceName,
           sessionEnded: remaining <= 0,
         });
       }

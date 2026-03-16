@@ -68,6 +68,7 @@ export default function OralExamsPage() {
   const [inputMode, setInputMode] = useState<InputMode>('voice');
   const [selectedUnit, setSelectedUnit] = useState<string>('');
   const [panelistCount, setPanelistCount] = useState(3);
+  const [daVoice, setDaVoice] = useState<'male' | 'female'>('male');
   const [enableStreaming, setEnableStreaming] = useState(false);
   const [autoRecord, setAutoRecord] = useState(true);
 
@@ -615,6 +616,9 @@ export default function OralExamsPage() {
         basePayload.panelistCount = panelistCount;
         basePayload.currentPanelistIndex = currentPanelistIndex;
       }
+      if (examType === 'devils-advocate') {
+        basePayload.daVoice = daVoice;
+      }
 
       let streamingSucceeded = false;
 
@@ -828,6 +832,9 @@ export default function OralExamsPage() {
         payload.panelistCount = panelistCount;
         payload.currentPanelistIndex = 0;
       }
+      if (examType === 'devils-advocate') {
+        payload.daVoice = daVoice;
+      }
 
       const data = await authFetchJSON('/api/oral-exams', payload);
 
@@ -877,7 +884,7 @@ export default function OralExamsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [examType, mode, feedbackMode, selectedUnit, panelistCount, authFetchJSON, playTTS, prefetchTTS, playAudio, startSessionRecording, stopSessionRecording, autoRecord, sanitizeAssistantContent]);
+  }, [examType, mode, feedbackMode, selectedUnit, panelistCount, daVoice, authFetchJSON, playTTS, prefetchTTS, playAudio, startSessionRecording, stopSessionRecording, autoRecord, sanitizeAssistantContent]);
 
   /* ================================================================
      END SESSION — get summary
@@ -1128,6 +1135,39 @@ export default function OralExamsPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Voice Gender (DA only) */}
+                {examType === 'devils-advocate' && (
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium">Opponent Voice</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setDaVoice('male')}
+                        className={`rounded-xl border-2 p-4 text-center transition-all ${
+                          daVoice === 'male'
+                            ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                            : 'border-border hover:border-primary/30'
+                        }`}
+                      >
+                        <div className="text-2xl mb-2">♂</div>
+                        <div className="text-sm font-medium">Male</div>
+                        <div className="text-xs text-muted-foreground mt-1">Deep, commanding</div>
+                      </button>
+                      <button
+                        onClick={() => setDaVoice('female')}
+                        className={`rounded-xl border-2 p-4 text-center transition-all ${
+                          daVoice === 'female'
+                            ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                            : 'border-border hover:border-primary/30'
+                        }`}
+                      >
+                        <div className="text-2xl mb-2">♀</div>
+                        <div className="text-sm font-medium">Female</div>
+                        <div className="text-xs text-muted-foreground mt-1">Sharp, incisive</div>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Panelist Count (examiner only) */}
                 {examType === 'examiner' && (

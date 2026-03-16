@@ -84,10 +84,31 @@ export const DEVILS_ADVOCATE_PERSONA: VoicePersona = {
 };
 
 /**
+ * Devil's Advocate female voice variant.
+ */
+export const DEVILS_ADVOCATE_FEMALE_PERSONA: VoicePersona = {
+  panelistId: 'devils-advocate',
+  voice: 'nova',
+  instructions:
+    'Speak in a sharp, cutting, adversarial tone — like a ruthless senior advocate dismantling an opponent in court. ' +
+    'Use controlled intensity with biting emphasis on contradictions and weak arguments. ' +
+    'Vary pace dramatically: rapid-fire cross-examination style when pressing hard, then slow, deliberate delivery when landing a devastating point. ' +
+    'Sound relentless and formidable — confident, incisive, never backing down. This is a real legal battle. ' +
+    'When quoting what the student said back at them, adopt a slightly scornful intonation. ' +
+    'When citing counter-authority, deliver it with steely precision — slow down on the case name as if it ends the argument. ' +
+    'Use brief pauses after landing a challenge to let the silence build pressure. ' +
+    'Occasionally lower your voice to a near-whisper for dramatic emphasis before snapping back to full intensity.',
+};
+
+/**
  * Lookup a persona by panelist ID.
+ * For DA, optionally pass the voice name to get the matching persona.
  * Falls back to Devil's Advocate for unknown IDs.
  */
-export function getPersona(panelistId: string): VoicePersona {
+export function getPersona(panelistId: string, voice?: string): VoicePersona {
+  if (panelistId === 'devils-advocate' && voice === 'nova') {
+    return DEVILS_ADVOCATE_FEMALE_PERSONA;
+  }
   return (
     EXAMINER_PERSONAS.find(p => p.panelistId === panelistId) ??
     DEVILS_ADVOCATE_PERSONA

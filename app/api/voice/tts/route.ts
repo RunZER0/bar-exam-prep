@@ -45,7 +45,7 @@ export const POST = withAuth(async (req: NextRequest, user) => {
     }
 
     // Look up persona instructions if a panelist ID is provided
-    const persona = panelistId ? getPersona(panelistId) : null;
+    const persona = panelistId ? getPersona(panelistId, voice) : null;
 
     const chosenVoice = persona
       ? pickVariantVoice(persona.voice, persona.voiceVariants, text)

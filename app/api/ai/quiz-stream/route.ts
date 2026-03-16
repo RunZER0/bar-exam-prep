@@ -189,51 +189,62 @@ export async function POST(req: NextRequest) {
     const readable = new ReadableStream({
       async start(controller) {
         try {
-          // Phase 1: Generate first batch
-          const batch1 = await generateQuizBatch(openai, prompt, count);
-          let allValid = batch1.valid;
+          // Batch generation — split large counts into chunks of 15
+          // to stay within Render's 30s request timeout per OpenAI call
+          const BATCH_SIZE = 15;
+          let allValid: ValidQuestion[] = [];
+          let streamIndex = 0;
+          const batchCount = Math.ceil(count / BATCH_SIZE);
 
-          // Phase 2: If shortfall, retry once for the missing count
-          if (allValid.length < count) {
-            const shortfall = count - allValid.length;
-            console.log(`[QUIZ] First batch: ${allValid.length}/${count} valid. Retrying for ${shortfall} more.`);
-            try {
-              const retryPrompt = `${prompt}\n\nIMPORTANT: Generate exactly ${shortfall} questions. Output {"questions": [...]} with ${shortfall} items.`;
-              const batch2 = await generateQuizBatch(openai, retryPrompt, shortfall);
-              allValid = [...allValid, ...batch2.valid];
-            } catch (retryErr) {
-              console.error('[QUIZ] Retry failed:', retryErr);
+          for (let b = 0; b < batchCount; b++) {
+            const remaining = count - allValid.length;
+            if (remaining <= 0) break;
+            const batchTarget = Math.min(BATCH_SIZE, remaining);
+
+            const batch = await generateQuizBatch(openai, prompt, batchTarget);
+            let batchValid = batch.valid;
+
+            // Retry once per batch if shortfall
+            if (batchValid.length < batchTarget) {
+              const shortfall = batchTarget - batchValid.length;
+              console.log(`[QUIZ] Batch ${b + 1}/${batchCount}: ${batchValid.length}/${batchTarget} valid. Retrying for ${shortfall}.`);
+              try {
+                const retryPrompt = `${prompt}\n\nIMPORTANT: Generate exactly ${shortfall} questions. Output {"questions": [...]} with ${shortfall} items.`;
+                const batch2 = await generateQuizBatch(openai, retryPrompt, shortfall);
+                batchValid = [...batchValid, ...batch2.valid];
+              } catch (retryErr) {
+                console.error('[QUIZ] Retry failed:', retryErr);
+              }
+            }
+
+            // Stream this batch's questions immediately
+            for (const q of batchValid) {
+              allValid.push(q);
+              if (allValid.length <= count) {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({ type: 'question', index: streamIndex, question: q })}\n\n`
+                  )
+                );
+                streamIndex++;
+              }
             }
           }
 
           if (allValid.length === 0) {
-            console.error('[QUIZ] Pipeline produced 0 valid questions.', {
-              model: QUIZ_MODEL,
-              rawLength: batch1.rawLength,
-              rawPreview: batch1.rawPreview,
-            });
+            console.error('[QUIZ] Pipeline produced 0 valid questions.', { model: QUIZ_MODEL });
             controller.enqueue(
               encoder.encode(
-                `data: ${JSON.stringify({ type: 'error', message: `Quiz generation produced 0 valid questions after validation. Model: ${QUIZ_MODEL}. Raw length: ${batch1.rawLength}.` })}\n\n`
+                `data: ${JSON.stringify({ type: 'error', message: `Quiz generation produced 0 valid questions. Model: ${QUIZ_MODEL}.` })}\n\n`
               )
             );
             controller.close();
             return;
           }
 
-          // Phase 3: Stream validated questions as SSE events
-          const final = allValid.slice(0, count);
-          for (let i = 0; i < final.length; i++) {
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: 'question', index: i, question: final[i] })}\n\n`
-              )
-            );
-          }
-
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ type: 'done', totalQuestions: final.length })}\n\n`
+              `data: ${JSON.stringify({ type: 'done', totalQuestions: streamIndex })}\n\n`
             )
           );
           controller.close();

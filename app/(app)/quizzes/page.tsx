@@ -536,7 +536,9 @@ Rules:
     try {
       const token = await getIdToken();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 40000);
+      // Scale timeout with question count — batched generation needs more time
+      const timeoutMs = Math.max(45000, effectiveCount * 3000);
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       let receivedCount = 0;
 
       const res = await fetch('/api/ai/quiz-stream', {
@@ -612,8 +614,14 @@ Rules:
       console.error('Quiz generation failed:', err);
       setLoading(false);
       if (err?.name === 'AbortError') {
-        // Timeout — if we got some questions, keep playing
-        setGenerationError('Generation timed out — playing with questions received so far.');
+        if (questions.length > 0) {
+          // Timeout but we got some questions — keep playing with what we have
+          setGenerationError('Generation timed out — playing with questions received so far.');
+        } else {
+          // No questions at all — go back to menu
+          setGenerationError('Generation timed out. Try selecting fewer questions.');
+          setSection('menu');
+        }
       } else {
         setGenerationError(err?.message || 'Failed to generate quiz questions. Please try again.');
         setSection('menu');
@@ -1185,66 +1193,129 @@ Rules:
   if (section === 'results') {
     const totalAnswered = responsesTracked.length || questions.length;
     const pct = totalAnswered > 0 ? Math.round((score / totalAnswered) * 100) : 0;
+    const wrongCount = totalAnswered - score;
     const resultConfig = pct >= 80 
-      ? { gradient: 'from-emerald-500 to-teal-500', emoji: '🎉', title: 'Outstanding!', subtitle: 'You crushed it!' }
+      ? { gradient: 'from-emerald-400 to-teal-500', bg: 'from-emerald-500/10 via-teal-500/5 to-transparent', emoji: '🎉', title: 'Outstanding!', subtitle: 'You absolutely crushed it — top-tier performance!', ring: 'text-emerald-500', accent: 'emerald' }
       : pct >= 60 
-      ? { gradient: 'from-amber-500 to-orange-500', emoji: '👏', title: 'Well Done!', subtitle: 'Great effort!' }
+      ? { gradient: 'from-amber-400 to-orange-500', bg: 'from-amber-500/10 via-orange-500/5 to-transparent', emoji: '👏', title: 'Well Done!', subtitle: 'Strong performance — you\'re getting there!', ring: 'text-amber-500', accent: 'amber' }
       : pct >= 40 
-      ? { gradient: 'from-gray-500 to-gray-600', emoji: '💪', title: 'Not Bad!', subtitle: 'Keep practicing!' }
-      : { gradient: 'from-rose-500 to-pink-500', emoji: '📚', title: 'Keep Going!', subtitle: 'Practice makes perfect!' };
+      ? { gradient: 'from-blue-400 to-indigo-500', bg: 'from-blue-500/10 via-indigo-500/5 to-transparent', emoji: '💪', title: 'Good Effort!', subtitle: 'Every quiz brings you closer to mastery.', ring: 'text-blue-500', accent: 'blue' }
+      : { gradient: 'from-rose-400 to-pink-500', bg: 'from-rose-500/10 via-pink-500/5 to-transparent', emoji: '📚', title: 'Keep Going!', subtitle: 'The best lawyers failed before they succeeded.', ring: 'text-rose-500', accent: 'rose' };
+
+    // SVG ring animation values
+    const circumference = 2 * Math.PI * 54; // radius = 54
+    const strokeOffset = circumference - (pct / 100) * circumference;
 
     return (
-      <div className="p-6 md:p-10 max-w-2xl mx-auto space-y-8 text-center">
-        <div className="relative inline-block">
-          <div className={`relative inline-flex items-center justify-center h-32 w-32 rounded-full bg-gradient-to-br ${resultConfig.gradient} text-white shadow-2xl`}>
-            <span className="text-4xl font-bold">{pct}%</span>
+      <div className={`min-h-[80vh] bg-gradient-to-b ${resultConfig.bg} p-6 md:p-10`}>
+        <div className="max-w-2xl mx-auto space-y-8">
+          {/* Animated Score Ring */}
+          <div className="flex flex-col items-center pt-4">
+            <div className="relative">
+              {/* Decorative glow */}
+              <div className={`absolute inset-0 blur-3xl opacity-20 bg-gradient-to-br ${resultConfig.gradient} rounded-full scale-150`} />
+              
+              <div className="relative w-40 h-40">
+                <svg className="w-40 h-40 -rotate-90" viewBox="0 0 120 120">
+                  {/* Background ring */}
+                  <circle cx="60" cy="60" r="54" fill="none" strokeWidth="8"
+                    className="stroke-muted/30" />
+                  {/* Score ring with animation */}
+                  <circle cx="60" cy="60" r="54" fill="none" strokeWidth="8"
+                    strokeLinecap="round"
+                    className={resultConfig.ring}
+                    stroke="currentColor"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeOffset}
+                    style={{ transition: 'stroke-dashoffset 1.5s ease-out' }} />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-4xl font-bold tracking-tight">{pct}%</span>
+                  <span className="text-xs text-muted-foreground font-medium">Score</span>
+                </div>
+              </div>
+              
+              {/* Floating emoji */}
+              <span className="absolute -top-1 -right-1 text-3xl animate-bounce drop-shadow-lg">
+                {resultConfig.emoji}
+              </span>
+            </div>
+
+            <h2 className={`text-3xl font-bold mt-5 bg-gradient-to-r ${resultConfig.gradient} bg-clip-text text-transparent`}>
+              {resultConfig.title}
+            </h2>
+            <p className="text-muted-foreground mt-1.5 text-sm max-w-xs">{resultConfig.subtitle}</p>
           </div>
-          <span className="absolute -top-2 -right-2 text-4xl animate-bounce">{resultConfig.emoji}</span>
-        </div>
 
-        <div>
-          <h2 className={`text-3xl font-bold bg-gradient-to-r ${resultConfig.gradient} bg-clip-text text-transparent`}>
-            {resultConfig.title}
-          </h2>
-          <p className="text-muted-foreground mt-1">{resultConfig.subtitle}</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            {score}/{totalAnswered} correct · {mode.name}
-            {isInfinityMode && ' · Endless Mode'}
-          </p>
-        </div>
+          {/* Stats Row */}
+          <div className="grid grid-cols-3 gap-3 max-w-lg mx-auto">
+            <div className="relative overflow-hidden rounded-2xl border bg-card p-4 text-center">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-emerald-600" />
+              <CheckCircle2 className="h-5 w-5 mx-auto text-emerald-500 mb-1.5" />
+              <p className="text-2xl font-bold">{score}</p>
+              <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Correct</p>
+            </div>
+            <div className="relative overflow-hidden rounded-2xl border bg-card p-4 text-center">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-400 to-orange-600" />
+              <Flame className="h-5 w-5 mx-auto text-orange-500 mb-1.5" />
+              <p className="text-2xl font-bold">{bestStreak}</p>
+              <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Best Streak</p>
+            </div>
+            <div className="relative overflow-hidden rounded-2xl border bg-card p-4 text-center">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-400 to-rose-600" />
+              <XCircle className="h-5 w-5 mx-auto text-rose-500 mb-1.5" />
+              <p className="text-2xl font-bold">{wrongCount}</p>
+              <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">To Review</p>
+            </div>
+          </div>
 
-        <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
-          <Card className="border border-emerald-500/15 bg-emerald-500/3">
-            <CardContent className="pt-4 pb-3 text-center">
-              <Target className="h-6 w-6 mx-auto text-emerald-500 mb-2" />
-              <p className="text-2xl font-bold text-emerald-600">{score}</p>
-              <p className="text-xs text-muted-foreground">Correct</p>
-            </CardContent>
-          </Card>
-          <Card className="border-2 border-orange-500/20 bg-orange-500/5">
-            <CardContent className="pt-4 pb-3 text-center">
-              <Flame className="h-6 w-6 mx-auto text-orange-500 mb-2" />
-              <p className="text-2xl font-bold text-orange-600">{bestStreak}</p>
-              <p className="text-xs text-muted-foreground">Best Streak</p>
-            </CardContent>
-          </Card>
-          <Card className="border-2 border-gray-500/20 bg-gray-500/5">
-            <CardContent className="pt-4 pb-3 text-center">
-              <Star className="h-6 w-6 mx-auto text-gray-500 mb-2" />
-              <p className="text-2xl font-bold text-gray-600">{totalAnswered - score}</p>
-              <p className="text-xs text-muted-foreground">To Review</p>
-            </CardContent>
-          </Card>
-        </div>
+          {/* Session Info Bar */}
+          <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <mode.icon className="h-3.5 w-3.5" />
+              {mode.name}
+            </span>
+            <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+            <span>{score}/{totalAnswered} correct</span>
+            {isInfinityMode && (
+              <>
+                <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+                <span className="flex items-center gap-1"><Infinity className="h-3 w-3" /> Endless</span>
+              </>
+            )}
+          </div>
 
-        <div className="flex gap-3 justify-center pt-4">
-          <Button onClick={startQuiz} className="gap-2 bg-gradient-to-r from-primary to-emerald-600 hover:from-primary/90 hover:to-emerald-600/90 shadow-lg">
-            <RotateCcw className="h-4 w-4" />
-            Play Again
-          </Button>
-          <Button variant="outline" onClick={() => setSection('menu')} className="gap-2">
-            Change Mode
-          </Button>
+          {/* Performance Message */}
+          <div className={`rounded-2xl border bg-gradient-to-r ${resultConfig.bg} p-5`}>
+            <div className="flex items-start gap-3">
+              <div className={`shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br ${resultConfig.gradient} flex items-center justify-center text-white`}>
+                {pct >= 80 ? <Trophy className="h-5 w-5" /> : pct >= 60 ? <TrendingUp className="h-5 w-5" /> : pct >= 40 ? <Brain className="h-5 w-5" /> : <GraduationCap className="h-5 w-5" />}
+              </div>
+              <div>
+                <p className="font-medium text-sm">
+                  {pct >= 80 ? 'Exceptional mastery!' : pct >= 60 ? 'Solid foundation — push for excellence.' : pct >= 40 ? 'Building momentum — focus on weak areas.' : 'Every expert was once a beginner.'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {pct >= 80 
+                    ? `You nailed ${score} out of ${totalAnswered}. Keep this up on exam day.`
+                    : pct >= 60 
+                    ? `${wrongCount} questions to review — revisit the explanations to lock in the gaps.`
+                    : `Focus on the ${wrongCount} missed questions. Review the cited provisions and cases.`}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 justify-center pt-2">
+            <Button onClick={startQuiz} size="lg" className={`gap-2 bg-gradient-to-r ${resultConfig.gradient} hover:opacity-90 shadow-lg shadow-${resultConfig.accent}-500/20 text-white border-0`}>
+              <RotateCcw className="h-4 w-4" />
+              Play Again
+            </Button>
+            <Button variant="outline" size="lg" onClick={() => setSection('menu')} className="gap-2">
+              Change Mode
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -1264,7 +1335,22 @@ Rules:
         </div>
       );
     }
-    return null;
+    // No question available — show recovery instead of blank screen
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center p-6">
+        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+          <XCircle className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <p className="font-medium text-lg">No questions available</p>
+        <p className="text-sm text-muted-foreground max-w-sm">
+          {generationError || 'Something went wrong loading the quiz. Try again with fewer questions.'}
+        </p>
+        <Button onClick={() => setSection('menu')} className="gap-2 mt-2">
+          <RotateCcw className="h-4 w-4" />
+          Back to Menu
+        </Button>
+      </div>
+    );
   }
 
   const qType = q.questionType || 'mcq';

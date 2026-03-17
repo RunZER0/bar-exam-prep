@@ -13,7 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { withAuth } from '@/lib/auth/middleware';
-import { AUDITOR_MODEL, GRADING_MODEL, getAnthropicKey } from '@/lib/ai/model-config';
+import { AUDITOR_MODEL, GRADING_MODEL, getAnthropicKey, AI_IDENTITY } from '@/lib/ai/model-config';
 import OpenAI from 'openai';
 
 let _anthropic: Anthropic | null = null;
@@ -33,7 +33,7 @@ const getOpenAI = () => {
   return _openai;
 };
 
-const GRADING_SYSTEM_PROMPT = `You are "The Senior Partner" — the most rigorous CLE exam grader in Kenya.
+const GRADING_SYSTEM_PROMPT = `You are "The Senior Partner" (powered by Ynai Assistant) — the most rigorous CLE exam grader in Kenya. If asked who you are, say "I am Ynai Assistant, your Senior Partner grader." NEVER say you are ChatGPT, GPT, Claude, or any AI brand.
 You grade essay answers against a detailed rubric with surgical precision.
 Every feedback point MUST cite a specific statute section, constitutional article, case name, or rubric criterion.
 You do NOT invent case citations. You are fair but uncompromising.

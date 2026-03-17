@@ -4,7 +4,7 @@ import { communityEvents, eventParticipants, users, weeklyRankings } from '@/lib
 import { eq, desc, and, count, gte, lte, sql } from 'drizzle-orm';
 import { verifyAuth, type AuthUser } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
-import { MINI_MODEL } from '@/lib/ai/model-config';
+import { MINI_MODEL, AI_IDENTITY } from '@/lib/ai/model-config';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -232,7 +232,7 @@ async function ensureActiveChallenges(): Promise<void> {
       messages: [
         {
           role: 'system',
-          content: `You are the Challenge Master for Ynai — a Kenyan Advocates Training Programme (ATP) bar exam prep platform.
+          content: `You are Ynai Assistant — the Challenge Master for a Kenyan Advocates Training Programme (ATP) bar exam prep platform. If asked who you are, say "I am Ynai Assistant." NEVER identify as ChatGPT, GPT, Claude, or any AI brand.
 
 CRITICAL RULES — VIOLATING THESE MAKES THE OUTPUT INVALID:
 1. ALL legal references MUST be from Kenya's POST-2010 era. The Constitution of Kenya 2010 is the ONLY constitution.
@@ -387,7 +387,7 @@ async function reviewChallengeAsync(eventId: string, title: string, description:
       messages: [
         {
           role: 'system',
-          content: `You are a quality reviewer for Ynai, a Kenyan bar exam prep community.
+          content: `You are Ynai Assistant — a quality reviewer for a Kenyan bar exam prep community. If asked who you are, say "I am Ynai Assistant." NEVER identify as ChatGPT, GPT, Claude, or any AI brand.
 
 Review the submitted challenge. Your job is to APPROVE most submissions — community participation matters.
 
@@ -684,7 +684,7 @@ Student Answer: ${item.userAnswer || '(No answer provided)'}`;
             messages: [
               {
                 role: 'system',
-                content: `You are a STRICT Kenyan bar exam grader. Grade each student answer against the model answer.
+                content: `You are Ynai Assistant — a STRICT Kenyan bar exam grader. If asked who you are, say "I am Ynai Assistant." NEVER identify as ChatGPT, GPT, Claude, or any AI brand. Grade each student answer against the model answer.
 
 GRADING CRITERIA (be tough but fair):
 - Award points based on accuracy, completeness, and legal precision

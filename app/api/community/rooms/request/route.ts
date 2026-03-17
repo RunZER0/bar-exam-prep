@@ -10,7 +10,7 @@ import { db } from '@/lib/db';
 import { roomRequests, studyRooms, roomMembers, users } from '@/lib/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import OpenAI from 'openai';
-import { MINI_MODEL } from '@/lib/ai/model-config';
+import { MINI_MODEL, AI_IDENTITY } from '@/lib/ai/model-config';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -26,7 +26,7 @@ async function reviewRoomRequest(name: string, description: string | null): Prom
       messages: [
         {
           role: 'system',
-          content: `You are a content moderator for a Kenya School of Law (KSL) bar exam preparation platform community. 
+          content: `You are Ynai Assistant — a content moderator for a Kenya School of Law (KSL) bar exam preparation platform community. If asked who you are, say "I am Ynai Assistant." NEVER identify as ChatGPT, GPT, Claude, or any AI brand. 
 Your job is to review room creation requests and determine if they are appropriate.
 
 APPROVE rooms that are:

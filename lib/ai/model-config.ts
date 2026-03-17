@@ -49,6 +49,81 @@ export const NEW_TTS_ENABLED = process.env.NEW_TTS_ENABLED !== 'false'; // on by
 // New STT model (gpt-4o-mini-transcribe)
 export const NEW_STT_ENABLED = process.env.NEW_STT_ENABLED !== 'false'; // on by default
 
+// === AI Identity — injected into all system prompts ===
+export const AI_IDENTITY = `IDENTITY — ABSOLUTE RULE: You are "Ynai Assistant" — the AI tutor powering the Ynai bar exam preparation platform. If ANYONE asks who you are, your name, what model you are, or who made you, you MUST respond: "I am Ynai Assistant, your AI-powered legal study companion built for Kenya School of Law students." NEVER say you are ChatGPT, GPT, Claude, OpenAI, Anthropic, or any other AI brand. You are Ynai Assistant. Period.`;
+
+// === 2025 Oral Examination Themes (sourced from actual past oral exam questions) ===
+export const ORAL_2025_THEMES = `
+REAL 2025 KSL ORAL EXAMINATION THEMES — Use these to calibrate the depth and relevance of your questions:
+
+PROFESSIONAL PRACTICE & ETHICS:
+- Advocate-client privilege: scope, exceptions, when it can be waived
+- Setting up a law firm: requirements under the Advocates Act, practising certificate, professional indemnity
+- Advertising by advocates: LSK rules, restrictions, what is permissible
+- Professional conduct: conflicts of interest, handling client funds, duties to the court
+- Pupillage: requirements, obligations, supervisor responsibilities
+
+CIVIL LITIGATION & PROCEDURE:
+- Pleas and pleadings: types of pleas (dilatory vs peremptory), striking out pleadings, amendment of pleadings
+- Injunctions: temporary/interlocutory injunctions (Giella v Cassman Brown test, American Cyanamide principles), permanent injunctions, constitutional injunctions (Mitubell Welfare Society v Kenya Airports Authority)
+- Garnishee proceedings: procedure under Order 22 CPR, attachment of debts, garnishee absolute vs nisi
+- Summary judgment and default judgment: grounds, procedure, setting aside
+- Discovery and interrogatories, limitation of actions
+- Appeals process, stay of execution pending appeal
+- Costs and taxation of bills
+
+CONVEYANCING & PROPERTY:
+- Conveyancing process: completion, requisitions, land search, consents (Land Control Act, county government)
+- Land registration: first registration, absolute vs qualified title
+- Charges and mortgages: creation, statutory power of sale, equity of redemption
+- Sectional properties: Sectional Properties Act 2020
+- Easements and restrictions
+
+CRIMINAL LITIGATION:
+- Bail and bond: constitutional right to bail (Article 49), factors for/against, conditions
+- Plea bargaining: procedure under the CPC, victim involvement
+- Sentencing: principles, Muruatetu v Republic (mandatory death sentence), mitigating/aggravating factors
+- Defamation: distinction between criminal and civil defamation, defences
+- Burden and standard of proof, treatment of accomplice evidence
+
+CONSTITUTIONAL LAW:
+- Constitutional commissions: establishment, independence, functions (Chapter 15)
+- BBI Advisory Opinion (2021): basic structure doctrine, constituent vs amending power
+- Judicial review: grounds (illegality, irrationality, procedural impropriety), prerogative orders (certiorari, mandamus, prohibition)
+- Bill of Rights: limitation of rights (Article 24), enforcement (Article 22/23)
+- Devolution: county government disputes, intergovernmental relations
+
+SUCCESSION & PROBATE:
+- Grant of probate vs letters of administration: procedure, requirements
+- Dependants and distribution: Law of Succession Act, matrimonial property considerations
+- Revocation of grants, intermeddling, caveats
+- Inheritance and surviving spouse rights
+
+ALTERNATIVE DISPUTE RESOLUTION (ADR):
+- Arbitration: Arbitration Act 1995, appointment of arbitrators, setting aside awards
+- Mediation: court-annexed mediation, enforceability of mediation agreements
+- Negotiation and conciliation, customary dispute resolution (Article 159(2)(c))
+
+TRIAL ADVOCACY:
+- Opening statements: structure, dos and don'ts
+- Examination-in-chief: leading questions, refreshing memory, hostile witnesses
+- Cross-examination: techniques, impeachment, prior inconsistent statements
+- Re-examination: scope, when permitted
+- Closing submissions: structure, persuasive techniques
+
+KEY CASES TO KNOW:
+- Giella v Cassman Brown (interlocutory injunctions test)
+- American Cyanamide v Ethicon (balance of convenience)
+- Mitubell Welfare Society v Kenya Airports Authority (constitutional injunctions)
+- Muruatetu v Republic (mandatory death sentence unconstitutional)
+- BBI Advisory Opinion [2021] (basic structure doctrine)
+- Anarita Karimi Njeru v Republic (locus standi, constitutional petitions)
+- Katiba Institute v Attorney General (public interest litigation)
+- Communications Authority v Royal Media Services (freedom of expression)
+- Republic v Ahmad Abolfathi Mohammed (terrorism, fair trial rights)
+- Macharia & Another v Kenya Commercial Bank (constitutional interpretation)
+`;
+
 // === API Key Getters ===
 export function getOpenAIKey(): string | undefined {
   return process.env.OPENAI_API_KEY;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { withAuth, type AuthUser } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
-import { MINI_MODEL } from '@/lib/ai/model-config';
+import { MINI_MODEL, AI_IDENTITY } from '@/lib/ai/model-config';
 
 const sql = neon(process.env.DATABASE_URL!);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -690,7 +690,7 @@ async function generateCaseAnalysis(caseInfo: { title: string; citation?: string
     const completion = await openai.chat.completions.create({
       model: MINI_MODEL,
       messages: [
-        { role: 'system', content: 'You are a Kenyan law expert. Return ONLY valid JSON, no markdown.' },
+        { role: 'system', content: 'You are Ynai Assistant — a Kenyan law expert. If asked who you are, say "I am Ynai Assistant." NEVER identify as ChatGPT, GPT, Claude, or any AI brand. Return ONLY valid JSON, no markdown.' },
         { role: 'user', content: prompt },
       ],
       temperature: 0.3,

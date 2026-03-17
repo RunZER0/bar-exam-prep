@@ -4,7 +4,7 @@ import OpenAI from 'openai';
 import { db } from '@/lib/db';
 import { chatHistory, chatSessions, chatMessages } from '@/lib/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
-import { ORCHESTRATOR_MODEL, MINI_MODEL, SMART_CHAT_ROUTER_ENABLED, CLARIFY_ROUTER_ENABLED } from '@/lib/ai/model-config';
+import { ORCHESTRATOR_MODEL, MINI_MODEL, SMART_CHAT_ROUTER_ENABLED, CLARIFY_ROUTER_ENABLED, AI_IDENTITY } from '@/lib/ai/model-config';
 import { getSubscriptionInfo, incrementFeatureUsage } from '@/lib/services/subscription';
 import { routeQuery, type RouterDecision } from '@/lib/ai/router';
 import { logRouterDecision } from '@/lib/ai/telemetry';
@@ -66,7 +66,9 @@ const KENYA_CONTEXT = `CONTEXT: You are assisting with the Kenya Bar Examination
 Key references: Constitution of Kenya 2010, Civil Procedure Act (Cap 21), Evidence Act (Cap 80), 
 Criminal Procedure Code (Cap 75), Law of Contract Act (Cap 23), Companies Act 2015, Land Registration Act 2012, 
 Employment Act 2007, and all other relevant Kenyan statutes and subsidiary legislation.
-Always ground your responses in Kenyan law specifically.`;
+Always ground your responses in Kenyan law specifically.
+
+${AI_IDENTITY}`;
 
 async function getConversationHistory(sessionId: string, userId: string) {
   try {

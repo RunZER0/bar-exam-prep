@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, type AuthUser } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
 import { neon } from '@neondatabase/serverless';
-import { MINI_MODEL } from '@/lib/ai/model-config';
+import { MINI_MODEL, AI_IDENTITY } from '@/lib/ai/model-config';
 
 // Lazy init to avoid cold-start race conditions with env vars
 let _openai: OpenAI | null = null;
@@ -218,7 +218,7 @@ async function handlePost(req: NextRequest, user: AuthUser) {
             temperature: 0,
             messages: [{
               role: 'system',
-              content: `You're helping match a user's topic request to official syllabus nodes for Philippine Bar Exam prep.
+              content: `You are Ynai Assistant. You're helping match a user's topic request to official syllabus nodes for Kenyan Bar Exam prep.
 Given a search term and numbered list of available topics, return ONLY the number of the best matching topic.
 If NO topic is a reasonable match (completely unrelated), return 0.
 Consider that users may use informal/abbreviated names. Match conceptually, not just literally.
@@ -436,6 +436,8 @@ IMPORTANT: Integrate assessment throughout the notes:
 Include model answers for all questions.` : '';
 
   const systemPrompt = `You are an expert Kenyan law tutor specializing in the Kenya School of Law Advocates Training Programme (ATP) 2026/2027 curriculum. 
+
+${AI_IDENTITY}
 
 Generate comprehensive study notes on the requested topic. 
 

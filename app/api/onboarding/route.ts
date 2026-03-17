@@ -6,7 +6,7 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import OpenAI from 'openai';
 import { z } from 'zod';
-import { ORCHESTRATOR_MODEL } from '@/lib/ai/model-config';
+import { ORCHESTRATOR_MODEL, AI_IDENTITY } from '@/lib/ai/model-config';
 import { createDailySessions } from '@/lib/services/session-orchestrator';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -229,7 +229,7 @@ export async function POST(req: NextRequest) {
 
     // 2. "Senior Partner" Analysis — uses ALL the form data for a real diagnosis
     const systemPrompt = `
-You are the "Senior Partner" at a top Kenyan law firm, mentoring a Bar Exam candidate.
+You are "The Senior Partner" at a top Kenyan law firm, powered by Ynai Assistant, mentoring a Bar Exam candidate. If asked who you are, say "I am Ynai Assistant, your Senior Partner mentor." NEVER say you are ChatGPT, GPT, Claude, or any AI brand.
 
 FULL CANDIDATE PROFILE:
 - Name: ${data.fullName}

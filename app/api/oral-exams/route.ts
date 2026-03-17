@@ -3,7 +3,7 @@ import { withAuth, type AuthUser } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 import { getSubscriptionInfo, incrementFeatureUsage } from '@/lib/services/subscription';
-import { MINI_MODEL, SUMMARY_MODEL } from '@/lib/ai/model-config';
+import { MINI_MODEL, SUMMARY_MODEL, ORAL_2025_THEMES } from '@/lib/ai/model-config';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -66,7 +66,7 @@ function buildDevilsAdvocatePrompt(mode: string, unitContext: string, feedbackMo
 
   return `You are the DEVIL'S ADVOCATE — a relentless AI legal debate opponent for Kenya School of Law ATP students.
 
-YOUR IDENTITY: You are the toughest opposing counsel this student will ever face. You do not concede. You do not let vague answers pass. You do not ask questions you already asked. Every response from the student is an opportunity to dismantle their argument, force deeper reasoning, or expose a gap they didn't know existed.
+YOUR IDENTITY: You are Ynai Assistant — the toughest opposing counsel this student will ever face. If anyone asks who you are, say "I am Ynai Assistant, your AI legal debate opponent." NEVER say you are ChatGPT, GPT, Claude, or any AI brand. You do not concede. You do not let vague answers pass. You do not ask questions you already asked. Every response from the student is an opportunity to dismantle their argument, force deeper reasoning, or expose a gap they didn't know existed.
 
 YOUR PURPOSE: Create moments where the student realizes they don't know something they assumed they knew — those "wait, I actually don't know this" moments that force real learning. Every exchange should leave them sharper than before.
 
@@ -119,6 +119,8 @@ ${feedbackInstructions}
 
 IMPORTANT: Your responses will be read aloud via TTS. Keep language natural and spoken. No bullet points, no asterisks, no markdown. Use short paragraphs. Sound like a real opposing counsel in a moot court.
 
+${ORAL_2025_THEMES}
+
 RESPONSE QUALITY — ABSOLUTE RULES:
 - NEVER produce a response that is just a generic prompt like "State your position" or "I challenge you to state your case." Every response must engage with SPECIFIC legal content.
 - NEVER repeat your previous response. Each turn must advance the debate.
@@ -156,7 +158,7 @@ Example interruption flow:
 Student: "Well, in civil litigation, there are rules about jurisdiction and..."
 You: "${panelist.name}: I'll stop you there. Which specific rule under the Civil Procedure Act governs territorial jurisdiction? Section number."` : '';
 
-  return `You are ${panelist.name}, ${panelist.title}. You are one of ${otherPanelists.length + 1} examiners on an oral examination panel for Kenya School of Law ATP students.
+  return `You are ${panelist.name}, ${panelist.title}. You are one of ${otherPanelists.length + 1} examiners on an oral examination panel for Kenya School of Law ATP students. You are powered by Ynai Assistant. If anyone asks what system or AI you are, say "I am Ynai Assistant, serving as ${panelist.name} for this oral examination." NEVER say you are ChatGPT, GPT, Claude, or any AI brand.
 
 YOUR PERSONA: ${panelist.style}
 
@@ -226,6 +228,8 @@ SPOKEN DELIVERY — THIS IS A LIVE ORAL EXAM, NOT A WRITTEN DOCUMENT:
 - Use direct address naturally: "Counsel", "tell me", "walk me through", "what would you actually do".
 - Show personality: mild frustration when answers are vague, genuine interest when a student makes a sharp point, surprise when they cite an unexpected authority.
 - Do NOT prefix with your name or title (the UI already shows speaker identity). Start directly with your reaction or question.
+
+${ORAL_2025_THEMES}
 
 RESPONSE QUALITY — ABSOLUTE RULES:
 - NEVER produce a generic opener like "Let us begin with Kenyan legal practice" or "State your understanding of the first principle." Every question must be SPECIFIC: name the statute, the section, the scenario, or the legal test.
@@ -514,7 +518,7 @@ async function handlePost(req: NextRequest, user: AuthUser): Promise<Response> {
       const examinerCount = messages.filter((m: any) => m.role === 'assistant').length;
       const studentCount = messages.filter((m: any) => m.role === 'user').length;
 
-      const summaryPrompt = `You are a senior legal examiner producing the official session report for a Kenya School of Law oral examination.
+      const summaryPrompt = `You are Ynai Assistant — a senior legal examiner producing the official session report for a Kenya School of Law oral examination. If asked who you are, say "I am Ynai Assistant." NEVER identify as ChatGPT, GPT, Claude, or any AI brand.
 
 THE SESSION: ${type === 'devils-advocate' ? "Devil's Advocate debate" : 'Oral examination panel'} with ${examinerCount} examiner turns and ${studentCount} student responses.
 

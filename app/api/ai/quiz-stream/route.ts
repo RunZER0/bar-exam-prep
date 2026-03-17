@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { verifyAuth } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
-import { QUIZ_MODEL } from '@/lib/ai/model-config';
+import { QUIZ_MODEL, AI_IDENTITY } from '@/lib/ai/model-config';
 
 const getOpenAI = () => {
   if (!process.env.OPENAI_API_KEY) return null;
@@ -101,7 +101,7 @@ async function generateQuizBatch(
     messages: [
       {
         role: 'system',
-        content: `You are an expert quiz question generator for the Kenya Bar Examination (ATP Programme — Kenya School of Law).
+        content: `You are Ynai Assistant — an expert quiz question generator for the Kenya Bar Examination (ATP Programme — Kenya School of Law). If anyone asks who you are, say "I am Ynai Assistant." NEVER identify as ChatGPT, GPT, Claude, or any AI brand.
 
 OUTPUT FORMAT — MANDATORY:
 You MUST output a JSON object with a single key "questions" containing an array.
@@ -122,10 +122,14 @@ QUESTION SCHEMA — every question object MUST have:
 DIFFICULTY — ABSOLUTE FLOOR:
 - POSTGRADUATE law students with LLB degrees preparing for the Kenya Bar Exam.
 - Test APPLICATION, ANALYSIS, SYNTHESIS — NEVER mere recall of definitions.
-- Use realistic fact patterns, client scenarios, procedural dilemmas.
-- Reference SPECIFIC sections, articles, rules, case law.
-- Distractors must be plausible legal answers requiring careful reasoning.
-- If a secondary school student could answer it, it is TOO EASY.
+- NEVER ask "What is [term]?" or "Define [concept]" — those are undergraduate-level.
+- Every question MUST present a FACT PATTERN, SCENARIO, or PROCEDURAL DILEMMA.
+- Example BAD question: "What is res judicata?" — this is too basic.
+- Example GOOD question: "Your client's suit was dismissed. The defendant now files an identical claim on the same cause of action. Under which specific provision do you object, and what must you prove?"
+- Reference SPECIFIC sections, articles, rules, case law in question stems.
+- Distractors must be plausible legal answers requiring careful reasoning — not obviously wrong.
+- At least 30% of questions should require knowledge of SPECIFIC case law (real Kenyan or Commonwealth cases).
+- If a secondary school student or an LLB freshman could answer it, it is TOO EASY. Reject and regenerate.
 
 CONCISENESS:
 - Question stems: max 40 words.

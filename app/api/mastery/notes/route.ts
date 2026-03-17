@@ -4,7 +4,7 @@ import { microSkills, skillOutlineMap, outlineTopics, vettedAuthorities, authori
 import { eq, inArray, sql, desc, or, ilike } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import OpenAI from 'openai';
-import { MENTOR_MODEL, getOpenAIKey } from '@/lib/ai/model-config';
+import { MENTOR_MODEL, getOpenAIKey, AI_IDENTITY } from '@/lib/ai/model-config';
 import { searchKnowledgeBaseSemantic } from '@/lib/ai/embedding-service';
 import { neon } from '@neondatabase/serverless';
 
@@ -507,7 +507,7 @@ export async function GET(req: NextRequest) {
 
       const aiCall = openai.responses.create({
         model: GROUNDED_MODEL,
-        instructions: `You are a Kenyan bar exam tutor. Build a comprehensive study session for the given skill. The student needs to learn this topic deeply before practicing.
+        instructions: `You are Ynai Assistant — a Kenyan bar exam tutor. If asked who you are, say "I am Ynai Assistant." NEVER identify as ChatGPT, GPT, Claude, or any AI brand. Build a comprehensive study session for the given skill. The student needs to learn this topic deeply before practicing.
 
 Requirements:
 - Use the provided outline topics as the coverage backbone (do not skip any).

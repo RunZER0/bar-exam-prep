@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { LEGAL_DOCUMENT_TYPES, ATP_UNITS } from '@/lib/constants/legal-content';
+import { LEGAL_DOCUMENT_TYPES, ATP_UNITS, DOCUMENT_BUNDLES, getDocumentById } from '@/lib/constants/legal-content';
 import PremiumGate from '@/components/PremiumGate';
 import {
   FileText,
@@ -20,6 +20,7 @@ import {
   ArrowRight,
   SlidersHorizontal,
   GraduationCap,
+  PackageOpen,
 } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<string, any> = {
@@ -49,7 +50,7 @@ const CATEGORY_UNIT_MAP: Record<string, string[]> = {
   adr: ['atp-100', 'atp-108'],             // Civil Litigation + Commercial Transactions
 };
 
-type SortMode = 'category' | 'unit';
+type SortMode = 'category' | 'unit' | 'bundles';
 
 export default function DraftingPage() {
   const [search, setSearch] = useState('');
@@ -147,6 +148,17 @@ export default function DraftingPage() {
             <GraduationCap className="h-3.5 w-3.5" />
             By KSL Unit
           </button>
+          <button
+            onClick={() => { setSortMode('bundles'); setActiveCategory(null); setActiveUnit(null); }}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              sortMode === 'bundles'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <PackageOpen className="h-3.5 w-3.5" />
+            Bundles
+          </button>
         </div>
       </div>
 
@@ -177,7 +189,7 @@ export default function DraftingPage() {
             </button>
           ))}
         </div>
-      ) : (
+      ) : sortMode === 'unit' ? (
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setActiveUnit(null)}
@@ -203,7 +215,7 @@ export default function DraftingPage() {
             </button>
           ))}
         </div>
-      )}
+      ) : null}
 
       {/* Document cards */}
       {sortMode === 'category' ? (
@@ -245,7 +257,7 @@ export default function DraftingPage() {
               );
             })}
         </div>
-      ) : (
+      ) : sortMode === 'unit' ? (
         <div className="space-y-10">
           {getUnitGroupedDocs().map(([unitId, { unit, docs }]) => (
             <section key={unitId}>
@@ -280,10 +292,57 @@ export default function DraftingPage() {
             </section>
           ))}
         </div>
+      ) : (
+        /* Bundles view */
+        <div className="space-y-6">
+          <p className="text-sm text-muted-foreground">
+            Practice drafting related documents together — just like in real legal practice. Each bundle groups documents that are typically filed or prepared as a set.
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {DOCUMENT_BUNDLES
+              .filter((b) => !search || b.name.toLowerCase().includes(search.toLowerCase()) || b.description.toLowerCase().includes(search.toLowerCase()))
+              .map((bundle) => {
+                const BundleIcon = CATEGORY_ICONS[bundle.icon.toLowerCase()] || PackageOpen;
+                const bundleDocs = bundle.documents.map((dId) => getDocumentById(dId)).filter(Boolean);
+                return (
+                  <Link key={bundle.id} href={`/drafting/bundle/${bundle.id}`}>
+                    <Card className="group cursor-pointer border hover:border-primary/40 hover:shadow-md transition-all duration-200 h-full">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 rounded-md bg-primary/10">
+                            <PackageOpen className="h-4 w-4 text-primary" />
+                          </div>
+                          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{bundle.category}</span>
+                        </div>
+                        <CardTitle className="text-sm font-semibold flex items-center justify-between">
+                          {bundle.name}
+                          <ArrowRight className="h-3.5 w-3.5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-muted-foreground" />
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <CardDescription className="text-xs leading-relaxed">
+                          {bundle.description}
+                        </CardDescription>
+                        <div className="space-y-1">
+                          {bundleDocs.map((d, i) => (
+                            <div key={d!.id} className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span className="flex items-center justify-center h-4 w-4 rounded-full bg-primary/10 text-primary text-[10px] font-bold shrink-0">{i + 1}</span>
+                              {d!.name}
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
+          </div>
+        </div>
       )}
 
       {((sortMode === 'category' && filteredCategories.filter(c => !activeCategory || c.key === activeCategory).length === 0) ||
-        (sortMode === 'unit' && getUnitGroupedDocs().length === 0)) && (
+        (sortMode === 'unit' && getUnitGroupedDocs().length === 0) ||
+        (sortMode === 'bundles' && DOCUMENT_BUNDLES.filter((b) => !search || b.name.toLowerCase().includes(search.toLowerCase()) || b.description.toLowerCase().includes(search.toLowerCase())).length === 0)) && (
         <div className="text-center py-16">
           <FileText className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-muted-foreground">No documents match your search.</p>

@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { AUDITOR_MODEL, getAnthropicKey } from '@/lib/ai/model-config';
+import { AUDITOR_MODEL, getAnthropicKey, AI_IDENTITY } from '@/lib/ai/model-config';
 
 const getAnthropicClient = () => {
     const apiKey = getAnthropicKey();
@@ -19,7 +19,7 @@ const getAnthropicClient = () => {
 export class CritiqueEngine {
 
     static async critiqueDraft(studentDraft: string, topic: string): Promise<CritiqueResult> {
-        const systemPrompt = `You are a ruthless but constructive Senior Partner at a top Kenyan law firm. 
+        const systemPrompt = `You are Ynai Assistant — a ruthless but constructive Senior Partner at a top Kenyan law firm. If asked who you are, say "I am Ynai Assistant." NEVER identify as ChatGPT, GPT, Claude, or any AI brand. 
 You review junior associates' legal drafts against CLE marking rubrics. 
 You are deeply familiar with the Civil Procedure Act, Criminal Procedure Code, Advocates Act, 
 and all Kenya School of Law practical paper requirements.

@@ -250,6 +250,104 @@ export const LEGAL_DOCUMENT_TYPES = {
 } as const;
 
 // -----------------------------------------------
+// DOCUMENT BUNDLES — Related documents drafted together
+// -----------------------------------------------
+export const DOCUMENT_BUNDLES = [
+  {
+    id: 'civil-suit-filing',
+    name: 'Civil Suit Filing Bundle',
+    description: 'File a complete civil suit: draft the plaint, supporting affidavit, and list of documents together.',
+    category: 'Civil Litigation',
+    documents: ['plaint', 'supporting-affidavit', 'witness-statement'],
+    icon: 'ScrollText',
+  },
+  {
+    id: 'interlocutory-application',
+    name: 'Interlocutory Application Bundle',
+    description: 'Prepare a chamber summons or notice of motion with the supporting affidavit and written submissions.',
+    category: 'Civil Litigation',
+    documents: ['chamber-summons', 'supporting-affidavit', 'written-submissions'],
+    icon: 'FileText',
+  },
+  {
+    id: 'injunction-application',
+    name: 'Injunction Application Bundle',
+    description: 'Apply for an injunction: notice of motion, supporting affidavit, and the injunction order.',
+    category: 'Civil Litigation',
+    documents: ['notice-of-motion', 'supporting-affidavit', 'injunction-order'],
+    icon: 'Siren',
+  },
+  {
+    id: 'defence-bundle',
+    name: 'Defence & Counterclaim Bundle',
+    description: 'Respond to a civil suit: draft the defence, counterclaim, and replying affidavit together.',
+    category: 'Civil Litigation',
+    documents: ['defence', 'counterclaim', 'replying-affidavit'],
+    icon: 'BookOpenCheck',
+  },
+  {
+    id: 'appeal-bundle',
+    name: 'Appeal Bundle',
+    description: 'Lodge an appeal: notice of appeal, skeleton arguments, and written submissions.',
+    category: 'Civil Litigation',
+    documents: ['notice-of-appeal', 'skeleton-arguments', 'written-submissions'],
+    icon: 'Send',
+  },
+  {
+    id: 'conveyancing-transfer',
+    name: 'Property Transfer Bundle',
+    description: 'Complete a property transfer: sale agreement, consent to transfer, transfer instrument, and charge.',
+    category: 'Conveyancing',
+    documents: ['sale-agreement', 'consent-to-transfer', 'transfer-instrument', 'charge-instrument'],
+    icon: 'Building',
+  },
+  {
+    id: 'company-formation',
+    name: 'Company Formation Bundle',
+    description: 'Incorporate a company: memorandum & articles, board resolution, and shareholders agreement.',
+    category: 'Corporate',
+    documents: ['memorandum-articles', 'board-resolution', 'shareholders-agreement'],
+    icon: 'Building2',
+  },
+  {
+    id: 'criminal-bail',
+    name: 'Criminal Bail Application Bundle',
+    description: 'Apply for bail: bail/bond application, supporting affidavit, and mitigation submissions.',
+    category: 'Criminal Practice',
+    documents: ['bail-bond-application', 'supporting-affidavit', 'mitigation'],
+    icon: 'Siren',
+  },
+  {
+    id: 'demand-to-suit',
+    name: 'Demand to Suit Bundle',
+    description: 'Escalate from demand to litigation: demand letter, statutory notice, and plaint.',
+    category: 'Civil Litigation',
+    documents: ['demand-letter', 'statutory-notice', 'plaint'],
+    icon: 'Send',
+  },
+  {
+    id: 'arbitration-bundle',
+    name: 'Arbitration Bundle',
+    description: 'Commence arbitration: arbitration agreement, statement of claim, and written submissions.',
+    category: 'ADR',
+    documents: ['arbitration-agreement', 'statement-of-claim-arb', 'written-submissions'],
+    icon: 'Handshake',
+  },
+  {
+    id: 'client-advisory-bundle',
+    name: 'Client Advisory Bundle',
+    description: 'Advise a client comprehensively: legal memorandum, legal opinion, and client advisory letter.',
+    category: 'Legal Opinions',
+    documents: ['legal-memorandum', 'legal-opinion', 'client-advisory'],
+    icon: 'Brain',
+  },
+] as const;
+
+export function getBundleById(id: string) {
+  return DOCUMENT_BUNDLES.find((b) => b.id === id) ?? null;
+}
+
+// -----------------------------------------------
 // DIFFICULTY LEVELS
 // -----------------------------------------------
 export const DIFFICULTY_LEVELS = [

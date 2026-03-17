@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/middleware';
 import { isAIConfigured, callAIFast } from '@/lib/ai/guardrails';
 import OpenAI from 'openai';
-import { MINI_MODEL } from '@/lib/ai/model-config';
+import { MINI_MODEL, AI_IDENTITY } from '@/lib/ai/model-config';
 
 const getOpenAI = () => {
   if (!process.env.OPENAI_API_KEY) return null;
@@ -45,7 +45,7 @@ export const POST = withAuth(async (req: NextRequest, user) => {
 
     // ── GREETING ──
     if (type === 'greeting') {
-      const prompt = `You are a warm, witty, relaxed legal companion for Kenyan law students. The student's name is ${name}.
+      const prompt = `You are Ynai Assistant — a warm, witty, relaxed legal companion for Kenyan law students. If asked who you are, say "I am Ynai Assistant." NEVER say you are ChatGPT, GPT, Claude, or any AI brand. The student's name is ${name}.
 
 They just opened the Legal Banter section to take a break from studying.
 
@@ -78,7 +78,7 @@ Do NOT use any markdown formatting whatsoever - no bold (**), no headings (#), n
         avoidContext = `\n\nIMPORTANT: Do NOT repeat or closely paraphrase this previous content:\n"${previousContent.slice(0, 200)}"`;
       }
 
-      const prompt = `You are a witty, knowledgeable legal entertainer helping Kenyan law students relax.
+      const prompt = `You are Ynai Assistant — a witty, knowledgeable legal entertainer helping Kenyan law students relax. If asked who you are, say "I am Ynai Assistant." NEVER say you are ChatGPT, GPT, Claude, or any AI brand.
 
 ${basePrompt}${prefContext}${avoidContext}
 
@@ -143,7 +143,7 @@ Be CREATIVE and VARIED - never repeat the same joke, fact, or case twice. Each r
     // ── ROAST (playful banter chat) ──
     if (type === 'roast') {
       const userMsg = message || '';
-      const prompt = `You are a playful, witty legal companion having a fun roast battle with a Kenyan law student named ${name}.
+      const prompt = `You are Ynai Assistant — a playful, witty legal companion having a fun roast battle with a Kenyan law student named ${name}. If asked who you are, say "I am Ynai Assistant." NEVER say you are ChatGPT or any AI brand.
 
 Rules:
 - Be clever and funny, reference law/legal concepts in your roasts

@@ -11,7 +11,7 @@ import { users } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import OpenAI from 'openai';
-import { ASSESSMENT_MODEL } from '@/lib/ai/model-config';
+import { ASSESSMENT_MODEL, AI_IDENTITY } from '@/lib/ai/model-config';
 
 interface ItemData {
   id: string;
@@ -232,7 +232,7 @@ async function generateItemForSkill(
   let userPrompt = '';
 
   if (format === 'mcq') {
-    systemPrompt = `You are a Kenya bar exam tutor. Create a challenging Multiple Choice Question (MCQ) for the given skill.
+    systemPrompt = `You are Ynai Assistant — a Kenya bar exam tutor. If asked who you are, say "I am Ynai Assistant." NEVER identify as ChatGPT, GPT, Claude, or any AI brand. Create a challenging Multiple Choice Question (MCQ) for the given skill.
       
 Format your response as JSON only:
 {
@@ -249,7 +249,7 @@ Format your response as JSON only:
     userPrompt = `Generate a hard MCQ for "${skill.name}" (Kenyan Law). Requires deep understanding, not just recall.`;
 
   } else if (format === 'short_answer') {
-    systemPrompt = `You are a Kenya bar exam tutor. Create a "Short Answer" exercise (type one word or phrase).
+    systemPrompt = `You are Ynai Assistant — a Kenya bar exam tutor. If asked who you are, say "I am Ynai Assistant." NEVER identify as ChatGPT, GPT, Claude, or any AI brand. Create a "Short Answer" exercise (type one word or phrase).
       
 Format your response as JSON only:
 {
@@ -261,7 +261,7 @@ Format your response as JSON only:
 
   } else {
     // WRITTEN / ESSAY
-    systemPrompt = `You are a Kenya bar exam tutor. Create a practical reinforcement exercise (scenario-based) to test legal analysis skills.
+    systemPrompt = `You are Ynai Assistant — a Kenya bar exam tutor. If asked who you are, say "I am Ynai Assistant." NEVER identify as ChatGPT, GPT, Claude, or any AI brand. Create a practical reinforcement exercise (scenario-based) to test legal analysis skills.
 
 Format your response as JSON only:
 {

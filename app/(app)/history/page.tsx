@@ -15,17 +15,9 @@ import {
 /* ═══════════════════════════════════════
    TYPES
    ═══════════════════════════════════════ */
-interface PageVisit {
-  id: string;
-  section: string;
-  label: string;
-  minutes: number;
-  visitedAt: string;
-}
-
 interface Activity {
   id: string;
-  type: 'visit' | 'chat' | 'study' | 'milestone';
+  type: 'chat' | 'study' | 'milestone' | 'oral' | 'quiz' | 'challenge' | 'practice';
   title: string;
   category: string;
   date: string;
@@ -53,13 +45,20 @@ const TYPE_CONFIG: Record<string, { icon: typeof FileText; color: string; bg: st
   written:        { icon: FileText,               color: 'text-blue-600',    bg: 'bg-blue-500/10',    label: 'Written' },
   chat:           { icon: MessageSquare,          color: 'text-gray-600',    bg: 'bg-gray-500/10',    label: 'Chat' },
   milestone:      { icon: Award,                  color: 'text-emerald-600', bg: 'bg-emerald-500/10', label: 'Milestone' },
+  oral:           { icon: Mic,                    color: 'text-orange-600',  bg: 'bg-orange-500/10',  label: 'Oral Exam' },
+  quiz:           { icon: Lightbulb,              color: 'text-amber-600',   bg: 'bg-amber-500/10',   label: 'Quiz' },
+  challenge:      { icon: Users,                  color: 'text-pink-600',    bg: 'bg-pink-500/10',    label: 'Challenge' },
+  practice:       { icon: Brain,                  color: 'text-teal-600',    bg: 'bg-teal-500/10',    label: 'Practice' },
 };
 
 const FILTERS = [
-  { id: 'all',     label: 'All Activity' },
-  { id: 'visit',   label: 'Page Visits' },
-  { id: 'chat',    label: 'Conversations' },
-  { id: 'study',   label: 'Study' },
+  { id: 'all',       label: 'All Activity' },
+  { id: 'chat',      label: 'Conversations' },
+  { id: 'study',     label: 'Study' },
+  { id: 'oral',      label: 'Oral Exams' },
+  { id: 'quiz',      label: 'Quizzes' },
+  { id: 'challenge', label: 'Challenges' },
+  { id: 'practice',  label: 'Practice' },
   { id: 'milestone', label: 'Milestones' },
 ];
 
@@ -132,27 +131,11 @@ export default function HistoryPage() {
       const token = await getIdToken();
       const headers = { Authorization: `Bearer ${token}` };
 
-      // Fetch both history and page visits in parallel
-      const [historyRes, visitsRes] = await Promise.all([
-        fetch('/api/history', { headers }),
-        fetch('/api/page-visits', { headers }),
-      ]);
-
+      // Fetch real activity data
+      const historyRes = await fetch('/api/history', { headers });
       const historyData = historyRes.ok ? await historyRes.json() : { activities: [] };
-      const visitsData = visitsRes.ok ? await visitsRes.json() : { visits: [] };
 
-      // Convert page visits to activity format
-      const visitActivities: Activity[] = (visitsData.visits || []).map((v: any) => ({
-        id: v.id,
-        type: 'visit' as const,
-        title: v.label || v.section,
-        category: v.section,
-        date: v.visitedAt,
-        meta: { minutes: v.minutes },
-      }));
-
-      // Merge and sort all activities
-      const allActivities = [...(historyData.activities || []), ...visitActivities]
+      const allActivities = (historyData.activities || [])
         .sort((a: Activity, b: Activity) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 200);
 
@@ -201,11 +184,9 @@ export default function HistoryPage() {
   }
 
   // Summary stats
-  const visitCount = activities.filter(a => a.type === 'visit').length;
-  const totalMinutes = activities
-    .filter(a => a.type === 'visit')
-    .reduce((sum, a) => sum + (a.meta?.minutes || 0), 0);
-  const uniqueSections = new Set(activities.filter(a => a.type === 'visit').map(a => a.category)).size;
+  const totalCount = activities.length;
+  const oralCount = activities.filter(a => a.type === 'oral').length;
+  const quizCount = activities.filter(a => a.type === 'quiz').length;
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-background">
@@ -220,24 +201,24 @@ export default function HistoryPage() {
             Your Journey
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Everywhere you&apos;ve spent time learning — at least 5 minutes to count
+            Your real study activity — conversations, exams, quizzes, and challenges
           </p>
         </div>
 
         {/* Quick Stats */}
-        {visitCount > 0 && (
+        {totalCount > 0 && (
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl bg-primary/5 border border-primary/10 p-4 text-center">
-              <p className="text-2xl font-bold text-primary">{visitCount}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Visits</p>
+              <p className="text-2xl font-bold text-primary">{totalCount}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Activities</p>
             </div>
-            <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-4 text-center">
-              <p className="text-2xl font-bold text-emerald-600">{totalMinutes}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Minutes</p>
+            <div className="rounded-xl bg-orange-500/5 border border-orange-500/10 p-4 text-center">
+              <p className="text-2xl font-bold text-orange-600">{oralCount}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Oral Exams</p>
             </div>
-            <div className="rounded-xl bg-violet-500/5 border border-violet-500/10 p-4 text-center">
-              <p className="text-2xl font-bold text-violet-600">{uniqueSections}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Areas</p>
+            <div className="rounded-xl bg-amber-500/5 border border-amber-500/10 p-4 text-center">
+              <p className="text-2xl font-bold text-amber-600">{quizCount}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Quizzes</p>
             </div>
           </div>
         )}
@@ -318,7 +299,6 @@ export default function HistoryPage() {
                         key={activity.id}
                         onClick={() => {
                           if (activity.type === 'chat') router.push(`/history/${activity.id}`);
-                          else if (activity.type === 'visit') router.push(`/${activity.category}`);
                         }}
                         className="group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors cursor-pointer hover:bg-card/60"
                       >
@@ -334,12 +314,6 @@ export default function HistoryPage() {
                           <p className="text-sm font-medium truncate">{activity.title}</p>
                           <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-0.5">
                             <span className="capitalize">{config.label}</span>
-                            {activity.type === 'visit' && activity.meta.minutes > 0 && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-2.5 w-2.5" />
-                                {activity.meta.minutes} min
-                              </span>
-                            )}
                             {activity.type === 'chat' && activity.meta.messageCount > 0 && (
                               <span className="flex items-center gap-1">
                                 <MessageSquare className="h-2.5 w-2.5" />
@@ -364,6 +338,53 @@ export default function HistoryPage() {
                                 {activity.meta.phase}
                               </span>
                             )}
+                            {activity.type === 'oral' && (
+                              <>
+                                {activity.meta.unitName && <span>{activity.meta.unitName}</span>}
+                                {activity.meta.duration > 0 && (
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-2.5 w-2.5" />
+                                    {Math.round(activity.meta.duration / 60)}m
+                                  </span>
+                                )}
+                                {activity.meta.score != null && (
+                                  <span className="flex items-center gap-1">
+                                    <TrendingUp className="h-2.5 w-2.5" />
+                                    {activity.meta.score}/100
+                                  </span>
+                                )}
+                              </>
+                            )}
+                            {activity.type === 'quiz' && (
+                              <>
+                                <span>{activity.meta.correctCount}/{activity.meta.questionCount} correct</span>
+                                {activity.meta.unitName && <span>{activity.meta.unitName}</span>}
+                              </>
+                            )}
+                            {activity.type === 'challenge' && (
+                              <>
+                                {activity.meta.score != null && activity.meta.score > 0 && (
+                                  <span className="flex items-center gap-1">
+                                    <TrendingUp className="h-2.5 w-2.5" />
+                                    {activity.meta.score} pts
+                                  </span>
+                                )}
+                                {activity.meta.questionsAnswered > 0 && (
+                                  <span>{activity.meta.correctAnswers}/{activity.meta.questionsAnswered} correct</span>
+                                )}
+                              </>
+                            )}
+                            {activity.type === 'practice' && (
+                              <>
+                                <span>{activity.meta.completedQuestions}/{activity.meta.totalQuestions} done</span>
+                                {activity.meta.score != null && (
+                                  <span className="flex items-center gap-1">
+                                    <TrendingUp className="h-2.5 w-2.5" />
+                                    {activity.meta.score}%
+                                  </span>
+                                )}
+                              </>
+                            )}
                             <span>{formatDate(activity.date)}</span>
                           </div>
                         </div>
@@ -379,10 +400,6 @@ export default function HistoryPage() {
                             </button>
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30" />
                           </div>
-                        )}
-
-                        {activity.type === 'visit' && (
-                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity" />
                         )}
                       </div>
                     );

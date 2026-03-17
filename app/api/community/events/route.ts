@@ -610,13 +610,19 @@ export async function POST(req: NextRequest) {
         .where(eq(communityEvents.id, eventId)).limit(1);
       if (!event) return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
 
-      // Must be a participant
-      const [participation] = await db.select({
+      // Must be a participant — auto-join if not yet joined (handles race conditions from page load)
+      let [participation] = await db.select({
         id: eventParticipants.id,
         score: eventParticipants.score,
       }).from(eventParticipants)
         .where(and(eq(eventParticipants.eventId, eventId), eq(eventParticipants.userId, userId))).limit(1);
-      if (!participation) return NextResponse.json({ error: 'You must join the challenge first' }, { status: 400 });
+      if (!participation) {
+        // Auto-join: user navigated to the challenge page which implies intent to participate
+        const [inserted] = await db.insert(eventParticipants).values({
+          eventId, userId, score: 0, questionsAnswered: 0, correctAnswers: 0, timeSpent: 0,
+        }).returning({ id: eventParticipants.id, score: eventParticipants.score });
+        participation = inserted;
+      }
 
       // Don't allow re-grading if already scored
       if (participation.score && participation.score > 0) {

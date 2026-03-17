@@ -1,6 +1,7 @@
 /**
  * User Activity History API
- * Aggregates activity from chat_sessions, study_sessions, study_streaks
+ * Aggregates activity from chat_sessions, study_sessions, study_streaks,
+ * oral_sessions, quiz_history, practice_sessions, event_participants
  *
  * GET /api/history
  * Returns: { activities, streaks, stats }
@@ -128,7 +129,107 @@ export const GET = withAuth(async (req: NextRequest, user) => {
       );
     }
 
+    // Fetch oral exam sessions
+    const hasOralSessions = await tableExists('oral_sessions');
+    let oralActivities: any[] = [];
+    if (hasOralSessions) {
+      oralActivities = await safeQuery(
+        sql`
+          SELECT
+            id,
+            type as oral_type,
+            mode,
+            unit_id,
+            duration_seconds,
+            exchange_count,
+            score,
+            created_at as activity_date
+          FROM oral_sessions
+          WHERE user_id = ${userId}
+          ORDER BY created_at DESC
+          LIMIT 50
+        `
+      );
+    }
+
+    // Fetch quiz sessions (grouped by session_id)
+    const hasQuizHistory = await tableExists('quiz_history');
+    let quizActivities: any[] = [];
+    if (hasQuizHistory) {
+      quizActivities = await safeQuery(
+        sql`
+          SELECT
+            COALESCE(session_id, id) as id,
+            quiz_mode,
+            unit_name,
+            unit_id,
+            COUNT(*)::int as question_count,
+            SUM(CASE WHEN is_correct THEN 1 ELSE 0 END)::int as correct_count,
+            MAX(created_at) as activity_date
+          FROM quiz_history
+          WHERE user_id = ${userId}
+          GROUP BY COALESCE(session_id, id), quiz_mode, unit_name, unit_id
+          ORDER BY MAX(created_at) DESC
+          LIMIT 50
+        `
+      );
+    }
+
+    // Fetch challenge participations
+    const hasEventParticipants = await tableExists('event_participants');
+    let challengeActivities: any[] = [];
+    if (hasEventParticipants) {
+      challengeActivities = await safeQuery(
+        sql`
+          SELECT
+            ep.id,
+            ce.title,
+            ce.type as challenge_type,
+            ce.unit_id,
+            ep.score,
+            ep.questions_answered,
+            ep.correct_answers,
+            ep.joined_at as activity_date
+          FROM event_participants ep
+          JOIN community_events ce ON ce.id = ep.event_id
+          WHERE ep.user_id = ${userId}
+          ORDER BY ep.joined_at DESC
+          LIMIT 50
+        `
+      );
+    }
+
+    // Fetch practice sessions
+    const hasPracticeSessions = await tableExists('practice_sessions');
+    let practiceActivities: any[] = [];
+    if (hasPracticeSessions) {
+      practiceActivities = await safeQuery(
+        sql`
+          SELECT
+            ps.id,
+            ps.competency_type,
+            ps.total_questions,
+            ps.completed_questions,
+            ps.score,
+            ps.is_completed,
+            ps.created_at as activity_date
+          FROM practice_sessions ps
+          WHERE ps.user_id = ${userId}
+          ORDER BY ps.created_at DESC
+          LIMIT 50
+        `
+      );
+    }
+
     // Build unified activity list
+    const UNIT_NAMES: Record<string, string> = {
+      'atp-100': 'Civil Litigation', 'atp-101': 'Criminal Litigation',
+      'atp-102': 'Probate & Administration', 'atp-103': 'Legal Writing & Drafting',
+      'atp-104': 'Trial Advocacy', 'atp-105': 'Professional Ethics',
+      'atp-106': 'Legal Practice Mgmt', 'atp-107': 'Conveyancing',
+      'atp-108': 'Commercial Transactions',
+    };
+
     const activities = [
       ...chatActivities.map((c: any) => ({
         id: c.id,
@@ -161,9 +262,63 @@ export const GET = withAuth(async (req: NextRequest, user) => {
         date: p.activity_date,
         meta: { phase: p.phase },
       })),
+      ...oralActivities.map((o: any) => ({
+        id: o.id,
+        type: 'oral' as const,
+        title: `Oral Exam — ${o.oral_type === 'devils-advocate' ? "Devil's Advocate" : 'Examiner'} (${o.mode || 'balanced'})`,
+        category: 'oral-exams',
+        date: o.activity_date,
+        meta: {
+          oralType: o.oral_type,
+          mode: o.mode,
+          unitName: UNIT_NAMES[o.unit_id] || o.unit_id || '',
+          duration: Number(o.duration_seconds) || 0,
+          exchanges: Number(o.exchange_count) || 0,
+          score: o.score != null ? Number(o.score) : null,
+        },
+      })),
+      ...quizActivities.map((q: any) => ({
+        id: q.id,
+        type: 'quiz' as const,
+        title: `${(q.quiz_mode || 'Quiz').charAt(0).toUpperCase() + (q.quiz_mode || 'quiz').slice(1)} Quiz${q.unit_name ? ` — ${q.unit_name}` : ''}`,
+        category: 'quizzes',
+        date: q.activity_date,
+        meta: {
+          quizMode: q.quiz_mode,
+          unitName: q.unit_name || '',
+          questionCount: Number(q.question_count) || 0,
+          correctCount: Number(q.correct_count) || 0,
+        },
+      })),
+      ...challengeActivities.map((ch: any) => ({
+        id: ch.id,
+        type: 'challenge' as const,
+        title: ch.title || 'Community Challenge',
+        category: 'community',
+        date: ch.activity_date,
+        meta: {
+          challengeType: ch.challenge_type,
+          score: ch.score != null ? Number(ch.score) : null,
+          questionsAnswered: Number(ch.questions_answered) || 0,
+          correctAnswers: Number(ch.correct_answers) || 0,
+        },
+      })),
+      ...practiceActivities.map((pr: any) => ({
+        id: pr.id,
+        type: 'practice' as const,
+        title: `Practice — ${(pr.competency_type || 'general').replace(/_/g, ' ')}`,
+        category: (pr.competency_type || 'research').toLowerCase(),
+        date: pr.activity_date,
+        meta: {
+          totalQuestions: Number(pr.total_questions) || 0,
+          completedQuestions: Number(pr.completed_questions) || 0,
+          score: pr.score != null ? Number(pr.score) : null,
+          isCompleted: pr.is_completed,
+        },
+      })),
     ]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 100);
+      .slice(0, 200);
 
     // Compute stats
     const totalChats = chatActivities.length;

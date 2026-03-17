@@ -536,8 +536,8 @@ Rules:
     try {
       const token = await getIdToken();
       const controller = new AbortController();
-      // Scale timeout with question count — batched generation needs more time
-      const timeoutMs = Math.max(45000, effectiveCount * 3000);
+      // Scale timeout generously — batched generation on slow connections needs time
+      const timeoutMs = Math.max(90000, effectiveCount * 6000);
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       let receivedCount = 0;
 
@@ -612,17 +612,21 @@ Rules:
       }
     } catch (err: any) {
       console.error('Quiz generation failed:', err);
-      setLoading(false);
       if (err?.name === 'AbortError') {
         if (questions.length > 0) {
           // Timeout but we got some questions — keep playing with what we have
+          setLoading(false);
           setGenerationError('Generation timed out — playing with questions received so far.');
+          // In infinity mode, try loading more in background
+          if (isInfinityMode) setTimeout(() => loadMoreQuestions(), 2000);
         } else {
-          // No questions at all — go back to menu
-          setGenerationError('Generation timed out. Try selecting fewer questions.');
+          // No questions at all — retry once with a smaller batch
+          setLoading(false);
+          setGenerationError('Generation timed out. Please try again.');
           setSection('menu');
         }
       } else {
+        setLoading(false);
         setGenerationError(err?.message || 'Failed to generate quiz questions. Please try again.');
         setSection('menu');
       }
@@ -1343,7 +1347,7 @@ Rules:
         </div>
         <p className="font-medium text-lg">No questions available</p>
         <p className="text-sm text-muted-foreground max-w-sm">
-          {generationError || 'Something went wrong loading the quiz. Try again with fewer questions.'}
+          {generationError || 'Something went wrong loading the quiz. Please try again.'}
         </p>
         <Button onClick={() => setSection('menu')} className="gap-2 mt-2">
           <RotateCcw className="h-4 w-4" />

@@ -9,7 +9,7 @@ import {
   Search, Clock, MessageSquare, Trash2,
   Brain, Award, Calendar, TrendingUp,
   ChevronRight, Loader2, Mic, ClipboardCheck, Target,
-  Lightbulb, Users, LayoutDashboard,
+  Lightbulb, Users, LayoutDashboard, Navigation,
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════
@@ -17,7 +17,7 @@ import {
    ═══════════════════════════════════════ */
 interface Activity {
   id: string;
-  type: 'chat' | 'study' | 'milestone' | 'oral' | 'quiz' | 'challenge' | 'practice';
+  type: 'chat' | 'study' | 'milestone' | 'oral' | 'quiz' | 'challenge' | 'practice' | 'visit';
   title: string;
   category: string;
   date: string;
@@ -48,6 +48,7 @@ const TYPE_CONFIG: Record<string, { icon: typeof FileText; color: string; bg: st
   quiz:           { icon: Lightbulb,              color: 'text-amber-600',   bg: 'bg-amber-500/10',   label: 'Quiz' },
   challenge:      { icon: Users,                  color: 'text-pink-600',    bg: 'bg-pink-500/10',    label: 'Challenge' },
   practice:       { icon: Brain,                  color: 'text-teal-600',    bg: 'bg-teal-500/10',    label: 'Practice' },
+  visit:          { icon: Navigation,              color: 'text-sky-600',     bg: 'bg-sky-500/10',     label: 'Page Visit' },
 };
 
 const FILTERS = [
@@ -59,6 +60,7 @@ const FILTERS = [
   { id: 'challenge', label: 'Challenges' },
   { id: 'practice',  label: 'Practice' },
   { id: 'milestone', label: 'Milestones' },
+  { id: 'visit',     label: 'Visits' },
 ];
 
 /* ═══════════════════════════════════════
@@ -186,6 +188,7 @@ export default function HistoryPage() {
   const totalCount = activities.length;
   const oralCount = activities.filter(a => a.type === 'oral').length;
   const quizCount = activities.filter(a => a.type === 'quiz').length;
+  const visitMinutes = activities.filter(a => a.type === 'visit').reduce((s, a) => s + (a.meta.minutes || 0), 0);
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-background">
@@ -206,10 +209,14 @@ export default function HistoryPage() {
 
         {/* Quick Stats */}
         {totalCount > 0 && (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             <div className="rounded-xl bg-primary/5 border border-primary/10 p-4 text-center">
               <p className="text-2xl font-bold text-primary">{totalCount}</p>
               <p className="text-xs text-muted-foreground mt-0.5">Activities</p>
+            </div>
+            <div className="rounded-xl bg-sky-500/5 border border-sky-500/10 p-4 text-center">
+              <p className="text-2xl font-bold text-sky-600">{visitMinutes >= 60 ? `${Math.round(visitMinutes / 60)}h` : `${visitMinutes}m`}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Time Tracked</p>
             </div>
             <div className="rounded-xl bg-orange-500/5 border border-orange-500/10 p-4 text-center">
               <p className="text-2xl font-bold text-orange-600">{oralCount}</p>
@@ -383,6 +390,12 @@ export default function HistoryPage() {
                                   </span>
                                 )}
                               </>
+                            )}
+                            {activity.type === 'visit' && activity.meta.minutes > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-2.5 w-2.5" />
+                                {activity.meta.minutes}m spent
+                              </span>
                             )}
                             <span>{formatDate(activity.date)}</span>
                           </div>

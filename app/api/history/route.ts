@@ -221,6 +221,26 @@ export const GET = withAuth(async (req: NextRequest, user) => {
       );
     }
 
+    // Fetch page visits (real navigation tracking)
+    const hasPageVisits = await tableExists('page_visits');
+    let visitActivities: any[] = [];
+    if (hasPageVisits) {
+      visitActivities = await safeQuery(
+        sql`
+          SELECT
+            id,
+            section,
+            label,
+            minutes,
+            visited_at as activity_date
+          FROM page_visits
+          WHERE user_id = ${userId}
+          ORDER BY visited_at DESC
+          LIMIT 100
+        `
+      );
+    }
+
     // Build unified activity list
     const UNIT_NAMES: Record<string, string> = {
       'atp-100': 'Civil Litigation', 'atp-101': 'Criminal Litigation',
@@ -314,6 +334,17 @@ export const GET = withAuth(async (req: NextRequest, user) => {
           completedQuestions: Number(pr.completed_questions) || 0,
           score: pr.score != null ? Number(pr.score) : null,
           isCompleted: pr.is_completed,
+        },
+      })),
+      ...visitActivities.map((v: any) => ({
+        id: v.id,
+        type: 'visit' as const,
+        title: v.label || v.section,
+        category: v.section || 'visit',
+        date: v.activity_date,
+        meta: {
+          section: v.section,
+          minutes: Number(v.minutes) || 0,
         },
       })),
     ]

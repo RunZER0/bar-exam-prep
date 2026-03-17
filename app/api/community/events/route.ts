@@ -181,9 +181,9 @@ async function ensureActiveChallenges(): Promise<void> {
   // We generate a limited set per day — if we already have enough, skip
   if ((todaysAiCount?.count || 0) >= DAILY_CHALLENGE_COUNT) return;
 
-  // Prevent duplicate generation: only one in-flight per day
+  // Prevent duplicate generation: only one in-flight at a time
   if (_generatingDate === todayStr) return;
-  _generatingDate = todayStr;
+  _generatingDate = todayStr; // tentative lock — cleared on failure so retry is possible
 
   const unitKeys = Object.keys(UNIT_TOPICS);
   const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
@@ -313,6 +313,7 @@ Respond in JSON only: {"challenges": [...]}`,
     }
   } catch (err) {
     console.error('[CommunityAgent] AI generation failed, using fallback:', err);
+    _generatingDate = null; // clear lock so next request can retry AI generation
   }
 
   // Fallback: deterministic challenges for all missing units — WITH question content

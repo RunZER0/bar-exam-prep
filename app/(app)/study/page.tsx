@@ -15,7 +15,7 @@ import {
   Building, Gavel, Users as UsersIcon, Building2, Handshake,
   PenTool, Mic, TrendingUp, Search, ArrowLeft, Clock,
   RefreshCw, MessageSquare, BookMarked,
-  Layers, Star, Play, X, Lightbulb, Save, Trash2, Send,
+  Layers, Star, Play, X, Lightbulb, Save, Trash2, Send, ChevronLeft,
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════
@@ -103,6 +103,10 @@ export default function StudyPage() {
   const [notesChatLoading, setNotesChatLoading] = useState(false);
   const notesContainerRef = useRef<HTMLDivElement>(null);
   const notesChatEndRef = useRef<HTMLDivElement>(null);
+
+  // Slide-based notes navigation
+  const [slideIndex, setSlideIndex] = useState(0);
+  const [notesMode, setNotesMode] = useState<'slides' | 'reader'>('slides');
 
   // Sidebar auto-collapse for immersive notes reading
   const { setCollapsed } = useSidebar();
@@ -349,7 +353,7 @@ export default function StudyPage() {
 
   const goBack = () => {
     if (viewingSavedNote) { setViewingSavedNote(null); return; }
-    if (view === 'notes') { setView('browse'); setNotes(''); setNotesMeta(null); setShowNotesChat(false); }
+    if (view === 'notes') { setView('browse'); setNotes(''); setNotesMeta(null); setShowNotesChat(false); setSlideIndex(0); }
     else if (view === 'error') { setView('browse'); setNotesError(null); }
     else if (view === 'ask-ai') setView('browse');
     else if (view === 'topics') setView('browse');
@@ -536,20 +540,33 @@ export default function StudyPage() {
      NOTES VIEW
      ═══════════════════════════════════════ */
   if (view === 'notes' && notes) {
-    const hasSections = notesSections.length > 1;
+    const slides = notesSections.length > 0 ? notesSections : [{ title: 'Overview', content: notes }];
+    const totalSlides = slides.length;
+    const clampedSlideIndex = Math.min(slideIndex, totalSlides - 1);
+    const currentSlide = slides[clampedSlideIndex];
+    const CurrentIcon = SECTION_ICONS[clampedSlideIndex % SECTION_ICONS.length];
+    const progress = totalSlides > 1 ? ((clampedSlideIndex + 1) / totalSlides) * 100 : 100;
 
     return (
       <div className="min-h-screen bg-background animate-in fade-in duration-300">
         <div className="max-w-4xl mx-auto px-4 py-6">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <button onClick={goBack} className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
               Back to Study
             </button>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/10 text-blue-600">
-              Study Notes
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setNotesMode(notesMode === 'slides' ? 'reader' : 'slides'); setSlideIndex(0); }}
+                className="px-2.5 py-1 rounded-full text-[10px] font-medium border border-border/30 hover:bg-muted/40 transition-colors"
+              >
+                {notesMode === 'slides' ? 'Reader Mode' : 'Slide Mode'}
+              </button>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/10 text-blue-600">
+                Study Notes
+              </span>
+            </div>
           </div>
 
           {/* Title */}
@@ -561,39 +578,102 @@ export default function StudyPage() {
           </div>
 
           {/* Interactive tip */}
-          <div className="mb-6 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary/5 border border-primary/10">
+          <div className="mb-4 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary/5 border border-primary/10">
             <Sparkles className="h-3.5 w-3.5 text-primary/60 shrink-0" />
             <p className="text-xs text-primary/70">
               <strong>Tip:</strong> Highlight any text to ask AI for clarification or get quizzed on it.
             </p>
           </div>
 
-          {/* Notes content */}
-          <div ref={notesContainerRef} onMouseUp={handleNoteTextSelection} className="space-y-6 selection:bg-primary/20">
-            {hasSections ? notesSections.map((section, i) => {
-              const SectionIcon = SECTION_ICONS[i % SECTION_ICONS.length];
-              return (
-                <div key={i} className="scroll-mt-4">
-                  <div className="flex items-center gap-3 mb-3">
+          {notesMode === 'slides' ? (
+            /* ── SLIDE MODE ── */
+            <>
+              {/* Progress bar */}
+              {totalSlides > 1 && (
+                <div className="mb-5">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+                    <span>Slide {clampedSlideIndex + 1} of {totalSlides}</span>
+                    <span>{Math.round(progress)}%</span>
+                  </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
+                  </div>
+                </div>
+              )}
+
+              {/* Current slide */}
+              <div ref={notesContainerRef} onMouseUp={handleNoteTextSelection} className="selection:bg-primary/20">
+                <div key={clampedSlideIndex} className="animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="flex items-center gap-3 mb-4">
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <SectionIcon className="h-4 w-4 text-primary/70" />
+                      <CurrentIcon className="h-4 w-4 text-primary/70" />
                     </div>
-                    <h2 className="font-semibold text-base text-foreground">{section.title}</h2>
+                    <h2 className="font-semibold text-lg text-foreground">{currentSlide.title}</h2>
                   </div>
                   <NoteStyleWrapper style={noteStyle}>
-                    <MarkdownRenderer content={section.content} />
+                    <MarkdownRenderer content={currentSlide.content} />
                   </NoteStyleWrapper>
-                  {i < notesSections.length - 1 && (
-                    <hr className="mt-6 border-t border-border/30" />
-                  )}
                 </div>
-              );
-            }) : (
-              <NoteStyleWrapper style={noteStyle}>
-                <MarkdownRenderer content={notes} />
-              </NoteStyleWrapper>
-            )}
-          </div>
+              </div>
+
+              {/* Navigation buttons */}
+              {totalSlides > 1 && (
+                <div className="flex items-center justify-between mt-8 pt-4 border-t border-border/20">
+                  <button
+                    onClick={() => { setSlideIndex(Math.max(0, clampedSlideIndex - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    disabled={clampedSlideIndex === 0}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:bg-muted/50"
+                  >
+                    <ChevronLeft className="h-4 w-4" /> Back
+                  </button>
+
+                  {/* Mini slide dots */}
+                  <div className="flex items-center gap-1">
+                    {slides.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => { setSlideIndex(i); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        className={`h-2 rounded-full transition-all duration-200 ${
+                          i === clampedSlideIndex ? 'w-5 bg-primary' : i < clampedSlideIndex ? 'w-2 bg-primary/40' : 'w-2 bg-muted-foreground/20'
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => { setSlideIndex(Math.min(totalSlides - 1, clampedSlideIndex + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    disabled={clampedSlideIndex >= totalSlides - 1}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:bg-primary/90"
+                  >
+                    Continue <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            /* ── READER MODE (original scrollable) ── */
+            <div ref={notesContainerRef} onMouseUp={handleNoteTextSelection} className="space-y-6 selection:bg-primary/20">
+              {slides.map((section, i) => {
+                const SectionIcon = SECTION_ICONS[i % SECTION_ICONS.length];
+                return (
+                  <div key={i} className="scroll-mt-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <SectionIcon className="h-4 w-4 text-primary/70" />
+                      </div>
+                      <h2 className="font-semibold text-base text-foreground">{section.title}</h2>
+                    </div>
+                    <NoteStyleWrapper style={noteStyle}>
+                      <MarkdownRenderer content={section.content} />
+                    </NoteStyleWrapper>
+                    {i < slides.length - 1 && (
+                      <hr className="mt-6 border-t border-border/30" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
         </div>
 

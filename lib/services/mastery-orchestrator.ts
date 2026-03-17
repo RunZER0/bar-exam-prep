@@ -161,46 +161,69 @@ export class MasteryOrchestrator {
             queue = [...criticalNodes, ...standardNodes];
             
         } else {
-            // PATH B: Paced Build — Sync to current KSL week across all 9 courses
-            // Get nodes for current week, previous week, and one week ahead (full window)
-            const weeklyNodes = syllabus.filter(node => 
+            // PATH B: Paced Build — KSL week sets the foundation, but weak areas
+            // are injected from across the ENTIRE syllabus so every user's queue
+            // genuinely differs based on their onboarding selections.
+
+            // Helper to check if a unit is the user's declared weak area
+            const isWeakUnit = (unitCode: string): boolean => {
+                const code = unitCode.toLowerCase();
+                return failedUnits.some(f => code === f.toLowerCase() || code === f.replace('-', '').toLowerCase());
+            };
+            const isStrongUnit = (unitCode: string): boolean => {
+                const code = unitCode.toLowerCase();
+                return strongAreas.some(s => code === s.toLowerCase() || code === s.replace('-', '').toLowerCase());
+            };
+
+            // Layer 1: Current KSL week window (±1 week) — paced learning baseline
+            const weeklyNodes = syllabus.filter(node =>
                 (node.weekNumber >= absoluteWeek - 1 && node.weekNumber <= absoluteWeek + 1) &&
                 !masteredNodeIds.has(node.id)
             );
-            
-            queue = weeklyNodes;
-            
-            // Backfill with any unmastered earlier nodes
-            const backlog = syllabus.filter(n => 
-                n.weekNumber < absoluteWeek - 1 && 
+
+            // Layer 2: Weak-area nodes from ANY week, not just the current window
+            // This is what makes each user's plan genuinely different
+            const weakAreaNodes = failedUnits.length > 0
+                ? syllabus.filter(node =>
+                    isWeakUnit(node.unitCode) &&
+                    !masteredNodeIds.has(node.id) &&
+                    !weeklyNodes.some(w => w.id === node.id) // avoid duplicates
+                  )
+                : [];
+
+            // Sort weak-area nodes: high-yield first, then earlier weeks first (catch up)
+            weakAreaNodes.sort((a, b) => {
+                if (a.isHighYield !== b.isHighYield) return a.isHighYield ? -1 : 1;
+                return a.weekNumber - b.weekNumber;
+            });
+
+            // Reserve slots: at least 1/3 of queue cap for weak-area injection
+            const weakSlotTarget = Math.max(2, Math.floor(DAILY_QUEUE_CAP / 3));
+            const injectedWeak = weakAreaNodes.slice(0, weakSlotTarget);
+
+            // Combine: weak-area nodes first, then weekly nodes
+            queue = [...injectedWeak, ...weeklyNodes];
+
+            // Layer 3: Backfill with earlier unmastered nodes (non-weak, non-already-queued)
+            const backlog = syllabus.filter(n =>
+                n.weekNumber < absoluteWeek - 1 &&
                 !masteredNodeIds.has(n.id) &&
                 !queue.some(q => q.id === n.id)
             );
-            // Prioritize high-yield backlog, then standard
             const hyBacklog = backlog.filter(n => n.isHighYield || n.isDraftingNode);
             const stdBacklog = backlog.filter(n => !n.isHighYield && !n.isDraftingNode);
             queue.push(...hyBacklog, ...stdBacklog);
 
-            // PERSONALIZATION: Sort entire Path B queue using profile signals
-            // Weak areas get highest priority, strong areas get deprioritized
-            const unitPriority = (unitCode: string): number => {
-                const code = unitCode.toLowerCase();
-                const isWeak = failedUnits.some(f => code === f.toLowerCase() || code === f.replace('-', '').toLowerCase());
-                const isStrong = strongAreas.some(s => code === s.toLowerCase() || code === s.replace('-', '').toLowerCase());
-                if (isWeak) return 0;  // Highest priority — user struggles here
-                if (isStrong) return 2; // Lowest priority — user is comfortable
-                return 1; // Normal priority
-            };
-
+            // Final sort: weak areas always float to top, strong areas sink
             queue.sort((a, b) => {
-                const pa = unitPriority(a.unitCode);
-                const pb = unitPriority(b.unitCode);
+                const pa = isWeakUnit(a.unitCode) ? 0 : isStrongUnit(a.unitCode) ? 2 : 1;
+                const pb = isWeakUnit(b.unitCode) ? 0 : isStrongUnit(b.unitCode) ? 2 : 1;
                 if (pa !== pb) return pa - pb;
-                // Within same priority band: high-yield first, then by week
                 if (a.isHighYield !== b.isHighYield) return a.isHighYield ? -1 : 1;
                 return a.weekNumber - b.weekNumber;
             });
-            console.log(`[MasteryOrchestrator] Path B queue sorted — weak-first prioritization applied (${failedUnits.length} weak, ${strongAreas.length} strong areas)`);
+
+            console.log(`[MasteryOrchestrator] Path B — weekly: ${weeklyNodes.length}, weak-area injected: ${injectedWeak.length} (from ${weakAreaNodes.length} total weak nodes), backlog: ${backlog.length}`);
         }
 
         // 4a. Fetch micro-skill practice items for queued units

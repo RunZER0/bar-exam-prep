@@ -1001,22 +1001,7 @@ export default function MasteryCarousel({ task, onComplete }: CarouselProps) {
                             if (!prev) return prev;
                             // Interleave checkpoints into the narrative slides
                             const narrativeSlides = prev.slides || [];
-                            let checkpoints = extras.checkpoints || [];
-
-                            // Fallback: if AI checkpoint generation returned nothing, inject a
-                            // generic self-check so every lesson has at least one checkpoint
-                            if (checkpoints.length === 0 && narrativeSlides.length >= 2) {
-                                const topicLabel = task.data.title?.split(': ').pop() || 'this topic';
-                                checkpoints = [{
-                                    type: 'SHORT',
-                                    question: `Without scrolling back, state the key legal rule or principle you just read about "${topicLabel}" and identify the statute or case authority that supports it.`,
-                                    sampleAnswer: 'Review the notes above for the controlling rule and its statutory anchor.',
-                                    keywords: [],
-                                    hint: 'Think about the main rule discussed and which Act or case was cited.',
-                                    explanation: 'This self-check ensures you absorbed the core rule before continuing. Scroll back and compare your answer to the notes.',
-                                }];
-                            }
-
+                            const checkpoints = extras.checkpoints || [];
                             const interleaved: any[] = [];
                             let cpIdx = 0;
                             let narrativeCount = 0;

@@ -13,7 +13,7 @@ import {
   Building, Gavel, Users as UsersIcon, Building2, Handshake,
   PenTool, Mic, TrendingUp, Search, ArrowLeft, Clock,
   RefreshCw, MessageSquare, BookMarked,
-  Layers, Star, Play, X, Lightbulb, Save, Trash2, Send, ClipboardCheck,
+  Layers, Star, Play, X, Lightbulb, Save, Trash2, Send,
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════
@@ -581,33 +581,6 @@ export default function StudyPage() {
             )}
           </div>
 
-          {/* Quick Checkpoint — self-check prompts at the end of every note */}
-          <div className="mt-8 rounded-xl border border-primary/20 bg-primary/[0.03] overflow-hidden">
-            <div className="flex items-center gap-3 px-5 py-3 bg-primary/5 border-b border-primary/10">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <ClipboardCheck className="h-4 w-4 text-primary/70" />
-              </div>
-              <div>
-                <h2 className="font-semibold text-base text-foreground">Quick Checkpoint</h2>
-                <p className="text-[11px] text-muted-foreground">Test yourself before moving on</p>
-              </div>
-            </div>
-            <div className="px-5 py-4 space-y-3">
-              {[
-                `State the key legal rule or principle governing "${notesMeta?.topicName || 'this topic'}" and cite the relevant statutory provision.`,
-                'Identify one common exam pitfall for this area and explain how to avoid it.',
-                'Apply the rule to a brief fact pattern: if a client came to you with a dispute in this area, what is the first legal question you would frame?',
-              ].map((prompt, i) => (
-                <div key={i} className="flex gap-3 items-start p-3 rounded-lg bg-background/60 border border-border/20">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold mt-0.5">{i + 1}</span>
-                  <p className="text-sm text-foreground/80 leading-relaxed">{prompt}</p>
-                </div>
-              ))}
-              <p className="text-xs text-muted-foreground italic mt-2 px-1">
-                Try answering these from memory. If you struggle, scroll back and review the relevant section.
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* Ask AI Tooltip */}

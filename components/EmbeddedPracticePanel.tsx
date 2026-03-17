@@ -85,11 +85,11 @@ function withCheckpointSection(sections: StudySection[], skillName: string, keyP
   const hasCheckpoint = sections.some(s => /checkpoint|quick check|knowledge check/i.test(s.title || ''));
   if (hasCheckpoint) return sections;
 
-  const bullets = (keyPoints && keyPoints.length > 0 ? keyPoints.slice(0, 3) : [
-    'State the controlling legal rule for this topic and its statutory anchor.',
-    'Apply the rule to a short fact pattern using IRAC.',
-    'Identify one common exam trap and how to avoid it.',
-  ]).map((point, idx) => `${idx + 1}. ${point}`).join('\n');
+  // Only add a checkpoint section if real key points exist for this topic
+  if (!keyPoints || keyPoints.length === 0) return sections;
+
+  const bullets = keyPoints.slice(0, 3)
+    .map((point, idx) => `${idx + 1}. ${point}`).join('\n');
 
   return [
     ...sections,

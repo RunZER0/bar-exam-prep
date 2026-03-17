@@ -135,8 +135,22 @@ Be CREATIVE and VARIED - never repeat the same joke, fact, or case twice. Each r
         });
       }
 
-      // Non-streaming fallback
-      const response = await callAIFast(prompt, 600);
+      // Non-streaming fallback — retry once if empty
+      let response = await callAIFast(prompt, 600);
+      if (!response || response.trim().length < 10) {
+        response = await callAIFast(prompt, 600);
+      }
+      if (!response || response.trim().length < 10) {
+        const fallbacks: Record<string, string> = {
+          jokes: 'Why did the lawyer bring a ladder to court? To take the case to a higher level!',
+          facts: 'The word "verdict" comes from the Latin "vere dictum" meaning "truly said." It reflects the jury\'s duty to speak the truth based on the evidence.',
+          cases: 'In 1971, a man in Pennsylvania filed United States ex rel. Mayo v. Satan and His Staff, suing the Devil for causing his downfall. The court dismissed it because the plaintiff couldn\'t provide instructions for serving process on Satan.',
+          puns: 'I rest my case - said the tired lawyer to his briefcase.',
+          world: 'In England, it is technically illegal to handle a salmon in suspicious circumstances under the Salmon Act 1986. No one is quite sure what "suspicious circumstances" means.',
+          popculture: 'In "Legally Blonde," Elle Woods wins her case by knowing that a perm cannot get wet within 24 hours of being done - proving that specialised knowledge can win cases!',
+        };
+        response = fallbacks[cat] || fallbacks.jokes;
+      }
       return NextResponse.json({ response });
     }
 

@@ -13,7 +13,7 @@ import {
   Building, Gavel, Users as UsersIcon, Building2, Handshake,
   PenTool, Mic, TrendingUp, Search, ArrowLeft, Clock,
   RefreshCw, MessageSquare, BookMarked,
-  Layers, Star, Play, X, Lightbulb, Save, Trash2,
+  Layers, Star, Play, X, Lightbulb, Save, Trash2, Send,
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════
@@ -90,6 +90,17 @@ export default function StudyPage() {
   // Saved Notes
   const [savedNotesIndex, setSavedNotesIndex] = useState<Array<{ key: string; skillName: string; unitName: string; savedAt: string }>>([]);
   const [viewingSavedNote, setViewingSavedNote] = useState<{ skillName: string; unitName: string; sections: any[]; savedAt: string } | null>(null);
+
+  // Notes interactive Ask AI
+  const [selectedNoteText, setSelectedNoteText] = useState('');
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const [showNotesChat, setShowNotesChat] = useState(false);
+  const [notesChatMode, setNotesChatMode] = useState<'chat' | 'quiz'>('chat');
+  const [notesChatMessages, setNotesChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [notesChatInput, setNotesChatInput] = useState('');
+  const [notesChatLoading, setNotesChatLoading] = useState(false);
+  const notesContainerRef = useRef<HTMLDivElement>(null);
+  const notesChatEndRef = useRef<HTMLDivElement>(null);
 
   // Load saved notes index from localStorage
   useEffect(() => {
@@ -312,12 +323,141 @@ export default function StudyPage() {
 
   const goBack = () => {
     if (viewingSavedNote) { setViewingSavedNote(null); return; }
-    if (view === 'notes') { setView('browse'); setNotes(''); setNotesMeta(null); }
+    if (view === 'notes') { setView('browse'); setNotes(''); setNotesMeta(null); setShowNotesChat(false); }
     else if (view === 'error') { setView('browse'); setNotesError(null); }
     else if (view === 'ask-ai') setView('browse');
     else if (view === 'topics') setView('browse');
     else setView('browse');
   };
+
+  /* ═══════════════════════════════════════
+     NOTES INTERACTIVE SYSTEM
+     ═══════════════════════════════════════ */
+  const SECTION_ICONS = [BookOpen, FileText, Scale, Shield, Briefcase, Building, Gavel, GraduationCap];
+
+  const notesSections = useMemo(() => {
+    if (!notes) return [];
+    const lines = notes.split('\n');
+    const sections: { title: string; content: string }[] = [];
+    let currentTitle = '';
+    let currentLines: string[] = [];
+    for (const line of lines) {
+      const h2Match = line.match(/^##\s+(.+)/);
+      if (h2Match) {
+        if (currentTitle || currentLines.length > 0) {
+          const content = currentLines.join('\n').trim();
+          if (content) sections.push({ title: currentTitle || 'Overview', content });
+        }
+        currentTitle = h2Match[1].replace(/\*\*/g, '').replace(/[#]/g, '').trim();
+        currentLines = [];
+      } else {
+        currentLines.push(line);
+      }
+    }
+    if (currentTitle || currentLines.length > 0) {
+      const content = currentLines.join('\n').trim();
+      if (content) sections.push({ title: currentTitle || 'Overview', content });
+    }
+    return sections;
+  }, [notes]);
+
+  const handleNoteTextSelection = useCallback(() => {
+    const selection = window.getSelection();
+    const text = selection?.toString().trim();
+    if (text && text.length > 5 && text.length < 500) {
+      const range = selection?.getRangeAt(0);
+      const rect = range?.getBoundingClientRect();
+      if (rect) {
+        setSelectedNoteText(text);
+        setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top + window.scrollY });
+      }
+    } else {
+      setTooltipPos(null);
+      setSelectedNoteText('');
+    }
+  }, []);
+
+  const openNotesChat = useCallback((mode: 'chat' | 'quiz') => {
+    const text = selectedNoteText;
+    setNotesChatMode(mode);
+    setNotesChatMessages([{
+      role: 'user',
+      content: mode === 'quiz'
+        ? `Quiz me on this concept:\n\n"${text}"`
+        : `Help me understand this:\n\n"${text}"`
+    }]);
+    setNotesChatInput('');
+    setShowNotesChat(true);
+    setTooltipPos(null);
+    setSelectedNoteText('');
+    setNotesChatLoading(true);
+    getIdToken().then(token => {
+      fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          message: mode === 'quiz'
+            ? `I'm studying "${notesMeta?.topicName}". Quiz me on this: "${text}"`
+            : `I'm studying "${notesMeta?.topicName}". Help me understand: "${text}"`,
+          competencyType: 'clarification',
+          context: { topicArea: notesMeta?.topicName },
+        }),
+      }).then(async res => {
+        if (res.ok) {
+          const data = await res.json();
+          setNotesChatMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+        } else {
+          setNotesChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Try again.' }]);
+        }
+      }).catch(() => {
+        setNotesChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Try again.' }]);
+      }).finally(() => setNotesChatLoading(false));
+    });
+  }, [selectedNoteText, notesMeta, getIdToken]);
+
+  const sendNotesChat = useCallback(async () => {
+    if (!notesChatInput.trim() || notesChatLoading) return;
+    const msg = notesChatInput.trim();
+    setNotesChatInput('');
+    setNotesChatMessages(prev => [...prev, { role: 'user', content: msg }]);
+    setNotesChatLoading(true);
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          message: msg,
+          competencyType: 'clarification',
+          context: { topicArea: notesMeta?.topicName },
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNotesChatMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+      }
+    } catch {} finally {
+      setNotesChatLoading(false);
+    }
+  }, [notesChatInput, notesChatLoading, notesMeta, getIdToken]);
+
+  // Close tooltip on click outside
+  useEffect(() => {
+    if (!tooltipPos) return;
+    const handleClick = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.notes-ask-tooltip')) {
+        setTooltipPos(null);
+        setSelectedNoteText('');
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [tooltipPos]);
+
+  // Scroll chat to bottom
+  useEffect(() => {
+    notesChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [notesChatMessages]);
 
   /* ═══════════════════════════════════════
      SAVED NOTE VIEWER
@@ -367,6 +507,8 @@ export default function StudyPage() {
      NOTES VIEW
      ═══════════════════════════════════════ */
   if (view === 'notes' && notes) {
+    const hasSections = notesSections.length > 1;
+
     return (
       <div className="min-h-screen bg-background animate-in fade-in duration-300">
         <div className="max-w-4xl mx-auto px-4 py-6">
@@ -382,24 +524,61 @@ export default function StudyPage() {
           </div>
 
           {/* Title */}
-          <div className="mb-8">
+          <div className="mb-4">
             <h1 className="text-2xl font-bold">{notesMeta?.topicName}</h1>
             {notesMeta?.unitName && (
               <p className="text-sm text-muted-foreground mt-1">{notesMeta.unitName}</p>
             )}
           </div>
 
-          {/* Notes content */}
-          <div className="prose prose-sm dark:prose-invert max-w-none 
-            prose-headings:font-bold prose-headings:text-foreground
-            prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-4 prose-h2:pb-2 prose-h2:border-b prose-h2:border-border/30
-            prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-3
-            prose-blockquote:border-l-primary/40 prose-blockquote:bg-primary/5 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg
-            prose-strong:text-foreground
-            prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
-            prose-li:marker:text-primary/60
-          ">
-            <MarkdownRenderer content={notes} />
+          {/* Interactive tip */}
+          <div className="mb-6 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary/5 border border-primary/10">
+            <Sparkles className="h-3.5 w-3.5 text-primary/60 shrink-0" />
+            <p className="text-xs text-primary/70">
+              <strong>Tip:</strong> Highlight any text to ask AI for clarification or get quizzed on it.
+            </p>
+          </div>
+
+          {/* Notes content — sectioned cards */}
+          <div ref={notesContainerRef} onMouseUp={handleNoteTextSelection} className="space-y-4 selection:bg-primary/20">
+            {hasSections ? notesSections.map((section, i) => {
+              const SectionIcon = SECTION_ICONS[i % SECTION_ICONS.length];
+              return (
+                <div key={i} className="rounded-xl border border-border/30 bg-card/50 overflow-hidden transition-shadow hover:shadow-sm">
+                  <div className="flex items-center gap-3 px-5 py-3 bg-muted/30 border-b border-border/20">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <SectionIcon className="h-4 w-4 text-primary/70" />
+                    </div>
+                    <h2 className="font-semibold text-base text-foreground">{section.title}</h2>
+                  </div>
+                  <div className="px-5 py-4 prose prose-sm dark:prose-invert max-w-none
+                    prose-headings:font-bold prose-headings:text-foreground
+                    prose-h3:text-base prose-h3:mt-4 prose-h3:mb-2
+                    prose-blockquote:border-l-primary/40 prose-blockquote:bg-primary/5 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg
+                    prose-strong:text-foreground
+                    prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
+                    prose-li:marker:text-primary/60
+                  ">
+                    <MarkdownRenderer content={section.content} />
+                  </div>
+                </div>
+              );
+            }) : (
+              /* Fallback: single card if no ## headings found */
+              <div className="rounded-xl border border-border/30 bg-card/50 overflow-hidden">
+                <div className="px-5 py-5 prose prose-sm dark:prose-invert max-w-none
+                  prose-headings:font-bold prose-headings:text-foreground
+                  prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-4 prose-h2:pb-2 prose-h2:border-b prose-h2:border-border/30
+                  prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-3
+                  prose-blockquote:border-l-primary/40 prose-blockquote:bg-primary/5 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg
+                  prose-strong:text-foreground
+                  prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
+                  prose-li:marker:text-primary/60
+                ">
+                  <MarkdownRenderer content={notes} />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Regenerate button */}
@@ -412,6 +591,94 @@ export default function StudyPage() {
             </button>
           </div>
         </div>
+
+        {/* Ask AI Tooltip */}
+        {selectedNoteText && tooltipPos && (
+          <div
+            className="notes-ask-tooltip fixed z-50 animate-in fade-in-0 zoom-in-95 duration-150"
+            style={{ left: Math.min(tooltipPos.x, typeof window !== 'undefined' ? window.innerWidth - 240 : 400), top: tooltipPos.y - 45 }}
+          >
+            <div className="bg-primary text-primary-foreground rounded-lg shadow-lg px-3 py-2 flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              <button onClick={() => openNotesChat('chat')} className="text-sm font-medium hover:underline">Ask AI</button>
+              <div className="w-px h-3 bg-primary-foreground/30" />
+              <button onClick={() => openNotesChat('quiz')} className="text-sm font-medium hover:underline flex items-center gap-1">
+                <GraduationCap className="h-3 w-3" /> Quiz Me
+              </button>
+              <button onClick={() => { setSelectedNoteText(''); setTooltipPos(null); }} className="ml-1 opacity-70 hover:opacity-100">
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="w-3 h-3 bg-primary rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1.5" />
+          </div>
+        )}
+
+        {/* AI Chat Panel */}
+        {showNotesChat && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 animate-in fade-in-0 duration-200">
+            <div className="w-full max-w-2xl max-h-[80vh] flex flex-col bg-background rounded-xl shadow-2xl border overflow-hidden">
+              {/* Chat Header */}
+              <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-primary/10 to-primary/5">
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    notesChatMode === 'quiz' ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-600' : 'bg-primary/20 text-primary'
+                  }`}>
+                    {notesChatMode === 'quiz' ? <GraduationCap className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-sm">{notesChatMode === 'quiz' ? 'Note Quiz' : 'Ask AI'}</h3>
+                    <p className="text-xs text-muted-foreground">{notesMeta?.topicName}</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowNotesChat(false)} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {notesChatMessages.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
+                      msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-br-md' : 'bg-muted rounded-bl-md'
+                    }`}>
+                      {msg.role === 'assistant' ? <MarkdownRenderer content={msg.content} /> : <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+                    </div>
+                  </div>
+                ))}
+                {notesChatLoading && (
+                  <div className="flex justify-start">
+                    <div className="rounded-2xl px-4 py-2.5 bg-muted rounded-bl-md">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  </div>
+                )}
+                <div ref={notesChatEndRef} />
+              </div>
+
+              {/* Chat Input */}
+              <div className="p-4 border-t">
+                <div className="flex gap-2">
+                  <input
+                    value={notesChatInput}
+                    onChange={e => setNotesChatInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendNotesChat(); } }}
+                    placeholder="Ask a follow-up question..."
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-muted/20 border border-border/20 text-sm outline-none focus:ring-1 focus:ring-primary/20 transition-colors"
+                    autoFocus
+                  />
+                  <button
+                    onClick={sendNotesChat}
+                    disabled={!notesChatInput.trim() || notesChatLoading}
+                    className="px-3 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

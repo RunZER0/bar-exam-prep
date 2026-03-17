@@ -261,8 +261,12 @@ export default function BanterPage() {
   const prefetchNext = useCallback(async () => {
     try {
       const item = await loadContent();
-      prefetchRef.current = item;
-      setNextItem(item);
+      if (item.content && item.content.trim().length >= 10) {
+        prefetchRef.current = item;
+        setNextItem(item);
+      } else {
+        prefetchRef.current = null;
+      }
     } catch {
       prefetchRef.current = null;
     }
@@ -331,7 +335,7 @@ export default function BanterPage() {
 
     maybeShowRoastNudge();
 
-    if (prefetchRef.current) {
+    if (prefetchRef.current && prefetchRef.current.content) {
       const prefetched = prefetchRef.current;
       prefetchRef.current = null;
       setNextItem(null);
@@ -340,11 +344,25 @@ export default function BanterPage() {
       return;
     }
 
+    prefetchRef.current = null;
+    setNextItem(null);
     setContentLoading(true);
     try {
-      await loadContentStreaming();
+      const item = await loadContent();
+      if (!item.content || item.content.trim().length < 10) {
+        item.content = 'Even the best comedians need a moment. Hit me again!';
+      }
+      showItem(item);
       prefetchNext();
-    } catch {} finally {
+    } catch {
+      showItem({
+        id: 'fallback-' + Date.now(),
+        category: pickCategory(),
+        content: 'The legal humor machine needs a quick recess. Try again!',
+        rating: null,
+        shown: false,
+      });
+    } finally {
       setContentLoading(false);
     }
   };
@@ -355,10 +373,23 @@ export default function BanterPage() {
     if (currentItem) setHistory(prev => [...prev.slice(-20), currentItem]);
     setContentLoading(true);
     prefetchRef.current = null;
+    setNextItem(null);
     try {
-      await loadContentStreaming(catId || undefined);
+      const item = await loadContent(catId || undefined);
+      if (!item.content || item.content.trim().length < 10) {
+        item.content = 'Even the best comedians need a moment. Hit me again!';
+      }
+      showItem(item);
       prefetchNext();
-    } catch {} finally {
+    } catch {
+      showItem({
+        id: 'fallback-' + Date.now(),
+        category: catId || pickCategory(),
+        content: 'The legal humor machine needs a quick recess. Try again!',
+        rating: null,
+        shown: false,
+      });
+    } finally {
       setContentLoading(false);
     }
   };

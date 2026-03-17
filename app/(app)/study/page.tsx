@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import { NoteStyleWrapper, type NoteStyle } from '@/components/MasteryCarousel';
 import EngagingLoader from '@/components/EngagingLoader';
 import {
   BookOpen, ChevronRight, ChevronDown, Loader2, Sparkles,
@@ -101,6 +103,30 @@ export default function StudyPage() {
   const [notesChatLoading, setNotesChatLoading] = useState(false);
   const notesContainerRef = useRef<HTMLDivElement>(null);
   const notesChatEndRef = useRef<HTMLDivElement>(null);
+
+  // Sidebar auto-collapse for immersive notes reading
+  const { setCollapsed } = useSidebar();
+  const sidebarWasCollapsed = useRef<boolean | null>(null);
+  const prevView = useRef<ViewState>('browse');
+
+  // Random note style per session
+  const NOTE_STYLE_OPTIONS: NoteStyle[] = ['classic', 'magazine', 'highlight', 'minimal'];
+  const [noteStyle] = useState<NoteStyle>(() => NOTE_STYLE_OPTIONS[Math.floor(Math.random() * NOTE_STYLE_OPTIONS.length)]);
+
+  // Auto-collapse sidebar when entering notes view, restore on exit
+  useEffect(() => {
+    const enteringNotes = (view === 'notes') && prevView.current !== 'notes';
+    const leavingNotes = (view !== 'notes') && prevView.current === 'notes';
+
+    if (enteringNotes) {
+      sidebarWasCollapsed.current = localStorage.getItem('sidebar-collapsed') === 'true';
+      setCollapsed(true);
+    } else if (leavingNotes && sidebarWasCollapsed.current === false) {
+      setCollapsed(false);
+    }
+
+    prevView.current = view;
+  }, [view, setCollapsed]);
 
   // Load saved notes index from localStorage
   useEffect(() => {
@@ -482,11 +508,11 @@ export default function StudyPage() {
           </div>
           <div className="space-y-6">
             {viewingSavedNote.sections.map((section: any, i: number) => (
-              <div key={section.id || i} className="rounded-xl border border-border/30 p-5">
+              <div key={section.id || i} className="scroll-mt-4">
                 <h3 className="font-semibold text-lg mb-3">{section.title}</h3>
-                <div className="prose prose-sm dark:prose-invert max-w-none">
+                <NoteStyleWrapper style={noteStyle}>
                   <MarkdownRenderer content={section.content} />
-                </div>
+                </NoteStyleWrapper>
                 {section.examTips && (
                   <div className="mt-4 p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
                     <p className="text-xs font-semibold text-amber-600 mb-1 flex items-center gap-1">
@@ -494,6 +520,9 @@ export default function StudyPage() {
                     </p>
                     <p className="text-sm text-muted-foreground">{section.examTips}</p>
                   </div>
+                )}
+                {i < viewingSavedNote.sections.length - 1 && (
+                  <hr className="mt-6 border-t border-border/30" />
                 )}
               </div>
             ))}
@@ -539,45 +568,30 @@ export default function StudyPage() {
             </p>
           </div>
 
-          {/* Notes content — sectioned cards */}
-          <div ref={notesContainerRef} onMouseUp={handleNoteTextSelection} className="space-y-4 selection:bg-primary/20">
+          {/* Notes content */}
+          <div ref={notesContainerRef} onMouseUp={handleNoteTextSelection} className="space-y-6 selection:bg-primary/20">
             {hasSections ? notesSections.map((section, i) => {
               const SectionIcon = SECTION_ICONS[i % SECTION_ICONS.length];
               return (
-                <div key={i} className="rounded-xl border border-border/30 bg-card/50 overflow-hidden transition-shadow hover:shadow-sm">
-                  <div className="flex items-center gap-3 px-5 py-3 bg-muted/30 border-b border-border/20">
+                <div key={i} className="scroll-mt-4">
+                  <div className="flex items-center gap-3 mb-3">
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                       <SectionIcon className="h-4 w-4 text-primary/70" />
                     </div>
                     <h2 className="font-semibold text-base text-foreground">{section.title}</h2>
                   </div>
-                  <div className="px-5 py-4 prose prose-sm dark:prose-invert max-w-none
-                    prose-headings:font-bold prose-headings:text-foreground
-                    prose-h3:text-base prose-h3:mt-4 prose-h3:mb-2
-                    prose-blockquote:border-l-primary/40 prose-blockquote:bg-primary/5 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg
-                    prose-strong:text-foreground
-                    prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
-                    prose-li:marker:text-primary/60
-                  ">
+                  <NoteStyleWrapper style={noteStyle}>
                     <MarkdownRenderer content={section.content} />
-                  </div>
+                  </NoteStyleWrapper>
+                  {i < notesSections.length - 1 && (
+                    <hr className="mt-6 border-t border-border/30" />
+                  )}
                 </div>
               );
             }) : (
-              /* Fallback: single card if no ## headings found */
-              <div className="rounded-xl border border-border/30 bg-card/50 overflow-hidden">
-                <div className="px-5 py-5 prose prose-sm dark:prose-invert max-w-none
-                  prose-headings:font-bold prose-headings:text-foreground
-                  prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-4 prose-h2:pb-2 prose-h2:border-b prose-h2:border-border/30
-                  prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-3
-                  prose-blockquote:border-l-primary/40 prose-blockquote:bg-primary/5 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg
-                  prose-strong:text-foreground
-                  prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
-                  prose-li:marker:text-primary/60
-                ">
-                  <MarkdownRenderer content={notes} />
-                </div>
-              </div>
+              <NoteStyleWrapper style={noteStyle}>
+                <MarkdownRenderer content={notes} />
+              </NoteStyleWrapper>
             )}
           </div>
 

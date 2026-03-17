@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
         }
 
         // Pick ONE visual style for the entire session (randomly chosen)
-        const NOTE_STYLES = ['classic', 'magazine', 'slide', 'highlight', 'minimal'] as const;
+        const NOTE_STYLES = ['classic', 'magazine', 'highlight', 'minimal'] as const;
         const sessionStyle = NOTE_STYLES[Math.floor(Math.random() * NOTE_STYLES.length)];
 
         /* ========== PHASE: EXTRAS ONLY ========== */

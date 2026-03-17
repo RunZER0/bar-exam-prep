@@ -642,7 +642,7 @@ function CheckpointSlide({ checkpoint, onComplete }: CheckpointProps) {
 /* ================================================================
    NOTE STYLE WRAPPERS  —  5 visual styles for variety
    ================================================================ */
-type NoteStyle = 'classic' | 'magazine' | 'slide' | 'highlight' | 'minimal';
+export type NoteStyle = 'classic' | 'magazine' | 'highlight' | 'minimal';
 
 /**
  * NoteStyleWrapper — 5 distinct presentation styles.
@@ -653,7 +653,7 @@ type NoteStyle = 'classic' | 'magazine' | 'slide' | 'highlight' | 'minimal';
  *   - highlight : Insight cards — each section in a tinted card, numbered key points, icon header
  *   - minimal   : Clean reader — max-width narrow, generous line-height, serifed headings
  */
-function NoteStyleWrapper({ style, children }: { style: NoteStyle; children: React.ReactNode }) {
+export function NoteStyleWrapper({ style, children }: { style: NoteStyle; children: React.ReactNode }) {
     switch (style) {
         case 'classic':
             // Traditional textbook: two-column layout on larger content, section dividers
@@ -690,22 +690,6 @@ function NoteStyleWrapper({ style, children }: { style: NoteStyle; children: Rea
                 </div>
             );
 
-        case 'slide':
-            // Gamma.app deck — hero title card top, content in 2-3 card grid, presentation feel
-            return (
-                <div className="space-y-6
-                    [&_h3]:text-2xl [&_h3]:font-bold [&_h3]:text-center [&_h3]:text-amber-900 dark:[&_h3]:text-amber-200 [&_h3]:mb-2 [&_h3]:px-6 [&_h3]:py-5 [&_h3]:rounded-2xl [&_h3]:bg-gradient-to-r [&_h3]:from-amber-50/60 [&_h3]:via-white/40 [&_h3]:to-orange-50/50 dark:[&_h3]:from-amber-950/20 dark:[&_h3]:via-zinc-900/40 dark:[&_h3]:to-amber-950/15 [&_h3]:border [&_h3]:border-amber-100/50 dark:[&_h3]:border-amber-900/20 [&_h3]:shadow-sm
-                    [&_h4]:text-sm [&_h4]:font-bold [&_h4]:uppercase [&_h4]:tracking-widest [&_h4]:text-amber-700 dark:[&_h4]:text-amber-400 [&_h4]:mt-2 [&_h4]:mb-2
-                    [&_p]:text-[15px] [&_p]:leading-[1.9] [&_p]:text-foreground/80 [&_p]:mb-3
-                    [&_ul]:list-none [&_ul]:pl-0 [&_ul]:grid [&_ul]:sm:grid-cols-2 [&_ul]:lg:grid-cols-3 [&_ul]:gap-3 [&_ul]:my-4
-                    [&_ol]:list-none [&_ol]:pl-0 [&_ol]:grid [&_ol]:sm:grid-cols-2 [&_ol]:gap-3 [&_ol]:my-4
-                    [&_li]:text-[14px] [&_li]:leading-[1.7] [&_li]:px-4 [&_li]:py-3.5 [&_li]:rounded-xl [&_li]:bg-white/60 dark:[&_li]:bg-zinc-800/40 [&_li]:border [&_li]:border-amber-100/40 dark:[&_li]:border-amber-900/20 [&_li]:shadow-sm [&_li]:transition-shadow [&_li]:hover:shadow-md
-                    [&_blockquote]:text-center [&_blockquote]:bg-gradient-to-r [&_blockquote]:from-amber-50/60 [&_blockquote]:to-orange-50/40 dark:[&_blockquote]:from-amber-950/15 dark:[&_blockquote]:to-orange-950/10 [&_blockquote]:rounded-2xl [&_blockquote]:px-6 [&_blockquote]:py-5 [&_blockquote]:border [&_blockquote]:border-amber-200/30 dark:[&_blockquote]:border-amber-800/20 [&_blockquote]:shadow-sm [&_blockquote]:my-5 [&_blockquote]:italic [&_blockquote]:text-amber-800 dark:[&_blockquote]:text-amber-300 [&_blockquote]:font-medium
-                ">
-                    {children}
-                </div>
-            );
-
         case 'highlight':
             // Insight cards — each section in a tinted card, key takeaways in accent boxes
             return (
@@ -728,7 +712,7 @@ function NoteStyleWrapper({ style, children }: { style: NoteStyle; children: Rea
         case 'minimal':
             // Clean reader — narrow column, generous whitespace, content divided by subtle lines
             return (
-                <div className="max-w-lg mx-auto space-y-5
+                <div className="space-y-5
                     [&_h3]:text-xl [&_h3]:font-light [&_h3]:tracking-tight [&_h3]:text-foreground [&_h3]:border-b [&_h3]:border-border/30 [&_h3]:pb-3 [&_h3]:mb-6
                     [&_h4]:text-sm [&_h4]:font-medium [&_h4]:text-muted-foreground [&_h4]:uppercase [&_h4]:tracking-widest [&_h4]:mt-6 [&_h4]:mb-3
                     [&_p]:text-[15px] [&_p]:leading-[2.1] [&_p]:text-foreground/75 [&_p]:mb-4

@@ -93,7 +93,7 @@ export const WEEKLY_LIMITS: Record<Exclude<SubscriptionTier, 'custom'>, Record<P
 
 // ── Free Trial Daily Limit ──
 // Trial users get this many sessions of EACH premium feature PER DAY (not weekly)
-export const FREE_TRIAL_DAILY_LIMIT = 2;
+export const FREE_TRIAL_DAILY_LIMIT = 5;
 
 // ── Drafting Daily Attempt Cap ──
 // Each document gets this many attempts with feedback PER DAY (not rolling)

@@ -83,8 +83,12 @@ export const POST = withAuth(async (req: NextRequest, user) => {
 
     // ── Subscription gate for premium features ──
     // Exam generation (context.examGeneration) is gated separately as 'cle_exam' on the exam page
+    // Internal drafting operations (checkpoint-generate, checkpoint-eval) are part of an active session
+    // and should NOT consume a usage credit — only session starts count.
+    const DRAFTING_INTERNAL_MODES = new Set(['checkpoint-generate', 'checkpoint-eval']);
+    const isDraftingInternal = competencyType === 'drafting' && DRAFTING_INTERNAL_MODES.has(context?.mode);
     const gatedTypes: Record<string, string> = { drafting: 'drafting', research: 'research', clarification: 'clarify' };
-    const premiumFeature = (context?.examGeneration) ? null : gatedTypes[competencyType];
+    const premiumFeature = (context?.examGeneration || isDraftingInternal) ? null : gatedTypes[competencyType];
     if (premiumFeature) {
       const sub = await getSubscriptionInfo(user.id);
       if (!sub.canAccess(premiumFeature as any)) {

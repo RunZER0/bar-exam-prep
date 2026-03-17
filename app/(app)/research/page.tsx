@@ -777,6 +777,24 @@ Question: ${enhancedMessage}`
               ref={textareaRef}
               value={input}
               onChange={e => { setInput(e.target.value); autoExpand(); }}
+              onPaste={(e) => {
+                const items = e.clipboardData?.items;
+                if (!items) return;
+                for (const item of Array.from(items)) {
+                  if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    if (!file) continue;
+                    const att = {
+                      id: Date.now().toString() + Math.random(),
+                      file,
+                      preview: URL.createObjectURL(file),
+                      type: 'image' as const,
+                    };
+                    setAttachments(prev => [...prev, att]);
+                  }
+                }
+              }}
               onKeyDown={handleKeyDown}
               placeholder="What would you like to research?"
               disabled={sending}

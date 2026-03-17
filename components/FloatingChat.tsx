@@ -692,6 +692,24 @@ export default function FloatingChat() {
                 el.style.height = 'auto';
                 el.style.height = Math.min(el.scrollHeight, 160) + 'px';
               }}
+              onPaste={(e) => {
+                const items = e.clipboardData?.items;
+                if (!items) return;
+                for (const item of Array.from(items)) {
+                  if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    if (!file) continue;
+                    const attachment: Attachment = {
+                      id: crypto.randomUUID(),
+                      type: 'image',
+                      file,
+                      preview: URL.createObjectURL(file),
+                    };
+                    setAttachments(prev => [...prev, attachment]);
+                  }
+                }
+              }}
               onKeyDown={handleKeyDown}
               placeholder="Ask a question..."
               rows={1}

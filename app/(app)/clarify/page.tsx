@@ -857,6 +857,24 @@ export default function ClarifyPage() {
               el.style.height = 'auto';
               el.style.height = Math.min(el.scrollHeight, 128) + 'px';
             }}
+            onPaste={(e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+              const items = e.clipboardData?.items;
+              if (!items) return;
+              for (const item of Array.from(items)) {
+                if (item.type.startsWith('image/')) {
+                  e.preventDefault();
+                  const file = item.getAsFile();
+                  if (!file) continue;
+                  const attachment: Attachment = {
+                    id: Date.now().toString() + Math.random(),
+                    type: 'image',
+                    file,
+                    preview: URL.createObjectURL(file),
+                  };
+                  setAttachments(prev => [...prev, attachment]);
+                }
+              }
+            }}
             placeholder="What do you need help understanding?"
             disabled={isLoading}
             className="flex-1 min-h-[44px] max-h-32 resize-none rounded-xl bg-muted/20 border border-border/20 focus:border-violet-500/40 px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-violet-500/15 transition-colors"

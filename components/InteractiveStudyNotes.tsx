@@ -279,8 +279,13 @@ function AIChatPanel({ initialText, skillName, onClose, mode = 'chat' }: AIChatP
     // Process attachments
     const processedAttachments: Array<{ type: string; dataUrl?: string; content?: string; fileName?: string }> = [];
     for (const att of currentAttachments) {
-      if (att.type === 'image' && att.preview) {
-        processedAttachments.push({ type: 'image', dataUrl: att.preview, fileName: att.file.name });
+      if (att.type === 'image' && att.file) {
+        const dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(att.file);
+        });
+        processedAttachments.push({ type: 'image', dataUrl, fileName: att.file.name });
       } else if (att.transcription) {
         processedAttachments.push({ type: 'document', content: att.transcription, fileName: att.file.name });
       } else {

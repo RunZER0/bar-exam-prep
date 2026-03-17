@@ -139,11 +139,19 @@ export async function getSubscriptionInfo(userId: string): Promise<SubscriptionI
   const premiumFeatures: PremiumFeature[] = ['drafting', 'oral_exam', 'oral_devil', 'cle_exam', 'research', 'clarify'];
   const featureUsageMap = {} as Record<PremiumFeature, FeatureUsageInfo>;
 
-  // Parse custom features for custom tier
-  let userCustomFeatures: PremiumFeature[] = [];
+  // Parse custom features/limits for custom tier
+  // Supports both new format { drafting: 10, oral_exam: 5 } and legacy ["drafting", "oral_exam"]
+  let customLimitsMap: Record<string, number> = {};
   if (tier === 'custom' && user.customFeatures) {
     try {
-      userCustomFeatures = JSON.parse(user.customFeatures) as PremiumFeature[];
+      const parsed = JSON.parse(user.customFeatures);
+      if (Array.isArray(parsed)) {
+        // Legacy: feature names array → default limit each
+        for (const f of parsed) customLimitsMap[f] = CUSTOM_WEEKLY_LIMIT;
+      } else if (typeof parsed === 'object' && parsed !== null) {
+        // New: { feature: sessionsPerWeek } map
+        customLimitsMap = parsed;
+      }
     } catch { /* invalid JSON, treat as empty */ }
   }
 
@@ -156,7 +164,7 @@ export async function getSubscriptionInfo(userId: string): Promise<SubscriptionI
       limit = FREE_TRIAL_DAILY_LIMIT;
       used = dailyUsage[feature] ?? 0;
     } else if (tier === 'custom') {
-      limit = userCustomFeatures.includes(feature) ? CUSTOM_WEEKLY_LIMIT : 0;
+      limit = customLimitsMap[feature] ?? 0;
       used = weeklyUsage[feature] ?? 0;
     } else {
       limit = WEEKLY_LIMITS[tier]?.[feature] ?? 0;
@@ -250,11 +258,18 @@ export async function incrementFeatureUsage(
   const weekStart = getWeekStart();
   let limit: number;
   if (tier === 'custom') {
-    let userCustomFeatures: PremiumFeature[] = [];
+    let customLimitsMap: Record<string, number> = {};
     if (user?.customFeatures) {
-      try { userCustomFeatures = JSON.parse(user.customFeatures) as PremiumFeature[]; } catch {}
+      try {
+        const parsed = JSON.parse(user.customFeatures);
+        if (Array.isArray(parsed)) {
+          for (const f of parsed) customLimitsMap[f] = CUSTOM_WEEKLY_LIMIT;
+        } else if (typeof parsed === 'object' && parsed !== null) {
+          customLimitsMap = parsed;
+        }
+      } catch {}
     }
-    limit = userCustomFeatures.includes(feature) ? CUSTOM_WEEKLY_LIMIT : 0;
+    limit = customLimitsMap[feature] ?? 0;
   } else {
     limit = WEEKLY_LIMITS[tier]?.[feature] ?? 0;
   }
@@ -316,12 +331,29 @@ export async function activateSubscription(
   paystackCustomerId?: string,
   paystackSubscriptionCode?: string,
   customFeatures?: PremiumFeature[],
+  /** Per-feature weekly session limits for custom packages: { drafting: 10, oral_exam: 5 } */
+  customLimits?: Record<string, number>,
+  /** Actual duration in weeks for custom packages (overrides billingPeriod for end date) */
+  durationWeeks?: number,
 ) {
   const now = new Date();
-  const days = periodToDays(billingPeriod);
+  const days = durationWeeks ? durationWeeks * 7 : periodToDays(billingPeriod);
   const endsAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
   const legacyPlan = billingPeriod as 'weekly' | 'monthly' | 'annual';
+
+  // For custom packages, store a map of { feature: sessionsPerWeek } so limits are honoured
+  let customFeaturesJson: string | undefined;
+  if (tier === 'custom') {
+    if (customLimits && Object.keys(customLimits).length > 0) {
+      customFeaturesJson = JSON.stringify(customLimits);
+    } else if (customFeatures) {
+      // Legacy fallback: feature names only → default to CUSTOM_WEEKLY_LIMIT each
+      const limitsMap: Record<string, number> = {};
+      for (const f of customFeatures) limitsMap[f] = CUSTOM_WEEKLY_LIMIT;
+      customFeaturesJson = JSON.stringify(limitsMap);
+    }
+  }
 
   await db.update(users).set({
     subscriptionTier: tier,
@@ -331,7 +363,7 @@ export async function activateSubscription(
     subscriptionEndsAt: endsAt,
     ...(paystackCustomerId && { paystackCustomerId }),
     ...(paystackSubscriptionCode && { paystackSubscriptionCode }),
-    ...(tier === 'custom' && customFeatures ? { customFeatures: JSON.stringify(customFeatures) } : {}),
+    ...(customFeaturesJson ? { customFeatures: customFeaturesJson } : {}),
     updatedAt: now,
   }).where(eq(users.id, userId));
 }

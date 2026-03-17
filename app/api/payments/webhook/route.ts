@@ -65,12 +65,28 @@ export async function POST(req: NextRequest) {
         }).where(eq(paymentTransactions.paystackReference, reference));
 
         // Activate subscription
-        await activateSubscription(
-          userId,
-          tier,
-          period,
-          String(txn.customer?.customer_code || ''),
-        );
+        if (tier === 'custom') {
+          const customFeatures = txn.metadata?.customFeatures || [];
+          const customSelections = txn.metadata?.customSelections || [];
+          const durationWeeks = txn.metadata?.durationWeeks || undefined;
+          let customLimits: Record<string, number> | undefined;
+          if (Array.isArray(customSelections) && customSelections.length > 0) {
+            customLimits = {};
+            for (const s of customSelections) {
+              if (s.feature && typeof s.sessionsPerWeek === 'number') {
+                customLimits[s.feature] = s.sessionsPerWeek;
+              }
+            }
+          }
+          await activateSubscription(userId, tier, period, String(txn.customer?.customer_code || ''), undefined, customFeatures, customLimits, durationWeeks);
+        } else {
+          await activateSubscription(
+            userId,
+            tier,
+            period,
+            String(txn.customer?.customer_code || ''),
+          );
+        }
 
         console.log(`[Webhook] Activated ${tier}/${period} for user ${userId}`);
         break;

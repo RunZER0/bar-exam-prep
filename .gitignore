@@ -36,3 +36,4 @@ next-env.d.ts
 # Drizzle
 drizzle
 simulation-output.txt
+build_output.txt

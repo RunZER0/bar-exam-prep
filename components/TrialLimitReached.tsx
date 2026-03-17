@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Crown, Sparkles, ArrowRight, X, Rocket, Check, ShoppingBag, Zap, Lock } from 'lucide-react';
@@ -60,6 +61,7 @@ function FeatureGate({
   variant = 'overlay',
 }: FeatureGateProps) {
   const router = useRouter();
+  const [collapsed, setCollapsed] = useState(false);
   const meta = PREMIUM_FEATURE_META[feature];
   const recommendedTier = getRecommendedTier(feature, currentTier);
   const tierMeta = TIER_META[recommendedTier];
@@ -67,13 +69,63 @@ function FeatureGate({
   const addonPrice = ADDON_PRICES[feature];
   const isTrial = currentTier === 'free_trial';
 
+  // ── Collapsed persistent banner ──
+  if (collapsed) {
+    return (
+      <div className="fixed bottom-0 left-0 right-0 z-50 animate-in slide-in-from-bottom duration-300">
+        <div className="bg-amber-50 dark:bg-amber-950/80 border-t border-amber-200 dark:border-amber-800/50 px-4 py-3 shadow-lg backdrop-blur-sm">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Lock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                  {meta.emoji} {meta.label} limit reached
+                </span>
+              </div>
+              {used !== undefined && limit !== undefined && (
+                <span className="text-xs text-amber-600 dark:text-amber-400 shrink-0">
+                  {used}/{limit} used
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => router.push('/subscribe')}
+                className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-semibold hover:from-emerald-600 hover:to-teal-600 transition-all shadow-sm"
+              >
+                {isTrial ? 'View Plans' : 'Upgrade'}
+              </button>
+              {!isTrial && (
+                <button
+                  onClick={() => router.push(`/subscribe?addon=${feature}`)}
+                  className="px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 text-xs font-medium text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                >
+                  Buy Pass
+                </button>
+              )}
+              <button
+                onClick={onDismiss}
+                className="p-1 rounded-md text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                aria-label="Dismiss"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Full overlay / inline card ──
+
   const content = (
     <div className="relative w-full max-w-lg mx-4 overflow-hidden">
       {/* Card */}
       <div className="bg-card border border-border/60 rounded-3xl shadow-2xl backdrop-blur-xl">
         {/* Close button */}
         <button
-          onClick={onDismiss}
+          onClick={() => setCollapsed(true)}
           className="absolute top-5 right-5 p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all z-10"
           aria-label="Close"
         >
@@ -175,7 +227,7 @@ function FeatureGate({
 
           {/* Dismiss */}
           <button
-            onClick={onDismiss}
+            onClick={() => setCollapsed(true)}
             className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
           >
             {isTrial ? "I\u2019ll explore other features" : 'Continue with remaining features'}

@@ -113,8 +113,22 @@ export const GET = withAuth(async (req: NextRequest, user) => {
       sendTierUpgradedEmail(user.id, previousTier, tier).catch(console.error);
       sendPaymentReceiptEmail(user.id, amountKES, `Upgrade to ${tier} (${period})`, reference, txn.channel).catch(console.error);
     } else if (purchaseType === 'custom') {
-      // Custom package — pass selected features to activateSubscription
+      // Custom package — build per-feature limits map from selections
       const customFeatures = meta.customFeatures || [];
+      const customSelections = meta.customSelections || [];
+      const durationWeeks = meta.durationWeeks || undefined;
+
+      // Build { feature: sessionsPerWeek } map from selections
+      let customLimits: Record<string, number> | undefined;
+      if (Array.isArray(customSelections) && customSelections.length > 0) {
+        customLimits = {};
+        for (const s of customSelections) {
+          if (s.feature && typeof s.sessionsPerWeek === 'number') {
+            customLimits[s.feature] = s.sessionsPerWeek;
+          }
+        }
+      }
+
       await activateSubscription(
         user.id,
         'custom' as SubscriptionTier,
@@ -122,6 +136,8 @@ export const GET = withAuth(async (req: NextRequest, user) => {
         String(txn.customer?.customer_code || ''),
         undefined,
         customFeatures,
+        customLimits,
+        durationWeeks,
       );
 
       sendSubscriptionActivatedEmail(user.id, 'custom' as SubscriptionTier, period, amountKES).catch(console.error);

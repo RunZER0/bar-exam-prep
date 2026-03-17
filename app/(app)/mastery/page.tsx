@@ -39,6 +39,16 @@ interface DailyQueue {
         totalBacklog?: number;
         cappedAt?: number;
         focusUnits?: string[];
+        personalization?: {
+            weakAreas: string[];
+            strongAreas: string[];
+            studyPace: string;
+            examPath: string;
+            coverageTarget: string;
+            learningStyle: string;
+            weekendStudyHours: number;
+            confidenceLevel: number;
+        };
     };
 }
 
@@ -353,7 +363,17 @@ export default function MasteryPage() {
                             })()}, {user?.displayName?.split(' ')[0] || 'Counsel'}
                         </h1>
                         <p className="text-sm text-muted-foreground mt-0.5">
-                            Continue your bar exam preparation journey.
+                            {queueData?.meta?.personalization ? (() => {
+                                const p = queueData.meta.personalization;
+                                const parts: string[] = [];
+                                if (p.examPath?.includes('RESIT')) parts.push('Resit track');
+                                const paceLabel = p.studyPace === 'intensive' ? 'intensive pace' : p.studyPace === 'relaxed' ? 'relaxed pace' : '';
+                                if (paceLabel) parts.push(paceLabel);
+                                if (p.weakAreas?.length) parts.push(`focusing on ${p.weakAreas.slice(0, 2).join(' & ')}`);
+                                return parts.length > 0
+                                    ? `Your plan: ${parts.join(' · ')}`
+                                    : 'Your personalized study plan is ready.';
+                            })() : 'Continue your bar exam preparation journey.'}
                         </p>
                     </div>
 

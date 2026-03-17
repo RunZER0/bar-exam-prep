@@ -359,14 +359,23 @@ export class MasteryOrchestrator {
         // Get which units are in today's queue for display
         const focusUnitCodes = [...new Set(queue.map(n => n.unitCode))];
 
+        // Build a descriptive termFocus that reflects personalisation
+        let termFocus: string;
+        if (isPathA) {
+            termFocus = `Resit Focus — ${failedUnits.join(', ')}`;
+        } else {
+            const weakLabel = failedUnits.length > 0
+                ? ` · Prioritising ${failedUnits.slice(0, 2).join(', ')}${failedUnits.length > 2 ? ` +${failedUnits.length - 2}` : ''}`
+                : '';
+            termFocus = `Term ${term}, Week ${weekInTerm}${weakLabel}`;
+        }
+
         return {
             date: todayStr,
             queue: syllabusQueue,
             practiceItems: microSkillItems,
             meta: {
-                termFocus: isPathA 
-                    ? `Resit Focus - ${failedUnits.join(', ')}` 
-                    : `Term ${term}, Week ${weekInTerm}`,
+                termFocus,
                 totalSkills: syllabus.length,
                 masteredSkills: masteredNodeIds.size,
                 practiceItemCount: microSkillItems.length,

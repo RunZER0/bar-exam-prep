@@ -15,12 +15,16 @@ import {
   TIER_PRICES,
   ADDON_PRICES,
   ADDON_PACKS,
-  CUSTOM_FEATURE_PRICES,
+  CUSTOM_PER_SESSION_PRICE,
+  CUSTOM_DURATION_OPTIONS,
+  CUSTOM_MIN_SESSIONS,
+  CUSTOM_MAX_SESSIONS,
   calculateUpgradeCost,
-  calculateCustomPrice,
+  calculateCustomPackagePrice,
   type SubscriptionTier,
   type BillingPeriod,
   type PremiumFeature,
+  type CustomPackageSelection,
 } from '@/lib/constants/pricing';
 import crypto from 'crypto';
 
@@ -33,7 +37,7 @@ export const POST = withAuth(async (req: NextRequest, user) => {
   }
 
   const body = await req.json();
-  const { tier, period, callbackUrl, addon, addonPack, customFeatures } = body;
+  const { tier, period, callbackUrl, addon, addonPack, customFeatures, customSelections, customDuration } = body;
 
   let amount: number;
   let description: string;
@@ -74,21 +78,46 @@ export const POST = withAuth(async (req: NextRequest, user) => {
 
     // ── Custom package ──
     if (tier === 'custom') {
-      if (!Array.isArray(customFeatures) || customFeatures.length === 0) {
+      // Accept new format: customSelections [{feature, sessionsPerWeek}] + customDuration
+      const validAllFeatures = ['drafting', 'oral_exam', 'oral_devil', 'cle_exam', 'research', 'clarify'] as const;
+
+      let selections: CustomPackageSelection[];
+      let durationOption = CUSTOM_DURATION_OPTIONS.find(d => d.id === customDuration) || CUSTOM_DURATION_OPTIONS[2];
+
+      if (Array.isArray(customSelections) && customSelections.length > 0) {
+        // New format — validate each selection server-side
+        selections = customSelections
+          .filter((s: any) => validAllFeatures.includes(s.feature) && typeof s.sessionsPerWeek === 'number')
+          .map((s: any) => ({
+            feature: s.feature as PremiumFeature,
+            sessionsPerWeek: Math.max(CUSTOM_MIN_SESSIONS, Math.min(CUSTOM_MAX_SESSIONS, Math.floor(s.sessionsPerWeek))),
+          }));
+      } else if (Array.isArray(customFeatures) && customFeatures.length > 0) {
+        // Legacy format — feature names only, default 3 sessions/week
+        selections = customFeatures
+          .filter((f: string) => validAllFeatures.includes(f as any))
+          .map((f: string) => ({ feature: f as PremiumFeature, sessionsPerWeek: 3 }));
+      } else {
         return NextResponse.json({ error: 'Custom package requires at least one feature' }, { status: 400 });
       }
-      const validFeatures = customFeatures.filter((f: string) =>
-        ['drafting', 'oral_exam', 'oral_devil', 'cle_exam', 'research', 'clarify'].includes(f)
-      ) as PremiumFeature[];
-      if (validFeatures.length === 0) {
+
+      if (selections.length === 0) {
         return NextResponse.json({ error: 'No valid features selected' }, { status: 400 });
       }
 
-      const customPrice = calculateCustomPrice(validFeatures, targetPeriod);
+      const customPrice = calculateCustomPackagePrice(selections, durationOption.weeks, durationOption.discount);
       amount = customPrice * 100;
-      description = `Custom package (${validFeatures.length} features, ${targetPeriod})`;
+      description = `Custom package (${selections.length} features, ${durationOption.label})`;
       purchaseType = 'custom';
-      metadata = { purchaseType, tier: 'custom', period: targetPeriod, customFeatures: validFeatures };
+      metadata = {
+        purchaseType,
+        tier: 'custom',
+        period: targetPeriod,
+        customFeatures: selections.map(s => s.feature),
+        customSelections: selections,
+        customDuration: durationOption.id,
+        durationWeeks: durationOption.weeks,
+      };
     }
     // ── Standard tier subscription / upgrade ──
     else {

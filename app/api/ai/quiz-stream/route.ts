@@ -138,7 +138,7 @@ CONCISENESS:
       },
       { role: 'user', content: prompt },
     ],
-    max_tokens: Math.min(16000, Math.max(count * 400, 4000)),
+    max_completion_tokens: Math.min(16000, Math.max(count * 400, 4000)),
     temperature: 0.7,
   });
 
@@ -168,7 +168,7 @@ CONCISENESS:
 
 /* ================================================================
    AUDITOR — gpt-5.4-mini validates each Q for legal accuracy
-   Ultra-fast: max_tokens=3, output is "pass" or "flag" only.
+   Uses reasoning_effort: 'high' for deeper analysis.
    Flagged questions are nuked from the queue.
    ================================================================ */
 async function auditQuestion(

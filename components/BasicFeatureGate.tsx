@@ -30,6 +30,7 @@ export default function BasicFeatureGate({ children }: BasicFeatureGateProps) {
   }
 
   // Block: custom-tier users and expired/inactive non-paying users
+  // (community and dashboard are NOT wrapped by this gate)
   const isExpiredOrInactive = !isActive && !(isTrial && !trialExpired);
   if (tier !== 'custom' && !isExpiredOrInactive) {
     return <>{children}</>;

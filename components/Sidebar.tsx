@@ -63,9 +63,9 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const { collapsed: persistedCollapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar();
-  const { tier, isActive, isTrial, trialExpired } = useSubscription();
+  const { tier, isActive: subActive, isTrial, trialExpired } = useSubscription();
   const [hoverExpanded, setHoverExpanded] = useState(false);
-  const isExpiredNonPaying = !isActive && !(isTrial && !trialExpired);
+  const isExpiredNonPaying = !subActive && !(isTrial && !trialExpired);
   const isCustom = tier === 'custom';
 
   // When hovering over collapsed sidebar, temporarily expand it
@@ -109,10 +109,10 @@ export default function Sidebar() {
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
-          // Expired non-paying users: lock everything except community
+          // Expired non-paying users: lock everything except community and dashboard
           // Custom-tier users: lock basic feature routes only
           const isLocked = isExpiredNonPaying
-            ? item.href !== '/community'
+            ? item.href !== '/community' && item.href !== '/dashboard'
             : isCustom && BASIC_ROUTES.has(item.href);
           return (
             <Link

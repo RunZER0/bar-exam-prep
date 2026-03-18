@@ -178,9 +178,9 @@ export async function getSubscriptionInfo(userId: string): Promise<SubscriptionI
   }
 
   const canAccess = (feature: FeatureKey): boolean => {
-    // Not active (expired trial / no subscription) → only community
+    // Not active (expired trial / no subscription) → only community + dashboard
     if (!isActive) {
-      return feature === 'community';
+      return feature === 'community' || feature === 'dashboard';
     }
 
     // Basic features → yes for general tiers, NO for custom

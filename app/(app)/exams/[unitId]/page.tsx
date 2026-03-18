@@ -34,6 +34,7 @@ interface Question {
   options?: string[];
   marks: number;
   topic?: string;
+  isCompulsory?: boolean;
 }
 
 interface RubricScore {
@@ -75,10 +76,13 @@ interface ExamResult {
 // CONFIGURATION
 // ============================================================
 
-const PAPER_CONFIG: Record<PaperSize, { marks: number; questions: number; time: number }> = {
-  mini: { marks: 15, questions: 2, time: 30 },
-  semi: { marks: 30, questions: 4, time: 60 },
-  full: { marks: 60, questions: 6, time: 180 },
+const PAPER_CONFIG: Record<PaperSize, {
+  marks: number; totalGenerated: number; compulsoryMarks: number;
+  optionalMarks: number; optionalCount: number; optionalChoose: number; time: number;
+}> = {
+  mini: { marks: 15, totalGenerated: 4, compulsoryMarks: 5, optionalMarks: 5, optionalCount: 3, optionalChoose: 2, time: 30 },
+  semi: { marks: 30, totalGenerated: 5, compulsoryMarks: 10, optionalMarks: 10, optionalCount: 4, optionalChoose: 2, time: 60 },
+  full: { marks: 60, totalGenerated: 6, compulsoryMarks: 20, optionalMarks: 10, optionalCount: 5, optionalChoose: 4, time: 180 },
 };
 
 const getGrade = (percentage: number): string => {
@@ -108,7 +112,6 @@ export default function ExamSessionPage() {
   
   const unit = getUnitById(unitId);
   const config = PAPER_CONFIG[paperSize] || PAPER_CONFIG.semi;
-  const configQuestions = config.questions;
   const configMarks = config.marks;
   const configTime = config.time;
 
@@ -117,6 +120,7 @@ export default function ExamSessionPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(config.time * 60);
+  const [selectedOptionals, setSelectedOptionals] = useState<Set<string>>(new Set());
   const [result, setResult] = useState<ExamResult | null>(null);
   const [error, setError] = useState('');
   const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
@@ -220,7 +224,12 @@ export default function ExamSessionPage() {
         if (preloaded.found && preloaded.content) {
           console.log('Using preloaded exam questions!');
           setUsedPreload(true);
-          setQuestions(preloaded.content);
+          const normalized = (preloaded.content as Question[]).slice(0, config.totalGenerated).map((q, i) => ({
+            ...q,
+            isCompulsory: i === 0,
+            marks: i === 0 ? config.compulsoryMarks : config.optionalMarks,
+          }));
+          setQuestions(normalized);
           setPhase('exam');
           
           // Notify service that exam started (triggers next exam preload)
@@ -230,27 +239,38 @@ export default function ExamSessionPage() {
         
         // 2. No preload available - generate using AI
         console.log('No preload available, generating...');
-        const marksPerQuestion = Math.floor(config.marks / config.questions);
-        
-        const prompt = `Generate ${config.questions} essay/problem questions for a CLE standard ${paperSize} paper exam on ${unit.name} (Kenyan Law).
+        const prompt = `Generate ${config.totalGenerated} questions for a CLE standard ${paperSize} paper exam on ${unit.name} (Kenyan Law).
+
+STRUCTURE:
+- QUESTION 1 (COMPULSORY, ${config.compulsoryMarks} marks): A scenario-based question. Present a complex, realistic legal scenario, then pose sub-parts labeled (a), (b), (c) etc. Each sub-part has its own mark allocation that sums to exactly ${config.compulsoryMarks} marks. Sub-parts should test: identification of issues, application of law, advising parties, or drafting.
+- QUESTIONS 2-${config.totalGenerated} (OPTIONAL, ${config.optionalMarks} marks each): ${config.optionalCount} standalone essay questions testing DIFFERENT topic areas within ${unit.name}. Students choose ${config.optionalChoose} to answer.
 
 Format as JSON array:
 [
   {
     "id": "q1",
-    "question": "Problem/essay question text requiring detailed legal analysis...",
-    "marks": ${marksPerQuestion},
-    "topic": "Sub-topic name"
+    "question": "Read the scenario below and answer ALL parts.\\n\\n[Detailed legal scenario with parties, facts, and context]\\n\\n(a) [Sub-question] (X marks)\\n(b) [Sub-question] (Y marks)\\n(c) [Sub-question] (Z marks)...",
+    "marks": ${config.compulsoryMarks},
+    "topic": "Sub-topic name",
+    "isCompulsory": true
+  },
+  {
+    "id": "q2",
+    "question": "Essay question requiring IRAC analysis...",
+    "marks": ${config.optionalMarks},
+    "topic": "Different sub-topic",
+    "isCompulsory": false
   }
 ]
 
 Rules:
+- Q1 MUST be a rich scenario with sub-parts totaling EXACTLY ${config.compulsoryMarks} marks
+- Q2-Q${config.totalGenerated} are independent essays, each worth ${config.optionalMarks} marks
+- Each question should test a DIFFERENT topic within ${unit.name}
 - Questions should require IRAC analysis
 - Include hypothetical scenarios where applicable
 - Reference Kenyan statutes: ${unit.statutes.join(', ')}
-- Questions should test application, analysis, and legal writing
-- Each question worth ${marksPerQuestion} marks
-- Total marks: ${config.marks}
+- Total marks: ${config.marks} (${config.compulsoryMarks} + ${config.optionalChoose}×${config.optionalMarks})
 - Output ONLY valid JSON array`;
 
         const res = await fetch('/api/ai/chat', {
@@ -289,20 +309,23 @@ Rules:
           parsed = JSON.parse(content);
           // Validate: ensure we got the right number and each has required fields
           if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('Invalid format');
-          parsed = parsed.slice(0, configQuestions).map((q, i) => ({
+          parsed = parsed.slice(0, config.totalGenerated).map((q, i) => ({
             id: q.id || `q${i + 1}`,
             question: q.question || `Question ${i + 1}`,
-            marks: q.marks || Math.floor(configMarks / configQuestions),
+            marks: i === 0 ? config.compulsoryMarks : config.optionalMarks,
             topic: q.topic || unit.name,
+            isCompulsory: i === 0,
           }));
         } catch {
           // Fallback questions
-          const marksPerQ = Math.floor(configMarks / configQuestions);
-          parsed = Array.from({ length: configQuestions }, (_, i) => ({
+          parsed = Array.from({ length: config.totalGenerated }, (_, i) => ({
             id: `q${i + 1}`,
-            question: `Question ${i + 1} for ${unit.name}. (Question generation failed - please try again)`,
-            marks: marksPerQ,
+            question: i === 0
+              ? `Compulsory question for ${unit.name}. (Question generation failed - please try again)`
+              : `Optional question ${i} for ${unit.name}. (Question generation failed - please try again)`,
+            marks: i === 0 ? config.compulsoryMarks : config.optionalMarks,
             topic: unit.name,
+            isCompulsory: i === 0,
           }));
         }
 
@@ -343,7 +366,10 @@ Rules:
   };
 
   const currentQ = questions[currentIndex];
-  const answeredCount = Object.keys(answers).length;
+  const activeQuestions = questions.filter((q, i) => i === 0 || selectedOptionals.has(q.id));
+  const answeredCount = activeQuestions.filter(q => answers[q.id]?.trim()).length;
+  const totalToAnswer = 1 + config.optionalChoose;
+  const isCurrentActive = currentIndex === 0 || selectedOptionals.has(currentQ?.id);
 
   useEffect(() => {
     if (!currentQ?.id || !editorRef.current) return;
@@ -359,16 +385,31 @@ Rules:
     setCurrentIndex(idx);
   };
 
+  const toggleOptional = (qId: string) => {
+    setSelectedOptionals(prev => {
+      const next = new Set(prev);
+      if (next.has(qId)) {
+        next.delete(qId);
+      } else if (next.size < config.optionalChoose) {
+        next.add(qId);
+      }
+      return next;
+    });
+  };
+
   const handleSubmit = useCallback(async () => {
     setPhase('submitting');
     try {
       const token = await getIdToken();
 
+      const activeQs = questions.filter((q, i) => i === 0 || selectedOptionals.has(q.id));
       const gradingPrompt = `Grade this CLE standard essay exam on ${unit?.name} using detailed rubric grading.
 
+This is a ${paperSize} paper: Q1 is compulsory (${config.compulsoryMarks} marks), plus ${config.optionalChoose} chosen optional questions (${config.optionalMarks} marks each). Total: ${config.marks} marks.
+
 Questions and answers:
-${questions.map((q, i) => `
-Q${i + 1} (${q.marks} marks): ${q.question}
+${activeQs.map((q, i) => `
+Q${i + 1}${q.isCompulsory ? ' [COMPULSORY]' : ' [OPTIONAL]'} (${q.marks} marks): ${q.question}
 Student answer: ${answers[q.id] || '(not answered)'}
 `).join('\n')}
 
@@ -475,7 +516,7 @@ Respond with ONLY valid JSON:
             score: examPercentage,
             totalMarks: configMarks,
             questionsAnswered: answeredCount,
-            totalQuestions: questions.length,
+            totalQuestions: totalToAnswer,
           }),
         }).catch(() => {}); // silent fail — don't block UI
       } catch {} // Ignore recording errors
@@ -483,7 +524,7 @@ Respond with ONLY valid JSON:
       setError('Failed to grade exam. Please try again.');
       setPhase('exam');
     }
-  }, [answers, questions, unit, configMarks, examType, unitId, paperSize, getIdToken, onExamComplete]);
+  }, [answers, questions, unit, configMarks, examType, unitId, paperSize, getIdToken, onExamComplete, selectedOptionals, config]);
 
   // ============================================================
   // PREMIUM GATE CHECK
@@ -544,7 +585,7 @@ Respond with ONLY valid JSON:
             <div className="text-center">
               <p className="font-medium text-lg">Preparing your exam…</p>
               <p className="text-sm text-muted-foreground mt-1">
-                {unit.name} · CLE Standard · {config.questions} questions
+                {unit.name} · CLE · Q1 compulsory + choose {config.optionalChoose}/{config.optionalCount}
               </p>
             </div>
             <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden">
@@ -850,7 +891,7 @@ Respond with ONLY valid JSON:
               </div>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              You&apos;ve answered {answeredCount}/{questions.length} questions. Leaving now means your work won&apos;t be graded.
+              You&apos;ve answered {answeredCount}/{totalToAnswer} questions. Leaving now means your work won&apos;t be graded.
             </p>
             <div className="flex gap-2">
               <button
@@ -880,11 +921,11 @@ Respond with ONLY valid JSON:
               </div>
               <div>
                 <h3 className="font-semibold text-sm">Submit incomplete exam?</h3>
-                <p className="text-xs text-muted-foreground">{answeredCount}/{questions.length} questions answered</p>
+                <p className="text-xs text-muted-foreground">{answeredCount}/{totalToAnswer} questions answered</p>
               </div>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              You have {questions.length - answeredCount} unanswered question{questions.length - answeredCount !== 1 ? 's' : ''}. Submit anyway?
+              You have {totalToAnswer - answeredCount} unanswered question{totalToAnswer - answeredCount !== 1 ? 's' : ''}. Submit anyway?
             </p>
             <div className="flex gap-2">
               <button
@@ -920,7 +961,7 @@ Respond with ONLY valid JSON:
                 CLE
               </span>
             </div>
-            <p className="text-[10px] text-muted-foreground">{answeredCount}/{questions.length} answered</p>
+            <p className="text-[10px] text-muted-foreground">{answeredCount}/{totalToAnswer} answered · {selectedOptionals.size}/{config.optionalChoose} selected</p>
           </div>
         </div>
 
@@ -972,9 +1013,18 @@ Respond with ONLY valid JSON:
             {/* Current question — full display */}
             <div className="p-5 border-b border-border/20 bg-gradient-to-b from-primary/5 to-transparent">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-primary">
-                  Question {currentIndex + 1} of {questions.length}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-primary">
+                    Q{currentIndex + 1}
+                  </span>
+                  {currentIndex === 0 ? (
+                    <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-rose-500/10 text-rose-600 font-bold uppercase">Compulsory</span>
+                  ) : isCurrentActive ? (
+                    <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold uppercase">Selected</span>
+                  ) : (
+                    <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-bold uppercase">Optional</span>
+                  )}
+                </div>
                 <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                   {currentQ?.marks} marks
                 </span>
@@ -993,39 +1043,70 @@ Respond with ONLY valid JSON:
 
             {/* Question navigator */}
             <div className="p-3 border-b border-border/20">
-              <p className="text-[10px] font-medium text-muted-foreground mb-2 px-1">All Questions</p>
+              <p className="text-[10px] font-medium text-muted-foreground px-1">All Questions</p>
+              <p className="text-[10px] text-primary/80 px-1 mt-1">
+                Q1 compulsory · Choose {config.optionalChoose} of {config.optionalCount} optional ({selectedOptionals.size}/{config.optionalChoose} selected)
+              </p>
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
-              {questions.map((q, i) => (
-                <button
-                  key={q.id}
-                  onClick={() => navigateTo(i)}
-                  className={`w-full text-left p-3 rounded-xl transition-all text-sm ${
-                    i === currentIndex
-                      ? 'bg-primary/8 ring-1 ring-primary/20'
-                      : answers[q.id]
-                      ? 'bg-emerald-500/5 hover:bg-emerald-500/10'
-                      : 'hover:bg-muted/40'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                      i === currentIndex ? 'bg-primary text-primary-foreground' :
-                      answers[q.id] ? 'bg-emerald-500/10 text-emerald-600' :
-                      'bg-muted text-muted-foreground'
-                    }`}>
-                      {i + 1}
-                    </span>
-                    <span className="truncate text-xs">{q.question.slice(0, 50)}…</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1 ml-8">
-                    <span className="text-[10px] text-muted-foreground">{q.marks} marks</span>
-                    {answers[q.id] && (
-                      <span className="text-[10px] text-emerald-600">{(answers[q.id] || '').length} chars</span>
+              {questions.map((q, i) => {
+                const isComp = i === 0;
+                const isSelected = isComp || selectedOptionals.has(q.id);
+                return (
+                  <div key={q.id} className="flex items-start gap-1">
+                    {!isComp && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleOptional(q.id); }}
+                        className={`mt-3 w-[18px] h-[18px] rounded border-[1.5px] flex items-center justify-center shrink-0 transition-colors ${
+                          isSelected
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : selectedOptionals.size >= config.optionalChoose
+                              ? 'border-muted-foreground/15 cursor-not-allowed'
+                              : 'border-muted-foreground/30 hover:border-primary/60'
+                        }`}
+                        disabled={!isSelected && selectedOptionals.size >= config.optionalChoose}
+                        title={isSelected ? 'Deselect this question' : selectedOptionals.size >= config.optionalChoose ? `Already selected ${config.optionalChoose} questions` : 'Select this question'}
+                      >
+                        {isSelected && <CheckCircle2 className="h-2.5 w-2.5" />}
+                      </button>
                     )}
+                    <button
+                      onClick={() => navigateTo(i)}
+                      className={`flex-1 text-left p-3 rounded-xl transition-all text-sm ${
+                        i === currentIndex
+                          ? 'bg-primary/8 ring-1 ring-primary/20'
+                          : isSelected && answers[q.id]
+                            ? 'bg-emerald-500/5 hover:bg-emerald-500/10'
+                            : !isSelected
+                              ? 'opacity-40 hover:opacity-60'
+                              : 'hover:bg-muted/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                          i === currentIndex ? 'bg-primary text-primary-foreground' :
+                          isSelected && answers[q.id] ? 'bg-emerald-500/10 text-emerald-600' :
+                          'bg-muted text-muted-foreground'
+                        }`}>
+                          {i + 1}
+                        </span>
+                        <span className="truncate text-xs">{q.question.slice(0, 50)}…</span>
+                        {isComp && (
+                          <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-rose-500/10 text-rose-600 font-bold shrink-0 uppercase">
+                            Required
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 ml-8">
+                        <span className="text-[10px] text-muted-foreground">{q.marks} marks</span>
+                        {isSelected && answers[q.id] && (
+                          <span className="text-[10px] text-emerald-600">{(answers[q.id] || '').length} chars</span>
+                        )}
+                      </div>
+                    </button>
                   </div>
-                </button>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -1036,9 +1117,12 @@ Respond with ONLY valid JSON:
               {sidebarHidden && (
                 <div className="p-4 border-b border-border/20 shrink-0 bg-muted/20">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Question {currentIndex + 1} of {questions.length}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Q{currentIndex + 1}
+                      </span>
+                      {currentIndex === 0 && <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-rose-500/10 text-rose-600 font-bold uppercase">Compulsory</span>}
+                    </div>
                     <span className="text-xs font-medium text-primary">{currentQ?.marks} marks</span>
                   </div>
                   <h2 className="text-sm font-semibold leading-relaxed">
@@ -1049,6 +1133,7 @@ Respond with ONLY valid JSON:
 
               {/* Premium Writing Area */}
               <div className="flex-1 flex flex-col overflow-hidden">
+                {isCurrentActive ? (<>
                 {/* Formatting toolbar */}
                 <div className="px-6 py-2 border-b border-border/10 flex items-center gap-0.5 bg-muted/5 shrink-0 overflow-x-auto">
                   <button type="button" onClick={() => execCmd('bold')} title="Bold" className="p-1.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
@@ -1106,6 +1191,25 @@ Respond with ONLY valid JSON:
                     style={{ tabSize: 4 }}
                   />
                 </div>
+                </>) : (
+                  <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-8">
+                    <Lock className="h-10 w-10 text-muted-foreground/20" />
+                    <div>
+                      <p className="font-medium text-muted-foreground">Question not selected</p>
+                      <p className="text-sm text-muted-foreground/60 mt-1">
+                        Select this question to answer it. You can choose {config.optionalChoose} of {config.optionalCount} optional questions.
+                      </p>
+                    </div>
+                    {selectedOptionals.size < config.optionalChoose && (
+                      <button
+                        onClick={() => toggleOptional(currentQ.id)}
+                        className="px-4 py-2 rounded-xl bg-primary/10 text-primary text-sm font-medium hover:bg-primary/15 transition-colors"
+                      >
+                        Select This Question
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Bottom bar */}
@@ -1140,16 +1244,25 @@ Respond with ONLY valid JSON:
                   ) : (
                     <button
                       onClick={() => {
-                        if (answeredCount < questions.length) {
+                        if (selectedOptionals.size < config.optionalChoose) return;
+                        if (answeredCount < totalToAnswer) {
                           setShowSubmitConfirm(true);
                           return;
                         }
                         handleSubmit();
                       }}
-                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600/90 text-white hover:bg-emerald-700/90 transition-colors text-xs font-medium"
+                      disabled={selectedOptionals.size < config.optionalChoose}
+                      className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        selectedOptionals.size < config.optionalChoose
+                          ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                          : 'bg-emerald-600/90 text-white hover:bg-emerald-700/90'
+                      }`}
+                      title={selectedOptionals.size < config.optionalChoose ? `Select ${config.optionalChoose - selectedOptionals.size} more optional question(s)` : undefined}
                     >
                       <FileText className="h-3.5 w-3.5" />
-                      Submit
+                      {selectedOptionals.size < config.optionalChoose
+                        ? `Select ${config.optionalChoose - selectedOptionals.size} more`
+                        : 'Submit'}
                     </button>
                   )}
                 </div>

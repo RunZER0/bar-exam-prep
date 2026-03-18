@@ -13,9 +13,9 @@ const CACHE_DURATION_HOURS = 12; // Shorter cache for fresher content
 // Configuration for exam types
 const PAPER_CONFIG = {
   cle: {
-    mini: { marks: 15, questions: 2, time: 30 },
-    semi: { marks: 30, questions: 4, time: 60 },
-    full: { marks: 60, questions: 6, time: 180 },
+    mini: { marks: 15, totalGenerated: 4, compulsoryMarks: 5, optionalMarks: 5, optionalCount: 3, optionalChoose: 2, time: 30 },
+    semi: { marks: 30, totalGenerated: 5, compulsoryMarks: 10, optionalMarks: 10, optionalCount: 4, optionalChoose: 2, time: 60 },
+    full: { marks: 60, totalGenerated: 6, compulsoryMarks: 20, optionalMarks: 10, optionalCount: 5, optionalChoose: 4, time: 180 },
   },
 } as const;
 
@@ -96,54 +96,67 @@ async function generateExamQuestions(
 
   const config = PAPER_CONFIG.cle[paperSize];
   const weakAreas = await getUserWeakAreas(userId, unitId);
-  const marksPerQuestion = Math.floor(config.marks / config.questions);
 
-  const prompt = `Generate ${config.questions} essay/problem questions for a CLE standard ${paperSize} paper exam on ${unit.name} (Kenyan Law).
+  const prompt = `Generate ${config.totalGenerated} questions for a CLE standard ${paperSize} paper exam on ${unit.name} (Kenyan Law).
+
+STRUCTURE:
+- QUESTION 1 (COMPULSORY, ${config.compulsoryMarks} marks): A scenario-based question with sub-parts labeled (a), (b), (c) etc. Each sub-part has its own mark allocation. Sub-parts must total exactly ${config.compulsoryMarks} marks.
+- QUESTIONS 2-${config.totalGenerated} (OPTIONAL, ${config.optionalMarks} marks each): ${config.optionalCount} standalone essay questions. Students choose ${config.optionalChoose} to answer.
 
 Format as JSON array:
 [
   {
     "id": "q1",
-    "question": "Problem/essay question requiring IRAC analysis...",
-    "marks": ${marksPerQuestion},
+    "question": "Read the scenario below and answer ALL parts.\\n\\n[Scenario]\\n\\n(a) [Sub-question] (X marks)\\n(b) [Sub-question] (Y marks)...",
+    "marks": ${config.compulsoryMarks},
     "topic": "Sub-topic name",
+    "isCompulsory": true,
     "gradingRubric": {
-      "legalKnowledge": "Specific provisions to look for (e.g., Section 3 of Contract Act, Article 40 of Constitution)",
+      "legalKnowledge": "Specific provisions to look for",
       "analysis": "How should the analysis be structured",
-      "keyPoints": ["Point 1 citing specific Section", "Point 2 citing specific Article", "Point 3 citing specific Case"]
+      "keyPoints": ["Point 1", "Point 2", "Point 3"]
     }
+  },
+  {
+    "id": "q2",
+    "question": "Essay question requiring IRAC analysis...",
+    "marks": ${config.optionalMarks},
+    "topic": "Different sub-topic",
+    "isCompulsory": false,
+    "gradingRubric": { "legalKnowledge": "...", "analysis": "...", "keyPoints": ["..."] }
   }
 ]
 
 Rules:
-- Questions require detailed IRAC analysis
-- Include hypothetical scenarios citing these statutes: ${unit.statutes.slice(0, 3).join(', ')}
-- Grading rubric MUST specify exact Sections/Articles students should cite
+- Q1 MUST be a rich scenario with sub-parts totaling ${config.compulsoryMarks} marks
+- Q2-Q${config.totalGenerated} are independent essays, each ${config.optionalMarks} marks
+- Include hypothetical scenarios citing: ${unit.statutes.slice(0, 3).join(', ')}
+- Rubric MUST specify exact Sections/Articles students should cite
 ${weakAreas.length > 0 ? `- FOCUS ON THESE WEAK AREAS: ${weakAreas.join(', ')}` : ''}
-- Each question worth ${marksPerQuestion} marks
+- Total marks: ${config.marks}
 - Output ONLY valid JSON array`;
 
   const questions = await generateFastJSON<any[]>(prompt, 4000);
   
   if (!questions || questions.length === 0) {
     // Fallback questions
-    return genFallbackQuestions(examType, config.questions, unit.name, marksPerQuestion);
+    return genFallbackQuestions(config);
   }
 
   return questions;
 }
 
 function genFallbackQuestions(
-  examType: ExamType,
-  count: number,
-  unitName: string,
-  marksPerQ: number
+  config: { totalGenerated: number; compulsoryMarks: number; optionalMarks: number }
 ): any[] {
-  return Array.from({ length: count }, (_, i) => ({
+  return Array.from({ length: config.totalGenerated }, (_, i) => ({
     id: `q${i + 1}`,
-    question: `Essay question ${i + 1} for ${unitName}. Analyze the legal issues and provide your answer using IRAC format. [Loading failed - please regenerate]`,
-    marks: marksPerQ,
-    topic: unitName,
+    question: i === 0
+      ? `Compulsory scenario question. Analyze the legal issues using IRAC format. [Loading failed - please regenerate]`
+      : `Optional essay question ${i}. Analyze the legal issues using IRAC format. [Loading failed - please regenerate]`,
+    marks: i === 0 ? config.compulsoryMarks : config.optionalMarks,
+    topic: 'General',
+    isCompulsory: i === 0,
   }));
 }
 

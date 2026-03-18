@@ -27,16 +27,20 @@ type PaperSize = 'mini' | 'semi' | 'full';
 
 interface ExamConfig {
   marks: number;
-  questions: number;
+  totalGenerated: number;
+  compulsoryMarks: number;
+  optionalMarks: number;
+  optionalCount: number;
+  optionalChoose: number;
   time: number; // minutes
   label: string;
 }
 
 const PAPER_SIZES: Record<ExamType, Record<PaperSize, ExamConfig>> = {
   cle: {
-    mini: { marks: 15, questions: 2, time: 30, label: 'Mini Paper' },
-    semi: { marks: 30, questions: 4, time: 60, label: 'Semi Paper' },
-    full: { marks: 60, questions: 6, time: 180, label: 'Full Paper (CLE Standard)' },
+    mini: { marks: 15, totalGenerated: 4, compulsoryMarks: 5, optionalMarks: 5, optionalCount: 3, optionalChoose: 2, time: 30, label: 'Mini Paper' },
+    semi: { marks: 30, totalGenerated: 5, compulsoryMarks: 10, optionalMarks: 10, optionalCount: 4, optionalChoose: 2, time: 60, label: 'Semi Paper' },
+    full: { marks: 60, totalGenerated: 6, compulsoryMarks: 20, optionalMarks: 10, optionalCount: 5, optionalChoose: 4, time: 180, label: 'Full Paper (CLE Standard)' },
   },
 };
 
@@ -245,7 +249,7 @@ export default function ExamsPage() {
                 className="group text-left p-4 rounded-xl bg-card/40 hover:bg-card/80 border border-border/20 hover:border-primary/20 transition-all"
               >
                 <p className="font-medium text-sm">{cfg.label}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{cfg.marks} marks · {cfg.questions} questions · {cfg.time} min</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{cfg.marks} marks · Q1 + choose {cfg.optionalChoose}/{cfg.optionalCount} · {cfg.time} min</p>
               </button>
             );
           })}
@@ -373,7 +377,7 @@ export default function ExamsPage() {
                           <div>
                             <p className="font-semibold">{cfg.label}</p>
                             <p className="text-sm text-muted-foreground">
-                              {cfg.questions} questions · {cfg.marks} marks
+                              Q1 ({cfg.compulsoryMarks}m) + choose {cfg.optionalChoose} of {cfg.optionalCount} · {cfg.marks} marks
                             </p>
                           </div>
                         </div>
@@ -456,8 +460,8 @@ export default function ExamsPage() {
                 </div>
                 <div className="border-t border-border/20 pt-3 mt-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Questions</span>
-                    <span className="font-medium">{config.questions}</span>
+                  <span className="text-muted-foreground">Structure</span>
+                  <span className="font-medium">Q1 compulsory + choose {config.optionalChoose}/{config.optionalCount}</span>
                   </div>
                   <div className="flex justify-between text-sm mt-1">
                     <span className="text-muted-foreground">Total Marks</span>

@@ -26,7 +26,7 @@ function pickPersonaSpeed(panelistId: string | undefined, text: string, fallback
     'justice-mwangi': 0.98,
     'advocate-amara': 1.08,
     'prof-otieno': 1.0,
-    'devils-advocate': 1.04,
+    'devils-advocate': 1.12,
   };
   const base = panelistId ? (baseByPersona[panelistId] ?? fallback) : fallback;
   let hash = 0;

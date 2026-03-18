@@ -71,16 +71,16 @@ export const EXAMINER_PERSONAS: VoicePersona[] = [
  */
 export const DEVILS_ADVOCATE_PERSONA: VoicePersona = {
   panelistId: 'devils-advocate',
-  voice: 'onyx',
+  voice: 'ash',
   instructions:
-    'Speak in a cold, incisive, combative debate tone — like an adversarial opposing counsel who never concedes a point. ' +
-    'Use controlled intensity with sharp emphasis on contradictions and weak arguments. ' +
-    'Vary pace dramatically: clipped, rapid-fire challenges when pressing hard, then slow, deliberate delivery when dismantling an argument. ' +
-    'Sound relentless and slightly intimidating — but never robotic. This is a real legal debate, not a quiz. ' +
-    'When quoting what the student said back at them, adopt a slightly mocking intonation. ' +
-    'When citing counter-authority, deliver it with absolute confidence — slow down on the case name as if landing a decisive blow. ' +
-    'Use brief pauses after devastating challenges to let the silence pressure the student. ' +
-    'Occasionally whisper a key phrase for dramatic emphasis before returning to full combative volume.',
+    'Speak fast, sharp, and punchy — like a confident trial advocate who thinks on their feet. ' +
+    'Pace is everything: deliver challenges in quick, clipped bursts. No dragging. No filler. Get to the point and hit hard. ' +
+    'Use a rich, energetic tone with natural conviction — you sound like you genuinely believe you are right. ' +
+    'When dismantling an argument, speed up slightly as you stack your points — build momentum. ' +
+    'When landing a killer counterpoint, drop one brief pause, then snap right back. ' +
+    'When conceding a point, do it quickly and casually — "Fine, sure" — then pivot instantly to the next attack with renewed energy. ' +
+    'Sound like the opposing counsel who makes you nervous because they are fast, prepared, and never waste a word. ' +
+    'Never sound bored, monotone, or robotic. This is live courtroom energy — tight, rhythmic, alive.',
 };
 
 /**

@@ -67,7 +67,8 @@ export default function OralExamsPage() {
   const [feedbackMode, setFeedbackMode] = useState<FeedbackMode>('end');
   const [inputMode, setInputMode] = useState<InputMode>('voice');
   const [selectedUnit, setSelectedUnit] = useState<string>('');
-  const [panelistCount, setPanelistCount] = useState(3);
+  const [panelistCount, setPanelistCount] = useState(2);
+  const [sessionPanelists, setSessionPanelists] = useState(PANELISTS_INFO);
   const [daVoice, setDaVoice] = useState<'male' | 'female'>('male');
   const [enableStreaming, setEnableStreaming] = useState(false);
   const [autoRecord, setAutoRecord] = useState(true);
@@ -99,6 +100,7 @@ export default function OralExamsPage() {
   const [answerElapsedSec, setAnswerElapsedSec] = useState(0);
   const [answerWarningShown, setAnswerWarningShown] = useState(false);
   const [sessionTimeUp, setSessionTimeUp] = useState(false);
+  const [awaitingFinalResponse, setAwaitingFinalResponse] = useState(false);
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const answerTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -593,7 +595,13 @@ export default function OralExamsPage() {
       await playAudio(audio);
 
       if (data.sessionEnded) {
-        setTimeout(() => endSessionRef.current(), 1500);
+        if (awaitingFinalResponse) {
+          // Student already gave final response — AI acknowledged, now end
+          setTimeout(() => endSessionRef.current(), 1500);
+        } else {
+          // First time — let student give one final response
+          setAwaitingFinalResponse(true);
+        }
       }
     };
 
@@ -613,11 +621,15 @@ export default function OralExamsPage() {
       };
 
       if (examType === 'examiner') {
-        basePayload.panelistCount = panelistCount;
+        basePayload.panelistCount = Math.min(panelistCount, 2);
+        basePayload.panelistIds = sessionPanelists.map(p => p.id);
         basePayload.currentPanelistIndex = currentPanelistIndex;
       }
       if (examType === 'devils-advocate') {
         basePayload.daVoice = daVoice;
+      }
+      if (awaitingFinalResponse) {
+        basePayload.finalResponse = true;
       }
 
       let streamingSucceeded = false;
@@ -704,7 +716,11 @@ export default function OralExamsPage() {
                     await playAudio(audio);
 
                     if (metadata?.sessionEnded) {
-                      setTimeout(() => endSessionRef.current(), 2000);
+                      if (awaitingFinalResponse) {
+                        setTimeout(() => endSessionRef.current(), 2000);
+                      } else {
+                        setAwaitingFinalResponse(true);
+                      }
                     }
                   }
 
@@ -796,7 +812,7 @@ export default function OralExamsPage() {
       setIsStreaming(false);
       setStreamingContent('');
     }
-  }, [messages, examType, mode, feedbackMode, selectedUnit, panelistCount, currentPanelistIndex, isLoading, isStreaming, enableStreaming, authFetchJSON, playTTS, prefetchTTS, playAudio, getIdToken, sessionElapsedSec, sanitizeAssistantContent]);
+  }, [messages, examType, mode, feedbackMode, selectedUnit, panelistCount, currentPanelistIndex, isLoading, isStreaming, enableStreaming, authFetchJSON, playTTS, prefetchTTS, playAudio, getIdToken, sessionElapsedSec, sanitizeAssistantContent, awaitingFinalResponse]);
 
   /* ================================================================
      START SESSION
@@ -809,10 +825,16 @@ export default function OralExamsPage() {
     setCurrentPanelistIndex(0);
     setSessionElapsedSec(0);
     setSessionTimeUp(false);
+    setAwaitingFinalResponse(false);
     setAnswerElapsedSec(0);
     setAnswerWarningShown(false);
     setSessionRecordingBlob(null);
     setSavedSessionId(null);
+
+    // Randomly select panelists from the pool of 3
+    const shuffled = [...PANELISTS_INFO].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, Math.min(panelistCount, 2));
+    setSessionPanelists(selected);
 
     // Start session recording (if toggle is on)
     if (autoRecord) await startSessionRecording();
@@ -829,7 +851,8 @@ export default function OralExamsPage() {
       };
 
       if (examType === 'examiner') {
-        payload.panelistCount = panelistCount;
+        payload.panelistCount = Math.min(panelistCount, 2);
+        payload.panelistIds = selected.map(p => p.id);
         payload.currentPanelistIndex = 0;
       }
       if (examType === 'devils-advocate') {
@@ -1173,8 +1196,9 @@ export default function OralExamsPage() {
                 {examType === 'examiner' && (
                   <div className="space-y-3">
                     <label className="text-sm font-medium">Panelists</label>
-                    <div className="grid grid-cols-3 gap-3">
-                      {[1, 2, 3].map(n => (
+                    <p className="text-xs text-muted-foreground">Two examiners will be randomly selected from our panel of three</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[1, 2].map(n => (
                         <button
                           key={n}
                           onClick={() => setPanelistCount(n)}
@@ -1191,14 +1215,14 @@ export default function OralExamsPage() {
                           </div>
                           <div className="text-sm font-medium">{n} Examiner{n > 1 ? 's' : ''}</div>
                           <div className="text-xs text-muted-foreground mt-1">
-                            {n === 1 ? 'Focused' : n === 2 ? 'Duo' : 'Full Panel'}
+                            {n === 1 ? 'Focused' : 'Duo Panel'}
                           </div>
                         </button>
                       ))}
                     </div>
-                    {/* Panel preview */}
+                    {/* Panel preview — show all 3 available */}
                     <div className="flex flex-wrap gap-2 pt-2">
-                      {PANELISTS_INFO.slice(0, panelistCount).map(p => (
+                      {PANELISTS_INFO.map(p => (
                         <div key={p.id} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-xs">
                           <span>{p.avatar}</span>
                           <span className="font-medium">{p.name}</span>
@@ -1375,7 +1399,7 @@ export default function OralExamsPage() {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(14);
         doc.setTextColor(22, 101, 52);
-        doc.text(`${summary.score}/100`, margin + 25, y + 8.5, { align: 'center' });
+        doc.text(`${summary.score}/20`, margin + 25, y + 8.5, { align: 'center' });
         y += 18;
       }
 
@@ -1427,7 +1451,7 @@ export default function OralExamsPage() {
             {summary.score !== null && (
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/10 to-primary/5">
                 <span className="text-2xl font-bold">{summary.score}</span>
-                <span className="text-muted-foreground">/100</span>
+                <span className="text-muted-foreground">/20</span>
               </div>
             )}
           </div>
@@ -1608,7 +1632,7 @@ export default function OralExamsPage() {
           {/* Panelist indicators (examiner) */}
           {examType === 'examiner' && (
             <div className="hidden md:flex items-center gap-1 mr-2">
-              {PANELISTS_INFO.slice(0, panelistCount).map((p, i) => (
+              {sessionPanelists.map((p, i) => (
                 <div
                   key={p.id}
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${
@@ -1671,10 +1695,18 @@ export default function OralExamsPage() {
         )}
 
         {/* Session time-up warning */}
-        {sessionTimeUp && (
-          <div className="mx-auto max-w-md rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500 flex items-center gap-2 animate-pulse">
+        {sessionTimeUp && !awaitingFinalResponse && (
+          <div className="mx-auto max-w-md rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2">
             <Timer className="w-4 h-4 shrink-0" />
             Session time is up. The examiner will wrap up shortly.
+          </div>
+        )}
+
+        {/* Awaiting final response */}
+        {awaitingFinalResponse && (
+          <div className="mx-auto max-w-md rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary flex items-center gap-2">
+            <Timer className="w-4 h-4 shrink-0" />
+            Final question asked. Give your response — the session will end after this.
           </div>
         )}
 

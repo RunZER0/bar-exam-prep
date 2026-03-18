@@ -131,7 +131,7 @@ FEEDBACK AND CORRECTION — IMPORTANT:
 SESSION STRUCTURE:
 - Sessions last approximately 15 minutes. Pace yourself accordingly.
 - When time is nearly up (final 2 minutes), begin wrapping up: "One last thing before we're done..."
-- When time is completely up, end naturally: "We'll leave it there, Counsel."
+- When time is completely up, make one final challenge. The student will respond, then you acknowledge briefly and close: "We'll leave it there, Counsel."
 
 RESPONSE LENGTH — CRITICAL:
 - OPENING SCENARIO: Maximum 60 words. One-sentence welcome, 2-sentence fact pattern, one sharp challenge.
@@ -247,7 +247,7 @@ HARD RULES:
 SESSION TIMING:
 - Sessions last approximately 15 minutes.
 - When time is nearly up (final 2 minutes), wrap up naturally: "We have time for one final question..."
-- When time is completely up, close the session: "Thank you, Counsel. That will be all for today."
+- When time is completely up, ask one last targeted question. After the student responds, acknowledge briefly and close: "Thank you, Counsel. That will be all for today."
 ${interruptionInstructions}
 
 ${feedbackInstructions}
@@ -507,13 +507,15 @@ async function handlePost(req: NextRequest, user: AuthUser): Promise<Response> {
       messages = [],  // conversation history [{role, content, panelistId?}]
       unitId,         // optional unit filter
       feedbackMode = 'end', // 'per-exchange' | 'end'
-      panelistCount = 3,
+      panelistCount = 2,
       currentPanelistIndex = 0,
       generateSummary = false,
       stream = false, // Enable SSE streaming
       elapsedMinutes = 0,     // current session elapsed time
       sessionMaxMinutes = 15, // session duration limit
       daVoice,        // 'male' | 'female' — DA voice gender
+      finalResponse = false, // student's last response after time-up
+      panelistIds,    // optional: specific panelist IDs for random selection
     } = body;
 
     // ── Subscription gate: check access on NEW sessions (no messages yet) ──
@@ -571,7 +573,7 @@ THE SESSION: ${type === 'devils-advocate' ? "Devil's Advocate debate" : 'Oral ex
 INSTRUCTIONS — PRODUCE A STRUCTURED REPORT:
 
 Start with the score line EXACTLY like this (mandatory format):
-"Overall Performance Score: [NUMBER]/100"
+"Overall Performance Score: [NUMBER]/20"
 
 Then provide these sections:
 
@@ -594,7 +596,7 @@ RECOMMENDED STUDY FOCUS
 - Top 3 specific areas to prioritize before the next session.
 
 RULES:
-1. The score line "Overall Performance Score: [NUMBER]/100" MUST appear in the first line. This is non-negotiable.
+1. The score line "Overall Performance Score: [NUMBER]/20" MUST appear in the first line. This is non-negotiable. Score out of 20 marks.
 2. Be specific — reference actual moments from the conversation, not generic advice.
 3. Keep language natural and conversational since this will be read aloud.
 4. Do not use markdown formatting, bullet symbols, or asterisks. Use plain text with line breaks.
@@ -651,8 +653,10 @@ RULES:
       const remaining = Math.max(0, sessionMaxMinutes - elapsedMinutes);
       const daAssistantTurnCount = messages.filter((m: any) => m.role === 'assistant').length;
 
-      // Use the opening-specific prompt for the very first turn
-      if (elapsedMinutes < 2 && messages.length === 0) {
+      if (finalResponse) {
+        // Student's last response after time-up — acknowledge briefly, no further pushback
+        apiMessages.push({ role: 'system' as const, content: '[SESSION CLOSING: The student has given their FINAL response. Acknowledge it briefly in 1-2 sentences — note what was strong or correct. Do NOT ask another question, do NOT challenge further, do NOT push back. End with a brief close like \"Thank you, Counsel. That concludes our session.\" Keep it under 30 words total.]' });
+      } else if (elapsedMinutes < 2 && messages.length === 0) {
         apiMessages.push({ role: 'system' as const, content: '[SESSION PHASE: OPENING. Present a SHORT scenario (2-3 sentence fact pattern), then take a position against the student and challenge them to respond. Keep the ENTIRE opening under 80 words. Sound like opposing counsel setting up a dispute, not an examiner setting a question.]' });
       } else {
         apiMessages.push({
@@ -714,7 +718,7 @@ RULES:
                 type: 'metadata',
                 examType: 'devils-advocate',
                 voice: daVoiceName,
-                sessionEnded: remaining <= 0,
+                sessionEnded: finalResponse || remaining <= 0,
               })}\n\n`));
 
               let fullContent = '';
@@ -814,13 +818,16 @@ RULES:
           type: 'devils-advocate',
           content: cleanedResponse,
           voice: daVoiceName,
-          sessionEnded: remaining <= 0,
+          sessionEnded: finalResponse || remaining <= 0,
         });
       }
 
     } else if (type === 'examiner') {
       // ----- ORAL EXAMINER PANEL -----
-      const activePanelists = PANELISTS.slice(0, Math.min(panelistCount, 3));
+      // Use specific panelist IDs if provided (random selection from frontend), otherwise take first N
+      const activePanelists = panelistIds?.length
+        ? PANELISTS.filter((p: typeof PANELISTS[number]) => panelistIds.includes(p.id)).slice(0, 2)
+        : PANELISTS.slice(0, Math.min(panelistCount, 2));
       const currentPanelist = activePanelists[currentPanelistIndex % activePanelists.length];
       const otherNames = activePanelists.filter(p => p.id !== currentPanelist.id).map(p => p.name);
 
@@ -931,10 +938,14 @@ RULES:
       }
 
       // Inject granular session timing with pacing guidance
-      apiMessages.push({
-        role: 'system' as const,
-        content: buildGranularTimingContext(elapsedMinutes, sessionMaxMinutes, assistantTurnCount),
-      });
+      if (finalResponse) {
+        apiMessages.push({ role: 'system' as const, content: '[SESSION CLOSING: The student has given their FINAL response. Acknowledge it briefly in 1-2 sentences — note what was strong or correct. Do NOT ask another question, do NOT challenge further, do NOT probe deeper. End with a brief close like \"Thank you, Counsel. That will be all for today.\" Keep it under 30 words total.]' });
+      } else {
+        apiMessages.push({
+          role: 'system' as const,
+          content: buildGranularTimingContext(elapsedMinutes, sessionMaxMinutes, assistantTurnCount),
+        });
+      }
 
       // Inject topic exhaustion signal
       if (topicExhaustion.exhausted) {
@@ -1013,7 +1024,7 @@ RULES:
                   voice: currentPanelist.voice,
                 },
                 nextPanelistIndex,
-                sessionEnded: examRemaining <= 0,
+                sessionEnded: finalResponse || examRemaining <= 0,
               })}\n\n`));
 
               let fullContent = '';
@@ -1122,7 +1133,7 @@ RULES:
             voice: currentPanelist.voice,
           },
           nextPanelistIndex,
-          sessionEnded: examRemaining <= 0,
+          sessionEnded: finalResponse || examRemaining <= 0,
         });
       }
     }
@@ -1266,7 +1277,7 @@ function buildGranularTimingContext(elapsedMinutes: number, sessionMaxMinutes: n
   const minsRemaining = Math.round(remaining);
 
   if (remaining <= 0) {
-    return `[SESSION TIME IS UP. End the session now. Thank the student and close. Do NOT ask new questions.]`;
+    return `[SESSION TIME IS UP. Ask ONE final question or close your current point, then stop. The student will give one last response which you will acknowledge briefly before closing. Do NOT start new topics.]`;
   }
 
   let phase: string;
@@ -1298,15 +1309,14 @@ function buildGranularTimingContext(elapsedMinutes: number, sessionMaxMinutes: n
 function extractScore(text: string): number | null {
   // Try structured patterns first
   const patterns = [
-    /(?:overall\s+)?(?:performance\s+)?score\s*[:=]\s*(\d{1,3})\s*(?:\/\s*100|out\s+of\s+100)?/i,
-    /(\d{1,3})\s*(?:out of|\/)\s*100/i,
-    /(\d{1,3})\s*%/i,
+    /(?:overall\s+)?(?:performance\s+)?score\s*[:=]\s*(\d{1,2})\s*(?:\/\s*20|out\s+of\s+20)?/i,
+    /(\d{1,2})\s*(?:out of|\/)\s*20/i,
   ];
   for (const pattern of patterns) {
     const match = text.match(pattern);
     if (match) {
       const score = parseInt(match[1], 10);
-      if (score >= 0 && score <= 100) return score;
+      if (score >= 0 && score <= 20) return score;
     }
   }
   return null;

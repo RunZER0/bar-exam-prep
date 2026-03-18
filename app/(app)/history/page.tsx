@@ -356,7 +356,7 @@ export default function HistoryPage() {
                                 {activity.meta.score != null && (
                                   <span className="flex items-center gap-1">
                                     <TrendingUp className="h-2.5 w-2.5" />
-                                    {activity.meta.score}/100
+                                    {activity.meta.score}/20
                                   </span>
                                 )}
                               </>

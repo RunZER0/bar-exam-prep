@@ -193,9 +193,10 @@ async function auditQuestion(
 
     const completion = await openai.chat.completions.create({
       model: QUIZ_AUDITOR_MODEL,
+      reasoning_effort: 'high',
       messages: [
         {
-          role: 'system',
+          role: 'developer',
           content: `You are a legal accuracy auditor for Kenya Bar Exam (CLE ATP) quiz questions. Respond with ONLY the single word "pass" or "flag". No punctuation, no explanation.
 
 FLAG if ANY of these apply:
@@ -211,7 +212,7 @@ PASS only if the question, all options, the correct answer, and the explanation 
         },
         { role: 'user', content: JSON.stringify(questionPayload) },
       ],
-      max_tokens: 3,
+      max_completion_tokens: 2048,
       temperature: 0,
     });
 
@@ -244,6 +245,38 @@ async function auditBatch(
     console.log(`[AUDIT] Batch: ${passed.length}/${questions.length} passed, ${flagged} flagged and nuked.`);
   }
   return passed;
+}
+
+/* ================================================================
+   DEDUPLICATION — prevent similar questions within a session
+   ================================================================ */
+function normalizeForDedup(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function isDuplicate(newQ: ValidQuestion, existing: ValidQuestion[]): boolean {
+  const normalized = normalizeForDedup(newQ.question);
+  if (normalized.length < 15) return false; // too short to compare
+  for (const eq of existing) {
+    const existNorm = normalizeForDedup(eq.question);
+    // Exact match after normalization
+    if (normalized === existNorm) return true;
+    // One fully contains the other (rephrased subset)
+    if (normalized.includes(existNorm) || existNorm.includes(normalized)) return true;
+    // High word overlap — if 70%+ words are shared, consider duplicate
+    const newWords = new Set(normalized.split(' '));
+    const existWords = new Set(existNorm.split(' '));
+    const overlap = [...newWords].filter(w => w.length > 3 && existWords.has(w)).length;
+    const minLen = Math.min(newWords.size, existWords.size);
+    if (minLen > 4 && overlap / minLen > 0.7) return true;
+  }
+  return false;
+}
+
+function buildDedupSuffix(existing: ValidQuestion[]): string {
+  if (existing.length === 0) return '';
+  const stems = existing.map((q, i) => `${i + 1}. ${q.question}`).join('\n');
+  return `\n\nCRITICAL — DO NOT REPEAT OR REPHRASE these already-generated questions. Generate ENTIRELY DIFFERENT questions on DIFFERENT sub-topics:\n${stems}`;
 }
 
 /* ================================================================
@@ -299,6 +332,10 @@ export async function POST(req: NextRequest) {
           // Stream phase 1 passes immediately — user can start playing
           for (const q of phase1Audited) {
             if (allPassed.length >= count) break;
+            if (isDuplicate(q, allPassed)) {
+              console.log(`[DEDUP] Skipped duplicate: "${q.question.slice(0, 60)}..."`);
+              continue;
+            }
             allPassed.push(q);
             controller.enqueue(
               encoder.encode(
@@ -316,7 +353,9 @@ export async function POST(req: NextRequest) {
             const remaining = count - allPassed.length;
             const batchTarget = Math.min(MAIN_BATCH, Math.ceil(remaining * OVERSHOOT));
 
-            const batch = await generateQuizBatch(openai, prompt, batchTarget);
+            // Append dedup suffix so the model avoids repeating earlier questions
+            const dedupPrompt = prompt + buildDedupSuffix(allPassed);
+            const batch = await generateQuizBatch(openai, dedupPrompt, batchTarget);
             let batchValid = batch.valid;
 
             if (batchValid.length === 0) {
@@ -334,9 +373,13 @@ export async function POST(req: NextRequest) {
               continue;
             }
 
-            // Stream audited passes
+            // Stream audited passes (with dedup filter)
             for (const q of batchAudited) {
               if (allPassed.length >= count) break;
+              if (isDuplicate(q, allPassed)) {
+                console.log(`[DEDUP] Skipped duplicate: "${q.question.slice(0, 60)}..."`);
+                continue;
+              }
               allPassed.push(q);
               controller.enqueue(
                 encoder.encode(

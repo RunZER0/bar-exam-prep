@@ -178,15 +178,16 @@ export async function getSubscriptionInfo(userId: string): Promise<SubscriptionI
   }
 
   const canAccess = (feature: FeatureKey): boolean => {
-    // Not active at all → only basic features during trial, nothing if expired
+    // Not active (expired trial / no subscription) → only community
     if (!isActive) {
-      if (trialExpired) return BASIC_FEATURES.has(feature);
-      return false;
+      return feature === 'community';
     }
 
     // Basic features → yes for general tiers, NO for custom
     // Custom packages only grant their selected premium features
+    // Exception: community is always accessible
     if (BASIC_FEATURES.has(feature)) {
+      if (feature === 'community') return true;
       return tier !== 'custom';
     }
 

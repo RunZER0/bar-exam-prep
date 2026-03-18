@@ -18,7 +18,7 @@ interface BasicFeatureGateProps {
  * get these — they must upgrade to a general tier.
  */
 export default function BasicFeatureGate({ children }: BasicFeatureGateProps) {
-  const { tier, loading } = useSubscription();
+  const { tier, isActive, isTrial, trialExpired, loading } = useSubscription();
   const router = useRouter();
 
   if (loading) {
@@ -29,8 +29,9 @@ export default function BasicFeatureGate({ children }: BasicFeatureGateProps) {
     );
   }
 
-  // Only block custom-tier users; all general tiers + trial get basic features
-  if (tier !== 'custom') {
+  // Block: custom-tier users and expired/inactive non-paying users
+  const isExpiredOrInactive = !isActive && !(isTrial && !trialExpired);
+  if (tier !== 'custom' && !isExpiredOrInactive) {
     return <>{children}</>;
   }
 

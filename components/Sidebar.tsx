@@ -54,7 +54,7 @@ const PREMIUM_ITEM = { href: '/subscribe', label: 'Upgrade', icon: Crown };
 const ADMIN_ITEM = { href: '/admin', label: 'Admin Panel', icon: Shield };
 
 // Routes for basic features — custom-package users are blocked from these
-const BASIC_ROUTES = new Set(['/mastery', '/study', '/quizzes', '/community', '/banter']);
+const BASIC_ROUTES = new Set(['/mastery', '/study', '/quizzes', '/banter']);
 
 // Admin emails - you can add more or use an API check
 const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(',') || []).map(e => e.trim().toLowerCase());
@@ -63,8 +63,9 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const { collapsed: persistedCollapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar();
-  const { tier } = useSubscription();
+  const { tier, isActive, isTrial, trialExpired } = useSubscription();
   const [hoverExpanded, setHoverExpanded] = useState(false);
+  const isExpiredNonPaying = !isActive && !(isTrial && !trialExpired);
   const isCustom = tier === 'custom';
 
   // When hovering over collapsed sidebar, temporarily expand it
@@ -108,7 +109,11 @@ export default function Sidebar() {
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
-          const isLocked = isCustom && BASIC_ROUTES.has(item.href);
+          // Expired non-paying users: lock everything except community
+          // Custom-tier users: lock basic feature routes only
+          const isLocked = isExpiredNonPaying
+            ? item.href !== '/community'
+            : isCustom && BASIC_ROUTES.has(item.href);
           return (
             <Link
               key={item.href}

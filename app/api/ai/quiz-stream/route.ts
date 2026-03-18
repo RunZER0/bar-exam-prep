@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { verifyAuth } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
-import { QUIZ_MODEL, AI_IDENTITY } from '@/lib/ai/model-config';
+import { QUIZ_MODEL, QUIZ_AUDITOR_MODEL, AI_IDENTITY } from '@/lib/ai/model-config';
 
 const getOpenAI = () => {
   if (!process.env.OPENAI_API_KEY) return null;
@@ -88,7 +88,7 @@ function validateQuestion(q: any): ValidQuestion | null {
 }
 
 /* ================================================================
-   GENERATION — call gpt-4o-mini with JSON mode, parse & validate
+   GENERATION — call gpt-5.4-mini with JSON mode, parse & validate
    ================================================================ */
 async function generateQuizBatch(
   openai: OpenAI,
@@ -167,6 +167,86 @@ CONCISENESS:
 }
 
 /* ================================================================
+   AUDITOR — gpt-5.4-mini validates each Q for legal accuracy
+   Ultra-fast: max_tokens=3, output is "pass" or "flag" only.
+   Flagged questions are nuked from the queue.
+   ================================================================ */
+async function auditQuestion(
+  openai: OpenAI,
+  q: ValidQuestion
+): Promise<boolean> {
+  try {
+    const questionPayload: Record<string, unknown> = {
+      question: q.question,
+      type: q.questionType,
+      explanation: q.explanation,
+    };
+    if (q.questionType === 'mcq') {
+      questionPayload.options = q.options;
+      questionPayload.correctAnswer = q.options[q.correct];
+    } else if (q.questionType === 'ordering') {
+      questionPayload.options = q.options;
+      questionPayload.correctOrder = q.correctOrder;
+    } else if (q.questionType === 'text-entry') {
+      questionPayload.acceptableAnswers = q.acceptableAnswers;
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: QUIZ_AUDITOR_MODEL,
+      messages: [
+        {
+          role: 'system',
+          content: `You are a legal accuracy auditor for Kenya Bar Exam (CLE ATP) quiz questions. Respond with ONLY the single word "pass" or "flag". No punctuation, no explanation.
+
+FLAG if ANY of these apply:
+- The designated correct answer is wrong or debatable
+- A legal citation (section, article, case name) is fabricated or inaccurate
+- The law referenced has been repealed, amended, or superseded and the question does not reflect current law
+- Multiple options could reasonably be correct
+- The question is factually incorrect, misleading, or internally contradictory
+- The explanation cites non-existent or incorrect legal authority
+- Case law cited does not exist or is misattributed
+
+PASS only if the question, all options, the correct answer, and the explanation are all legally accurate and current under Kenyan law.`,
+        },
+        { role: 'user', content: JSON.stringify(questionPayload) },
+      ],
+      max_tokens: 3,
+      temperature: 0,
+    });
+
+    const result = (completion.choices[0]?.message?.content || '').trim().toLowerCase();
+    const passed = result.startsWith('pass');
+    if (!passed) {
+      console.log(`[AUDIT] FLAGGED: "${q.question.slice(0, 80)}..." — auditor said: "${result}"`);
+    }
+    return passed;
+  } catch (err: any) {
+    // If auditor fails (rate limit, etc.), let the question through rather than blocking
+    console.error('[AUDIT] Auditor call failed, allowing question:', err?.message || err);
+    return true;
+  }
+}
+
+async function auditBatch(
+  openai: OpenAI,
+  questions: ValidQuestion[]
+): Promise<ValidQuestion[]> {
+  const results = await Promise.allSettled(
+    questions.map(q => auditQuestion(openai, q))
+  );
+  const passed = questions.filter((_, i) => {
+    const r = results[i];
+    return r.status === 'fulfilled' && r.value === true;
+  });
+  const flagged = questions.length - passed.length;
+  if (flagged > 0) {
+    console.log(`[AUDIT] Batch: ${passed.length}/${questions.length} passed, ${flagged} flagged and nuked.`);
+  }
+  return passed;
+}
+
+/* ================================================================
    POST — Quiz generation pipeline with validation + retry
    ================================================================ */
 export async function POST(req: NextRequest) {
@@ -193,58 +273,94 @@ export async function POST(req: NextRequest) {
     const readable = new ReadableStream({
       async start(controller) {
         try {
-          // Batch generation — split large counts into chunks of 15
-          // to stay within Render's 30s request timeout per OpenAI call
-          const BATCH_SIZE = 15;
-          let allValid: ValidQuestion[] = [];
+          /*
+           * AUDITED QUIZ PIPELINE
+           * ---------------------
+           * Phase 1: Generate a small initial batch (6 Qs), audit all in parallel,
+           *          stream the passes immediately → user starts with ~3 questions.
+           * Phase 2: Generate remaining in larger batches, audit each, stream passes.
+           *          By the time user finishes the first 3, more audited Qs are ready.
+           * Over-generate by ~40% to compensate for auditor flags.
+           */
+          const INITIAL_BATCH = 6;   // small first batch for fast start
+          const MAIN_BATCH = 15;     // larger follow-up batches
+          const OVERSHOOT = 1.4;     // generate 40% extra to absorb flags
+          let allPassed: ValidQuestion[] = [];
           let streamIndex = 0;
-          const batchCount = Math.ceil(count / BATCH_SIZE);
 
-          for (let b = 0; b < batchCount; b++) {
-            const remaining = count - allValid.length;
-            if (remaining <= 0) break;
-            const batchTarget = Math.min(BATCH_SIZE, remaining);
+          // --- Phase 1: Fast start batch ---
+          const phase1Target = Math.min(INITIAL_BATCH, Math.ceil(count * OVERSHOOT));
+          const phase1 = await generateQuizBatch(openai, prompt, phase1Target);
+          let phase1Valid = phase1.valid;
+
+          // Audit phase 1 in parallel (all questions audited simultaneously)
+          const phase1Audited = await auditBatch(openai, phase1Valid);
+
+          // Stream phase 1 passes immediately — user can start playing
+          for (const q of phase1Audited) {
+            if (allPassed.length >= count) break;
+            allPassed.push(q);
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: 'question', index: streamIndex, question: q })}\n\n`
+              )
+            );
+            streamIndex++;
+          }
+
+          // --- Phase 2: Fill remaining with larger batches ---
+          let retries = 0;
+          const MAX_RETRIES = 3;
+
+          while (allPassed.length < count && retries < MAX_RETRIES) {
+            const remaining = count - allPassed.length;
+            const batchTarget = Math.min(MAIN_BATCH, Math.ceil(remaining * OVERSHOOT));
 
             const batch = await generateQuizBatch(openai, prompt, batchTarget);
             let batchValid = batch.valid;
 
-            // Retry once per batch if shortfall
-            if (batchValid.length < batchTarget) {
-              const shortfall = batchTarget - batchValid.length;
-              console.log(`[QUIZ] Batch ${b + 1}/${batchCount}: ${batchValid.length}/${batchTarget} valid. Retrying for ${shortfall}.`);
-              try {
-                const retryPrompt = `${prompt}\n\nIMPORTANT: Generate exactly ${shortfall} questions. Output {"questions": [...]} with ${shortfall} items.`;
-                const batch2 = await generateQuizBatch(openai, retryPrompt, shortfall);
-                batchValid = [...batchValid, ...batch2.valid];
-              } catch (retryErr) {
-                console.error('[QUIZ] Retry failed:', retryErr);
-              }
+            if (batchValid.length === 0) {
+              retries++;
+              console.log(`[QUIZ] Batch produced 0 valid questions. Retry ${retries}/${MAX_RETRIES}.`);
+              continue;
             }
 
-            // Stream this batch's questions immediately
-            for (const q of batchValid) {
-              allValid.push(q);
-              if (allValid.length <= count) {
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({ type: 'question', index: streamIndex, question: q })}\n\n`
-                  )
-                );
-                streamIndex++;
-              }
+            // Audit this batch in parallel
+            const batchAudited = await auditBatch(openai, batchValid);
+
+            if (batchAudited.length === 0) {
+              retries++;
+              console.log(`[QUIZ] Entire batch flagged by auditor. Retry ${retries}/${MAX_RETRIES}.`);
+              continue;
             }
+
+            // Stream audited passes
+            for (const q of batchAudited) {
+              if (allPassed.length >= count) break;
+              allPassed.push(q);
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({ type: 'question', index: streamIndex, question: q })}\n\n`
+                )
+              );
+              streamIndex++;
+            }
+
+            retries = 0; // reset on success
           }
 
-          if (allValid.length === 0) {
-            console.error('[QUIZ] Pipeline produced 0 valid questions.', { model: QUIZ_MODEL });
+          if (allPassed.length === 0) {
+            console.error('[QUIZ] Pipeline produced 0 audited questions.', { model: QUIZ_MODEL, auditor: QUIZ_AUDITOR_MODEL });
             controller.enqueue(
               encoder.encode(
-                `data: ${JSON.stringify({ type: 'error', message: `Quiz generation produced 0 valid questions. Model: ${QUIZ_MODEL}.` })}\n\n`
+                `data: ${JSON.stringify({ type: 'error', message: `Quiz generation produced 0 questions that passed accuracy audit. Please try again.` })}\n\n`
               )
             );
             controller.close();
             return;
           }
+
+          console.log(`[QUIZ] Pipeline complete: ${streamIndex} audited questions delivered (requested ${count}).`);
 
           controller.enqueue(
             encoder.encode(
@@ -258,7 +374,7 @@ export async function POST(req: NextRequest) {
           const isModelErr = err?.code === 'model_not_found' || errMsg.includes('does not exist');
           const isRateLimit = err?.status === 429;
           const friendlyMsg = isModelErr
-            ? `Model "${QUIZ_MODEL}" not available — check QUIZ_MODEL config.`
+            ? `Model "${QUIZ_MODEL}" or auditor "${QUIZ_AUDITOR_MODEL}" not available — check model config.`
             : isRateLimit
             ? 'AI is busy — please wait a moment and try again.'
             : `Quiz generation failed: ${errMsg.slice(0, 150)}`;

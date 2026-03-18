@@ -24,8 +24,11 @@ export const FAST_MODEL = process.env.OPENAI_FAST_MODEL || 'gpt-5-mini';
 // === Minimum Floor Model — fast & cheap for streaming, oral exams ===
 export const MINI_MODEL = process.env.MINI_MODEL || 'gpt-5-mini';
 
-// === Quiz Model — non-reasoning model for structured JSON quiz generation ===
-export const QUIZ_MODEL = process.env.QUIZ_MODEL || 'gpt-4o-mini';
+// === Quiz Model — GPT-5.4-mini for structured JSON quiz generation ===
+export const QUIZ_MODEL = process.env.QUIZ_MODEL || 'gpt-5.4-mini';
+
+// === Quiz Auditor — validates every question for legal accuracy before delivery ===
+export const QUIZ_AUDITOR_MODEL = process.env.QUIZ_AUDITOR_MODEL || 'gpt-5.4-mini';
 
 // === Summary Model — non-reasoning model for session reports (must be fast, <30s on Render free) ===
 export const SUMMARY_MODEL = process.env.SUMMARY_MODEL || 'gpt-4o-mini';

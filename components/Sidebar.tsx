@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSidebar } from '@/contexts/SidebarContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
 import {
@@ -29,6 +30,7 @@ import {
   Users,
   Target,
   Mic,
+  Lock,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -51,6 +53,9 @@ const PREMIUM_ITEM = { href: '/subscribe', label: 'Upgrade', icon: Crown };
 
 const ADMIN_ITEM = { href: '/admin', label: 'Admin Panel', icon: Shield };
 
+// Routes for basic features — custom-package users are blocked from these
+const BASIC_ROUTES = new Set(['/mastery', '/study', '/quizzes', '/community', '/banter']);
+
 // Admin emails - you can add more or use an API check
 const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(',') || []).map(e => e.trim().toLowerCase());
 
@@ -58,7 +63,9 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const { collapsed: persistedCollapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar();
+  const { tier } = useSubscription();
   const [hoverExpanded, setHoverExpanded] = useState(false);
+  const isCustom = tier === 'custom';
 
   // When hovering over collapsed sidebar, temporarily expand it
   const collapsed = persistedCollapsed && !hoverExpanded;
@@ -101,6 +108,7 @@ export default function Sidebar() {
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
+          const isLocked = isCustom && BASIC_ROUTES.has(item.href);
           return (
             <Link
               key={item.href}
@@ -111,13 +119,20 @@ export default function Sidebar() {
                 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
                 ${active 
                   ? 'bg-primary/8 text-primary border border-primary/15' 
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  : isLocked
+                    ? 'text-muted-foreground/50 hover:bg-accent/50'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 }
                 ${collapsed ? 'justify-center' : ''}
               `}
             >
               <Icon className="h-[18px] w-[18px] shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && (
+                <span className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className={isLocked ? 'opacity-60' : ''}>{item.label}</span>
+                  {isLocked && <Lock className="h-3 w-3 text-muted-foreground/50 shrink-0" />}
+                </span>
+              )}
             </Link>
           );
         })}

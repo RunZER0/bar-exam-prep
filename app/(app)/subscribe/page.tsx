@@ -190,6 +190,13 @@ export default function SubscribePage() {
       });
       const data = await res.json();
       if (data.verified) {
+        // Set correct tier/period from verification so confirmation shows accurately
+        if (data.tier && ['light', 'standard', 'premium', 'custom'].includes(data.tier)) {
+          setSelectedTier(data.tier as SubscriptionTier);
+        }
+        if (data.period && ['weekly', 'monthly', 'annual'].includes(data.period)) {
+          setSelectedPeriod(data.period as BillingPeriod);
+        }
         // Refresh global subscription state so all gates unlock immediately
         await refreshSubscription();
         setStep('confirm');

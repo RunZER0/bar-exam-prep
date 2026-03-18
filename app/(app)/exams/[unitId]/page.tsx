@@ -1030,15 +1030,10 @@ Respond with ONLY valid JSON:
                 </span>
               </div>
               <div className="prose prose-sm dark:prose-invert max-w-none max-h-[34vh] overflow-y-auto pr-1">
-                <p className="text-sm leading-relaxed font-medium text-foreground">
+                <div className="text-sm leading-relaxed font-medium text-foreground whitespace-pre-line">
                   {currentQ?.question}
-                </p>
+                </div>
               </div>
-              {currentQ?.topic && (
-                <span className="inline-block mt-3 text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                  {currentQ.topic}
-                </span>
-              )}
             </div>
 
             {/* Question navigator */}
@@ -1125,9 +1120,9 @@ Respond with ONLY valid JSON:
                     </div>
                     <span className="text-xs font-medium text-primary">{currentQ?.marks} marks</span>
                   </div>
-                  <h2 className="text-sm font-semibold leading-relaxed">
+                  <div className="text-sm font-semibold leading-relaxed whitespace-pre-line">
                     {currentQ?.question}
-                  </h2>
+                  </div>
                 </div>
               )}
 

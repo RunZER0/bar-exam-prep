@@ -184,8 +184,11 @@ export async function getSubscriptionInfo(userId: string): Promise<SubscriptionI
       return false;
     }
 
-    // Basic features → always yes
-    if (BASIC_FEATURES.has(feature)) return true;
+    // Basic features → yes for general tiers, NO for custom
+    // Custom packages only grant their selected premium features
+    if (BASIC_FEATURES.has(feature)) {
+      return tier !== 'custom';
+    }
 
     // Premium features → check limits
     if (isPremiumFeature(feature)) {

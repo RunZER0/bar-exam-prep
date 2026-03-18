@@ -2,10 +2,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, type AuthUser } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
+import { COURSE_OUTLINE_TOPICS } from '@/lib/constants/course-outlines';
 import { getSubscriptionInfo, incrementFeatureUsage } from '@/lib/services/subscription';
 import { MINI_MODEL, SUMMARY_MODEL, ORAL_2025_THEMES } from '@/lib/ai/model-config';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+/* ================================================================
+   SESSION TOPIC ROTATION — ensures variety across sessions
+   ================================================================ */
+function shuffleArray<T>(arr: readonly T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function pickSessionUnits(count: number) {
+  const units = [...ATP_UNITS];
+  for (let i = units.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [units[i], units[j]] = [units[j], units[i]];
+  }
+  return units.slice(0, count);
+}
 
 /* ================================================================
    PANELIST PERSONAS — 3 distinct examiners for the Oral Panel
@@ -74,12 +96,13 @@ ${modeInstructions}
 CONTEXT: ${unitContext}
 
 CONVERSATION STYLE — THIS IS EVERYTHING:
-- Talk like opposing counsel, not like a teacher. Instead of "What is the test under Giella v Cassman Brown?" say "Hold on — Giella doesn't help you here. The balance of convenience clearly favours my client because..."
-- When the student cites authority, don't ask them to explain it. CHALLENGE it: "But that's not what the test actually says. Giella requires you to show a prima facie case first, and you haven't established that on these facts."
+- Talk like opposing counsel, not like a teacher. Instead of asking "What is the test for X?" say "Hold on — that authority doesn't help you here. The test clearly works against your client because..."
+- When the student cites authority, don't ask them to explain it. CHALLENGE it: "But that's not what the ratio actually says. You haven't established the threshold requirement on these facts."
 - When the student makes an assumption, don't ask them to justify it — attack it: "You're assuming the contract was valid in the first place. Section 3(3) of the Law of Contract Act requires writing. Where's your written memorandum?"
-- Follow up naturally the way a real conversation flows. If they say "the limitation period is 6 years," you respond "Six years from what? The cause of action accrued when the breach occurred, not when your client discovered it. That's the distinction in Nyamogo v Kenya Pipeline."
+- Follow up naturally the way a real conversation flows. If they say "the limitation period is 6 years," you respond "Six years from what? The cause of action accrued when the breach occurred, not when your client discovered it."
 - NEVER stack multiple questions. One conversational push per turn. Let the student respond before you escalate.
 - If the student makes a strong point, concede briefly ("Fine, I'll give you that.") then immediately attack from a different angle.
+- CRITICAL: Vary your topics across sessions. Do NOT repeatedly argue about injunctions or the Giella test. Draw from ALL areas in the CONTEXT — criminal procedure, succession, conveyancing, ethics, commercial transactions, trial advocacy, etc.
 
 SCENARIO PROPOSALS:
 - If the student asks you to propose a scenario or start the debate — present a concrete legal hypothetical with specific facts and invite them to take a position.
@@ -501,13 +524,26 @@ async function handlePost(req: NextRequest, user: AuthUser): Promise<Response> {
       await incrementFeatureUsage(user.id, feature as any);
     }
 
-    // Build unit context
-    let unitContext = 'Covering all 9 ATP units of the Kenya School of Law curriculum.';
+    // Build unit context — inject real course outline topics for breadth
+    let unitContext = '';
     if (unitId) {
       const unit = ATP_UNITS.find(u => u.id === unitId);
       if (unit) {
-        unitContext = `Examining the student on ${unit.code}: ${unit.name} — ${unit.description}. Key statutes: ${unit.statutes.join(', ')}.`;
+        const topics = COURSE_OUTLINE_TOPICS[unitId];
+        const topicList = topics ? `\nCOURSE OUTLINE TOPICS for this unit (spread your questions across these):\n${topics.map((t, i) => `${i + 1}. ${t}`).join('\n')}` : '';
+        unitContext = `Examining the student on ${unit.code}: ${unit.name} — ${unit.description}. Key statutes: ${unit.statutes.join(', ')}.${topicList}`;
       }
+    }
+    if (!unitContext) {
+      // No unit selected — pick 2-3 random focus units for this session to ensure variety
+      const sessionFocusUnits = pickSessionUnits(3);
+      const focusLines = sessionFocusUnits.map(u => {
+        const topics = COURSE_OUTLINE_TOPICS[u.id];
+        // Pick 3-4 random topics from each focus unit
+        const sample = topics ? shuffleArray(topics).slice(0, 4).join(', ') : u.description;
+        return `• ${u.code} ${u.name}: ${sample}`;
+      }).join('\n');
+      unitContext = `Covering all 9 ATP units, but THIS SESSION should focus on these areas:\n${focusLines}\n\nDo NOT default to Civil Litigation injunctions every session. Rotate across Criminal Law, Conveyancing, Succession, Ethics, Trial Advocacy, Commercial Transactions, etc.`;
     }
 
     // Summary generation at end of session
@@ -642,7 +678,7 @@ RULES:
       if (messages.length === 0) {
         apiMessages.push({
           role: 'user' as const,
-          content: `I'm ready for the Devil's Advocate challenge${unitId ? ` on ${ATP_UNITS.find(u => u.id === unitId)?.name || 'this topic'}` : ''}. Set up a scenario where we disagree — give me 2-3 sentences of facts, take a position, and challenge me to argue back.`,
+          content: `I'm ready for the Devil's Advocate challenge${unitId ? ` on ${ATP_UNITS.find(u => u.id === unitId)?.name || 'this topic'}` : ''}. Set up a scenario where we disagree — pick a legal issue from the CONTEXT topics listed above (NOT injunctions/Giella unless Civil Litigation is the selected unit), give me 2-3 sentences of facts, take a position, and challenge me to argue back.`,
         });
       }
 
@@ -919,7 +955,7 @@ RULES:
       if (messages.length === 0) {
         apiMessages.push({
           role: 'user' as const,
-          content: `I'm ready for my oral examination${unitId ? ` on ${ATP_UNITS.find(u => u.id === unitId)?.name || 'this topic'}` : ''}. Ask me one specific, concrete legal question in 2-3 sentences. Keep it short and direct.`,
+          content: `I'm ready for my oral examination${unitId ? ` on ${ATP_UNITS.find(u => u.id === unitId)?.name || 'this topic'}` : ''}. Ask me one specific, concrete legal question from the CONTEXT topics listed above (draw from the session focus areas, NOT always Civil Litigation injunctions). Keep it short and direct, 2-3 sentences.`,
         });
       }
 

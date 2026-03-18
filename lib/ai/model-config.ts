@@ -114,17 +114,19 @@ TRIAL ADVOCACY:
 - Re-examination: scope, when permitted
 - Closing submissions: structure, persuasive techniques
 
-KEY CASES TO KNOW:
-- Giella v Cassman Brown (interlocutory injunctions test)
-- American Cyanamide v Ethicon (balance of convenience)
-- Mitubell Welfare Society v Kenya Airports Authority (constitutional injunctions)
+KEY CASES TO KNOW (these are examples — do NOT fixate on any single case; rotate across ALL areas):
 - Muruatetu v Republic (mandatory death sentence unconstitutional)
 - BBI Advisory Opinion [2021] (basic structure doctrine)
 - Anarita Karimi Njeru v Republic (locus standi, constitutional petitions)
+- Giella v Cassman Brown (interlocutory injunctions test)
+- American Cyanamide v Ethicon (balance of convenience)
+- Mitubell Welfare Society v Kenya Airports Authority (constitutional injunctions)
 - Katiba Institute v Attorney General (public interest litigation)
 - Communications Authority v Royal Media Services (freedom of expression)
 - Republic v Ahmad Abolfathi Mohammed (terrorism, fair trial rights)
 - Macharia & Another v Kenya Commercial Bank (constitutional interpretation)
+
+IMPORTANT: These themes are a reference pool. Each session should explore DIFFERENT themes — do not default to injunctions/Giella every time. Rotate across criminal, succession, conveyancing, ethics, commercial, trial advocacy, etc.
 `;
 
 // === API Key Getters ===

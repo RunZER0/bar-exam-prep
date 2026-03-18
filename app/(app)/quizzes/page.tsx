@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTimeTracker } from '@/lib/hooks/useTimeTracker';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
+import { COURSE_OUTLINE_TOPICS } from '@/lib/constants/course-outlines';
 import { usePreloading } from '@/lib/services/preloading';
 import EngagingLoader from '@/components/EngagingLoader';
 import { Button } from '@/components/ui/button';
@@ -294,9 +295,15 @@ export default function QuizzesPage() {
       difficultyInstruction = 'exam-style questions with realistic complexity';
     }
 
+    // Get course outline topics for the selected unit
+    const outlineTopics = unitInfo ? COURSE_OUTLINE_TOPICS[unitInfo.id] : null;
+    const outlineBlock = outlineTopics
+      ? `\n\nGround your questions in these official KSL course outline topics for ${unitInfo!.name}:\n${outlineTopics.map((t, i) => `${i + 1}. ${t}`).join('\n')}\n\nEnsure questions cover a SPREAD of these topics — do not cluster on one area.`
+      : '';
+
     // SmartDrill mode — mix question types
     if (mode.id === 'smartdrill') {
-      return `Generate ${count} varied questions about Kenyan law${unitInfo ? ` specifically on ${unitInfo.name} covering ${unitInfo.statutes.join(', ')}` : ' across all ATP units'}.
+      return `Generate ${count} varied questions about Kenyan law${unitInfo ? ` specifically on ${unitInfo.name} covering ${unitInfo.statutes.join(', ')}` : ' across all ATP units'}.${outlineBlock}
 
 These are for POSTGRADUATE Kenya School of Law bar exam candidates. Make them CHALLENGING - not textbook definitions.
 
@@ -346,7 +353,7 @@ Rules:
     }
 
     return `Generate ${count} trivia/quiz questions about Kenyan law${unitInfo ? ` specifically on ${unitInfo.name} covering ${unitInfo.statutes.join(', ')}` : ' across all ATP units'}.
-
+${outlineBlock}
 ${difficultyInstruction ? `Difficulty: ${difficultyInstruction}.` : ''}
 ${topicInstruction}
 ${unitInfo ? `Focus on: ${unitInfo.name}. Key statutes: ${unitInfo.statutes.join(', ')}.` : 'Cover a MIX of ATP units: Civil Litigation, Criminal Litigation, Conveyancing, Probate, Commercial Transactions, Legal Ethics, Family Law, Legal Writing, Oral Advocacy.'}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/firebase/admin';
 import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
+import { users, marketingLinks } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { sendWelcomeEmail } from '@/lib/services/notification-service';
 
@@ -59,6 +59,9 @@ export async function verifyAuth(request: NextRequest): Promise<AuthUser | null>
     const trialEnd = new Date();
     trialEnd.setDate(trialEnd.getDate() + 3);
 
+    // Capture referral code from request header (set by client from localStorage)
+    const refCode = request.headers.get('x-ref-code')?.trim().toLowerCase().replace(/[^a-z0-9-]/g, '') || null;
+
     const [newUser] = await db.insert(users).values({
       firebaseUid: decodedToken.uid,
       email: decodedToken.email!,
@@ -69,7 +72,25 @@ export async function verifyAuth(request: NextRequest): Promise<AuthUser | null>
       subscriptionStatus: isAdmin ? 'active' : 'trialing',
       trialEndsAt: isAdmin ? null : trialEnd,
       subscriptionEndsAt: isAdmin ? new Date('2099-12-31') : null,
+      referredByCode: refCode,
     }).returning();
+
+    // If referral code is valid, increment the marketer's signup count
+    if (refCode) {
+      db.update(marketingLinks)
+        .set({
+          signupCount: db.$count(marketingLinks, eq(marketingLinks.code, refCode)) as any,
+          updatedAt: new Date(),
+        })
+        .where(eq(marketingLinks.code, refCode))
+        .catch(() => {});
+      // Use raw increment as a fire-and-forget
+      import('@neondatabase/serverless').then(({ neon }) => {
+        const sql = neon(process.env.DATABASE_URL!);
+        sql`UPDATE marketing_links SET signup_count = signup_count + 1, updated_at = NOW() WHERE code = ${refCode} AND is_active = true`
+          .catch(() => {});
+      }).catch(() => {});
+    }
 
     // Send welcome email (non-blocking)
     if (!isAdmin) {

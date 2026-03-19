@@ -70,6 +70,8 @@ export const users = pgTable('users', {
   trialDraftingUsed: integer('trial_drafting_used').default(0).notNull(),
   trialOralDevilUsed: integer('trial_oral_devil_used').default(0).notNull(),
   trialOralExamUsed: integer('trial_oral_exam_used').default(0).notNull(),
+  // Referral tracking
+  referredByCode: text('referred_by_code'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -1714,3 +1716,22 @@ export const oralSessionsRelations = relations(oralSessions, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// ============================================================
+// MARKETING REFERRAL LINKS
+// ============================================================
+
+export const marketingLinks = pgTable('marketing_links', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: text('code').notNull().unique(),
+  marketerName: text('marketer_name').notNull(),
+  marketerEmail: text('marketer_email'),
+  marketerPhone: text('marketer_phone'),
+  campaign: text('campaign').default('general'),
+  isActive: boolean('is_active').default(true).notNull(),
+  clickCount: integer('click_count').default(0).notNull(),
+  signupCount: integer('signup_count').default(0).notNull(),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});

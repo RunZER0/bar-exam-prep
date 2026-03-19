@@ -12,7 +12,7 @@ import {
   AlertTriangle, CheckCircle2, FileText, TrendingUp, Target, Settings,
   Calendar, Brain, Database, Search, Edit2, Eye, Download, Upload,
   RefreshCw, Clock, Sparkles, GraduationCap, Scale, ChevronRight,
-  MoreVertical, Filter, X, ExternalLink, Zap
+  MoreVertical, Filter, X, ExternalLink, Zap, Link2, Copy, ToggleLeft, ToggleRight
 } from 'lucide-react';
 
 // ============================================================
@@ -139,7 +139,38 @@ interface RoomRequest {
   createdAt: string;
 }
 
-type AdminTab = 'dashboard' | 'users' | 'curriculum' | 'questions' | 'knowledge' | 'timelines' | 'community' | 'settings';
+interface MarketingSignup {
+  email: string;
+  displayName: string | null;
+  subscriptionPlan: string | null;
+  createdAt: string;
+}
+
+interface MarketingLink {
+  id: string;
+  code: string;
+  marketerName: string;
+  marketerEmail: string | null;
+  marketerPhone: string | null;
+  campaign: string | null;
+  isActive: boolean;
+  clickCount: number;
+  signupCount: number;
+  notes: string | null;
+  createdAt: string;
+  signups: MarketingSignup[];
+}
+
+interface MarketingStats {
+  totalLinks: number;
+  activeLinks: number;
+  totalClicks: number;
+  totalSignups: number;
+  conversionRate: number;
+  dailySignups: { date: string; count: number }[];
+}
+
+type AdminTab = 'dashboard' | 'users' | 'curriculum' | 'questions' | 'knowledge' | 'timelines' | 'community' | 'settings' | 'marketing';
 
 const DEFAULT_SETTINGS: AdminSettings = {
   defaultDailyStudyGoal: 60,
@@ -198,6 +229,14 @@ export default function AdminPage() {
 
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Marketing state
+  const [marketingLinks, setMarketingLinks] = useState<MarketingLink[]>([]);
+  const [marketingStats, setMarketingStats] = useState<MarketingStats | null>(null);
+  const [marketingLoading, setMarketingLoading] = useState(false);
+  const [showCreateLink, setShowCreateLink] = useState(false);
+  const [expandedLink, setExpandedLink] = useState<string | null>(null);
+  const [newMarketer, setNewMarketer] = useState({ name: '', email: '', phone: '', campaign: '', code: '', notes: '' });
   const [editingTimeline, setEditingTimeline] = useState<string | null>(null);
   const [settingsSaving, setSettingsSaving] = useState(false);
 
@@ -299,6 +338,20 @@ export default function AdminPage() {
     } catch { /* silent */ }
   }, [getHeaders]);
 
+  const fetchMarketing = useCallback(async () => {
+    setMarketingLoading(true);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/admin/marketing', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setMarketingLinks(data.links || []);
+        setMarketingStats(data.stats || null);
+      }
+    } catch { /* silent */ }
+    finally { setMarketingLoading(false); }
+  }, [getHeaders]);
+
   const fetchCommunityRequests = useCallback(async () => {
     setCommunityLoading(true);
     try {
@@ -338,6 +391,7 @@ export default function AdminPage() {
     if (activeTab === 'community' && roomRequests.length === 0) fetchCommunityRequests();
     if (activeTab === 'curriculum' && topics.length === 0) fetchTopics();
     if (activeTab === 'questions' && questionsList.length === 0) fetchQuestions();
+    if (activeTab === 'marketing' && marketingLinks.length === 0) fetchMarketing();
   }, [activeTab]);
 
   // ============================================================
@@ -565,6 +619,7 @@ export default function AdminPage() {
     { id: 'knowledge', label: 'Knowledge Base', icon: Database },
     { id: 'timelines', label: 'KSL Timelines', icon: Calendar },
     { id: 'community', label: 'Community', icon: Users },
+    { id: 'marketing', label: 'Marketing', icon: Link2 },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -1683,6 +1738,286 @@ export default function AdminPage() {
     );
   };
 
+  // ============================================================
+  // MARKETING TAB
+  // ============================================================
+
+  const createMarketingLink = async () => {
+    if (!newMarketer.name) { setError('Marketer name is required'); return; }
+    setSaving(true);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/admin/marketing', {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          marketerName: newMarketer.name,
+          marketerEmail: newMarketer.email || undefined,
+          marketerPhone: newMarketer.phone || undefined,
+          campaign: newMarketer.campaign || undefined,
+          code: newMarketer.code || undefined,
+          notes: newMarketer.notes || undefined,
+        }),
+      });
+      if (res.ok) {
+        setSuccess('Marketing link created');
+        setNewMarketer({ name: '', email: '', phone: '', campaign: '', code: '', notes: '' });
+        setShowCreateLink(false);
+        await fetchMarketing();
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to create link');
+      }
+    } catch { setError('Failed to create link'); }
+    finally { setSaving(false); }
+  };
+
+  const toggleMarketingLink = async (id: string, isActive: boolean) => {
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/admin/marketing', {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ id, isActive: !isActive }),
+      });
+      if (res.ok) {
+        setSuccess(`Link ${!isActive ? 'activated' : 'deactivated'}`);
+        await fetchMarketing();
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to update link');
+      }
+    } catch { setError('Failed to update link'); }
+  };
+
+  const deleteMarketingLink = async (id: string) => {
+    if (!confirm('Delete this marketing link? This cannot be undone.')) return;
+    try {
+      const headers = await getHeaders();
+      const res = await fetch(`/api/admin/marketing?id=${id}`, { method: 'DELETE', headers });
+      if (res.ok) {
+        setSuccess('Link deleted');
+        await fetchMarketing();
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to delete link');
+      }
+    } catch { setError('Failed to delete link'); }
+  };
+
+  const copyRefLink = (code: string) => {
+    const url = `${window.location.origin}/?ref=${code}`;
+    navigator.clipboard.writeText(url);
+    setSuccess(`Copied: ${url}`);
+  };
+
+  const renderMarketing = () => {
+    if (marketingLoading) {
+      return (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    const stats = marketingStats;
+    const maxDailyCount = Math.max(1, ...(stats?.dailySignups?.map(d => d.count) || [1]));
+
+    return (
+      <div className="space-y-6">
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: 'Total Links', value: stats?.totalLinks || 0, icon: Link2 },
+            { label: 'Total Clicks', value: stats?.totalClicks || 0, icon: Eye },
+            { label: 'Total Sign-ups', value: stats?.totalSignups || 0, icon: Users },
+            { label: 'Conversion Rate', value: `${(stats?.conversionRate || 0).toFixed(1)}%`, icon: TrendingUp },
+          ].map((s, i) => (
+            <Card key={i}>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <s.icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{s.value}</p>
+                    <p className="text-xs text-muted-foreground">{s.label}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* 30-Day Signup Chart */}
+        {stats?.dailySignups && stats.dailySignups.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Sign-ups (Last 30 Days)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end gap-[2px] h-40">
+                {stats.dailySignups.map((day, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center justify-end group relative">
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none z-10">
+                      {day.date}: {day.count}
+                    </div>
+                    <div
+                      className="w-full bg-primary/80 rounded-t transition-all hover:bg-primary min-h-[2px]"
+                      style={{ height: `${(day.count / maxDailyCount) * 100}%` }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-[10px] text-muted-foreground">{stats.dailySignups[0]?.date}</span>
+                <span className="text-[10px] text-muted-foreground">{stats.dailySignups[stats.dailySignups.length - 1]?.date}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Create Link */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Referral Links</CardTitle>
+            <Button size="sm" className="gap-2" onClick={() => setShowCreateLink(!showCreateLink)}>
+              {showCreateLink ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {showCreateLink ? 'Cancel' : 'New Link'}
+            </Button>
+          </CardHeader>
+          {showCreateLink && (
+            <CardContent className="border-t pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Marketer Name *</label>
+                  <Input value={newMarketer.name} onChange={e => setNewMarketer(p => ({ ...p, name: e.target.value }))} placeholder="e.g. John Doe" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Email</label>
+                  <Input value={newMarketer.email} onChange={e => setNewMarketer(p => ({ ...p, email: e.target.value }))} placeholder="marketer@email.com" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Phone</label>
+                  <Input value={newMarketer.phone} onChange={e => setNewMarketer(p => ({ ...p, phone: e.target.value }))} placeholder="+254..." />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Campaign</label>
+                  <Input value={newMarketer.campaign} onChange={e => setNewMarketer(p => ({ ...p, campaign: e.target.value }))} placeholder="e.g. tiktok-may-2026" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Custom Code (optional)</label>
+                  <Input value={newMarketer.code} onChange={e => setNewMarketer(p => ({ ...p, code: e.target.value }))} placeholder="auto-generated if blank" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Notes</label>
+                  <Input value={newMarketer.notes} onChange={e => setNewMarketer(p => ({ ...p, notes: e.target.value }))} placeholder="Internal notes" />
+                </div>
+              </div>
+              <Button className="mt-4 gap-2" onClick={createMarketingLink} disabled={saving}>
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Create Link
+              </Button>
+            </CardContent>
+          )}
+
+          {/* Links Table */}
+          <CardContent className={showCreateLink ? '' : ''}>
+            {marketingLinks.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground">
+                <Link2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No marketing links yet. Create one to start tracking referrals.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {marketingLinks.map(link => (
+                  <div key={link.id} className="border rounded-xl overflow-hidden">
+                    <div className="p-4 flex items-center gap-4 hover:bg-muted/30 transition-colors">
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold">{link.marketerName}</span>
+                          {link.campaign && (
+                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{link.campaign}</span>
+                          )}
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${link.isActive ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-500'}`}>
+                            {link.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                          <span>Code: <code className="bg-muted px-1 rounded text-xs">{link.code}</code></span>
+                          {link.marketerEmail && <span>{link.marketerEmail}</span>}
+                          {link.marketerPhone && <span>{link.marketerPhone}</span>}
+                        </div>
+                      </div>
+
+                      {/* Stats */}
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="text-center">
+                          <p className="font-bold">{link.clickCount}</p>
+                          <p className="text-xs text-muted-foreground">Clicks</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="font-bold">{link.signupCount}</p>
+                          <p className="text-xs text-muted-foreground">Sign-ups</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="font-bold">{link.clickCount > 0 ? ((link.signupCount / link.clickCount) * 100).toFixed(1) : '0'}%</p>
+                          <p className="text-xs text-muted-foreground">Conv.</p>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" title="Copy link" onClick={() => copyRefLink(link.code)}>
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" title={link.isActive ? 'Deactivate' : 'Activate'} onClick={() => toggleMarketingLink(link.id, link.isActive)}>
+                          {link.isActive ? <ToggleRight className="w-4 h-4 text-green-500" /> : <ToggleLeft className="w-4 h-4 text-muted-foreground" />}
+                        </Button>
+                        <Button variant="ghost" size="icon" title="View sign-ups" onClick={() => setExpandedLink(expandedLink === link.id ? null : link.id)}>
+                          <ChevronRight className={`w-4 h-4 transition-transform ${expandedLink === link.id ? 'rotate-90' : ''}`} />
+                        </Button>
+                        <Button variant="ghost" size="icon" title="Delete" onClick={() => deleteMarketingLink(link.id)}>
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Expanded Signups */}
+                    {expandedLink === link.id && (
+                      <div className="border-t bg-muted/20 px-4 py-3">
+                        {link.signups.length === 0 ? (
+                          <p className="text-sm text-muted-foreground text-center py-2">No sign-ups yet for this link.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Sign-ups ({link.signups.length})</p>
+                            {link.signups.map((s, i) => (
+                              <div key={i} className="flex items-center justify-between text-sm py-1 border-b border-border/50 last:border-0">
+                                <div>
+                                  <span className="font-medium">{s.displayName || 'Unnamed'}</span>
+                                  <span className="text-muted-foreground ml-2">{s.email}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  {s.subscriptionPlan && (
+                                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{s.subscriptionPlan}</span>
+                                  )}
+                                  <span className="text-xs text-muted-foreground">{new Date(s.createdAt).toLocaleDateString()}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return renderDashboard();
@@ -1693,6 +2028,7 @@ export default function AdminPage() {
       case 'community': return renderCommunity();
       case 'curriculum': return renderCurriculum();
       case 'questions': return renderQuestions();
+      case 'marketing': return renderMarketing();
       default: return null;
     }
   };

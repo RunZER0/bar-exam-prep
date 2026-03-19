@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -92,12 +92,26 @@ const UNITS = [
 
 export default function Home() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
+
+  // Capture referral code from URL (?ref=CODE) and store for signup attribution
+  useEffect(() => {
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      const sanitized = refCode.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+      if (sanitized) {
+        localStorage.setItem('ynai_ref', sanitized);
+        // Validate & track click
+        fetch(`/api/ref?code=${encodeURIComponent(sanitized)}`).catch(() => {});
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!loading && user) {

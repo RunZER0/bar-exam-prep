@@ -42,9 +42,20 @@ export default function AuthenticatedLayout({
       try {
         const token = await getIdToken();
         if (!token) return;
-        const res = await fetch('/api/onboarding/exam', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+
+        // Include referral code header on first authenticated call
+        // so the auth middleware can attribute new signups to marketers
+        const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+        try {
+          const refCode = localStorage.getItem('ynai_ref');
+          if (refCode) {
+            headers['x-ref-code'] = refCode;
+            // Clear after sending so it's only sent once
+            localStorage.removeItem('ynai_ref');
+          }
+        } catch {}
+
+        const res = await fetch('/api/onboarding/exam', { headers });
         if (res.ok) {
           const data = await res.json();
           if (data.needsOnboarding) {

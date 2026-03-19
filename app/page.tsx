@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
@@ -90,28 +90,29 @@ const UNITS = [
   'Commercial Transactions',
 ];
 
-export default function Home() {
-  const router = useRouter();
+function RefCapture() {
   const searchParams = useSearchParams();
-  const { user, loading, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [error, setError] = useState('');
-  const [authLoading, setAuthLoading] = useState(false);
-
-  // Capture referral code from URL (?ref=CODE) and store for signup attribution
   useEffect(() => {
     const refCode = searchParams.get('ref');
     if (refCode) {
       const sanitized = refCode.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
       if (sanitized) {
         localStorage.setItem('ynai_ref', sanitized);
-        // Validate & track click
         fetch(`/api/ref?code=${encodeURIComponent(sanitized)}`).catch(() => {});
       }
     }
   }, [searchParams]);
+  return null;
+}
+
+export default function Home() {
+  const router = useRouter();
+  const { user, loading, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [error, setError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && user) {
@@ -161,6 +162,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#0a0a0b] text-zinc-100">
+      <Suspense fallback={null}><RefCapture /></Suspense>
       {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-[#0a0a0b]/80 backdrop-blur-xl border-b border-zinc-800/50">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">

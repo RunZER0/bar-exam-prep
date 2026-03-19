@@ -66,43 +66,8 @@ export async function GET(request: Request) {
   try {
     const startTime = Date.now();
 
-    // 1. Process daily reminders (personalized with AI-planned units)
-    let reminderResult: { processed: number; emailsSent: number; pushSent: number; error?: string } = { processed: 0, emailsSent: 0, pushSent: 0 };
-    try {
-      reminderResult = await processReminderTick();
-    } catch (e) {
-      console.error('[cron/tick] processReminderTick failed:', e);
-      reminderResult.error = e instanceof Error ? e.message : 'Unknown error';
-    }
-
-    // 2. Process weekly reports (idempotent — only sends once per week per user)
-    let weeklyResult: { processed: number; emailsSent: number; error?: string } = { processed: 0, emailsSent: 0 };
-    try {
-      weeklyResult = await processWeeklyReports();
-    } catch (e) {
-      console.error('[cron/tick] processWeeklyReports failed:', e);
-      weeklyResult.error = e instanceof Error ? e.message : 'Unknown error';
-    }
-
-    // 3. Process fun fact emails (only on Wednesdays & Saturdays, max once/week)
-    let funFactResult: { processed: number; emailsSent: number; error?: string } = { processed: 0, emailsSent: 0 };
-    try {
-      funFactResult = await processFunFactEmails();
-    } catch (e) {
-      console.error('[cron/tick] processFunFactEmails failed:', e);
-      funFactResult.error = e instanceof Error ? e.message : 'Unknown error';
-    }
-
-    // 4. Check for expiring trials and send warning emails (event-driven)
-    let trialExpiryResult: { processed: number; emailsSent: number; error?: string } = { processed: 0, emailsSent: 0 };
-    try {
-      trialExpiryResult = await processTrialExpiryCheck();
-    } catch (e) {
-      console.error('[cron/tick] processTrialExpiryCheck failed:', e);
-      trialExpiryResult.error = e instanceof Error ? e.message : 'Unknown error';
-    }
-
-    // 5. Process policy-based reminders (MISSED_DAY, SESSION_READY, EXAM_COUNTDOWN)
+    // 1. Process policy-based reminders FIRST (highest-priority: MISSED_DAY, EXAM_COUNTDOWN, SESSION_READY)
+    //    These are more specific than daily reminders, so they get priority for the daily engagement cap.
     let policyResult: { usersProcessed: number; emailsSent: number; pushSent: number; error?: string } = { usersProcessed: 0, emailsSent: 0, pushSent: 0 };
     try {
       policyResult = await processRemindersWithPolicies();
@@ -111,17 +76,53 @@ export async function GET(request: Request) {
       policyResult.error = e instanceof Error ? e.message : 'Unknown error';
     }
 
+    // 2. Process daily reminders (fallback for users who didn't get a policy email)
+    let reminderResult: { processed: number; emailsSent: number; pushSent: number; error?: string } = { processed: 0, emailsSent: 0, pushSent: 0 };
+    try {
+      reminderResult = await processReminderTick();
+    } catch (e) {
+      console.error('[cron/tick] processReminderTick failed:', e);
+      reminderResult.error = e instanceof Error ? e.message : 'Unknown error';
+    }
+
+    // 3. Process weekly reports (idempotent — only sends once per week per user, respects daily cap)
+    let weeklyResult: { processed: number; emailsSent: number; error?: string } = { processed: 0, emailsSent: 0 };
+    try {
+      weeklyResult = await processWeeklyReports();
+    } catch (e) {
+      console.error('[cron/tick] processWeeklyReports failed:', e);
+      weeklyResult.error = e instanceof Error ? e.message : 'Unknown error';
+    }
+
+    // 4. Process fun fact emails (only on Wed & Sat, respects daily cap)
+    let funFactResult: { processed: number; emailsSent: number; error?: string } = { processed: 0, emailsSent: 0 };
+    try {
+      funFactResult = await processFunFactEmails();
+    } catch (e) {
+      console.error('[cron/tick] processFunFactEmails failed:', e);
+      funFactResult.error = e instanceof Error ? e.message : 'Unknown error';
+    }
+
+    // 5. Check for expiring trials (transactional — always sends, bypasses daily cap)
+    let trialExpiryResult: { processed: number; emailsSent: number; error?: string } = { processed: 0, emailsSent: 0 };
+    try {
+      trialExpiryResult = await processTrialExpiryCheck();
+    } catch (e) {
+      console.error('[cron/tick] processTrialExpiryCheck failed:', e);
+      trialExpiryResult.error = e instanceof Error ? e.message : 'Unknown error';
+    }
+
     const duration = Date.now() - startTime;
 
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
       duration: `${duration}ms`,
+      policyReminders: policyResult,
       reminders: reminderResult,
       weeklyReports: weeklyResult,
       funFacts: funFactResult,
       trialExpiry: trialExpiryResult,
-      policyReminders: policyResult,
     });
   } catch (error) {
     console.error('[cron/tick] Error:', error);

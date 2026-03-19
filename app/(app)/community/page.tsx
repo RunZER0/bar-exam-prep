@@ -235,17 +235,26 @@ type TabId = (typeof TABS)[number]['id'];
    ================================================================ */
 function getTimeAgo(dateStr: string | null | undefined): string {
   if (!dateStr) return 'just now';
-  const diff = Date.now() - new Date(dateStr).getTime();
+  // Ensure timezone-naive timestamps from Postgres are treated as UTC
+  let normalized = dateStr;
+  if (typeof normalized === 'string' && !normalized.endsWith('Z') && !normalized.includes('+') && !/\d{2}:\d{2}:\d{2}\.\d+[+-]/.test(normalized)) {
+    normalized = normalized.replace(' ', 'T') + 'Z';
+  }
+  const date = new Date(normalized);
+  const diff = Date.now() - date.getTime();
   if (isNaN(diff) || diff < 0) return 'just now';
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
+  const secs = Math.floor(diff / 1000);
+  if (secs < 60) return 'just now';
+  const mins = Math.floor(secs / 60);
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
+  if (days === 1) return 'yesterday';
   if (days < 7) return `${days}d ago`;
   if (days < 30) return `${Math.floor(days / 7)}w ago`;
-  return `${Math.floor(days / 30)}mo ago`;
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+  return `${Math.floor(days / 365)}y ago`;
 }
 
 function orderRepliesHierarchically(replies: ThreadReply[]): OrderedReply[] {

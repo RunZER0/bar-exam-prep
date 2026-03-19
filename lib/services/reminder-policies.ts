@@ -6,12 +6,13 @@
  */
 
 import { db } from '@/lib/db';
-import { users, userProfiles, studyStreaks, studySessions, notificationLog } from '@/lib/db/schema';
+import { users, userProfiles, studyStreaks, studySessions, notificationLog, nodeProgress, syllabusNodes } from '@/lib/db/schema';
 import { masteryState } from '@/lib/db/mastery-schema';
 import { eq, and, gte, lte, desc, sql, isNull, or } from 'drizzle-orm';
 import {
   sendNotificationEmail,
   sendPushNotification,
+  hasReachedDailyEngagementCap,
   type NotificationPayload,
   type InAppNudge,
 } from './notification-service';
@@ -472,17 +473,43 @@ export async function evaluatePolicies(
     // Send notifications if requested
     if (sendNotifications) {
       if (hasEmail && policy.emailTemplate) {
+        // Check daily engagement cap before sending
+        const capReached = await hasReachedDailyEngagementCap(userId);
+        if (capReached) {
+          continue; // Skip — user already got an engagement email today
+        }
+
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://ynai.co.ke';
+
+        // Fetch the user's actual last-studied topic from the DB for specificity
+        let lastTopicName = '';
+        let nextTopicName = '';
+        try {
+          const lastProgress = await db
+            .select({ nodeId: nodeProgress.nodeId, lastAttemptAt: nodeProgress.lastAttemptAt })
+            .from(nodeProgress)
+            .where(eq(nodeProgress.userId, userId))
+            .orderBy(desc(nodeProgress.lastAttemptAt))
+            .limit(1);
+          if (lastProgress.length > 0) {
+            const [node] = await db
+              .select({ topicName: syllabusNodes.topicName, unitCode: syllabusNodes.unitCode })
+              .from(syllabusNodes)
+              .where(eq(syllabusNodes.id, lastProgress[0].nodeId))
+              .limit(1);
+            if (node) lastTopicName = `${node.topicName} (${node.unitCode})`;
+          }
+        } catch { /* fallback to generic */ }
+
         const result = await sendNotificationEmail(userId, policy.emailTemplate as any, {
           userName: ctx.displayName || 'Student',
-          // Real context — the AI agent uses these to write personalized copy
-          sessionTopic: ctx.pendingSessionsCount > 0 ? 'Your queued topics' : 'Continue where you left off',
+          sessionTopic: nextTopicName || (ctx.pendingSessionsCount > 0 ? 'Your next queued topic' : 'Pick up where you left off'),
           estimatedMinutes: '25',
-          sessionUrl: `${appUrl}/dashboard`,
-          lastTopic: 'your recent topic',
+          sessionUrl: `${appUrl}/mastery`,
+          lastTopic: lastTopicName || 'your most recent topic',
           currentStreak: String(ctx.currentStreak || 0),
-          comebackUrl: `${appUrl}/dashboard`,
-          daysRemaining: String(ctx.daysUntilExam || 30),
+          comebackUrl: `${appUrl}/mastery`,
+          daysRemaining: String(ctx.daysUntilExam || ''),
           masteryPercent: String(Math.round(ctx.overallMastery * 100)),
           weakSkillCount: String(ctx.weakSkillCount || 0),
           hoursSinceLastSession: String(Math.round(ctx.hoursSinceLastSession)),

@@ -109,10 +109,55 @@ export async function sendEmailViaBrevo(
   }
 }
 
+// ============================================
+// DAILY EMAIL CAP
+// ============================================
+
+// Transactional templates bypass the daily cap — they MUST be delivered.
+const TRANSACTIONAL_TEMPLATES = new Set([
+  'SUBSCRIPTION_ACTIVATED',
+  'TIER_UPGRADED',
+  'ADDON_PURCHASED',
+  'PAYMENT_RECEIPT',
+  'TRIAL_EXPIRING',
+  'WELCOME',
+]);
+
+// Max engagement emails per user per day (excludes transactional)
+const MAX_ENGAGEMENT_EMAILS_PER_DAY = 1;
+
+/**
+ * Check if a user has already received enough engagement emails today.
+ * Returns true if the user should NOT receive another engagement email.
+ */
+export async function hasReachedDailyEngagementCap(userId: string): Promise<boolean> {
+  const startOfDay = new Date();
+  startOfDay.setUTCHours(0, 0, 0, 0);
+
+  const transactionalList = Array.from(TRANSACTIONAL_TEMPLATES);
+
+  const [result] = await db
+    .select({ count: count() })
+    .from(notificationLog)
+    .where(and(
+      eq(notificationLog.userId, userId),
+      eq(notificationLog.channel, 'EMAIL'),
+      eq(notificationLog.status, 'SENT'),
+      gte(notificationLog.createdAt, startOfDay),
+      // Exclude transactional templates from the count
+      sql`${notificationLog.template} NOT IN (${sql.join(transactionalList.map(t => sql`${t}`), sql`, `)})`
+    ));
+
+  return (result?.count || 0) >= MAX_ENGAGEMENT_EMAILS_PER_DAY;
+}
+
 /**
  * Send templated notification email using the AI email agent.
  * The agent generates personalized copy dynamically, then wraps it in the branded base template.
  * Falls back to a clean minimal email if the AI call fails.
+ *
+ * Engagement emails (non-transactional) are capped at 1 per user per day.
+ * Transactional emails always send.
  */
 export async function sendNotificationEmail(
   userId: string,
@@ -129,6 +174,15 @@ export async function sendNotificationEmail(
   if (!user) {
     console.error(`[notification] User not found: ${userId}`);
     return { success: false, logId: '' };
+  }
+
+  // Enforce daily engagement email cap (transactional emails always go through)
+  if (!TRANSACTIONAL_TEMPLATES.has(template)) {
+    const capped = await hasReachedDailyEngagementCap(userId);
+    if (capped) {
+      console.log(`[notification] Skipping ${template} for user ${userId} — daily engagement cap reached`);
+      return { success: false, logId: '' };
+    }
   }
 
   const userName = variables.userName || user.displayName || 'Student';
@@ -631,7 +685,7 @@ export async function processReminderTick(): Promise<{
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://ynai.co.ke';
 
   for (const user of usersToNotify) {
-    // Check if already notified today (idempotency)
+    // Check if already notified today (idempotency) OR daily engagement cap reached
     const alreadySent = await db
       .select()
       .from(notificationLog)
@@ -643,6 +697,12 @@ export async function processReminderTick(): Promise<{
       .limit(1);
 
     if (alreadySent.length > 0) {
+      continue;
+    }
+
+    // Skip if this user already got an engagement email today (e.g., MISSED_DAY from policy-based reminders)
+    const capReached = await hasReachedDailyEngagementCap(user.userId);
+    if (capReached) {
       continue;
     }
 
@@ -786,6 +846,10 @@ export async function processWeeklyReports(): Promise<{
 
     if (alreadySent.length > 0) continue;
 
+    // Respect daily engagement email cap
+    const capReached = await hasReachedDailyEngagementCap(user.userId);
+    if (capReached) continue;
+
     processed++;
 
     const stats = await getUserWeeklyStats(user.userId);
@@ -859,6 +923,10 @@ export async function processFunFactEmails(): Promise<{
       .limit(1);
 
     if (alreadySent.length > 0) continue;
+
+    // Respect daily engagement email cap
+    const capReached = await hasReachedDailyEngagementCap(user.userId);
+    if (capReached) continue;
 
     processed++;
 
@@ -1151,6 +1219,7 @@ export default {
   sendWelcomeEmail,
   getInAppNudges,
   sendEmailViaBrevo,
+  hasReachedDailyEngagementCap,
   EMAIL_TEMPLATES,
   // Event-driven email triggers
   sendSubscriptionActivatedEmail,

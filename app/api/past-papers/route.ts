@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { pastPapers, pastPaperQuestions } from '@/lib/db/schema';
-import { eq, and, desc, sql, count } from 'drizzle-orm';
+import { eq, and, desc, sql, count, inArray } from 'drizzle-orm';
 import { withAuth, withAdminAuth, type AuthUser } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
 import { MINI_MODEL, AI_IDENTITY } from '@/lib/ai/model-config';
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
       const allQuestions = await db
         .select({ topics: pastPaperQuestions.topics })
         .from(pastPaperQuestions)
-        .where(sql`${pastPaperQuestions.paperId} = ANY(${paperIds})`);
+        .where(inArray(pastPaperQuestions.paperId, paperIds));
 
       for (const q of allQuestions) {
         const topics = (q.topics as string[]) || [];

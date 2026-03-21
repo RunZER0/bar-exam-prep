@@ -618,6 +618,18 @@ export const pastPaperQuestionsRelations = relations(pastPaperQuestions, ({ one 
   }),
 }));
 
+// ── Past Paper Analysis Cache ──
+export const pastPaperAnalysisCache = pgTable('past_paper_analysis_cache', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  cacheKey: text('cache_key').notNull().unique(),
+  report: jsonb('report').notNull(),
+  paperCount: integer('paper_count').notNull().default(0),
+  questionCount: integer('question_count').notNull().default(0),
+  generatedAt: timestamp('generated_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at'),
+  modelUsed: text('model_used'),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   profile: one(userProfiles),

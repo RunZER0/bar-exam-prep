@@ -1,0 +1,890 @@
+[
+  {
+    "unitId": "atp-100",
+    "unitName": "Civil Litigation",
+    "year": 2018,
+    "sitting": "supplementary",
+    "paperCode": "ATP 100",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each.",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "You have recently been retained as a pupil at the law firm of Xavier and Co. Advocates, Y Plaza, P.O. Box 24 Ubungo and in your daily tasks in the firm, you take down the following notes:\n\nDan wants a case lodged in court. He was involved in an accident where he broke his left leg. He complains that he suffered loss as a result of the accident. The driver, Derrick was blamed for the accident of motor vehicle Registration Number KBS 149A, a bus in which Dan was a fare paying passenger. The driver was blamed for driving the motor vehicle dangerously, reckless and/or negligently. The motor vehicle was also found to be in an unroadworthy condition.\n\nThe accident occurred on 20th November 2004 in Vimax District in the Republic of Kez. The vehicle belonged to Mary who resides within Vimax District. Derrick is still working for Mary. Her office is located at Pom Plaza. The address is P.O. Box 10, Vimax District.\n\nDan was treated at Kez Hospital and he spent Kshs. 100,000/- for treatment. He has receipts and reports to support the same. He expects a sum of Kshs. 400,000/- for pain and suffering. He also wants his medical costs to be paid. He feels the driver and the owner of the motor vehicle should be held liable.\n\nDraft the appropriate pleading(s) to be filed in court on behalf of Dan. (20 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Pleadings",
+          "Negligence",
+          "Vicarious Liability"
+        ],
+        "difficulty": "hard",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "A Plaint has been filed in the Chief Magistrate's Court at Nairobi Milimani Commercial Court (Civil Case Number 20 of 2018) pitting Rose as the Plaintiff and Mike as the Defendant. The claim is for the recovery of Kshs. 5,000,000/- plus costs and interest. The Defendant was served with the summons and the plaint on 1st March 2018. The Defendant has come to your chambers for legal advice. He has informed you that he intends to challenge the jurisdiction of the court on the grounds that the amount claimed is beyond the pecuniary jurisdiction of the Chief Magistrate's court. He has also informed you that he never received any demand letter from Rose prior to the filing of the suit. He has also provided you with documents showing that he had already paid Rose a sum of Kshs. 2,000,000/-. He has further informed you that Rose is currently in possession of his motor vehicle which she has refused to release to him despite various demands. (a) Advise Mike on the appropriate steps you will take to challenge the jurisdiction of the court. (4 marks) (b) Draft the appropriate pleading(s) that you will file on behalf of Mike in response to the suit. (6 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Jurisdiction",
+          "Pleadings",
+          "Counterclaim"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "B auctioneers has attached and sold a truck belonging to Patel. Mrs. Omari claims that the truck belonged to her. She says that the proceeds should be surrendered to her. B auctioneers does not know the person to give the proceeds. You are an intern in the law firm of Kazimoto and have been asked to handle B auctioneer's matter. Advise B Auctioneers on the action to take, the type of application, applicable law and conditions that must be fulfilled for one to successfully prosecute the application. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Interpleader",
+          "Execution",
+          "Attachment"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "A judgement has been rendered in favour of Pamela who had been involved in an accident. General damages for pain and suffering were Ksh. 100,000 and special damages were assessed at Ksh. 3000. Pamela has just discovered that Patrick, her office assistant has been holding treatment receipts in the amount of Kshs. 40,000. Such amount was not awarded in the judgement. Patrick did not know that the treatment receipts were required. Pamela is convinced that justice will not be served if she is not paid the full amount spent on treatment. Using applicable law, advice Pamela on the avenue she can take to recover the amount, while providing grounds upon which Pamela can rely on to prosecute the application. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Review",
+          "Discovery",
+          "Civil Procedure Rules"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Ann Parker obtained a judgment against Helen Chloe in the sum of Kshs. 2,000,000/-. She has instructed B-Auctioneers to proclaim and sell Helen Chloe's household goods. Helen Chloe informs you that there was no proclamation notice served on her and she is not aware of the existence of Civil Suit Number 700 of 2017 wherein Ann Parker had sought payment of a debt. In the court records Ann Parker had applied for an interlocutory judgement which was granted. Helen Chloe confides in you that she owes Ann Parker Kshs. 1,000,000/- and she has kept her bargain by diligently paying Kshs. 200,000/- as agreed upon on a quarterly basis and she expects to pay off the debt as agreed in two years' time. Give her advice and the process to be taken. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Setting Aside Judgment",
+          "Execution",
+          "Service of Process"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Jamy has a judgment in his favour. The defendant is supposed to pay Kshs. 15,000,000. This is according to the judgement that that was rendered by the court. However, the amount that were proved cumulatively in the trial was Kshs. 17,000,000. Kendo the defendant has no problem in settling the amount of Kshs. 17,000,000. Both parties agree that Judges are also human and should be given a second chance to correct the Judgement. As an advocate representing Jamy you concur with their sentiments: (a) Advise Jamy on the appropriate legal mechanism to be initiated and the steps to be undertaken. (7 marks) (b) Suppose it was Suzy, personal assistant to Jamy who raised the issues above. Explain whether it would be proper for Suzy to initiate legal proceedings to have the Judgement corrected on behalf of Jamy who is still within the jurisdiction of the court. (3 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Review of Judgment",
+          "Slip Rule"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-101",
+    "unitName": "Criminal Litigation",
+    "year": 2018,
+    "sitting": "supplementary",
+    "paperCode": "ATP 101",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each.",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "\"The contours of the right to bail under Article 49(1)(h) of the Constitution are now becoming familiar and clear as courts are confronted more and more with the subject.\" (Gikonyo, J in R -v- Kokonya Muhsiin [2013] KLR). Citing relevant authorities, discuss this passage on the emerging jurisprudence on bail and bond in Kenya. (20 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Bail and Bond",
+          "Constitutional Law"
+        ],
+        "difficulty": "hard",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "John Mapesa and Jean Msoto operate a joint business under the name and style of Jo-Jean Enterprises. On 4/4/2017, they approached Sukari Co. Ltd intent on supplying sugar from Mumias Sugar Co. Ltd. They had with them two tender documents from Mumias Sugar Co. Ltd which they showed officials of Sukari Ltd when they visited them at their offices at Industrial Area, Nairobi. Officials of Sukari Ltd, on the strength of the documents placed an order for 8,000 bags of sugar and paid a sum of Kshs. 28,000,000 as deposit to Sukari Co. Ltd bank account at Equity Bank. John and Jean disappeared as soon as the money hit the account. Sukari Co. Ltd later discovered that the tender documents were forgeries. The two were arrested and charged with conspiracy to defraud and obtaining money by false pretences. (a) Discuss the elements of the offences. (6 marks) (b) Outline the investigative steps the police should have taken. (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Fraud",
+          "Investigations",
+          "Forgery"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "When Skwota and Mumiliki's families appeared before the Environment and Land Court on a protracted dispute over a 100-acre farm, the Court issued orders to evict Skwota from the farm within 90 days. Skwota, who has invested heavily in the land and operates a luxury hotel therein, fears that the eviction would result in huge losses running into millions for him. To forestall this, he secures the services of a hit-man, Jambazi, to kill Mumiliki. Jambazi assembles a team, financed by Skwota through MPESA remittances. The team goes in search for Mumiliki. In the process, they encounter Mumiliki's Farm Manager, who shares with them the history of the land and a copy of the eviction order. Jambazi's conscience is pricked and he calls off the hit on Mumiliki. He is then facilitated by Mumiliki's Farm Manager to report the matter to the DCI. Together, Jambazi and his team record their statement with the police. Jambazi also surrenders his phone, which has recordings of their conversations with Skwota. (a) You are the prosecution counsel assigned to assist in the investigations. Advise on the legal basis and what key features of the investigations you would consider crucial in this case. (6 marks) (b) What are the options available to the prosecution in light of the fact that the hit never took place? (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Conspiracy to Murder",
+          "Investigations",
+          "Evidence Act"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Nyangule was charged with the offence of stealing Kshs. 10,000 by servant contrary to section 281 of the Penal Code. He pleaded guilty and was sentenced to serve 10 years' imprisonment. He has approached you to represent him in an appeal. (a) Advise Nyangule on the grounds of appeal. (5 marks) (b) Citing relevant case law, discuss the circumstances in which a sentence may be set aside or reduced on appeal. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Stealing by Servant",
+          "Appeals",
+          "Sentencing"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Mlagui Mzae is an avid blogger, who comments on emerging political issues. On 25th June 2018, Mlagui posted information on his social media handle that he was being trailed by an unmarked car before his accounts become inactive. His parents found his door open and his items strewn about. Neighbors saw him being bundled into an unmarked car by persons identifying as police. The police denied any knowledge. It is now more than three weeks. (a) As an advocate, explain the most appropriate legal action to take. (4 marks) (b) Draft the appropriate pleadings to be filed in court. (6 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Habeas Corpus",
+          "Constitutional Rights",
+          "Police Brutality"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Mlevi had too much to drink and passed out. A police patrol car picked him from a trench. When he regained himself, he found himself in a dark, cold and filthy room. He was to learn later that he had been locked up at Matopeni Police Station. The officer manning the repair office joked that Mlevi had been booked in for murder. Mlevi suddenly changed and began talking strangely. The officer called Sergeant Matata since Mlevi was apparently saying he had a confession to make. He narrated to Sergeant Matata how he had killed his wife and buried her in a shallow grave dug in the kitchen of his house. (a) Advise Inspector Hatari on how to take the confession. (6 marks) (b) Mlevi is then charged with murder. He denied the offence and denies having made the confession. Explain the process that will lead to the admission of the statement. (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Confessions",
+          "Evidence Act",
+          "Murder"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-102",
+    "unitName": "Probate and Administration",
+    "year": 2018,
+    "sitting": "supplementary",
+    "paperCode": "ATP 102",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each.",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Mr. & Mrs. Black Panther were driving home... swerved to avoid a lion and died on spot. Jointly owned matrimonial home, cars, 50 acres, hotels, Simba TV, Fish farm. Mr. Black Panther had signed a will bequeathing all to wife if she survives; if not, then to children A, B, C, D, E. Mrs. Black Panther never signed her own will. Retirement baby born five years ago. (a) Different types of wills. (3 marks) (b) Validity of wills quoting case law. (6 marks) (c) Are children entitled to inherit 50% share bequeathed to late brother? (3 marks) (d) Whether customary wife is entitled. (4 marks) (e) Draft a sample Codicil. (4 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Validity of Wills",
+          "Joint Tenancy",
+          "Oral Wills",
+          "Codicil"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Dickson collecting rent for sole use. Colluded with David to encroach way-leave. Siblings rush to court for revocation of grant. Court appoints you to arbitrate. Prepare a detailed judgment. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Revocation of Grant",
+          "Intermeddling",
+          "Fiduciary Duty"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Pamela 30 years banking. Pension (nominated children), Life policy 20m (nominated children). syokimau house, utawala rentals, pickup with husband Job. SACCO shares 5m (no next of kin). Died accident Jan 2017. Job applies for Confirmation of Grant. As Judge, write a reasoned judgment determining assets for distribution. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Nomination",
+          "Life Policy",
+          "Pension",
+          "Confirmation of Grant"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Mr. Salamanda wealthy \u0924\u0947\u0932 tycoon. Polygamous. Twiga Estate will signed while feeble/intoxicated in favor of Ms Fisi. Later executed Mji Wa Furaha Will in hospital bequeathing to others. (a) Invalidate wills grounds. (6 marks) (b) Advise children on legal process if Wills are invalidated. (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Testamentary Capacity",
+          "Undue Influence",
+          "Revocation"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Mr. Mwitu will 1998. Title 007. Subdivided 2010. Retained portions c and d. (a) Can c and d be made under will? (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Ademption",
+          "Legacies",
+          "Succession Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Administrator Samawati's estate. Memorandum, Schedule of Assets and Cash Account. (6 marks) Access funds in foreign bank UK. (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Administration Accounts",
+          "Foreign Assets",
+          "Resealing"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-103",
+    "unitName": "Legal Writing and Drafting",
+    "year": 2018,
+    "sitting": "supplementary",
+    "paperCode": "ATP 103",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each.",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "(a) Evaluate whether Parliamentary Counsel should all be lawyers. (6 marks) (b) Chief Legal Officer Republic of Sofia. Respond to letter on social media incitement. (6 marks) (c) Draft legislative sentence for bank accounts in foreign jurisdictions. (4 marks) (d) Amendment for counterfeit CCTV cameras. (4 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Legislative Drafting",
+          "Legal Writing Style"
+        ],
+        "difficulty": "hard",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "(a) Communication for late employee. (5 marks) (b) Deed Poll and Power of Attorney for name change. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Communication",
+          "Deed Poll",
+          "Power of Attorney"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Satin Beach Hotel contract with Jumpers Inc. concerns about licensing and injuries. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Contract Drafting",
+          "Commercial Law"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Revise 10 sentences for plain English. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Plain English",
+          "Editing"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "EABL barley supply contract for Mrs. Namachanja. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Contract Drafting",
+          "Commercial Law"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Presentation on organizing complex legal documents. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Legal Structure",
+          "Legislative Drafting"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-104",
+    "unitName": "Trial Advocacy",
+    "year": 2018,
+    "sitting": "supplementary",
+    "paperCode": "ATP 104",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each.",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Peter waiter at SAV Hotel. Stress, eczema, burnt hands. Dismissed for misconduct (eating from tray). (a) Case theory. (4 marks) (b) Six questions for Peter. (6 marks) (c) Case weaknesses. (4 marks) (d) Six questions for Richard Manager in cross. (6 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Employment Law",
+          "Case Theory",
+          "Cross-examination"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Corrupt Judge article. Defamation opening statement. Response to recusal. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Opening Statement",
+          "Recusal",
+          "Defamation"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Intoxicated advocate in Supreme Court. Etiquette and Contempt issues. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Court Etiquette",
+          "Contempt of Court"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Illegal search Sumrat theft. Cross examination for Inspector. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Search and Seizure",
+          "Cross-examination"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Panafric Wines vs Musure. Opening and closing statement. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Opening Statement",
+          "Closing Statement",
+          "Breach of Contract"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "IVF Frozen embryos dispute. Procedure and Ethics. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Bioethics",
+          "Medical Law"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-105",
+    "unitName": "Professional Ethics & Practice",
+    "year": 2018,
+    "sitting": "supplementary",
+    "paperCode": "ATP 105",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each.",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Electoral law experts advert. Standards and fee charging criteria. (20 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Advertising",
+          "Remuneration",
+          "Ethics"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Advocate Kula Yote theft. Double jeopardy in disciplinary proceedings. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Disciplinary Proceedings",
+          "Double Jeopardy"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Law firm inception. Mandatory and optional things. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Setting up Practice",
+          "Office Management"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Motion: Law is a business vs law is not a business. Position paper. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Legal Profession",
+          "Ethics"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Theodore rickety office. Intern suitability report. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Professional Conduct",
+          "Office Practice"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Professional undertaking breach. Advice and cause of action. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Professional Undertakings",
+          "Advocates Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-106",
+    "unitName": "Legal Practice Management",
+    "year": 2018,
+    "sitting": "supplementary",
+    "paperCode": "ATP 106",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each. Candidates MUST answer ONE question from each of the Sections and a FIFTH question from any Section.",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Bank reconciliation importance. Cost accounting terminologies. Accounting concepts crashing. (20 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Accounting",
+          "Cost Accounting",
+          "Bank Reconciliation"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "OLF Ltd trial balance. Income statement, Financial Position, Suspense Account. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Accounting",
+          "Financial Statements"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Spring Ltd cashflow. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Accounting",
+          "Cash Flow Statement"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Interview selection tool. resourcing function planning. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "HRM",
+          "Recruitment"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Career planning nature. transfers reasons. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "HRM",
+          "Career Development"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Sexual harassment policy and forms. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Sexual Harassment",
+          "Office Policies"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 7,
+        "subPart": null,
+        "questionText": "ICT impact on advocates. outsourcing strategy. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "ICT",
+          "Outsourcing"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-107",
+    "unitName": "Conveyancing",
+    "year": 2018,
+    "sitting": "supplementary",
+    "paperCode": "ATP 107",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each.",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Widow Jane Kiambu property lease bank. Transmission steps. Lease procedure. Terms. Registries. (20 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Transmission",
+          "Leases",
+          "Registration"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Charity loan ABC/Atlas. Secure funding steps. Bank due diligence. Compute stamp duty. Auction prerequisites. Equity of redemption. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Charges",
+          "Stamp Duty",
+          "Auction"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Kim family title conversion. basis, process, release title from charge. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Title Conversion",
+          "Land Registration Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Oceanview fractional vs sectional. Egla purchase kitengela deceased encumbered. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Sectional Properties",
+          "Succession"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Nathan sale default. Completion notice and documents. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Completion Notice",
+          "Sale of Land"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "James Price tech towers sale. Roles of advocates. payment stage. professional undertaking. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Sale of Land",
+          "Professional Undertakings"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-108",
+    "unitName": "Commercial Transactions",
+    "year": 2018,
+    "sitting": "supplementary",
+    "paperCode": "ATP 108",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each.",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Brian and Lucy Pratt Hats. Decisions joint. Brian no liability. Brian lend 100k. partners consent. prevented from using name? Business format? Registration info. Liability issue. (20 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Partnership",
+          "Business Registration",
+          "Liability"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Focus group voluntary winding up challenge by Xavier. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Winding Up",
+          "Company Law"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "ABC and XYZ merger CAK approval. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Competition Law",
+          "Mergers"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Macdonalds expansion Chicken Inn. due diligence. merger vs acquisition. franchise advantages. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Due Diligence",
+          "Mergers",
+          "Franchising"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Auction process critique with Auctioneers Act. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Auctioneers Act",
+          "Execution"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Walker/Jones debt note. promissory note definition. negotiation meaning. examples of negotiation. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Promissory Notes",
+          "Negotiation"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  }
+]

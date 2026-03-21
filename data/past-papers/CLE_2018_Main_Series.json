@@ -1,0 +1,823 @@
+[
+  {
+    "unitId": "atp-100",
+    "unitName": "Civil Litigation",
+    "year": 2018,
+    "sitting": "main",
+    "paperCode": "ATP 100",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each. Answers MUST be supported by relevant case law and statutory provisions where required.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "You are one of the associates in Wakili Mwema and Company Advocates of P.O. Box 43189, Nairobi. On 30th September 2017, you received the following instructions from June Stewart of P.O. Box 389 Machakos:\n\n(a) \"Kevin King of P.O. Box 305 Voi is the owner of a bus registration number KCB 340XF which plies the Machakos-Nairobi route. The bus is driven by Steve Danger of P.O. Box 569 Kibwezi. On 5th November 2014 June and her young daughter Mrembo Stewart were travelling as fare paying passengers from Machakos to Nairobi. As the bus approached Nairobi-Mombasa highway, it was flagged down by a traffic policeman but failed to stop. Steve sped off and while negotiating a sharp corner at high speed, one of the tyres he had repaired the previous day burst and the bus rolled several times.\"\n\n(b) \"June sustained a fracture of the right thigh bone, fracture of the right lower leg and fracture of the right arm. Mrembo sustained a deep cut wound on the right temporal region of the head and a fracture of the base of the skull. June furnished you with two medical reports prepared by Doctor William, receipts for a sum of Kshs.20,000 for medical reports and Kshs.513,830 for medical expenses. Despite sending a demand letter, Kevin King and Steve Danger have refused to admit liability. She informs you that Joseph Mwendapole whom she was travelling with and Ndugu John, a police officer who attended the scene of the accident are willing to testify as witnesses if called upon.\"\n\nDiscuss the issues you will take into consideration before drawing any pleadings. (5 marks)\n\nDraw the pleadings seeking appropriate reliefs. Draft other documents, if any, that must be filed with the pleadings. (15 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Pleadings",
+          "Negligence",
+          "Personal Injury"
+        ],
+        "difficulty": "hard",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "A Plaint has been filed in the High Court of Kenya at Kisii (Civil Case No. 10 of 2018) pitting Mzee Kura as the Plaintiff and the County Government of Kisii as the Defendant. The claim is for the recovery of Kshs. 10,000,000/- plus costs and interest arising from an alleged breach of contract for the supply of stationery. The Defendant was served with the summons and the plaint on 1st March 2018. The County Government has come to your chambers for legal advice. It has informed you that it intends to challenge the suit on the grounds that the Plaintiff failed to serve it with a statutory notice of intention to sue as required under the County Governments Act. The Defendant also contends that the suit is barred by the Limitation of Actions Act. Further, the Defendant has provided you with documents showing that the stationery was never delivered as alleged. (a) Advise the County Government on the appropriate steps you will take to challenge the suit. (4 marks) (b) Draft the appropriate pleading(s) that you will file on behalf of the County Government in response to the suit. (6 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Limitation of Actions",
+          "Statutory Notice",
+          "Civil Procedure Rules"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Your client Mr. & Mrs. Riziki own all that land known as LR 18/1/19 in Runda Estate Nairobi. Recently several people have visited the property claiming that it has been advertised for sale and making offers to buy it. (i) Discuss the steps you will take to ensure that Mr. & Mrs. Riziki's property is not fraudulently sold. (4 marks) (ii) Explain the implications of the actions taken in (i) above on the property. (4 marks) (iii) Explain how the legal mechanism in (i) above can be removed. (2 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Caveats",
+          "Land Registration Act",
+          "Fraud Prevention"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Upon conclusion of a long and protracted suit, judgement was entered in favour of Medza Mzee, who was the plaintiff in the suit. To his relief, the Court also awarded him costs of the suit. You were acting for Medza Mzee throughout and he therefore expects you to help him realize the fruits of his judgement, including the awarded costs. The suit was heard and determined by the High Court at Kisumu. (a) What steps will you take to realize the costs awarded to Medza Mzee? (3 marks) (b) What considerations will a taxing officer take into account while assessing instruction fees? (5 marks) (c) Explain the difference between Party and Party Costs and Advocate and Client Costs. (2 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Costs",
+          "Taxation",
+          "Execution of Judgments"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "The High Court delivered a judgement in a civil suit and the defendant is dissatisfied with the decision. The defendant has instructed you to file an appeal against the judgement. You have examined the judgement and you are of the opinion that there is an error apparent on the face of the record. (a) Explain the circumstances under which an application for review of a judgement may be filed. (6 marks) (b) What is the relationship between an appeal and an application for review? (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Review",
+          "Appeals",
+          "Civil Procedure Rules"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Peter and Wanjiku have defaulted in the repayment of a loan of Kshs. 5,000,000/- which they had taken from Kopa Bank. The loan was secured by a charge over their family home. The Bank has decided to exercise its power of sale under the provisions of the Land Act, 2012. (i) What actions should the Bank take before exercising such power? (5 marks) (ii) What are the duties of the Bank while exercising the power of sale? (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Land Act",
+          "Power of Sale",
+          "Charges"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-101",
+    "unitName": "Criminal Litigation",
+    "year": 2018,
+    "sitting": "main",
+    "paperCode": "ATP 101",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each.",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Bristles Company Limited entered into an agreement with Dazzles Limited for purchase of land LR No.12345. The Directors of both companies verbally requested Toluni Advocate to draft a Sale Agreement. A deposit of 7 million Kenya Shillings was paid to Bristles Company Limited. The balance was Kshs.2 million payable in 90 days. Subsequently Toluni Advocate was requested to draft a transfer deed by the parties. Meanwhile Directors of Leam Company Limited were interested in the same land L.R. No.12345. The Directors of Leam paid Bristles Company Limited Kshs.2 million through Toluni Advocate client account. This was done by a cheque drawn in favour of one of the Directors of Bristles Company Limited. Toluni Advocate went for a conference in Kotzi County about 300 km away from his office. He stayed there for three (3) months. On return he finds that detectives from Criminal Investigations Department (CID) had conducted a search in his office. He is arrested and charged with conspiracy to defraud and obtaining money by false pretences. Toluni Advocate has approached you for legal advice. (a) Discuss the legal and ethical issues arising from Toluni's conduct. (10 marks) (b) Advise Toluni on the most appropriate steps to take to challenge the criminal charges against him. (10 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Forgery",
+          "Fraud",
+          "Professional Ethics"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "You are representing a client who has been charged with murder. During the trial, the prosecution intends to rely on a confession made by your client to a police officer of the rank of Inspector. Your client claims that the confession was obtained through torture and that he was never informed of his right to legal representation. (a) Discuss the admissibility of the confession in court. (5 marks) (b) Outline the procedure for a trial within a trial. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Evidence Act",
+          "Confessions",
+          "Trial within a Trial"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "The High Court delivered a judgement in a criminal matter. The accused was convicted of robbery with violence and sentenced to death. He is dissatisfied with both conviction and sentence and intends to appeal against the same. (a) Advise the accused on the procedure to lodge an appeal in the Court of Appeal. (5 marks) (b) Discuss the grounds upon which the Court of Appeal may interfere with a sentence imposed by a trial court. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Appeals",
+          "Sentencing",
+          "Criminal Procedure Code"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Explain the concept of 'double jeopardy' in criminal law. Under what circumstances can a person who has been acquitted or convicted be tried again for the same offence? (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Double Jeopardy",
+          "Autrefois Acquit/Convict",
+          "Criminal Procedure Code"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "The Officer Commanding Police Division (OCPD) Lang'ata Police Division is concerned with the high number of cases that had been lost on the basis of errors on the evidence of identification. He has invited you to give a presentation to his officers at the station on the rules of identification. (a) Prepare your presentation. (5 marks) (b) He also wants to know how the courts would address evidence of identification obtained at night. Advise him. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Identification Evidence",
+          "Investigations",
+          "Evidence Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Njambi was arraigned before Kibera Law Courts on a charge of grievous harm. When the charge was read over to her, she replied: \"It is time, I dealt with Mwangi\". The court entered a plea of guilty. The details of the case were read over to her and she confirmed that: \"Yes, the facts are all correct\". She was convicted on her own plea of guilty. She offered mitigation saying she was remorseful. She was sentenced to serve 5 years imprisonment. She has appealed to the High Court on both conviction and sentence on the ground that the plea entered was not unequivocal. (a) Outline the legal principles applied in plea taking in criminal cases. (4 marks) (b) Citing relevant case law, discuss the merits or otherwise of Njambi's appeal. (3 marks) (c) Discuss the circumstances in which an appellate court may review or interfere with the conviction and sentence from a plea of guilty. (3 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Plea Taking",
+          "Appeals",
+          "Sentencing"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-102",
+    "unitName": "Probate and Administration",
+    "year": 2018,
+    "sitting": "main",
+    "paperCode": "ATP 102",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each.",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Joseph Mavoko, a widower has six (6) children, George, Michael, Stephen, Jackie, Mary and Sophia all of whom are married. George is a son he had with an old girlfriend Nancy before he married his late wife but he has always provided for his upkeep. Joseph resides in Riruta, Nairobi on a half (1/2) acre piece of land which his late wife inherited from her parents and for which a confirmation of grant in favour of Joseph is yet to be granted. The matrimonial home is a 5-bedroom house facing the main road. Over time Joseph and his wife built rental houses and five (5) shops facing the road which bring a monthly rental income of about Kshs. 250,000/-. In addition Joseph has a 5-acre plot of land in Kinoo valued at Kshs.55 million, a 5-acre plot of land in Uthiru valued at Kshs.50 million, 10 units block of flats in Zimmerman valued at Kshs. 25 million, a 10 unit block of flats in Kasarani valued at Kshs.25 million, a VW Toureg saloon car valued at Kshs. 2.5 million and an Isuzu lorry valued at Kshs.5 million. After a long battle with cancer, Joseph died on 12th March 2017 at Kenyatta Hospital at the age of 80 years. By consent Joseph and his late wife had agreed that Michael would be the administrator of their estates. On 1st June 2017 he approached you with instructions to apply for Grant of Letters of Administration. (a) Draw a detailed affidavit in support of the petition for Grant of Letters of Administration. (7 marks) (b) Six (6) months after the Letters of Administration are issued to Michael, he instructs you to apply for summons for Confirmation of Grant and alleges that it was Joseph's wish that the estate be distributed as follows: [ Michael 5 acres Kinoo, George 5 acres Uthiru, Stephen Riruta house/rentals, Mary Zimmerman flats, Sofia/Jackie Kasarani flats, Proceeds of car/lorry to educate George's son Moses]. Mary and Sofia are aggrieved. With aid of case law, analyze possible arguments in support of their case. (5 marks) (c) Stephen is also aggrieved. He also argues George's son is not entitled. Evaluate his argument. (5 marks) (d) Jackie is citizen of USA and does not wish to have any share. Advise her on legal steps. (3 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Intestate Succession",
+          "Confirmation of Grant",
+          "Dependants Claims",
+          "Renunciation"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Mr. Makanyanga had six children. In 2000, he executed a will. In the will he provided for his wife and four children and left out his two sons Alexander and Mambo. He did not state the reason why he left them out of the will yet he gave a portion of his estate to a Charitable organization. He appointed Ngomongo as executor. Mr. Makanyanga died 10 years later. Alexander and Mambo were surprised as they were dependent on him. (a) Alexander and Mambo have approached you for legal advice. Advise them on the legal position. (8 marks) (b) Identify the application required to institute a suit on behalf of Alexander and Mambo. (2 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Exclusion from Will",
+          "Dependants Claims",
+          "Succession Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Jonah and Daudi entered into a Sale Agreement for a piece of land at Kshs. 1,000,000. Daudi paid 10%. Before expiry of 90 days, Daudi deposited the balance. Later that day Jonah died in a fatal road accident. His wife was aware but two years later had not taken out letters of administration. (a) Daudi has approached you for legal advice. What legal steps would you advise him to take. In your answer, identify the pleadings and forms required. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Citation",
+          "Specific Performance",
+          "Succession Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Mr. Hatari a police officer was shot dead. He died intestate leaving: Dairy cows, Kshs. 100,000 in tajiri bank, and title for 1 acre parcel held in common with Ogopa. He was a member of Police Sacco and named his brother Pesa as nominee. Four months ago he told Pesa he wanted him to have his car and medals and gave him the keys and logbook. He is survived by his wife Mrs. Hatari and they lived in a flat in joint names. Identify and discuss each mode of intestacy or inheritance arising from the narrative. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Donatio Mortis Causa",
+          "Joint Tenancy",
+          "Nomination",
+          "Intestate Succession"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Mrs. Manukato's husband died 5 years ago leaving 50 acres. She was granted Letters of Administration two months ago. She now wishes to sell the 50 acres as her living standards have deteriorated. (a) Advise whether she can sell the land now and the steps she should take. (4 marks) (b) Explain to her the powers and duties as Administrator. (6 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Powers of Administrators",
+          "Confirmation of Grant",
+          "Succession Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "In 1990, Rashida aged 18 married Shah at Kariokor Mosque. Shah relocated to South Africa, acquired citizenship and wealth. Rashida remained in Kenya with 3 children. Shah died recently at a hospital in Nairobi. (a) Rashida needs Kshs. 400,000 for fees but has no access to Shah's bank accounts. Advise her on the immediate application highlighting applicable law. (3 marks) (b) Rawal and Atul (brothers) have filed an objection. They argue Shah was Hindu and had no capacity to marry Rashida a Muslim; and that Rashida and children didn't belong to Shah. They also argue she should have petitioned Kadhi's court. Advance your argument in support of Rashida. (7 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Conflict of Laws",
+          "Islamic Law",
+          "Dependants Claims",
+          "Validity of Marriage"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-106",
+    "unitName": "Legal Practice Management",
+    "year": 2018,
+    "sitting": "main",
+    "paperCode": "ATP 106",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each. Candidates MUST answer ONE question from each of the Sections and a FIFTH question from any Section.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Joseph & Joseph Company Advocates operate several offices in the country. On 1st December 2017 the company acquired a new van to meet customer needs and cater for the increased business volume. Cost 12m, Scrap 2m, Insurance 400k, Road license 12k, Tyres 48k (every 20k km), Maintenance 15k (every 5k km), Spare parts 8k per service, Fuel 80/l. Life span 4 years. 6 tyres at 8k each. 20km per liter. Expected 100,000 km. Required: (i) Annual depreciation. (2 marks) (ii) Total operating cost per km. (5 marks) (iii) Significance of budgeting. (3 marks) (iv) Define accounting. (2 marks) (v) Bookkeeping vs Accounting. (2 marks) (vi) Four accounting conventions. (6 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Accounting",
+          "Depreciation",
+          "Budgeting"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "A law firm recently experienced a significant data breach. Sensitive client information was compromised. Required: (a) Explain two preventative measures. (4 marks) (b) Propose three components of a disaster recovery plan. (6 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Data Protection",
+          "Disaster Recovery",
+          "Information Management"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "A medium sized firm Mombasa. Sole supplier owned by brother of partner. Delays, substandard products, inflated prices. Required: (a) Three benefits of effective stock management. (3 marks) (b) Two strategies for inventory management. (2 marks) (c) Five measures for fair procurement. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Office Practice",
+          "Procurement",
+          "Stock Management"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Delta Logistics HR challenges. Workforce needs, recruitment flaws, job analysis problematic. Required: (a) Recommend HR plan process. (4 marks) (b) Two recruitment methods. (2 marks) (c) Four job analysis methods. (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "HRM",
+          "Recruitment",
+          "Job Analysis"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Employee turnover high among top performers. Exit interviews indicate stagnation. Required: (a) Five ways to improve separation processes. (5 marks) (b) Assess five functions to promote internal mobility. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "HRM",
+          "Employee Retention",
+          "Separation Policy"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Define term policy and discuss two examples. Explain five principles that guide implementation of a procurement policy in a law firm. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Office Policies",
+          "Procurement"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 7,
+        "subPart": null,
+        "questionText": "John and Andrew law firm operational challenges. Client information went missing. Files found in dustbin. Required: (a) Advise on principles of good records keeping. (5 marks) (b) Explain record life cycle and factors for retention. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Information Management",
+          "Office Practice"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-107",
+    "unitName": "Conveyancing",
+    "year": 2018,
+    "sitting": "main",
+    "paperCode": "ATP 107",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each. Answers MUST be supported by relevant case law and statutory provisions where required.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "You are acting for Mr. & Mrs. Baraka. They own property registered as Nairobi/Block 144/2. Valued at 20m. Loan balance 2m from NCN bank. Want 8m loan from KCK bank. (a) (i) Nature of transaction. (2 marks) (ii) Steps to get loan. (4 marks) (iii) Your role as advocate for Baraka. (6 marks) (iv) Compute stamp duty for Discharge, Charge and Transfer (assuming the property was to be sold for 20m). (8 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Charges",
+          "Stamp Duty",
+          "Conveyancing Process"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Arlette coastline apartments. Timeshares, fractional, sectional ownership. Conversion of agricultural lease. Processes for creation of sectional titles. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Sectional Properties",
+          "Change of User",
+          "Land Use"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Isaac secondary school agricultural land. Steps for authorization. Challenge denial. Additional authorizations. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Change of User",
+          "Land Registration Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Chengo ancestral land dam project. Ngala claims title. Court issues. Registration steps. Commission control. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Land Ownership",
+          "Compulsory Acquisition",
+          "National Land Commission"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Bavish godown project. Caution vs Restriction. Remove caution. Structure project sell individual godowns. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Caveats",
+          "Sectional Properties",
+          "Sale of Land"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Mark and Mary married. Mark died. Joint tenancy Nairobi Block 41/2/2. Tenancy in common LR 20240. Mark's sole name LR 32102. Mary wants to transfer. Steps/processes, tax concept, registries. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Transmission",
+          "Joint Tenancy",
+          "Registration of Documents"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-108",
+    "unitName": "Commercial Transactions",
+    "year": 2018,
+    "sitting": "main",
+    "paperCode": "ATP 108",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each.",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Focus Group Limited shareholders resolution to wind up. Charles Xavier (Director) challenge. (a) Steps to challenge. (10 marks) (b) Official Receiver role. (5 marks) (c) Alternates to liquidation. (5 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Winding Up",
+          "Shareholders' Rights",
+          "Insolvency"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "ABC and XYZ merger. CAK approval. Process and factors. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Competition Law",
+          "Mergers"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Draft Share Purchase Agreement for Urban Oasis Ltd purchasing Legacy Estates Ltd shares for 400m. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Share Purchase Agreement",
+          "Company Law"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "(a) Circumstances where creditor's execution process stayed. (5 marks) (b) Court dissolution of partnership on application. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Insolvency",
+          "Partnership Law"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Patrick and Paul business conversion to LLP. registration procedure, contract document draft, three legal benefits. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Limited Liability Partnership",
+          "Business Registration"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "DABK Limited Africa Bank loan. Four securities legal effect. Registries and timelines. Other ways to raise capital. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Securities",
+          "Company Finance",
+          "Banking Law"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-104",
+    "unitName": "Trial Advocacy",
+    "year": 2018,
+    "sitting": "main",
+    "paperCode": "ATP 104",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each.",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Neighbor requests you take up defilement matter of 14 year old girl by neighbor's brother. You overhear people saying they saw him getting into house with her. Accused confesses to you but says she pursued him. Trouble-maker in community. (a) Situations where you can't refuse brief. (3 marks) (b) Grounds to refuse. (7 marks) (c) Basis to proceed without breaching obligations. (4 marks) (d) Grounds to rebut prosecution case despite confession. (6 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Cab Rank Rule",
+          "Ethics",
+          "Confessions",
+          "Evidence Act"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Kamore surgeon Benjamin prostate operation. Failed to inform of 5% sterility risk. Benjamin became sterile. Prof Kericho Opthalmologist to testify for defense. (a) Ethical considerations during cross-examination. (5 marks) (b) Analyze five ways to discredit Prof Kericho's testimony. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Expert Witness",
+          "Cross-examination",
+          "Medical Negligence",
+          "Ethics"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Matthew first time in High Court. Edgar SC sits next to him. John in yellow suit. Judge enters. George (defendant) bursts in for adjournment. Edgar says adjournment not necessary as he talked to defendants and they lack confidence in George. Matthew remains seated. Identify breaches of court etiquette. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Court Etiquette",
+          "Ethics",
+          "Professional Conduct"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Francis expelled from XYZ for misconduct. Prof Leo testified against him. Francis applied to ABC where Prof Leo is on Admissions Committee. He didn't notify about misconduct. (a) Duty to report? (5 marks) (b) Five legal and ethical duties of Trial Lawyer. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Ethics",
+          "Professional Responsibility",
+          "Duty to Profession"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Transcript of examination in chief of Tiffany by Caiden. (a) Contravened rules of advocacy? Identify and discuss. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Examination-in-chief",
+          "Leading Questions",
+          "Advocacy Rules"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Client interview criminal sexual assault. Accompanied by daughter (6) and son (14). Identify objectives and preparatory steps for successful interview. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Client Interviewing",
+          "Professional Skills",
+          "Ethics"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-105",
+    "unitName": "Professional Ethics & Practice",
+    "year": 2018,
+    "sitting": "main",
+    "paperCode": "ATP 105",
+    "instructions": "Candidates MUST answer FIVE questions. Question ONE is compulsory and carries 20 marks. All other questions carry 10 marks each.",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Maela legal internship at Castel. Handled Nestel Hospital medical negligence cases. Research, opinions, defense pleadings. Admitted and now at Lambard. Agreement between Maela and Lambard to not undertake Nestel briefs. Maela left Lambard. Balili approaches Lambard to sue Nestel. (a) Arguments for disqualification of Lambard. (16 marks) (b) Judge ruling with no reply from respondent. (4 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Conflict of Interest",
+          "Professional Misconduct",
+          "Ethics",
+          "Confidentiality"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Blupo State Counsel WhatsApp group strategy sharing. (a) Ethical responsibilities. (5 marks) (b) Opinion and recommendation. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Professional Responsibility",
+          "Confidentiality",
+          "Public Prosecutions"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Kulolo admitted Sept 2013. Practicing certificate April 2014. March 2014 assisted Mwangangi with land sale. Bill of Costs filed. (a) Validity of documents citing statutes. (5 marks) (b) Ethical issues. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Practicing Certificate",
+          "Unauthorized Practice",
+          "Advocates Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Dr. Malimingi owed 1.5m. Fixit Otoyo instructions. Deposit 240k. Case ended with prompt payment. (a) Conduct proper? (5 marks) (b) Two disciplinary charges. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Professional Misconduct",
+          "Remuneration",
+          "Ethics"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Select five contemporary issues not well regulated in legal profession in Kenya. Discuss impact. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Emerging Issues",
+          "Legal Practice",
+          "Ethics"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "(a) Represent accused with weak defense? (5 marks) (b) Represent plaintiff with weak claim? (3 marks) (c) Why pro bono? (2 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Instructions",
+          "Right to Counsel",
+          "Pro Bono",
+          "Ethics"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      }
+    ]
+  }
+]

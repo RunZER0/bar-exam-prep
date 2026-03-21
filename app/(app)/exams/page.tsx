@@ -11,7 +11,9 @@ import {
   PenTool, CheckCircle, Sparkles, GraduationCap, Timer,
   FileQuestion, Edit3, ChevronRight, Target, Zap, Award, ArrowLeft,
   ScrollText, Filter, BarChart3, Eye, Loader2, TrendingUp,
-  Calendar, Hash, ChevronDown,
+  Calendar, Hash, ChevronDown, Brain, MessageCircle, Send,
+  AlertTriangle, Lightbulb, Percent, PieChart, ArrowUpRight, ArrowDownRight,
+  Minus, Layers,
 } from 'lucide-react';
 import PremiumGate from '@/components/PremiumGate';
 
@@ -55,6 +57,66 @@ interface GeneratedQuestion {
   questionType: string;
   modelAnswer: string;
   topicsCovered: string[];
+}
+
+// ============================================================
+// DEEP ANALYSIS TYPES
+// ============================================================
+
+interface AnalysisReport {
+  summary: { totalPapers: number; totalQuestions: number; yearRange: string; unitsAnalyzed: number; sittingsAnalyzed: number };
+  topicAnalysis: {
+    globalTopTopics: { topic: string; frequency: number; percentage: number; trend: string; peakYear: number }[];
+    byUnit: Record<string, { unitName: string; topTopics: { topic: string; frequency: number; trend: string }[]; uniqueTopics: string[]; topicDiversity: number }>;
+  };
+  yearOverYearTrends: {
+    topicShifts: { fromTopic: string; toTopic: string; shiftYear: number; unit: string; description: string }[];
+    emergingTopics: { topic: string; firstAppeared: number; growthRate: string; units: string[] }[];
+    decliningTopics: { topic: string; lastAppeared: number; previousFrequency: number }[];
+    yearlyComplexity: { year: number; avgMarksPerQ: number; problemRatio: number; draftingRatio: number; essayRatio: number }[];
+  };
+  questionTypePatterns: {
+    overallDistribution: Record<string, number>;
+    byUnit: Record<string, Record<string, number>>;
+    byYear: Record<string, Record<string, number>>;
+    compulsoryPatterns: { topicsMostCompulsory: { topic: string; count: number }[]; avgCompulsoryMarks: number; compulsoryTypeBreakdown: Record<string, number> };
+  };
+  difficultyAnalysis: {
+    overallDistribution: Record<string, number>;
+    byUnit: Record<string, Record<string, number>>;
+    trendByYear: { year: number; hardPercentage: number; mediumPercentage: number }[];
+  };
+  marksAllocation: {
+    commonMarksValues: { marks: number; frequency: number }[];
+    avgMarksCompulsory: number;
+    avgMarksOptional: number;
+    byUnit: Record<string, { avgTotal: number; avgCompulsory: number; avgOptional: number }>;
+  };
+  crossUnitInsights: {
+    sharedTopics: { topic: string; units: string[]; frequency: number }[];
+    unitSpecificTopics: { topic: string; unit: string; frequency: number }[];
+    correlations: { description: string; units: string[]; pattern: string }[];
+  };
+  predictiveInsights: {
+    highProbabilityTopics: { topic: string; unit: string; probability: string; reasoning: string; lastTested: number }[];
+    cyclicalPatterns: { pattern: string; cycle: string; nextExpected: string; confidence: string }[];
+    examinerBehavior: { observation: string; evidence: string; implication: string }[];
+  };
+  examStructureAnalysis: {
+    commonFormats: { format: string; frequency: number; description: string }[];
+    instructionPatterns: { pattern: string; occurrences: number }[];
+    timingTrends: { avgDuration: number; avgQuestionsPerPaper: number; avgMarksPerPaper: number };
+  };
+  studentGuidance: {
+    mustPrepareTopics: { topic: string; unit: string; reason: string; priority: string }[];
+    safeToDeprioritize: { topic: string; reason: string }[];
+    strategicAdvice: string[];
+  };
+}
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 // ============================================================
@@ -157,7 +219,7 @@ function AnimatedModal({ isOpen, onClose, children, size = 'md' }: AnimatedModal
 // ============================================================
 
 type PageTab = 'practice' | 'past-papers';
-type PastPapersView = 'browse' | 'paper' | 'analysis';
+type PastPapersView = 'browse' | 'paper' | 'analysis' | 'deep-analysis';
 
 export default function ExamsPage() {
   const router = useRouter();
@@ -188,6 +250,16 @@ export default function ExamsPage() {
   const [generatingFor, setGeneratingFor] = useState<string | null>(null);
   const [generated, setGenerated] = useState<Record<string, GeneratedQuestion>>({});
   const [showAnswer, setShowAnswer] = useState<Record<string, boolean>>({});
+
+  // ── Deep analysis state ──
+  const [analysisReport, setAnalysisReport] = useState<AnalysisReport | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisGenerating, setAnalysisGenerating] = useState(false);
+  const [analysisChatMessages, setAnalysisChatMessages] = useState<ChatMessage[]>([]);
+  const [analysisChatInput, setAnalysisChatInput] = useState('');
+  const [analysisChatLoading, setAnalysisChatLoading] = useState(false);
+  const [analysisAskCount, setAnalysisAskCount] = useState(0);
+  const [analysisSection, setAnalysisSection] = useState<'overview' | 'topics' | 'trends' | 'predictions' | 'guidance' | 'chat'>('overview');
 
   // Trigger preloading when page loads
   useEffect(() => {
@@ -270,6 +342,73 @@ export default function ExamsPage() {
       console.error('Failed to generate similar question:', err);
     } finally {
       setGeneratingFor(null);
+    }
+  };
+
+  // ── Deep analysis functions ──
+  const fetchAnalysis = useCallback(async () => {
+    setAnalysisLoading(true);
+    try {
+      const res = await fetch('/api/past-papers/analysis');
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      if (data.report) setAnalysisReport(data.report as AnalysisReport);
+    } catch (err) {
+      console.error('Failed to fetch analysis:', err);
+    } finally {
+      setAnalysisLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (ppView === 'deep-analysis' && !analysisReport && !analysisLoading) fetchAnalysis();
+  }, [ppView, analysisReport, analysisLoading, fetchAnalysis]);
+
+  const generateAnalysis = async () => {
+    setAnalysisGenerating(true);
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/past-papers/analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'generate' }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      if (data.report) setAnalysisReport(data.report as AnalysisReport);
+    } catch (err) {
+      console.error('Failed to generate analysis:', err);
+    } finally {
+      setAnalysisGenerating(false);
+    }
+  };
+
+  const sendAnalysisChat = async () => {
+    if (!analysisChatInput.trim() || analysisChatLoading) return;
+    const userMsg: ChatMessage = { role: 'user', content: analysisChatInput.trim() };
+    setAnalysisChatMessages(prev => [...prev, userMsg]);
+    setAnalysisChatInput('');
+    setAnalysisChatLoading(true);
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/past-papers/analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: 'followup',
+          question: userMsg.content,
+          conversationHistory: analysisChatMessages,
+          askCount: analysisAskCount,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      setAnalysisChatMessages(prev => [...prev, { role: 'assistant', content: data.answer }]);
+      setAnalysisAskCount(data.askCount || analysisAskCount + 1);
+    } catch (err) {
+      setAnalysisChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I couldn\'t process that request. Please try again.' }]);
+    } finally {
+      setAnalysisChatLoading(false);
     }
   };
 
@@ -476,6 +615,7 @@ export default function ExamsPage() {
                   {[
                     { key: 'browse' as PastPapersView, label: 'Browse', icon: Eye },
                     { key: 'analysis' as PastPapersView, label: 'Topic Analysis', icon: BarChart3 },
+                    { key: 'deep-analysis' as PastPapersView, label: 'Deep Analysis', icon: Brain },
                   ].map(v => {
                     const Icon = v.icon;
                     return (
@@ -495,7 +635,8 @@ export default function ExamsPage() {
                   })}
                 </div>
 
-                {/* Filters */}
+                {/* Filters — only for Browse & Topic Analysis views */}
+                {(ppView === 'browse' || ppView === 'analysis') && (
                 <div className="flex flex-wrap gap-2 ml-auto">
                   <div className="relative">
                     <select
@@ -535,6 +676,7 @@ export default function ExamsPage() {
                     </button>
                   )}
                 </div>
+                )}
               </div>
             </div>
           )}
@@ -679,6 +821,665 @@ export default function ExamsPage() {
                     <p className="text-xs text-muted-foreground mt-4 text-center">
                       Showing top 30 of {sortedTopics.length} topics
                     </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── DEEP ANALYSIS VIEW ── */}
+          {ppView === 'deep-analysis' && (
+            <div className="mt-6">
+              {analysisLoading && (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary/60" />
+                </div>
+              )}
+
+              {!analysisLoading && !analysisReport && (
+                <div className="text-center py-16 space-y-4">
+                  <div className="mx-auto w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 flex items-center justify-center mb-6">
+                    <Brain className="h-10 w-10 text-indigo-500/60" />
+                  </div>
+                  <h3 className="text-xl font-bold">Deep Pattern Analysis</h3>
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                    Generate a comprehensive AI-powered analysis of all past papers — topic trends, prediction insights, cross-unit patterns, and strategic study guidance.
+                  </p>
+                  <button
+                    onClick={generateAnalysis}
+                    disabled={analysisGenerating}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium hover:from-indigo-600 hover:to-purple-600 transition-all disabled:opacity-60"
+                  >
+                    {analysisGenerating ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" />Analyzing {papers.length || '…'} papers…</>
+                    ) : (
+                      <><Brain className="h-4 w-4" />Generate Deep Analysis</>
+                    )}
+                  </button>
+                  {analysisGenerating && (
+                    <p className="text-xs text-muted-foreground animate-pulse">This may take 30–60 seconds. The AI is analyzing every pattern across all papers.</p>
+                  )}
+                </div>
+              )}
+
+              {!analysisLoading && analysisReport && (
+                <div className="space-y-6">
+                  {/* Section Navigation */}
+                  <div className="flex flex-wrap gap-1.5 p-1 rounded-xl bg-muted/15">
+                    {[
+                      { key: 'overview' as const, label: 'Overview', icon: Layers },
+                      { key: 'topics' as const, label: 'Topics', icon: BarChart3 },
+                      { key: 'trends' as const, label: 'Trends', icon: TrendingUp },
+                      { key: 'predictions' as const, label: 'Predictions', icon: Lightbulb },
+                      { key: 'guidance' as const, label: 'Study Guide', icon: Target },
+                      { key: 'chat' as const, label: 'Ask AI', icon: MessageCircle },
+                    ].map(s => {
+                      const Icon = s.icon;
+                      return (
+                        <button
+                          key={s.key}
+                          onClick={() => setAnalysisSection(s.key)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                            analysisSection === s.key
+                              ? 'bg-background text-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          {s.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* ── OVERVIEW Section ── */}
+                  {analysisSection === 'overview' && (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                      {/* Summary stats */}
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        {[
+                          { label: 'Papers', value: analysisReport.summary.totalPapers, icon: ScrollText, color: 'emerald' },
+                          { label: 'Questions', value: analysisReport.summary.totalQuestions, icon: Hash, color: 'sky' },
+                          { label: 'Units', value: analysisReport.summary.unitsAnalyzed, icon: Layers, color: 'violet' },
+                          { label: 'Sittings', value: analysisReport.summary.sittingsAnalyzed, icon: Calendar, color: 'amber' },
+                          { label: 'Year Range', value: analysisReport.summary.yearRange, icon: Clock, color: 'rose' },
+                        ].map(s => {
+                          const Icon = s.icon;
+                          return (
+                            <div key={s.label} className={`rounded-2xl bg-gradient-to-br from-${s.color}-500/6 to-transparent p-4`}>
+                              <div className={`p-2 rounded-xl bg-${s.color}-500/10 w-fit mb-2`}>
+                                <Icon className={`h-4 w-4 text-${s.color}-600`} />
+                              </div>
+                              <p className="text-lg font-bold">{s.value}</p>
+                              <p className="text-[10px] text-muted-foreground">{s.label}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Question Type Distribution */}
+                      {analysisReport.questionTypePatterns?.overallDistribution && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-sky-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                            <PieChart className="h-4 w-4 text-sky-500" /> Question Type Distribution
+                          </h3>
+                          <div className="grid grid-cols-3 gap-4">
+                            {Object.entries(analysisReport.questionTypePatterns.overallDistribution).map(([type, count]) => {
+                              const total = Object.values(analysisReport.questionTypePatterns.overallDistribution).reduce((a, b) => a + b, 0);
+                              const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                              const colors: Record<string, string> = { essay: 'from-blue-500 to-blue-400', problem: 'from-amber-500 to-orange-400', drafting: 'from-emerald-500 to-green-400' };
+                              return (
+                                <div key={type} className="text-center">
+                                  <div className="relative w-20 h-20 mx-auto mb-2">
+                                    <svg className="w-20 h-20 -rotate-90" viewBox="0 0 36 36">
+                                      <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" className="text-muted/20" strokeWidth="3" />
+                                      <circle cx="18" cy="18" r="15.5" fill="none" stroke="url(#grad)" strokeWidth="3" strokeDasharray={`${pct} ${100 - pct}`} strokeLinecap="round" />
+                                      <defs><linearGradient id="grad"><stop offset="0%" stopColor="var(--color-primary)" /><stop offset="100%" stopColor="var(--color-primary)" /></linearGradient></defs>
+                                    </svg>
+                                    <span className="absolute inset-0 flex items-center justify-center text-sm font-bold">{pct}%</span>
+                                  </div>
+                                  <p className="text-sm font-medium capitalize">{type}</p>
+                                  <p className="text-[10px] text-muted-foreground">{count} questions</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Difficulty Distribution */}
+                      {analysisReport.difficultyAnalysis?.overallDistribution && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-amber-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 text-amber-500" /> Difficulty Distribution
+                          </h3>
+                          <div className="space-y-3">
+                            {Object.entries(analysisReport.difficultyAnalysis.overallDistribution).map(([level, count]) => {
+                              const total = Object.values(analysisReport.difficultyAnalysis.overallDistribution).reduce((a, b) => a + b, 0);
+                              const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                              const colors: Record<string, string> = { easy: 'from-green-500/70 to-green-400/50', medium: 'from-amber-500/70 to-yellow-400/50', hard: 'from-red-500/70 to-rose-400/50' };
+                              return (
+                                <div key={level} className="flex items-center gap-3">
+                                  <span className="text-xs font-medium w-16 capitalize">{level}</span>
+                                  <div className="flex-1 h-6 bg-muted/15 rounded-lg overflow-hidden">
+                                    <div
+                                      className={`h-full bg-gradient-to-r ${colors[level] || 'from-gray-500 to-gray-400'} rounded-lg flex items-center justify-end pr-2`}
+                                      style={{ width: `${Math.max(pct, 5)}%` }}
+                                    >
+                                      <span className="text-[10px] font-bold text-white drop-shadow-sm">{pct}%</span>
+                                    </div>
+                                  </div>
+                                  <span className="text-xs text-muted-foreground w-12 text-right">{count}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Marks Allocation */}
+                      {analysisReport.marksAllocation && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-violet-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                            <Hash className="h-4 w-4 text-violet-500" /> Marks Allocation
+                          </h3>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                            <div className="p-3 rounded-xl bg-violet-500/6">
+                              <p className="text-2xl font-bold">{analysisReport.marksAllocation.avgMarksCompulsory}</p>
+                              <p className="text-[10px] text-muted-foreground">Avg. Compulsory Marks</p>
+                            </div>
+                            <div className="p-3 rounded-xl bg-sky-500/6">
+                              <p className="text-2xl font-bold">{analysisReport.marksAllocation.avgMarksOptional}</p>
+                              <p className="text-[10px] text-muted-foreground">Avg. Optional Marks</p>
+                            </div>
+                            {analysisReport.examStructureAnalysis?.timingTrends && (
+                              <div className="p-3 rounded-xl bg-emerald-500/6">
+                                <p className="text-2xl font-bold">{analysisReport.examStructureAnalysis.timingTrends.avgQuestionsPerPaper}</p>
+                                <p className="text-[10px] text-muted-foreground">Avg. Questions/Paper</p>
+                              </div>
+                            )}
+                          </div>
+                          {analysisReport.marksAllocation.commonMarksValues?.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-2">Most Common Mark Values</p>
+                              <div className="flex flex-wrap gap-2">
+                                {analysisReport.marksAllocation.commonMarksValues.slice(0, 8).map(m => (
+                                  <span key={m.marks} className="px-3 py-1.5 rounded-lg bg-violet-500/8 text-sm font-medium">
+                                    {m.marks}m <span className="text-muted-foreground text-[10px]">({m.frequency}x)</span>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Exam Structure */}
+                      {analysisReport.examStructureAnalysis?.commonFormats?.length > 0 && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-stone-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-stone-500" /> Exam Structure Patterns
+                          </h3>
+                          <div className="space-y-2">
+                            {analysisReport.examStructureAnalysis.commonFormats.map((f, i) => (
+                              <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-muted/8">
+                                <span className="text-[10px] font-bold text-muted-foreground bg-muted/30 px-2 py-0.5 rounded mt-0.5">{f.frequency}x</span>
+                                <div>
+                                  <p className="text-sm font-medium">{f.format}</p>
+                                  <p className="text-xs text-muted-foreground">{f.description}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── TOPICS Section ── */}
+                  {analysisSection === 'topics' && (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                      {/* Global Top Topics */}
+                      {analysisReport.topicAnalysis?.globalTopTopics?.length > 0 && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-indigo-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-1">Most Tested Topics</h3>
+                          <p className="text-xs text-muted-foreground mb-4">Ranked by frequency across all papers</p>
+                          <div className="space-y-2">
+                            {analysisReport.topicAnalysis.globalTopTopics.slice(0, 25).map((t, i) => {
+                              const maxF = analysisReport.topicAnalysis.globalTopTopics[0]?.frequency || 1;
+                              const TrendIcon = t.trend === 'rising' ? ArrowUpRight : t.trend === 'declining' ? ArrowDownRight : Minus;
+                              const trendColor = t.trend === 'rising' ? 'text-emerald-500' : t.trend === 'declining' ? 'text-red-400' : 'text-muted-foreground';
+                              return (
+                                <div key={t.topic} className="group flex items-center gap-3">
+                                  <span className="text-[10px] font-bold text-muted-foreground/40 w-5 text-right">{i + 1}</span>
+                                  <span className="text-sm font-medium w-[160px] md:w-[240px] truncate shrink-0" title={t.topic}>{t.topic}</span>
+                                  <div className="flex-1 h-7 bg-muted/10 rounded-lg overflow-hidden">
+                                    <div
+                                      className="h-full bg-gradient-to-r from-indigo-500/70 to-purple-400/50 rounded-lg flex items-center justify-end pr-2 transition-all duration-700"
+                                      style={{ width: `${Math.max((t.frequency / maxF) * 100, 8)}%` }}
+                                    >
+                                      <span className="text-[10px] font-bold text-white drop-shadow-sm">{t.frequency}×</span>
+                                    </div>
+                                  </div>
+                                  <TrendIcon className={`h-3.5 w-3.5 ${trendColor} shrink-0`} />
+                                  {t.percentage > 0 && <span className="text-[10px] text-muted-foreground w-10 text-right">{t.percentage}%</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Per-Unit Topic Breakdown */}
+                      {analysisReport.topicAnalysis?.byUnit && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-emerald-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-4">Topic Breakdown by Unit</h3>
+                          <div className="grid md:grid-cols-2 gap-4">
+                            {Object.entries(analysisReport.topicAnalysis.byUnit).map(([unitId, data]) => (
+                              <div key={unitId} className="p-4 rounded-xl bg-muted/8 border border-border/10">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h4 className="text-sm font-semibold">{data.unitName}</h4>
+                                  <span className="text-[10px] text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">{data.topicDiversity} topics</span>
+                                </div>
+                                <div className="space-y-1.5">
+                                  {data.topTopics?.slice(0, 5).map(t => {
+                                    const maxF = data.topTopics[0]?.frequency || 1;
+                                    const TrendIcon = t.trend === 'rising' ? ArrowUpRight : t.trend === 'declining' ? ArrowDownRight : Minus;
+                                    const trendColor = t.trend === 'rising' ? 'text-emerald-500' : t.trend === 'declining' ? 'text-red-400' : 'text-muted-foreground/40';
+                                    return (
+                                      <div key={t.topic} className="flex items-center gap-2">
+                                        <span className="text-[11px] w-[120px] md:w-[160px] truncate" title={t.topic}>{t.topic}</span>
+                                        <div className="flex-1 h-4 bg-muted/15 rounded overflow-hidden">
+                                          <div className="h-full bg-emerald-500/50 rounded" style={{ width: `${Math.max((t.frequency / maxF) * 100, 10)}%` }} />
+                                        </div>
+                                        <span className="text-[10px] text-muted-foreground w-6 text-right">{t.frequency}</span>
+                                        <TrendIcon className={`h-3 w-3 ${trendColor}`} />
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Cross-Unit Shared Topics */}
+                      {analysisReport.crossUnitInsights?.sharedTopics?.length > 0 && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-pink-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-1">Cross-Unit Topics</h3>
+                          <p className="text-xs text-muted-foreground mb-4">Topics tested across multiple units</p>
+                          <div className="space-y-2">
+                            {analysisReport.crossUnitInsights.sharedTopics.slice(0, 12).map((t, i) => (
+                              <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-muted/8">
+                                <span className="text-sm font-medium shrink-0">{t.topic}</span>
+                                <div className="flex flex-wrap gap-1 flex-1">
+                                  {t.units?.map(u => (
+                                    <span key={u} className="text-[9px] px-1.5 py-0.5 bg-pink-500/8 text-pink-600 rounded-full">{u}</span>
+                                  ))}
+                                </div>
+                                <span className="text-[10px] font-medium text-muted-foreground bg-muted/20 px-2 py-0.5 rounded shrink-0">{t.frequency}×</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── TRENDS Section ── */}
+                  {analysisSection === 'trends' && (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                      {/* Emerging Topics */}
+                      {analysisReport.yearOverYearTrends?.emergingTopics?.length > 0 && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-emerald-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-1 flex items-center gap-2">
+                            <ArrowUpRight className="h-4 w-4 text-emerald-500" /> Emerging Topics
+                          </h3>
+                          <p className="text-xs text-muted-foreground mb-4">Topics gaining prominence in recent exams</p>
+                          <div className="grid md:grid-cols-2 gap-3">
+                            {analysisReport.yearOverYearTrends.emergingTopics.map((t, i) => (
+                              <div key={i} className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+                                <div className="flex items-start justify-between mb-2">
+                                  <p className="text-sm font-semibold">{t.topic}</p>
+                                  <span className="text-[10px] px-2 py-0.5 bg-emerald-500/15 text-emerald-600 rounded-full font-medium">{t.growthRate}</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">First appeared: <span className="font-medium text-foreground">{t.firstAppeared}</span></p>
+                                {t.units?.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    {t.units.map(u => <span key={u} className="text-[9px] px-1.5 py-0.5 bg-muted/30 rounded">{u}</span>)}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Declining Topics */}
+                      {analysisReport.yearOverYearTrends?.decliningTopics?.length > 0 && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-red-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-1 flex items-center gap-2">
+                            <ArrowDownRight className="h-4 w-4 text-red-400" /> Declining Topics
+                          </h3>
+                          <p className="text-xs text-muted-foreground mb-4">Topics that have faded from recent papers</p>
+                          <div className="space-y-2">
+                            {analysisReport.yearOverYearTrends.decliningTopics.map((t, i) => (
+                              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-red-500/4">
+                                <ArrowDownRight className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                                <span className="text-sm font-medium flex-1">{t.topic}</span>
+                                <span className="text-[10px] text-muted-foreground">last: {t.lastAppeared}</span>
+                                <span className="text-[10px] text-muted-foreground">was {t.previousFrequency}×</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Topic Shifts */}
+                      {analysisReport.yearOverYearTrends?.topicShifts?.length > 0 && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-amber-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4 text-amber-500" /> Topic Shifts
+                          </h3>
+                          <div className="space-y-3">
+                            {analysisReport.yearOverYearTrends.topicShifts.map((s, i) => (
+                              <div key={i} className="p-3 rounded-xl bg-muted/8">
+                                <div className="flex items-center gap-2 text-sm mb-1">
+                                  <span className="text-red-400 line-through text-xs">{s.fromTopic}</span>
+                                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                  <span className="text-emerald-600 font-medium text-xs">{s.toTopic}</span>
+                                  <span className="text-[10px] text-muted-foreground ml-auto">{s.shiftYear} · {s.unit}</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">{s.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Yearly Complexity Trend */}
+                      {analysisReport.yearOverYearTrends?.yearlyComplexity?.length > 0 && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-sky-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                            <BarChart3 className="h-4 w-4 text-sky-500" /> Yearly Complexity Trend
+                          </h3>
+                          <div className="space-y-1">
+                            {analysisReport.yearOverYearTrends.yearlyComplexity.map(y => (
+                              <div key={y.year} className="flex items-center gap-3">
+                                <span className="text-xs font-medium w-10">{y.year}</span>
+                                <div className="flex-1 flex gap-0.5 h-6">
+                                  <div className="bg-blue-500/50 rounded-l h-full" style={{ width: `${y.essayRatio * 100}%` }} title={`Essay: ${Math.round(y.essayRatio * 100)}%`} />
+                                  <div className="bg-amber-500/50 h-full" style={{ width: `${y.problemRatio * 100}%` }} title={`Problem: ${Math.round(y.problemRatio * 100)}%`} />
+                                  <div className="bg-emerald-500/50 rounded-r h-full" style={{ width: `${y.draftingRatio * 100}%` }} title={`Drafting: ${Math.round(y.draftingRatio * 100)}%`} />
+                                </div>
+                                <span className="text-[10px] text-muted-foreground w-14 text-right">{y.avgMarksPerQ?.toFixed?.(1) || '?'}m avg</span>
+                              </div>
+                            ))}
+                            <div className="flex gap-4 mt-3 text-[10px] text-muted-foreground">
+                              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-500/50" />Essay</span>
+                              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-500/50" />Problem</span>
+                              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-500/50" />Drafting</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Examiner Behavior */}
+                      {analysisReport.predictiveInsights?.examinerBehavior?.length > 0 && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-purple-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                            <Eye className="h-4 w-4 text-purple-500" /> Examiner Behavior Patterns
+                          </h3>
+                          <div className="space-y-3">
+                            {analysisReport.predictiveInsights.examinerBehavior.map((b, i) => (
+                              <div key={i} className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/8">
+                                <p className="text-sm font-medium mb-1">{b.observation}</p>
+                                <p className="text-xs text-muted-foreground mb-2">Evidence: {b.evidence}</p>
+                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Implication: {b.implication}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── PREDICTIONS Section ── */}
+                  {analysisSection === 'predictions' && (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                      {/* High Probability Topics */}
+                      {analysisReport.predictiveInsights?.highProbabilityTopics?.length > 0 && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-amber-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-1 flex items-center gap-2">
+                            <Lightbulb className="h-4 w-4 text-amber-500" /> High Probability Topics for Next Exam
+                          </h3>
+                          <p className="text-xs text-muted-foreground mb-4">Based on cyclical patterns and recent absences</p>
+                          <div className="space-y-3">
+                            {analysisReport.predictiveInsights.highProbabilityTopics.map((t, i) => (
+                              <div key={i} className={`p-4 rounded-xl border ${
+                                t.probability === 'high' ? 'bg-amber-500/5 border-amber-500/15' : 'bg-muted/5 border-border/10'
+                              }`}>
+                                <div className="flex items-start justify-between mb-2">
+                                  <div>
+                                    <p className="text-sm font-semibold">{t.topic}</p>
+                                    <p className="text-[10px] text-muted-foreground">{t.unit}</p>
+                                  </div>
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${
+                                    t.probability === 'high' ? 'bg-amber-500/15 text-amber-600' : 'bg-sky-500/15 text-sky-600'
+                                  }`}>{t.probability}</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">{t.reasoning}</p>
+                                <p className="text-[10px] text-muted-foreground mt-1">Last tested: <span className="font-medium text-foreground">{t.lastTested}</span></p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Cyclical Patterns */}
+                      {analysisReport.predictiveInsights?.cyclicalPatterns?.length > 0 && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-indigo-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4 text-indigo-500" /> Cyclical Patterns
+                          </h3>
+                          <div className="space-y-3">
+                            {analysisReport.predictiveInsights.cyclicalPatterns.map((p, i) => (
+                              <div key={i} className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/8">
+                                <p className="text-sm font-medium mb-1">{p.pattern}</p>
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                  <span>Cycle: <span className="text-foreground font-medium">{p.cycle}</span></span>
+                                  <span>Next: <span className="text-foreground font-medium">{p.nextExpected}</span></span>
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                    p.confidence === 'high' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'
+                                  }`}>{p.confidence} confidence</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Cross-Unit Correlations */}
+                      {analysisReport.crossUnitInsights?.correlations?.length > 0 && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-rose-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                            <Layers className="h-4 w-4 text-rose-500" /> Cross-Unit Correlations
+                          </h3>
+                          <div className="space-y-2">
+                            {analysisReport.crossUnitInsights.correlations.map((c, i) => (
+                              <div key={i} className="p-3 rounded-xl bg-muted/8">
+                                <p className="text-sm font-medium">{c.description}</p>
+                                <div className="flex items-center gap-2 mt-1.5">
+                                  <div className="flex gap-1">
+                                    {c.units?.map(u => <span key={u} className="text-[9px] px-1.5 py-0.5 bg-rose-500/8 text-rose-600 rounded-full">{u}</span>)}
+                                  </div>
+                                  <span className="text-[10px] text-muted-foreground">{c.pattern}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── GUIDANCE Section ── */}
+                  {analysisSection === 'guidance' && (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                      {/* Must-Prepare Topics */}
+                      {analysisReport.studentGuidance?.mustPrepareTopics?.length > 0 && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-red-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-1 flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 text-red-500" /> Must-Prepare Topics
+                          </h3>
+                          <p className="text-xs text-muted-foreground mb-4">Topics you cannot afford to skip</p>
+                          <div className="space-y-2">
+                            {analysisReport.studentGuidance.mustPrepareTopics.map((t, i) => (
+                              <div key={i} className={`flex items-start gap-3 p-3 rounded-xl ${
+                                t.priority === 'critical' ? 'bg-red-500/6 border border-red-500/15' :
+                                t.priority === 'high' ? 'bg-amber-500/5 border border-amber-500/10' :
+                                'bg-muted/8 border border-border/10'
+                              }`}>
+                                <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider mt-0.5 shrink-0 ${
+                                  t.priority === 'critical' ? 'bg-red-500/15 text-red-600' :
+                                  t.priority === 'high' ? 'bg-amber-500/15 text-amber-600' :
+                                  'bg-sky-500/10 text-sky-600'
+                                }`}>{t.priority}</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-semibold">{t.topic}</p>
+                                  <p className="text-[10px] text-muted-foreground">{t.unit}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">{t.reason}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Safe to Deprioritize */}
+                      {analysisReport.studentGuidance?.safeToDeprioritize?.length > 0 && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-green-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-500" /> Can Deprioritize (if time-constrained)
+                          </h3>
+                          <div className="space-y-2">
+                            {analysisReport.studentGuidance.safeToDeprioritize.map((t, i) => (
+                              <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-green-500/4">
+                                <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
+                                <div>
+                                  <p className="text-sm font-medium">{t.topic}</p>
+                                  <p className="text-xs text-muted-foreground">{t.reason}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Strategic Advice */}
+                      {analysisReport.studentGuidance?.strategicAdvice?.length > 0 && (
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-indigo-500/4 to-transparent">
+                          <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-indigo-500" /> Strategic Study Advice
+                          </h3>
+                          <div className="space-y-2">
+                            {analysisReport.studentGuidance.strategicAdvice.map((advice, i) => (
+                              <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-indigo-500/4">
+                                <span className="text-[10px] font-bold text-indigo-500 bg-indigo-500/10 w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                                <p className="text-sm">{advice}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── CHAT Section ── */}
+                  {analysisSection === 'chat' && (
+                    <div className="space-y-4 animate-in fade-in duration-300">
+                      <div className="rounded-2xl p-5 bg-gradient-to-br from-indigo-500/4 to-transparent">
+                        <h3 className="text-base font-semibold mb-1 flex items-center gap-2">
+                          <MessageCircle className="h-4 w-4 text-indigo-500" /> Ask About the Analysis
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          Ask follow-up questions about any pattern, trend, or prediction.
+                          {analysisAskCount < 3 && <span className="text-indigo-500 ml-1">({3 - analysisAskCount} premium responses remaining)</span>}
+                        </p>
+                      </div>
+
+                      {/* Chat messages */}
+                      <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                        {analysisChatMessages.length === 0 && (
+                          <div className="text-center py-10">
+                            <Brain className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
+                            <p className="text-sm text-muted-foreground">Ask a question to start…</p>
+                            <div className="flex flex-wrap gap-2 justify-center mt-4">
+                              {[
+                                'Which topics are most likely to appear next?',
+                                'What patterns exist for Civil Litigation?',
+                                'How has exam difficulty changed over the years?',
+                                'What should I prioritize for the next sitting?',
+                              ].map(q => (
+                                <button
+                                  key={q}
+                                  onClick={() => { setAnalysisChatInput(q); }}
+                                  className="text-[11px] px-3 py-1.5 rounded-lg bg-muted/30 hover:bg-muted/50 text-muted-foreground transition-colors text-left"
+                                >
+                                  {q}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {analysisChatMessages.map((msg, i) => (
+                          <div
+                            key={i}
+                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                              msg.role === 'user'
+                                ? 'bg-primary text-primary-foreground rounded-br-sm'
+                                : 'bg-muted/30 rounded-bl-sm'
+                            }`}>
+                              <div className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</div>
+                            </div>
+                          </div>
+                        ))}
+
+                        {analysisChatLoading && (
+                          <div className="flex justify-start">
+                            <div className="bg-muted/30 rounded-2xl rounded-bl-sm px-4 py-3">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                Analyzing…
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Chat input */}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={analysisChatInput}
+                          onChange={(e) => setAnalysisChatInput(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendAnalysisChat()}
+                          placeholder="Ask about patterns, predictions, or topics…"
+                          className="flex-1 px-4 py-2.5 rounded-xl bg-card border border-border/20 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                        <button
+                          onClick={sendAnalysisChat}
+                          disabled={!analysisChatInput.trim() || analysisChatLoading}
+                          className="px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                        >
+                          <Send className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}

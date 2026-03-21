@@ -1,0 +1,899 @@
+[
+  {
+    "unitId": "atp-100",
+    "unitName": "Civil Litigation",
+    "year": 2024,
+    "sitting": "main",
+    "paperCode": "ATP 100",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE carries 20 Marks. All other questions carry 10 Marks each.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "You are a newly admitted advocate. On 1/11/2024, you secured employment as an associate advocate at the firm of Onyala Biosi and Company Advocates. A previous associate advocate, Esihingwa Esinu, left employment at the firm last month after three years of service. You were employed to fill up the vacancy, and you have found a number of files that Esihingwa Esinu had been handling on behalf of the firm, which you are tasked to review and continue with. In one of the files, you have come across a defence that had been prepared and filed by your predecessor. The defence reads as follows:\n\nREPUBLIC OF KENYA\nIN THE CHIEF MAGISTRATES COURT AT NAIROBI MILIMANI COMMERCIAL COURT CIVIL CASE NUMBER E006 OF 2022\nSIELO MONGUTI .... PLAINTIFF\nVERSUS\nSIOLO OMULAMA .... DEFENDANT\n\nDEFENCE\n1. Save what is expressly admitted in this defence, the Defendant denies each and every averment of fact contained in the Plaint as if the same were set out in here verbatim and traversed seriatim.\n2. The Defendant admits the contents of paragraphs 1 and 2 of the Plaintiff in so far as the same are descriptive of the Parties save that his address of service for purposes of this suit is C/o Onyala Biosi and Company Advocates, OB Building, Ground Floor, PO Box 11-00100 Nairobi. Email: onyalabiosiadvocates@hotmail.com\n3. The Defendant denies that he is known to the Plaintiff as alleged in the Plaint or at all. The Defendant puts the Plaintiff to strict proof of the same.\n4. The Defendant denies that the Plaintiff lent him any money as set out in the Plaint or at all. The defendant puts the Plaintiff to strict proof of the same.\n5. The Defendant denies that he received a demand notice or notice of intention to sue. The Defendants puts the Plaintiff to strict proof of the same.\n6. The Defendant denies that this court has jurisdiction over this matter. At an appropriate time, the Defendant shall apply to strike out the suit in limine.\nReasons wherefore the Defendant prays that the Plaintiff's suit be dismissed with costs.\nDated this 5th day of March 2022.\nDrawn & Filed By: Onyala Biosi & Company Advocates, OB Building, Ground Floor, P.O. Box 11-00100, Nairobi. Esihingwa Esinu and Company Advocates for the Defendant\nTo Be Served Upon: Omutititi Advocate, Shirembe Business Centre, P.O. Box 10-00100, Nairobi\n\nYour review of the file reveals that these general denials are in fact contrary to the client's written instructions to the firm. The client's instructions to the firm had been conveyed by way of a formal email and a print out of the email is on the physical file. The client, Petro, had instructed the firm that he had a contract with Monguti. Monguti was to supply him with hides and skins. In turn, Petro would then sell the hides and skins to Bata Shoes Company Limited. Under the contract between Petro and Monguti, the latter undertook to supply one tonne of hides and skins every month. In turn, Petro had a tender to supply Bata Shoe Company with one tonne of hides and skins every month. Petro had intended to buy the hides and skins from Monguti at an agreed rate of Ksh. 100 per kilogramme and sell the same to Bata at an agreed rate of Ksh. 300 per kilogramme. Thus, Petro had expected to make profits of Ksh. 200,000 per month from the said supplies. The contract between Petro and Bata Shoe Company Limited was to run from January to December 2024 and was subject to renewal. The contract between Monguti and Petro was to run from January to December 2024, to enable Petro to meet his obligations to Bata Shoe Company. To assure performance, Bata Shoe Company had required Petro to furnish a performance guarantee of ten million shillings (Ksh. 10,000,000) from a bank. At the beginning, Monguti supplied Petro with one tonne of hides and skins in January and another tonne in February 2024. However, from March to June 2024, Monguti only supplied 300 Kilograms of hides and skins. This meant that Petro was not able to meet his contractual obligations to Bata Shoe Company. Therefore, at the end of June 2024, Bata Shoe Company called in the bank guarantee from Petro's bank, Equator Shiners Bank Limited and cancelled the contract for breach of fundamental terms of the contract. For the four months between March and June 2024, Bata Shoe Company had not paid Petro for the supplies, because it fell far below the agreed quantities. Hence, Petro did not have the money to pay Monguti for the supplies. Monguti's suit, the subject matter of the above defence, was for Ksh. 120,000 together with interest at court rates from date of judgment until payment in full. Petro's instructions was to defend this suit and to claim from Monguti the Ksh. 10,000,000 bank guarantee that Bata had called in. He also wanted to claim the lost profits that he would have made had Monguti not breached the contract for the supply of the hides and skins for the contract period. You also noticed that the signature on the defence was not in the name of Onyala Biosi and Company Advocates, but had been signed under the name of Esihingwa Esinu and Company Advocates, because the previous associate had this practice of running a side business under his name while still working in the firm of Onyala Biosi. He had, therefore, erroneously signed off this pleading under his name. You intend to remedy this errors and omissions by your predecessor before this case is heard. You desire to achieve this by making necessary amendments to the defence.\n\na) Prepare the application for leave to amend the above pleading supported by the necessary affidavit. (10 marks)\nb) Prepare a draft amended pleading. (10 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Civil Procedure Rules",
+          "Pleadings",
+          "Amendments"
+        ],
+        "difficulty": "hard",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Upon conclusion of a long and protracted suit, judgement was entered in favour of Medza Mzee, who was the plaintiff in the suit. To his relief, the Court also awarded him costs of the suit. You were acting for Medza Mzee throughout and he therefore expects you to help him realize the fruits of his judgement, including the awarded costs. The suit was heard and determined by the High Court at Kisumu.\n\na) What steps will you take to realize the costs awarded to Medza Mzee? (3 Marks)\nb) What considerations will a taxing officer take into account while assessing instruction fees. (5 Mark)\nc) Explain the difference between party and Party Costs and Advocate and Client Costs. (2 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Costs",
+          "Execution of Judgments",
+          "Taxation of Costs"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "On 4th August 2024, a judgment was delivered against your client, Bwana Shida, whereby he was ordered to pay the defendant Kshs. 500,000/= in damages for defamation, damage to property and assault. The judgement was delivered after the parties were heard. Each party had also produced evidence and called witnesses. Dissatisfied with the judgment of the High Court at Nairobi, Bwana Shida who was your client at the High Court has instructed you to appeal against the judgement. Your client, without substantiating his claims insists that he will not be given a fair hearing at the Court of Appeal therefore he would like you to Appeal to the Supreme Court.\n\na) Write a sound opinion to your client advising him on the right forum to lodge the appeal while distinguishing the jurisdiction of the Court of Appeal and the Supreme Court. (6 Marks)\nb) While discussing the matter with one of the Partners in your law firm, the partner asked you whether you have considered filing an application for review against the judgement. Give well thought answer explaining the circumstances under which an application for review may be filed against a judgement. (4 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Appeals",
+          "Jurisdiction",
+          "Review"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "John Newton sued several defendants claiming certain amounts of money. He was represented by Gregory Isaac. During the pendency of the suit, there was a purported settlement where it was agreed that the 1st Defendant pays a sum of Kshs 100,000/= to Gregory Isaac and be nonrefundable under any circumstances. The 1st Defendant paid the said sum of money by a cheque drawn by FIL Limited in which he is a director. On the same day of payment, a dispute arose as to the terms of the purported settlement and as to the conditions under which the money was paid. The settlement was never effected and the money was retained by John's advocate. The parties exchanged several correspondences but would not reach any settlement. In the meantime, the 1st Defendant passed away. John Newton has filed Nairobi Chief Magistrates Court Civil Case Number E457 of 2024 against Gregory Isaac claiming the money. David Jones, one of the two executors of the 1st defendant and FIL Limited are also claiming to be entitled to the money. You are a legal assistant at Wakili Mwema & Company Advocates, D& D House, 2nd Floor P.O. Box 6565-00100 Nairobi. Tel. 029876555, Email: mkmllp@gmail.com which has been instructed to act for Gregory Isaac. Write a legal opinion on the steps Gregory needs to take to successfully defend the claim against him. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Interpleader",
+          "Civil Procedure Rules"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "On 3rd August 2024 Mzima Meja received a call from Moto, who introduced himself as a process server. Moto requested to meet Mzima urgently. Upon the two meeting, Moto handed Mzima a set of papers and requested Mzima to sign an acknowledgement of service, which Mzima did without hesitation. Upon perusal of the documents, Mzima was shocked to find that it was a judgement issued by the High Court at Nairobi against him together with a Decree which had been extracted from the judgment. The judgement was dated 1st July 2024 and the Decree was dated 15th July 2024. The orders issued were as follows:\ni. Judgement is hereby issued against the defendant in the sum of Kshs 10,000,000/= with interest from the date of filing suit.\nii. The defendant to bear the costs of the suit.\nThe suit had been filed by Hela Kaka who was once a Mzima Meja's client. In the suit, which was filed through Mtetezi & Co Advocates, Hela Kaka had claimed that Mzima supplied him with a faulty motor vehicle (Truck Registration Number KRC 111X) from his car sale hub on 30th June, 2024. Hela had claimed in the suit that Mzima had refused to replace the vehicle or refund the purchase price despite various demands to do so. What surprised Mzima most is that he had not come across any proceedings or pleadings relating to the suit until he was served with the judgment and the decree. In addition, according to his records, he sold the subject motor vehicle to XTY Holdings Limited but not Hela Kaka as alleged. Hela Kaka is a shareholder and a Director in XTY Holding Limited. Mzima Meja, having learnt that you are one of the renowned advocates at the Firm of Fanya Kazi & Co Advocates has come to your chambers to seek legal advice. He is apprehensive that the decree may be executed against him any time.\n\na) Draft an appropriate application that you should file in court to protect Mzima's interests. (7 Marks)\nb) What factors will guide the court in determining your application? (3 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Setting Aside Judgment",
+          "Stay of Execution"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Mwanawira, Otulo, Kongo and Khadija (renowned activists) have recently filed a matter at the Small Claims Court in relation to alleged embezzlement of funds in 2017 by some public officers in Maendeleo County within Sisi Wote Republic. They describe themselves as \"the Claimants\" in the matter, which is lodged through a substantive Notice of Motion without first seeking leave of the Court. They argue that, \"we are in a new dispensation. Hence, pleadings should be filed untrammeled by procedural technicalities as enshrined in Article 159 of the Constitution.\" It is also their argument that the Court has jurisdiction to determine claims relating to violation of human rights pursuant to section 8(1) of the Magistrates' Courts Act, Cap 10 of the Laws of Kenya. They state that the sum subject of the suit is within the pecuniary jurisdiction of the Court. The brief facts are that, there is an Auditor General's Report stating that Ksh. 900,000/= cannot be accounted for in the Imprest Account of the County. However, the Report is yet to be tabled before the County Assembly for adoption as required. The suit also raises concerns about the penchant for the Governor, Mr. Chapa Kazi, for attending funerals every day and barely being in the office. According to the claimants, this is conduct unbecoming of a public officer, which merits appropriate sanctions by the Court. Hence, they argue that the Governor should be declared unfit to hold public office. To this end, they seek \"judgment against the Governor for Ksh. 900,000/= to be paid to the Claimants\" and for \"conservatory orders to bar the Governor from accessing his office\". In their joint response, the respondents contend that the originators of the motion are busybodies who have no locus standi to file the matter. They also state that there are active impeachment proceedings before the Senate against the Governor. Further, they argue that the Notice of Motion is fatally defective and incompetent and should be struck out. They also attack the remedies sought, arguing that the motion suffers from poor draftsmanship and the prayers sought are untenable. However, the Respondents do not explicitly raise the issue of jurisdiction. You are the magistrate at the Small Claims Court and at the end of the oral submissions by the respective parties, you have reserved a date for the delivery of the ruling to enable you to holistically considered all the aspects in the case. Write a concise ruling highlighting your position on the matter. (10 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Small Claims Court",
+          "Locus Standi",
+          "Jurisdiction"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-101",
+    "unitName": "Criminal Litigation",
+    "year": 2024,
+    "sitting": "main",
+    "paperCode": "ATP 101",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE contains 20 Marks. All other questions carry 10 Marks each.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "16-year-old Klindis attended a night vigil on the night of 23rd and 24th August 2024 on the eve of the burial of Guba in the deceased's Otim home, in the Moyo Slums in Kisumu Central Sub-County within Kisumu County. On her way home at about 1.30 am, after the night of dancing to nayo nayo and nungo nungo songs, she was waylaid by a group of young men comprising Cheya, Nagwala and Yela and dragged across the railway line into the White House, an abandoned house in the bushes, a few meters from otim's home. While Nagwala and Yela raped Klindis in turns, Cheya took off her silver necklace and 2 bangles valued at Kshs. 1,200. Cheya punched her face for being stubborn as he took off the bangles. Her screams attracted the attention of Super Abuom, the police informer who had also gone to the railway line to have a smoke. Super Abuom got to the scene and managed to arrest Yela who was still wrestling down Klindis as she struggled to push him off. Cheya and Nagwala managed to escape, but were arrested the following day after having been named by Yela as the ones who had escaped. They were arrested as they tried to sneak into the hospital ward where they intended to warn Klindis of dire consequences should she imagine to \"take the matter forward.\" The trio wore face masks and therefore Klindis could not see them.\n\n(a) As the prosecution counsel, draft one (1) charge against each of Cheya, Nagwala and Yela. (6 marks)\n(b) You have been approached to represent 17-year old Yela who is willing to enter a plea agreement with the Prosecution and become a State witness. Explain at least two (2) elements of a plea agreement. (2 marks)\n(c) With the aid of decided cases, describe three (3) possible compelling reasons for the denial of bail against Cheya. (6 marks)\n(d) Citing a legislative provision and or case law, advise the police on at least 3 essential conditions for a proper identification parade in respect of Cheya and Nagwala. (6 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Sexual Offences Act",
+          "Plea Bargaining",
+          "Bail and Bond",
+          "Identification Parade"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "On the morning of 23rd July 2024, residents of Mugomoini village woke up to a bizarre incident. One of the local elders was found lying on the ground, dead in a thicket about 200 meters from his house. He had blood oozing from his mouth, but apart from that, not much seemed unusual on his body, save for what looked like bite marks which the locals concluded might have been occasioned by dog bites. There were no obvious signs of a struggle and he had his phone and national ID on him. The vegetation around where his body lay appeared slightly disturbed. Those who went to his house reported finding nothing out of the ordinary. No sign of a scuffle or suicide note were found. An open bottle of Triatix, a known pesticide was found on the floor next to his bed. The man lived pretty much in solitude, having separated from his wife and none of his children came to visit him. The incident has been reported at the nearby police station. Outline the legal procedure to be pursued in addressing this report. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Inquests",
+          "Police Investigations",
+          "Criminal Procedure Code"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Ikwe Mnaija was travelling from Mumbai to Abuja via Nairobi aboard Kenya Airways Flight No. KQ 801. Customs officials and the Anti-Narcotic Unit (ANU) are alerted about a bag suspected to be ferrying heroin, a prohibited drug under the Narcotic Drugs and Psychotropic Substances (Control) Act (1994). The bag is isolated and the owner called. It belongs to Ikwe Mnaija. He is asked to open the bag. They discover a secret compartment where they find 6kgs of heroin in 30 small packages. He is arrested and presented before the JKIA Court for plea taking. The ANU learns that Ikwe Mnaija is also wanted in Mumbai, India for trial on drug trafficking charges. He was also recently released from an Abuja court on bond for similar offence. He is due to appear in court in two weeks. Both India and Nigeria have written to Kenya requesting for surrender of the alleged notorious drug trafficker.\n\n(a) Lately, JKIA Nairobi has been a regular transit point for drug traffickers. Detail the options for Kenya in view of the request from both India and Nigeria. (6 marks)\n(b) Assuming plea is taken, what pre-trial issues may arise and how will they be resolved? (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Narcotics Control",
+          "Extradition",
+          "Pre-trial Procedures"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "A. On 14th May 2023, Halima came back home abruptly during lunch hours only to find her 14-year-old daughter F.A. having sex with a known construction worker, Abdul, who had been contracted to work on an adjacent property. At the time, Y.A., F.A.'s younger brother, who suffers from cerebral palsy, was also in the house. When asked, he informed Halima that he had witnessed the act. However, it was unclear whether Y.A. had indeed witnessed it due to the fact that his palsy impaired his speech and it was only Halima who could understand him. Halima was able to restrain Abdul and call for help from the neighbors, who were able to apprehend and frog march him to the nearest police station. The matter has been allocated to you as the investigating officer. During your initial inquiry, F.A. did not deny that she had had sex with Abdul on that day. In fact, she referred to him as her boyfriend. She further stated that it was not the first time she had had sex, adding that unknown to her parents, she had been sexually active with other men since she was 12. Medical examination confirmed that F.A.'s hymen was broken and, in the doctor's opinion, this was not a recent occurrence. The report further stated that there were no obvious signs of force or forcible penetration. F.A. seemingly corroborated this with her claim that she had previously had consensual sexual intercourse with Abdul. Highlight the investigative steps you would take to conduct this investigation and propose what charge/s you may prefer, if at all. (5 Marks)\n\nB. During the pendency of the trial, F.A. delivers a baby. Abdul, knowing that F.A. had been sexually active with other men before, makes an application to court asking for a DNA test to be conducted. The court grants the orders and, two (2) weeks later, a report is filed stating that the baby's DNA does not match Abdul's. Abdul is persuaded that this is new and compelling evidence that exonerates him. He makes an application to have the case against him dismissed. With the help of decided cases, explain how the court should treat this issue in deciding whether to continue with the case and in determining whether Abdul is innocent or guilty. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Sexual Offences Act",
+          "Evidence Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Mr. Jones obtained orders in the form of anticipatory bail barring the police from arresting and or detaining him in respect of his alleged possession of firearms contrary to the provisions of the Fire Arms Act, Cap 114 Laws of Kenya. Mr. Jones had earlier on had the High Court reinstate his revoked fire arm license. Despite the said orders, the Fire Arms Licensing Board once again revoked his license, upon which the Directorate of Criminal Investigations apprehended him on similar criminal allegations and presented him before court for plea taking. Mr. Jones's co-accused person appears to have physical injuries on the head and hand.\n\n(a) Explain two (2) interlocutory applications that you would make pending the plea. (4 Marks)\n(b) Prepare an appropriate application before the High Court to prevent the Office of the Director of Public Prosecutions (ODPP) from charging Mr. Jones with the intended charges of possession of fire arms without a license. (6 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Anticipatory Bail",
+          "Firearms Act",
+          "Interlocutory Applications"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "A section of young men and women identifying themselves as \"Gen-Z\" have been carrying out public protests and demonstrations across the country against bad governance seeking accountability from the government. During one such protests, a section of the group entered a leading supermarket and made away with goods valued at an estimated Kshs. 76 Million. When the police arrived, they cordoned off the supermarket and arrested many young men and women, among them Kijana Mtundu, a 17-year old homeless street boy who had been ferrying boxes of flour out of the supermarket. Kijana Mtundu is arraigned in court where he is charged jointly with 96 others for breaking and stealing goods worth Kshs. 76 Million. He pleads guilty. You have been retained by the Law Society of Kenya to appear for all persons charged. Advise Kijana Mtundu on his options. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Juvenile Justice",
+          "Plea of Guilty",
+          "Sentencing"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-102",
+    "unitName": "Probate and Administration",
+    "year": 2024,
+    "sitting": "main",
+    "paperCode": "ATP 102",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE contains 20 Marks. All other questions carry 10 Marks each.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Kim died a polygamist, having married 3 times, under customary law. He had 2 sons and a daughter with his first wife; the second wife had no children; while the third wife was blessed with 4 daughters. For ten (10) years before he died, he had had an active relationship with Carol, an employee at his business, with whom he had a son, and he provided for both Carol and her son, by renting residential premises for them, and catering for their food and medical care, and the educational needs of the son. He would often spend time with them at the rented premises. He had an on-and-off girlfriend, Philgona, who was based in another town, which he used to frequently visit on business, and who he had assisted with setting up a business. Upon the demise of Kim, a will was discovered. In that will, Kim had given, to each of his 3 wives, monetary gifts of varying amounts, and he had provided that the wives would be entitled to occupy the residences they occupied during his lifetime, for the rest of their lives, together with the motor-vehicles that they had been using during his lifetime. To his 2 sons with the first wife, he had willed all his immovable property, comprising the 3 parcels of land where the residences occupied by the 3 wives stood, 2 other parcels of land, and a parcel of land on which stood the premises from which Kim carried on business. The residue of the estate was also given to the said 2 sons. The will was silent on the 5 daughters from 2 of his wives, on Carol and her son, and on Philgona. The said will was properly signed by Kim, in the presence of his Advocate, who had also drawn it and attested its execution by Kim. The signature by Kim had also been attested by 2 employees at the law firm of the Advocate. The will had named the 2 sons of Kim, by his first wife, as beneficiaries, and the executors of the will. They have petitioned the court for a grant of probate.\n\n(a) With the aid of relevant statutory provisions and case law, give a brief opinion on the validity of the said will. (5 marks)\n(b) Assuming that the said will is valid, briefly discuss the possible rights and remedies, if any, of the 5 daughters of the deceased, Carol and her son, and Philgona. (5 marks)\n(c) Assuming that the will is declared invalid:\ni. Explain the persons who ought to be beneficiaries and administrators of the estate of Kim. (4 marks)\nii. Briefly explain the process that ought to be undertaken for devolution of the estate to those entitled to succeed Kim. (6 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Succession Act",
+          "Validity of Wills",
+          "Dependants Claims",
+          "Intestate Succession"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Wakili Mkarimu is a high-flying Nairobi lawyer whose practice has thrived so much so that he has become the envy of most of his peers since their admission to the Bar. Sometime on 24th August 2024, Mkarimu was test-driving his new Rolls Royce car between Nakuru and Kericho. Unfortunately, he was involved in a fatal accident at the infamous Sachangwan black spot. There is no evidence that the deceased left a will. Meanwhile, it also emerged that his farm produce comprising of tomatoes and other perishables were wasting away even as some tenants in his rental apartments also refused to pay their rent. Meanwhile, the Law Society of Kenya has reportedly appointed one Mr. James Stephen, Advocate, and instructed him to take over and oversee all the matters over which Mkarimu had instructions to act. Mr. Stephen has moved into the late Mkarimu's chambers and even carted away all the files and their related documents for matters that were being handled by the deceased. Mrs. Mkarimu, feeling so lost and bewildered by the sudden turn of events, has come to you for advice.\n\na) Explain to Mrs. Mkarimu the process that needs to be followed in order to rescue the deceased's estate and stop it from wasting away. (5 marks)\nb) Evaluate the legality of the Law Society of Kenya's appointment of James Stephen to take over Mkarimu's matters. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Wasting of Estate",
+          "Management of Law Firms"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Babu died 3 months ago. A will was discovered in the custody of his Advocate for many years, Wakili Paulo. Babu had only 1 wife, Neema, 3 sons, Bahati, Jabali and Mshindi, and 2 daughters, Asha and Nazi. He died possessed of parcels of land, motor vehicles, shares in limited liability firms and money in a bank. He also had investments in cooperative societies and a pension scheme. During his lifetime, Babu had transferred a parcel of land, with a house standing on it, and a motor vehicle, to Bahati, after the latter married. Bahati had also received some money from Babu, which he used to set up a thriving business. In the period before he died, Babu was not getting along well with Jabali. The latter had fallen into bad company, abused drugs and drink, which culminated in him dropping out of college. When Babu confronted him about it, Jabali became very hostile and aggressive with his father, to the point of assaulting him so badly that he had to be hospitalized for a while. Jabali was arrested, charged, prosecuted, and subsequently jailed for a time. Jabali had many run-ins with the authorities, and Babu had to bail him out many times. Jabali had, at one point, threatened to kill Babu. Mshindi is a recent graduate from law school, and he is currently preparing for his Bar examinations, while Asha is in college and Nazi in high school. In the will, found in the custody of Wakili Paulo, Babu had appointed Neema and Mshindi as its executors, and the assets of the estate had been devolved, at varying proportions, to Neema, Mshindi, Asha and Nazi. The will made no mention of Bahati and Jabali. The 2, Bahati and Jabali, have approached the law firm, where you are the senior partner, and seek legal advice. Whereas they do not challenge the validity of the will, they complain that that they are not provided for under it.\n\n(a) Briefly discuss the rights, if any, that accrue to Bahati and Jabali, and the possible remedies, if any available to them. (4 marks)\n(b) Draft a simple, but appropriate, application, for pursuing the remedy or remedies that you have pinpointed, to have the court adjudicate upon and determine the rights that you have identified. (6 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Dependants Claims",
+          "Succession Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Katrina is a resident of the United Kingdom (UK) where she lives with her husband Mark. They have three children John, James, and Paul who live in Kenya. Katrina falls ill and dies in a hospital in the UK. She died intestate. They own several movable assets in the UK and several other movable assets in Kenya. Mark applies for a grant of probate in the UK and their children have no objection to the same. They, however, desire that their father accounts for the manner that he administers the estate. Their mother's estate also comprises of immovable assets including two parcels of land known as Mukoma Block 2 in Nairobi, which is registered jointly in the name of Katrina and her sister Mary, and Mukoma Block 3 registered as a tenancy in common again in the name of the deceased and her sister Mary.\n\na. Advise Mark who has sought your guidance about the estates claim on\ni. Mukoma Block 2. (2 Marks)\nii. Mukoma Block 3. (2 Marks)\nb. Mark has also sought your advice on the sealing of the Commonwealth grant by the High Court at Nairobi. Discuss at least three (3) issues that the High Court in Nairobi will consider before sealing the Grant obtained in UK. (6 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Succession Act",
+          "Joint Tenancy",
+          "Resealing of Grants"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Mr. Bwana Harusi and Ms. Mwenye Heri, were two inseparable college lovebirds who were both in campus between 1996 and 2000 at the University of Lords. Upon graduation, the two moved in and started living together as husband and wife in 2002. The two were later blessed with three children, namely, Petra, Janice and Jude who were born in 2002, 2005 and 2008, respectively. In 2009, Harusi and Heri had their union formalized under the Wapaguvu customary law after the requisite dowry was paid. Sometimes on 14th September 2011, the two had their union solemnized at the Mount Sinai Church of God. Meanwhile, unknown to Ms. Heri, Mr. Harusi had, on 15th September 2010, started living together with one Ms. Solai, a former employee with whom he reportedly had a baby boy, named Ryan, who was born on 10th January 2013. However, the two always carried themselves out as a couple within the town where they lived. This relationship was kept so secretive that Ms. Heri and her children never got to know about it. One evening on 31st December 2013, as Mr. Harusi took a stroll across the family's well-manicured home lawn to bid the old year bye, he suddenly collapsed and became unconscious. He was pronounced dead upon being rushed to hospital. Solai feels very frustrated owing to the fact that no one has made efforts to take out letters of administration. She has sought your advice in regards to the way forward considering that Ryan's chances of proceeding with his education now hangs in the balance.\n\na) Relying on the relevant law and judicial precedents, advise her on how to deal with the failure to take out letters of administration. (6 marks)\nb) Evaluate the legal basis, if any, of Solai's and Ryan's claims to Harusi's estate. (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Letters of Administration",
+          "Dependants Claims",
+          "Intestate Succession"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Sam, a renowned businessman, in Nairobi died in 2020 leaving behind a widow, Jane, and three children namely Brian, James and Linda. He died intestate. Brian, the first born, was born to Sam out of a previous relationship with his first wife who is also deceased. All the children are adults save for Linda who is still a minor now aged 12 years. Jane wants to initiate the process of application for grant of letters of administration and they had met to discuss the issue as a family. There was however a disagreement between Jane and Brian who have fallen out because Jane insisted that some of the assets of the deceased in the name of the deceased belong to her as she contributed to their acquisition and should not form part of the estate. Additionally, Brian who also runs some of his fathers' businesses wants some of the liabilities of the deceased paid out of the estate, which Jane is opposed to. As a result, Brian has even moved out of the home and rented an apartment. Jane has approached you with a view to initiate the process of filing for the grant of letters of administration.\n\na) Advise Jane on the process of applying for grant. (4 Marks)\nb) Explain the role of consents and whether Brian is competent to issue the same in this case. (2 Marks)\nc) After a few months, it has come to the attention of Brian that a grant has been issued to Jane who has not only left out some assets but has also misspelt others. All the creditors have not been disclosed. Advise on the potential grounds for revocation of the grant once issued. (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Letters of Administration",
+          "Revocation of Grant"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-103",
+    "unitName": "Legal Writing and Drafting",
+    "year": 2024,
+    "sitting": "main",
+    "paperCode": "ATP 103",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE contains 20 Marks. All other questions carry 10 Marks each.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "A. Article 27 of the Constitution provides for equality and freedom from discrimination. Specifically, Article 27(8) requires the State to take legislative and other measures to implement the principle that no more than two-thirds of the members of elective or appointive bodies shall be of the same gender. Despite this directive and court decisions which have declared Parliament unconstitutionally constituted by failing to comply with the two-thirds gender principle, Parliament has never complied with the requirement. Further, Parliament has on several occasions unsuccessfully attempted to pass legislation to realize the principle. Maendeleo Yetu, a civil society organization believes that it is possible to realize the principle by amending the Constitution. They propose that the National Assembly be divided into two equal halves and each half be specifically reserved for either gender on rotational basis. The proposal is based on the fact that women in Kenya account for more than fifty percent (50%) but their representation in Parliament has never been more than thirty percent (30%) since independence. It is further asserted that the proposal will not require the election of the forty-seven women representatives and nominations intended to realize the principle. This will in turn drastically reduce the cost of running the legislature and dignify representation of women by being directly elected. The following are extracts of constitutional provisions which provide for the composition of Parliament. 97. (1) The National Assembly consists of (a) two-hundred and ninety members, each elected by the registered voters of a single member constituency; (b) forty-seven women, each elected by the registered voters of the counties, each county constituting a single member constituency; (c) twelve members nominated by parliamentary political parties according to their proportion of members in the National Assembly in accordance with Article 90, to represent special interests including the youth, persons with disabilities and workers; and (d) the speaker, who is an ex officio member. (2) Nothing in this Article shall be construed as excluding any person from contesting an election under clause (1). The manner of dividing and reserving the seats for either gender shall be specifically provided for in the Tenth Schedule. Without concerning yourself with the enacting formula, commencement, consequential amendments and the details to be provided in the schedule, draft the requisite legislative proposal to effect the proposal by Maendeleo Yetu. (10 Marks)\n\nB. Mwenye Mali is the sole shareholder and director of Biashara Limited whose address is P.O Box 3334, Nairobi, Kenya. The volume of business has increased significantly and Mwenye Mali is contemplating ceding some of his powers to his son, Mwana Mali. Mwana Mali is currently the chief executive officer of the company. Mwenye Mali and Mwana Mali have approached you to assist them to facilitate their proposal. They inform you that they have agreed that Mwana Mali shall be responsible for signing all documents relating to the company. Such an arrangement is intended to remain in force until it is terminated. Prepare the necessary document. (7 Marks)\n\nC. Rewrite the following sentences using the appropriate conjunction. (3 Marks)\ni. The advocate attended the Law Society of Kenya Annual Conference sessions on 20th August, 2024. The advocate had a court matter on 20th August, 2024. (1 Mark)\nii. John has written numerous law books and article. John's latest book is on legislative drafting. (1 Mark)\niii. The court made an order for stay of the orders of the High Court. The appellant had made an application for stay of the orders of the High Court. (1 Mark)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Constitutional Petitions",
+          "Legislative Drafting",
+          "Power of Attorney"
+        ],
+        "difficulty": "hard",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Study the following excerpt from Section 33 of the Political Parties Act, No. 11 of 2011- 33. Establishment of the Office of Registrar (1) There is established the Office of the Registrar of Political Parties which shall be a body corporate with perpetual succession and a seal and which shall be capable of suing and being sued in its corporate name. (2) The Registrar shall be deputized by three Assistant Registrars, not more than two of whom shall be of the same gender. (3) The office of the Registrar shall be a State office within the meaning of Article 260 of the Constitution. (4) The Office of the Registrar may engage such staff, experts of consultants as are necessary for the proper and effective discharge of its functions under this Act and any other written law. (5) The Office of the Registrar shall be an independent and shall not be subject to the directions or control of any person or authority. (6) ... (9) The Registrar and Assistant Registrars shall serve for a non-renewable term of six years and shall not be eligible for re-appointment. Since the enactment of the Political Parties Act, the Office of the Registrar has faced numerous challenges and has been accused of not being truly independent as envisaged in the law. Consequently, it has been proposed that for the Office to be truly independent, there is need to establish it as a Commission consisting of not more than seven members. The current Registrar and Assistant Registrars have served for a term of four years. It has been agreed that once the Commission is established, the Registrar and Assistant Registrars shall be deemed to have been appointed as Commissioners from the date they were appointed. Additionally, the staff including experts and consultants appointed or contracted by the Office shall become staff of the Commission. Further, the Office has properties, liabilities, issued certificates and is a party to numerous cases, amongst other undertakings. Draft the necessary clauses to provide for the Registrar, Assistant Registrars, staff of the Office and properties, liabilities, certificates issued and other undertakings of the Office. (10 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Legislative Drafting"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Your client, Nuru Crypto Solutions Inc. (\"N-Crypto\"), develops and supports a cryptocurrency management software known as the N-Vault System (the \"Product\") in Kenya. N-Crypto delivers support under the terms of its standard contract template. The company releases updated versions of the Product approximately every six to twelve months. It now wishes to revise the language in its standard contract template to encourage customers to upgrade to newer versions of the Product more frequently. Currently, the contract template contains the following provision: 18. Product Versions Supported. N-Crypto will provide Support Services for the most current version of the Product and the three previous versions. N-Crypto has requested the following changes to Section 18: i. Revise the provision so that N-Crypto will provide Support Services for only the most current version and one previous version of the Product, rather than the most current version and three previous versions. ii. Include a clause that allows N-Crypto to terminate Support Services if the Customer is using a version of the Product that is neither the most current version nor the version immediately preceding it. iii. Add a provision to allow N-Crypto to agree to provide support for an older version of the Product for one year upon the customer's request, with the customer paying a surcharge equal to 5% of the customer's current annual Support Services Fee. The provision should make it clear that N-Crypto is not obligated to provide support for the older version. In light of the foregoing: A. Draft a revised Section 18 of the standard contract template reflecting the requested changes. (6 Marks) B. Reword each of the following phrases using plain language: I. IN WITNESS WHEREOF, the parties hereto, intending to be legally bound, have by their proper and duly authorized officers duly executed and delivered these presents as of the day and year first written above. (1 Mark) II. For good and valuable consideration received, the parties hereto mutually agree as provided by the terms, conditions, promises, and covenants contained herein and set forth below. (1 Mark) III. This Agreement shall in all respects be governed by, and construed and enforced in accordance with, the laws of Kenya, including all matters of construction, validity, and performance. (1 Mark) IV. Terms not defined herein, or used herein, shall have the meaning given them in Exhibit A attached hereto. (1 Mark)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Contract Drafting",
+          "Plain English"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "The sentences below have various issues related to biasness, wordiness and long sentences. Correct the mistakes by re-writing the sentence.\ni. The study demonstrated significant flaws in the current legal framework. The recommended reforms were not implemented, resulting in continued inefficiencies. (2 Marks)\nii. The supreme court's decision marks a turning point in constitutional law. The subsequent rulings will likely reflect this new interpretation. (2 Marks)\niii. The first part of the analysis focused on the legislative history. The next section examines the judicial interpretations that have shaped its application. (2 Marks)\niv. There has been much debate about the effectiveness of intentional sanctions. They are considered by many experts to be a necessary tool in global governance. (2 Marks)\nv. The legal precedent established by this case cannot be ignored. The policy implications are profound. (2 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Legal Writing Style"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Section 71(2)(m) of the Forest Conservation and Management Act (Cap. 385) gives the Cabinet Secretary for Environment, Climate Change and Forestry, on the recommendation of the Kenya Forest Service Board, the power to make regulations to provide for circumstances in which forest concessions may be applied for, granted, varied, or cancelled and the manner in which a person to whom a forest concession may exercise a right or privilege upon him/her by the concession. As a legal assistant working in the Office of the Director General of the Kenya Forest Service (Service), the Director General of the Service has requested you to prepare draft Regulations to allow the Service to give forest concessions for commercial forestry to private investors in Kenya under section 71(2)(m) of the Forest Conservation and Management Act. The new Regulations should revoke the current Regulations that were enacted in 2018. The Director General indicated that the draft Regulations should capture the following aspects: i. Purpose and objects of the Regulations. ii. The power of the service to identify the land for a forest concession. iii. The Cabinet Secretary be empowered to gazette the land for a forest concession and develop guidelines and standards for the implementation of the Regulations. iv. The role of a private party, which includes submitting quarterly reports to the Service and complying with relevant laws and regulations be included. v. The size of land be categorized into small, medium and large sizes. vi. The minimum and maximum duration for the forest concession be 10 years and 30 years respectively. vii. The forest concession be renewable once, but for a period not exceeding the initial term. viii. Payment of annual concession fees be equivalent to one percent of the value of the land. ix. The Service be expected to keep a register of all forest concessions entered into under the Regulations. x. An offence for the contravention of the provisions of the Regulations punishable under section 64 of the Forest Conservation and Management Act be provided. Prepare the draft Regulations. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Legislative Drafting",
+          "Environmental Law"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Kaskazini Kusini, a 64-year-old farmer residing in Kenya, has decided to change his name to Kaskazini Mashariki. The reason for this change is that he recently discovered that his old name, \"Kaskazini Kusini\" (which means \"south\" in Swahili), was leading people to believe he was from the southern part of Kenya. After years of getting unsolicited advice on how to grow crops better suited to southern climates, Kaskazini decided it was time to clear the confusion. He now wishes to embrace the name \"Mashariki\" (which means \"East\" in Swahili) to proudly represent the region where he actually resides to avoid further misunderstandings. Kaskazini has approached you, the sole legal practitioner at Hatuna Jina & Co. Advocates, for assistance. Draft the appropriate legal instrument that would enable him change his name. (10 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Deed Poll"
+        ],
+        "difficulty": "easy",
+        "questionType": "drafting",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-104",
+    "unitName": "Trial Advocacy",
+    "year": 2024,
+    "sitting": "main",
+    "paperCode": "ATP 104",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE contains 20 Marks. All other questions carry 10 Marks each.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "The County Assembly of Chacha County resolved to remove from office by way of impeachment their governor pursuant to Article 181 of the Constitution and Section 33 of the County Governments Act. The charges on which the impeachment was founded included acts of gross violation of the Constitution that were explained in the sworn statements by the many witnesses that are intended to be presented before the Senate. As a trial lawyer who has been practicing for a long time, you have had the benefit of previously defending impeachment matters successfully before the Senate. It is in the public domain that the current speaker of the senate was your pupil master and that you have in the past, represented before the Political Parties Tribunal, the Member of County Assembly (MCA) who sponsored the impeachment motion at the County Assembly. After wide consultations albeit hurried, the governor has received many recommendations to prefer on you, to lead their defence before the Senate.\n\na) Describe the qualities of a good trial lawyer that may have influenced the numerous referrals made in your favor. (5 marks)\nb) Due to your proximity to persons whose interests are opposed to those of your client, what obligations does the law impose on you as a lawyer to reassure the governor of your ability to effectively represent them. (5 marks)\nc) You are an ardent believer that the initial client interview contributes significantly to the quality of representation that a lawyer can offer their client. As a seasoned trial lawyer, what pitfalls would you advise lawyers to avoid during a client initial interview? (5 marks)\nd) Under what circumstances may you decline the instructions to represent the governor before the Senate. (5 Marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Ethics",
+          "Impeachment",
+          "Advocates Act"
+        ],
+        "difficulty": "hard",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Miracle Herbal Remedies Limited(\"Miracle\") is a company that manufactures and sells a product known as the \"miracle Immunity Booster\", a herbal remedy that the company claims boosts the immune system and protects users from contracting serious viral infections. Miracle launches an aggressive marketing campaign through newspapers, radio and social media, claiming that users of the Miracle Immunity Booster would be protected from a highly contagious virus called \"Virona\". Miracle's advertisement stated: \"We are so confident in our Miracle Immunity Booster that we will pay Kshs. 500,000 to anyone who contracts the Virona virus after using the product as directed for 30 days.\" To further demonstrate their confidence in the product, Miracle deposited Kshs. 10 million in a local bank \"for the express purpose of fulfilling this promise.\" Alice Wonderland, a 35-year-old accountant, purchased and used the Miracle Immunity Booster as directed after reading the advertisement in a local newspaper. She followed the instructions diligently for the required 30 days, consuming the recommended dosage of the product. Despite using the product as instructed, Alice contracted the Virona virus two weeks after completing the 30-day course of the Miracle Immunity Booster. She was hospitalized for two weeks and suffered serious financial losses due to the medical expenses and failed to report to work for several days. Alice demanded payment of the Kshs. 500,000 from Miracle, but Miracle refused to pay, claiming that the advertisement was mere \"marketing puffery\" and not intended to create a binding legal obligation. Miracle also argued that Alice could not prove that she used the product correctly or that contracting the virus was not due to other factors beyond the product's efficacy. Using these facts, prepare:\n\na) An opening statement on behalf of Miracle Herbal Remedies Limited. (5 marks)\nb) Five (5) critical cross examination questions for Alice. Assume that the introductory questions have already been put to the witness. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Opening Statement",
+          "Cross-examination",
+          "Contract Law"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "On the eve of her 18th birthday, Senorita was heading home from church on a Sunday afternoon. She met her village mate Francis on the way riding his motorcycle. Francis stopped to have a chat with Senorita and afterwards, Francis managed to convince her to accompany him to the local shopping Centre to run a few errands. Senorita hopped onto the motorbike and together they went to the shopping Centre. While there, they met with a male friend of Francis, who was accompanied by two young ladies. Senorita did not know any of them. Brian, the male friend of Francis invited both Francis and Senorita to what he termed as a birthday party celebration at his house. The five left and went to Brian's rented apartment in the outskirts of the shopping Centre. They arrived at around 1500 hour. Brian served them some drinks. Before she could take her drink, Senorita visited the washrooms and came back after 5 minutes. She took her drink and after about 15 minutes, she felt dizzy and lay on the couch. Senorita woke up the following day at around 0800hrs and found herself in the company of Francis, in a totally different house from the one Brian had taken them. On waking up, she had a severe headache and her private parts were painful. Her white trouser was bloodstained, her underpants were worn inside-out, and torn on the side. She noticed what seemed like whitish fluid on the underpants and also oozing from her vagina. Confused and feeling unwell, she left and found her way home. Upon arriving, she did not want to disclose to her mother who was deeply worried about her whereabouts and what might have transpired. Upon persistent inquiry, she narrated the ordeal to her mother who took her to Kona Mbaya police station where she reported the matter. The police took Senorita to hospital. The doctor who examined her took vaginal swabs and blood samples and handed them to the investigation officer to be taken to the government chemist for analysis. The investigation officer 'forgot' to take the samples for analysis. Investigations were conducted and Francis was arrested and charged with the offence of gang rape contrary to section 10 of the Sexual Offences Act.\n\na) You are the prosecutor in charge of this case, what pre-trial advocacy will you conduct to ensure a watertight case against Francis? (4 marks)\nb) You have been hired as Francis' advocate. Develop a potential case theory using the given set of circumstances. (4 marks)\nc) Identify two main examinations in chief questions that you would ask as the prosecutor, assuming that introductory questions have been covered already. (2 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Evidence Act",
+          "Sexual Offences Act",
+          "Examination-in-chief"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "A. Justice J M. Mativo in Trusted Society of human Rights Alliance v Cabinet Secretary for Devolution and Planning & 3 Others [2017] eKLR stated in part that, \"Court orders cannot be issued in vain, it cannot be disputed that an order of the court has to be respected by the parties who are bound by it. Therefore, every effort must be made to implement the order of the court and not to disobey the same. It is not up to that party to choose whether to comply or not to comply with such an order.\" In light of the foregoing, establish the justification for punishing for contempt of court. (6 marks)\nB. While exercising judicial authority, the courts and tribunals in Kenya are required by the constitution to promote alternative forms of dispute resolution. Explain any four such Alternative Dispute Resolution (ADR) methods available in Kenya. (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Contempt of Court",
+          "Alternative Dispute Resolution"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "KenBuild Construction Limited (KenBuild), a reputable contractor with extensive experience in infrastructure projects, entered into a contract with the Wakanda County Government to construct a modern drainage system for Wakanda town. The project was competitively tendered under the Public Procurement and Asset Disposal Act, 2015 (the Act). KenBuild was the lowest evaluated bidder. The tendered value of the contract was Kshs. 500 million. The project was to take 18 months to be completed. The contract between KenBuild and the County Government of Wakanda contained a clause allowing variations to the limit allowed in law. Section 139 of the Act limited variations to a tendered project to a maximum of 15% of the contract value. Any variations above this amount should be re-tendered. During the execution of the project, the County Government of Wakanda issued various instructions to KenBuild to modify the scope of works. The initial scope covered constructing the main drainage channels but the County Government later instructed KenBuild to build auxiliary channels and install advanced water filtration systems in response to public outcry over flooding and water pollution. The modifications significantly increased the scope of works. KenBuild, in good faith, complied with the instructions and carried out the additional works. This required deployment of more resources than initially planned. By the time the project was completed, the total cost of the works had increased to Kshs. 625 million. KenBuild issued its final invoice for settlement. The County Government declined to pay the amount above the 15% permissible variation citing statutory limitation. KenBuild initiated arbitration proceedings pursuant to the dispute resolution clause. During the arbitration, KenBuild argued that the County Government of Wakanda issued clear instructions that led to the increase in the scope of works, and that it was entitled to full compensation for the works done noting that the County Government had already taken over the project in its totality and was enjoying its benefits. On the other hand, the County Government argued that any payment exceeding the 15% variation limit is illegal and unenforceable. The County further argued that as a professional contractor with lots of experience, KenBuild should have known better than to execute works above the 15% variation limit. The arbitrator ruled in favour of the Wakanda County Government, upholding the defence of illegality. The arbitrator argued that while the Wakanda County Government's instructions led to the additional costs, the payment of any amount exceeding the 15% variation cap was expressly prohibited by law, and thus KenBuild could not claim the excess amount. The parties had reserved a right of appeal against the Award on points of law under Section 39 of the Arbitration Act. You have been instructed by KenBuild to pursue its appeal against the Award. Prepare your skeleton arguments. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Arbitration",
+          "Public Procurement",
+          "Skeleton Arguments"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Mr Mazingira is an advocate of the High Court of Kenya and has established a legal practice firm in the city. In addition to his usual work as an advocate, he is very passionate about matters relating to the environment. In fact, his firm is engaged in several CSR activities in the country to curb adverse climate change. He holds very strong opinions against those who fail to adhere to laws, rules and regulations on the environment that are in force in the Country. One afternoon he receives a client who states that he has been charged under the Environment Management and Coordination Act No. 8 of 1999 and that he wants Mr. Mazingira to defend him. In the course of taking these instructions, it becomes apparent that one of the key witnesses for the prosecution is Mr. Mazingira's long-lost brother, who 'went missing' 7 years ago. Using this case as a background, discuss the application of the cab rank rule vis a vis the ethical duties of a lawyer. (10 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Conflict of Interest",
+          "Cab Rank Rule",
+          "Ethics"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-105",
+    "unitName": "Professional Ethics",
+    "year": 2024,
+    "sitting": "main",
+    "paperCode": "ATP 105",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE carries 20 Marks. All other questions carry 10 Marks each.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "You are an advocate of the High Court and have been approached with a \"lucrative\", though highly convoluted brief by some Lebanese clients through your classmate, Joseph. In the brief, you have been offered a handshake of Kshs. 1,000,000 even before any assignment is undertaken. While the clients are willing to sign documents, they are not willing to meet or see you. They have indicated to Mr. Joseph that they are illegally working in Kenya and also have no plans of leaving the house they have been staying in for two years out of fear that they will be identified by law enforcement agencies and arrested. Joseph has informed you that if you are to take up that brief, you will have to create a notary's stamp for use so that it is shown that they signed the relevant affidavits from Singapore. They also have another strange demand. They want you to delay their matter so that a judgment in another country against them can be enforced first. That way, they will be declared bankrupt and will be unable to meet their financial obligations. First, they want you to approach the judge privately to see if she can help, \"sort out\" the issue. If that fails or is not feasible, they want you to file an application for recusal of the judge who is handling their case in Kenya, alleging that she has been bribed to prompt her not to proceed with the case on the date when it is scheduled for highlighting of the final submissions. In light of these set of facts:\n\n(a) Examine the situations under which advocate-client relationships arise and whether you would consider an advocate-client relationship to exist between yourself and the Lebanese \"clients\". (4 marks)\n(b) As an advocate who believes in conducting ethical practice, what alternative approaches would you use to help them achieve their objectives? (2 marks)\n(c) Discuss the duties that you, an advocate, owes to the Court. (4 marks)\n(d) Explain what professional responsibility is, highlighting aspects in the above scenario that would compromise your professional responsibility towards your clients. (4 marks)\n(e) Would the claim that the judge has been bribed be a valid ground for judicial recusal? Explain citing relevant case law. (6 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Conflict of Interest",
+          "Professional Misconduct",
+          "LSK Code of Conduct"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Sweezy, Advocate, is a sole proprietor who runs the firm Sweezy and Co. Advocates. One of his most esteemed clients is Ms. Rich Aunt Vibes. She is in the real estate business. She pays him Ksh 250,000 on a monthly basis just in case she needs some legal work done. This is being paid to date. Sweezy has been instructed by Ms. Rich Aunt vibes to purchase a property on her behalf. In the meantime, Sweezy has been getting massive amounts of work. He has found it prudent to take on a partner, Advocate Snoopy. He has even changed his law firm name to reflect this status. The law firm is now Sweezy and Snoopy Co. Advocates. Being quite busy, he has forgotten to inform Ms. Rich Aunt Vibes that he has changed the name of his law firm. However, he introduces Snoopy to Ms. Rich Aunt vibes. He informs her that henceforth, Snoopy will take over all the matters pending in the law firm. Ms. Rich Aunt vibes does not object. Snoopy takes over the purchase of the property that Sweezy had commenced on behalf of Ms. Rich Aunt Vibes with aplomb. He drafts all the requisite conveyancing documents, communicates daily with Ms. Rich Aunt Vibes on the status of the transaction. He even attends court for mediation on the property at some point. Finally, hurrah, success! The land is transferred and the title deed issued to Ms. Rich Aunt vibes. Sweezy and Snoopy Co. Advocates have filed a Bill of Costs. As they await ruling on this, Ms. Rich Aunt Vibes has made an application that she is a stranger to the Bill of Costs filed by Sweezy and Snoopy Co. Advocates. She claims she instructed Sweezy and Co. Advocates. She is emphatic that she never had any agreement with Sweezy and Snoopy Co. Advocates for them to do any legal work on her behalf. She is adamant that she cannot and will not pay the fees. With the aid of relevant case law, discuss the ethical issues arising from this scenario. (10 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Bill of Costs",
+          "LSK Code of Conduct"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "(a) Having completed the Advocates Training Programme and subsequently been admitted to the Kenyan Bar, you are keen on setting up legal practice. You are aware that one of the regulatory requirements is maintaining a clients' bank account, which you proceed to open upon the registration of the Firm. Making reference to the source of the regulatory requirement, highlight the type of funds that you must deposit or keep in the clients' bank account. (5 Marks)\n(b) Having set up the Firm and commenced legal practice, you encounter a problematic client, one Nana Kombe, who refuses to pay legal fees and expenses for disbursements. You had already instituted a suit in court on his behalf. You are keen on ceasing legal representation of the client. Citing any applicable regulatory requirement, explain how you will cease from representing the client in the court matter. (2 Marks)\n(c) Based on regulatory requirements, highlight the specific requirements that have to be satisfied for you to be considered to have effectively ceased legal representation of client Kombe in the subject suit. (3 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Client Account Rules",
+          "Advocates Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Richard, an advocate, was instructed by Octopas Ltd. to institute certain proceedings against the Council for Higher Education in relation to three examination security apparatus that were supplied but not paid for. It was agreed between Mr. Richard and the managing director of Octopas Ltd. that the instruction fees would be paid upon issuance of an instruction letter. Later, the Managing director of Octopas Ltd. wrote to Mr. Richard informing him that one Mr. Daud, who is not related to the company, had agreed to pay the instruction fees and the overheads in the litigation. The managing director of Octopas Ltd told Mr. Richard that at the conclusion of the case, Mr. Richard would be required to pay the decretal sum to Mr. Daud to enable him to deduct the instruction fees and any other overheads incurred during the litigation. In the meanwhile, before any disbursement is made, Mr. Daud intimates to Mr. Richard that he would also wish that were any disputes to occur in respect of the agreed arrangement, Mr. Richard would also represent Mr. Daud. Moreover, the Council for Higher Education has approached Mr. Richard seeking to give him a retainer for a year to act as its advocate.\n\n(a) Initially, the managing director of Octopas ltd. had requested Mr. Richard to file an application seeking to allow it to sue as a pauper. Why would you advise against such an initiative? (3 marks)\n(b) Before any disbursement is made, Mr. Richard seeks your opinion whether he is conflicted in this matter. Explain to him how conflict of interest arises and whether there is an existing conflict of interest arising at this stage. (3 marks)\n(c) Examine the obligation that Mr. Richard has towards Octopas Ltd and Mr. Daud, given the principles set out in the case of Sobeth Developers Ltd v South Nyanza Sugar Co. Ltd. (2 marks)\n(d) Between Octopas Ltd. and Mr. Daud, to which entity will Mr. Richard owe a professional duty as an advocate? Explain. (2 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Conflict of Interest",
+          "Advocates Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Wamala is a newly admitted advocate. He had a disagreement with his landlady because she was demanding an increment in rent in what he considers to be an unforgiving economy. When he refused to accede to her demands, she kicked him out rather unceremoniously. He came home, tired as a dog from a tedious day of litigation and found all his belongings at the curb of the gate. He was livid. He sued her the next day. He decided to represent himself. Surely all his hard work at the Kenya School of Law should count for something, he reasoned to himself. Indeed, it did, because he won his case. The bill of costs is currently in court for taxation. However, the landlady is contesting the bill on item of instruction fees claimed by Wamala. In the meantime, it has emerged that the landlady, who is also a caterer, did not pay her own advocate's fees because it had been agreed between them that she would either pay if she was successful or if not, pay in kind by rendering her catering services to her advocate for a week.\n\n(a) From your vast knowledge of Professional Ethics & Practice, advise Wamala on the item claim of instruction fees. (3 Marks)\n(b) What is the ethical rationale of having a Bill of Costs taxed in court? (2 Marks)\n(c) What are the ethical issues arising from the agreements between the landlady and her advocate? (5 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Bill of Costs",
+          "LSK Code of Conduct",
+          "Ethics"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "(a) Despite categorizing the legal career as a 'profession' rather than merely a 'business', Tom Ojienda and Katarina Juma nonetheless emphasize that '[T]he advocate-client relationship is based on contract', which is also the case with other business ventures (Tom Ojienda and Katarina Juma, Professional Ethics: A Kenyan Perspective (Law Africa, Nairobi, 2019) p 13). \nI. Discuss the context in which the legal career amounts to contractual obligations, similar to other business ventures. (3 marks)\nII. Analyze the extent to which legal practice departs from the principle of 'freedom of contract' through its concept of 'invalid agreements', and thus corresponds to the professional calling aspect rather than the business venture model. (4 marks)\n(b) Among the foremost professional honors that Kenyan legal practitioners aspire for is to have their name entered into the Roll of Senior Counsels. Explain the professional practice norms or privileges of being designated a Senior Counsel in the context of litigation in the courts. (3 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Advocates Act",
+          "Ethics"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-106",
+    "unitName": "Legal Practice Management",
+    "year": 2024,
+    "sitting": "main",
+    "paperCode": "ATP 106",
+    "instructions": "Answer FIVE (5) questions; including question ONE which is COMPULSORY, ONE question from each of the Sections and a FIFTH question from any Section. Question ONE carries 20 Marks. All other questions carry 10 Marks each.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "A. i. Useful accounting information should possess certain characteristics that enable the users to rely on it to make important decisions. Explain two (2) characteristics of useful accounting information. (2 Marks)\nii. Explain reason why a business that is reporting profits may still be facing challenges with its cash flows and therefore not able to meet its financial obligations. (1 Marks)\niii. The following trial balance was extracted from the books of Heshima Traders as at 30th June 2024. [Trial Balance Table with Sales 2,520,000, Purchases 893,000, etc.] Additional information: 1) Inventory as at 30th June 2024 was valued as: Cost 187,000, Net Realizable value 216,000. 2) Legal fees amounting to 17,000 were outstanding as at 30th June 2024 while wages amounting to 20,000 had been paid in advance. 3) Depreciation is to be charged at 10% and 20% on cost of equipment and motor vehicle respectively. 4) Drawings of goods amounting to 18,000 had been omitted from the books. 5) Additional bad debts amounting to 14,000 are to be written off. 6) Allowance for doubtful debts is to be maintained at 2% of outstanding accounts receivable. Required: Prepare an income statement of Heshima Traders for the year ended 30th June 2024. (7 Marks)\nB. Josanne Advocates is a law firm that operates in Kenya. The firm experienced an increase in customer base through attraction and retention, leading to increase in sales and profits margin. Recently, the firm's profitability has declined steadily. The management discovered the following factors: Poor customer management, Slow adaptation to new technology, and No clear laid down methods of procurement. To resolve the matter, the management has approached you to advise them on strategies that the firm can adopted in order to improve its customer service management. Proceed and advise. (5 marks)\nC. A large healthcare organization is facing challenges in retaining their skilled professionals. The organization recognizes the need to implement a comprehensive career development and promotion strategy. Explain five (5) emerging trends in career development and management that the healthcare organization can integrate into its career development strategy. (5 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Commercial Accounting",
+          "Customer Service",
+          "Human Resource Management"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "James and Jane Advocates, a prominent law firm in Nairobi County has recently experienced a significant data breach. Sensitive client information, including case details and personal data was compromised due to a cyber-attack. This incidence has led to disruptions in ongoing cases, client dissatisfaction and potential legal liability for the firm. In response, the firm has consulted you to assist in the development of a disaster management plan to address this crisis and prevent future occurrence.\n\nRequired:\na) Explain two (2) preventative measures the law firm could implement to safeguard against future data breaches and other potential disasters. (4 marks)\nb) Propose to the law firm three (3) key components of a disaster recovery plan that they should develop to effectively manage and recover from future disasters. (6 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Office Practice",
+          "Data Protection"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Mary and Agnes Advocates is a medium sized law firm based in Mombasa. The firm has been experiencing a shortage of essential office supplies. For years, the firm has relied on a sole supplier, Prime Suppliers Ltd, owned by the brother of one of the senior partners, Paul. Recently there have been complains from staff about delayed deliveries, substandard products, and inflated prices from Prime Suppliers Ltd. The firm is now debating whether to retain Prime Suppliers Ltd as their supplier or explore alternative solutions. They approach you for some consultation on stock management and procurement at the law firm.\n\nRequired:\na) Explain three (3) key benefits of having an effective stock management and control in the law firm. (3 marks)\nb) Propose to the law firm two (2) strategies they can introduce to improve their inventory management. (2 marks)\nc) Discuss five (5) measures the firm could use to ensure a fair and transparent procurement process without harming personal relationships. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Office Practice",
+          "Procurement"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Delta Logistics Ltd. faces significant human resource challenges that impact its operational efficiency and growth. The company's human resource planning is flawed, recruitment and selection processes are unstructured, and career progression paths create dissatisfaction. The job analysis is problematic, with poorly defined roles. Employee separation also present challenges with a lack of structured process.\n\nRequired:\na) Recommend a process that Delta Logistics Ltd. should follow in preparing a workable human resource plan to align their workforce needs to the company's strategic objectives. (4 marks)\nb) Explain any two (2) methods that Delta Logistics Ltd can use to enhance their recruitment and selection process to attract and hire the right talent. (2 marks)\nc) Discuss four (4) methods that the management of Delta Logistics Ltd. can employ in job analysis to ensure that roles are well defined, and aligned with the organizational goals. (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Human Resource Management"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "In response to rising employee turnover, particularly among higher performers, the human resource (HR) department of a medium sized law firm evaluated its internal mobility policies. Exit interviews indicated that employees often leave due to feeling of stagnation and dissatisfaction with career progression. The firm is enhancing its separation process to provide constructive feedback and foster relationships with departing employees.\n\nRequired:\na) As an expert in Human Resource Management, propose five (5) ways on how the law firm can improve their separation processes in order to maintain positive relationships with departing employees. (5 Marks)\nb) Assess five (5) functions the management of the law firm leadership can implement in promoting internal mobility within the firm. (5 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Human Resource Management"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "a) Explain two types of accounting errors that affect the balancing of a trial balance. (2 Marks)\nb) The accounts clerk at Kosa Ltd was presented with a trial balance for the year ended 30th June 2004, which had a shortage of Kshs 129,000 on the credit side. This difference was transferred to a suspense account. Further investigations revealed the following errors: i) Sales amounting to 147,000 made to J. Shah had been erroneously debited to the account of L. Shah. ii) The rent account had been under cast by Kshs. 60,600. iii) The sales day book had been under cast by Kshs. 180,750. iv) Discounts allowed had been overcast by Kshs. 8,850. v) The proceeds from sale of a computer amounting to Kshs. 30,000 had been erroneously credited in the sales account. Required: i) Prepare Journal entries to correct the above errors. (5 Marks) ii) Prepare a suspense account duly balanced. (3 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Commercial Accounting"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 7,
+        "subPart": null,
+        "questionText": "a) Under normal circumstances, the bank statement and the cashbook bank column should have equal but opposite balances. Explain five (5) reasons why the bank statement and the cash book bank column may fail to agree. (5 Marks)\nb) You have been provided with the following balances from the books of Linda traders for the years ended 30th September 2024. [Table with Profit for the year 1,250,000, etc.] Required: Determine the cash flows from operating activities. (5 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Commercial Accounting"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-107",
+    "unitName": "Conveyancing",
+    "year": 2024,
+    "sitting": "main",
+    "paperCode": "ATP 107",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE carries 20 Marks. All other questions carry 10 Marks each.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Charity is planning to set up a mixed use development on her parcel land reference number 209/885 measuring 100m x 100m. She bought this land in 2007 at Eight million Kenya Shillings (Kshs. 8,000,000/=) after securing a financial accommodation from ABC Bank. She has repaid the loan and now has a balance of Four Million Kenya Shillings (Kshs. 4,000,000/=). The parcel of land is now valued at Twenty-Four Million Kenya Shillings (Kshs. 24,000,000/=). Charity is now desirous of applying for a loan of Twenty Million Kenya Shillings (Kshs. 20,000,000/=) from Atlas Bank to actualize her dream of putting up the mixed-use development.\n\na) Charity has approached you for legal advice on the steps to be followed, in the disclosed circumstances, to secure funding of Twenty Million Kenya Shillings (Kshs. 20,000,000/=) from Atlas Bank. With reference to statutory law, proceed to advise. (5 marks)\nb) RML Advocates LLP have been appointed to represent Atlas Bank in the transaction. State the due diligence they will undertake to protect their client's interests. (5 marks)\nc) Compute the stamp duty payable with respect to the transaction between Atlas Bank and Charity. (2 marks)\nd) Charity has experienced tumultuous financial times after securing the financial accommodation from Atlas Bank. As a result, Charity has defaulted on loan repayments and the bank has already complied with the legal procedures necessary for exercise of the statutory power of sale. The mixed use development is slated for sale by public auction in seven (7) days to come. Explain to Atlas the necessary prerequisites that should exist to permit it to purchase the property. (5 marks)\ne) Explain to Charity on equity of redemption in the light of the circumstances referred to in (d) above. (3 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Charges/Mortgages",
+          "Sale of Land",
+          "Stamp Duty"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Arlette is excited to have just concluded her first homes exposition for upcoming condominiums along the coastline of the Indian Ocean. She was showing holiday homes comprising of studio apartments, 1, 2 & 3 bedroomed apartments. Arlette has a concern, several clients wanted to acquire the same either as fractional titles or timeshares. She is not familiar with either concept because her financial partner, Bankers Bank Limited, is only willing to fund the venture if it will result in sectional titles.\n\na) Explain to Arlette the meaning of the three concepts of ownership mentioned above: timeshares, fractional and sectional ownership. (3 marks)\nb) Arlette's piece of land is about one and half acre, registration number KWALE/DIANI BLOCK 2/3434, lease of 99 years from 1st January, 1980 for agricultural use. Advise your client, Arlette, on the procedure for conversion of the property to take the form of an acceptable user. (3 marks)\nc) Explain to Arlette the processes for creation of sectional titles over the subject property being the preferred form that can enable her business to secure financial facility over the subject property. (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Sectional Properties",
+          "Leases"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Isaac is the registered owner of all that land known as NAKURU/MOLO/1500 located in Nakuru County. The land has been zoned to be used for agricultural purposes, and remains an undeveloped farm land. Isaac would like to put up an educational institution to offer secondary school education. He has now approached you for guidance on how to actualize his vision.\n\na) Explain to Isaac the steps you would take to seek authorization for the land to be utilized for educational purposes. (5 Marks)\nb) Your request for authorization at the initial instance is denied. How would you challenge the denial? (3 Marks)\nc) Explain any two additional authorizations that may be needed before the commencement of the project. (2 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Land Registration",
+          "Land Use"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Chengo is a resident of Fulugani Village in Kwale County. He stays on his ancestral land with his family. They have stayed on the land ever since he was born and being the only child of his father, Katana, the land devolved to him. He has never acquired the title to the land. The land now forms part of the Mwache dam project. The National Land Commission has been carrying out inquiries for purposes of identification. However, Ngala has laid claim to the land and presented a title as evidence of his ownership having purchased it from Katana in 2002.\n\na) If Chengo goes to court to vindicate his rights to the land, explain to him the key issues that the court would consider. (6 marks)\nb) Advise Chengo on the steps he is required to take from the forum in (a) above to have the land registered in his name. (2 marks)\nc) You are a legal officer at the National Land Commission, explain how you take control of the land on behalf of the National Water Harvesting and Storage Authority. (2 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Land Registration",
+          "Community Land",
+          "Compulsory Acquisition"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Bobby entered into a sale agreement for purchase of KJD/KITENGELA/20 with peter on 30th of January 2024, the consideration for the purchase of the property was Kshs 10,000,000/=, completion period was 90 days. Bobby paid the deposit of the purchase price being Kshs 1,000,000/= and a further Kshs 6,000,000/= on 15th March 2024 as stipulated in the sale agreement wherein the balance of the purchase price was to be paid on completion. Peter has since failed to honor his part of the agreement.\n\na) With reference to relevant statutes and case law discuss the remedies available to Bobby in the circumstances. (6 Marks)\nb) While perusing the agreement you realize that there was a provision for issuance of 21 days' Notice to complete the transaction, which notice has not been issued since completion date. Discuss the consequences of failure to serve the notice and highlight the contents of a completion Notice. (4 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Sale of Land",
+          "Leases"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Malili Group Ranch has a total of Six Hundred (600) members. You have landed instructions from your client Jemimah to assist her transact over her share in the Group Ranch parcel. Jemimah is a holder of a certificate of ownership and share certificate for ten (10) acres. She desperately needs about Kshs. 8,000,000/= to take her ailing mother to India for treatment. She has approached your offices seeking legal advice as to how she can possibly borrow and use her piece of property as a security.\n\na) Advise Jemimah on the viability of her property for use as a security to access the much-needed finances from XYZ Bank Limited. (2 marks)\nb) Explain to Jemimah the legal procedures to be undertaken to privatize the portion of land being excised from the group ranch pursuant to the provisions of the Community Land Act, 2016. (4 marks)\nc) Jemimah presents an original certificate of lease over land registration number MALILI/BLOCK 1/13760 [4.10 HA] bearing two names: Jack and herself. Discuss with your client the pre-contract activities and a key contractual term necessary to enable the conveyance of one (1) acre of land. (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Community Land",
+          "Land Registration"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-108",
+    "unitName": "Commercial Transactions",
+    "year": 2024,
+    "sitting": "main",
+    "paperCode": "ATP 108",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE carries 20 Marks. All other questions carry 10 Marks each.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Selina is a college graduate resident in Kenya and the purveyor of an online scholarly writing website known as The Writers Hub. Selina has received multiple offers to mainstream her services and bring on board investors to grow the business.\n\na. As a leading commercial law practitioner, you have been approached by Selina to assist her incorporate a private company limited by shares. Briefly explain to your client the following: i. The procedure to incorporate such a vehicle? (6 Marks) ii. Statutory forms that must be submitted to effect registration? (4 Marks)\nb. Analyze whether or not the company can legally create different classes of shares and the procedure for allotment and transfer of said shares. (6 marks)\nc. It is resolved that Selina will transfer The Writers Hub headquarters, a bungalow situate in Nairobi, to the company. Advise Selina on the following: i. What is the effect of this proposed transaction with respect to Capital Gains Tax (CGT) payable? (2 Marks) ii. What is current applicable rate of CGT tax and how is it computed? (2 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Company Law",
+          "Tax Law",
+          "Shares"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "A. ABC Ltd entered into negotiations with XYZ Ltd for a potential merger. Obtain approval from the Competition Authority of Kenya (CAK). Discuss the process of obtaining approval and the factors that the authority would consider. (5 Marks)\nB. Evans is interested in removing Peter from the Board of Leading Packaging Suppliers Ltd (LPSL). Advise Evans on the procedure that needs to be followed to remove a director from office. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Competition Law",
+          "Company Law"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Your client Urban Oasis Ltd would like to purchase 'Golden Gate' from Legacy Estates Ltd for the price of Kshs. 400 million. However, instead of purchasing the property directly, Urban Oasis Ltd prefers to purchase all the shares in Legacy Estates Ltd through a Share Purchase Agreement. Draft a Share-purchase Agreement for this transaction. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Company Law",
+          "Sale of Shares"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "a) Bizo's creditors have sent him a letter threatening a bankruptcy law suit. Advise Bizo on the circumstances under which a creditor's execution process may not be issued or continued. (5 marks)\nb) Write a brief advising Tasi on the specific cases that the court may step in to dissolve a partnership on application by a partner and whether he stands a chance to win in court. (5 Marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Bankruptcy Law",
+          "Partnership"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Tim and Rose developed Borrow, a software application that enables customers to borrow loans. Their frustration led them to start calling people whose phone numbers appear in their customers' phone contact lists. Citing relevant legal provisions, provide a legal opinion on the legality of this method. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Banking Law",
+          "Data Protection"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "On 2nd September, 2017 Umu Gedi drafted and served a statutory demand for winding up M/S Bridal Outfits Limited. a) Advise your boss on whether this particular action can be maintained in light of a statutory demand that refers to a repealed statute. (2 marks)\nb) Briefly explain whether Bridal Outfits qualifies as a company unable to pay its debts pursuant to the Act. (3 marks)\nc) Briefly explain the procedure a liquidator will use to make an application for administration order and its effect on the company going forward. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Company Law",
+          "Insolvency"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  }
+]

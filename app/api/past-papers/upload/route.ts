@@ -37,7 +37,8 @@ export const POST = withAdminAuth(async (req: NextRequest, _user: AuthUser) => {
 
     // Extract text from PDF
     const buffer = Buffer.from(await file.arrayBuffer());
-    const pdfParse = (await import('pdf-parse')).default;
+    const pdfParseModule = await import('pdf-parse');
+    const pdfParse = (pdfParseModule as any).default || pdfParseModule;
     const pdf = await pdfParse(buffer);
     const rawText = pdf.text;
 

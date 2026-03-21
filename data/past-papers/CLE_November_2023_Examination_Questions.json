@@ -1,0 +1,911 @@
+[
+  {
+    "unitId": "atp-100",
+    "unitName": "Civil Litigation",
+    "year": 2023,
+    "sitting": "supplementary",
+    "paperCode": "ATP 100",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE carries 20 marks. All other questions carry 10 marks each. Answers MUST be supported by relevant case law and statutory provisions where required.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Aparnje Muremula has been serving as the Chief Officer in the department of Lands. Urban Planning and Settlement in the County Government of Kakamega. He has held this position since November 2022, when he was formally appointed by the Governor of the said county on the recommendation of the County Public Service Board and sworn into office.\n\nOn the evening of April 1, 2023 Apanje Muremula was having a drink at a local pub, the Stand Bar, when Hon. Lichina Likhongo, the Leader of the Majority Party in the County Assembly of Kakamega entered the said bar, Lichina Likhongo proceeded to the table where Apanje Murermula was having his drink and told him that Members of the County Assembly were complaining that they had not yet received \"fruits of independence\" from Apanje Muremula. Upon inquiry as to what that meant, Lichina Likhongo explained that it meant a piece of land each in an area where the County Government was carrying out settlement and urban planning. Apanje Muremula informed Lichina Likhongo that such a move was impossible and against the law. Lichina Likhongo then became very angry and shouted at the top of his voice that \"you have no choice. If you don't do it, we shall impeach you within one month and you will be out of office like a dog. You think you are here because you are a professional? No. We brought you here so that you can work for us. If you won't work for us, you will leave.\"\n\nTrue to the words of Lichina Likhongo, on May 2, 2023, the County Assembly of Kakamega passed a resolution recommending the removal of Apanje Muremula from office for \"gross misconduct and violation of the Constitution\". He was thereafter, by a letter dated May 15, 2023, and signed by the Governor, summarily removed from office. In the said letter, it was stated that \"following the resolution of the County Assembly on 2nd May 2023, I have today decided to summarily remove you from office as the Chief Officer for Lands, Urban Planning and Settlement.\"\n\nApanje Muremula is aggrieved by the decision to remove him from office and has come to you for legal advice. He wants the decision of the Governor to be quashed and for him to be reinstated to his office. He also wants to be paid all his salaries and benefits from the date he was removed from office.\n\n(a) Advise Apanje Muremula on the most appropriate legal action to take and the reasons for your advice. (5 marks)\n(b) Prepare the necessary application to be filed in court to challenge the decision of the Governor. (10 marks)\n(c) What are the grounds upon which the court may quash the decision of the Governor? (5 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Judicial Review",
+          "Certiorari",
+          "Employment Law",
+          "Constitutional Law"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Your client, Mama Mboga, is a tenant in a stall at the Muthurwa Market in Nairobi. The stall is owned by the County Government of Nairobi. On October 10, 2023, the County Government issued a notice to all tenants in the market to vacate the stalls within 14 days to pave way for the renovation of the market. The notice also stated that upon completion of the renovation, the stalls would be re-allocated to the current tenants. Mama Mboga is apprehensive that the stalls may be allocated to other people and wants to stop the County Government from evicting her until she is assured of a stall after the renovation.\n\n(a) What application would you file in court on behalf of Mama Mboga? (3 marks)\n(b) What are the conditions that Mama Mboga must satisfy for the court to grant the orders sought? (5 marks)\n(c) If the court grants the orders, what steps must you take to ensure that the County Government is served with the orders? (2 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Injunctions",
+          "Civil Procedure Rules",
+          "Service of Process"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Upon the conclusion of a civil suit in the High Court, the judge delivered judgment in favour of the plaintiff and awarded him KSh. 5,000,000/= in damages plus costs and interest. The defendant is dissatisfied with the judgment and wants to appeal against it. He has come to you for legal advice on the steps he should take to lodge an appeal and to stay the execution of the judgment.\n\n(a) Advise the defendant on the procedure for lodging an appeal against the judgment of the High Court. (5 marks)\n(b) What steps should the defendant take to stay the execution of the judgment pending the hearing and determination of the appeal? (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Appeals",
+          "Stay of Execution",
+          "Civil Procedure Rules"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "The plaintiff filed a suit against the defendant in the Chief Magistrate's Court at Milimani seeking to recover KSh. 1,500,000/= being the balance of the purchase price for a motor vehicle. The defendant was served with the summons and the plaint but failed to enter appearance or file a defence within the prescribed time. The plaintiff applied for and was granted judgment in default of appearance and defence.\n\n(a) Explain the procedure for obtaining judgment in default of appearance and defence. (4 marks)\n(b) The defendant has now come to you for legal advice. He claims that he was never served with the summons and the plaint and only learned of the judgment when his motor vehicle was attached by the court bailiff. Advise the defendant on the application he should file in court and the grounds upon which the court may set aside the default judgment. (6 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Default Judgment",
+          "Setting Aside Judgment",
+          "Service of Process"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "The parties to a civil suit in the High Court have agreed to settle the matter out of court. They have come to you for legal advice on the steps they should take to record the settlement in court and to ensure that it is enforceable.\n\n(a) Explain the procedure for recording a settlement in court. (5 marks)\n(b) What is the legal effect of a consent judgment? (2 marks)\n(c) Under what circumstances may a consent judgment be set aside? (3 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Consent Judgment",
+          "Settlement",
+          "Civil Procedure Rules"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Section 10 of the Civil Procedure Act provides for the principle of res judicata. Explain the principle of res judicata and the conditions that must be satisfied for the principle to apply. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Res Judicata",
+          "Civil Procedure Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-101",
+    "unitName": "Criminal Litigation",
+    "year": 2023,
+    "sitting": "supplementary",
+    "paperCode": "ATP 101",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE contains 20 marks. All other questions carry 10 marks each. Answers MUST be supported by relevant case law and statutory provisions where required.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "On the night of October 20, 2023, at around 11:30 PM, three men, namely, Ali, Ben, and Chris, were found in a gated community in Karen, Nairobi. They were intercepted by security guards who found them in possession of various items, including a laptop, two smartphones, and a digital camera. The guards also found a crowbar and a master key in their possession. Ali, Ben, and Chris were unable to give a satisfactory explanation for their presence in the community or for the items in their possession. They were subsequently arrested and taken to the Karen Police Station.\n\n(a) As the prosecution counsel, draft the appropriate charge(s) against Ali, Ben, and Chris. (6 marks)\n(b) Explain the procedure for taking a plea in a criminal trial. (4 marks)\n(c) The accused persons have applied for bail. What are the factors that the court will consider in determining whether to grant or deny bail? (6 marks)\n(d) Explain the concept of 'disclosure' in criminal proceedings and its significance to a fair trial. (4 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Criminal Procedure Code",
+          "Bail and Bond",
+          "Plea Taking",
+          "Disclosure"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "The accused person was charged with the offence of murder. During the trial, the prosecution sought to introduce a confession made by the accused person to a police officer of the rank of Inspector. The accused person's advocate objected to the admissibility of the confession, alleging that it was obtained through torture and that it did not comply with the Evidence Act.\n\n(a) Explain the rules governing the admissibility of confessions in criminal trials in Kenya. (5 marks)\n(b) What is the procedure for determining the admissibility of a confession that is contested by the accused person? (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Evidence Act",
+          "Confessions",
+          "Trial within a Trial"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "The accused person was convicted of the offence of robbery with violence and sentenced to death. He wants to appeal against both the conviction and the sentence. He has come to you for legal advice on the steps he should take to lodge an appeal and the grounds upon which he may challenge the conviction and the sentence.\n\n(a) Advise the accused person on the procedure for lodging an appeal against a conviction and sentence of the High Court. (5 marks)\n(b) What are the grounds upon which an appellate court may set aside a conviction or vary a sentence? (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Appeals",
+          "Sentencing",
+          "Criminal Procedure Code"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Section 157 of the Criminal Procedure Code provides for the withdrawal of charges by the Director of Public Prosecutions (DPP). Explain the circumstances under which the DPP may withdraw charges and the legal effect of such withdrawal. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Criminal Procedure Code",
+          "Director of Public Prosecutions",
+          "Nolle Prosequi"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "The accused person, a 16-year-old boy, was charged with the offence of stealing. He has come to you for legal advice on the special procedures that apply to children in the criminal justice system.\n\n(a) Explain the procedure for the trial of a child in the Children's Court. (5 marks)\n(b) What are the sentencing options available for children who are found guilty of criminal offences? (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Children Act",
+          "Juvenile Justice",
+          "Sentencing"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "The Evidence Act provides for the competency and compellability of witnesses. Explain the general rule regarding the competency of witnesses and the exceptions to this rule. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Evidence Act",
+          "Competency of Witnesses"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-102",
+    "unitName": "Probate and Administration",
+    "year": 2023,
+    "sitting": "supplementary",
+    "paperCode": "ATP 102",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE contains 20 marks. All other questions carry 10 marks each. Answers MUST be supported by relevant case law and statutory provisions where required.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Mzee Juma died intestate on September 15, 2023. He was survived by two widows, Mary and Jane, and eight children. Mary has three children, all adults, while Jane has five children, three of whom are minors. Mzee Juma's estate comprises a 50-acre farm in Kitale, a residential house in Nairobi, and KSh. 2,000,000/= in a fixed deposit account at a local bank. Mary and Jane are in a dispute over who should manage the estate and how it should be distributed.\n\n(a) Advise Mary and Jane on the process of applying for letters of administration and the persons who are entitled to apply for the same. (6 marks)\n(b) Explain the rules governing the distribution of the estate of a polygamous intestate. (8 marks)\n(c) What steps should be taken to protect the interests of the minor children of the deceased? (6 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Intestate Succession",
+          "Letters of Administration",
+          "Polygamy",
+          "Minors' Interests"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "The deceased left a will which was duly executed and attested. In the will, the deceased bequeathed his motor vehicle to his brother, Paul, and the residue of his estate to his wife, Rose. After the execution of the will, the deceased sold the motor vehicle and bought a new one. The deceased also had a son, Peter, who was born after the execution of the will and was not provided for in the will.\n\n(a) Explain the doctrine of ademption and its effect on the bequest to Paul. (5 marks)\n(b) Advise Peter on his rights under the Law of Succession Act and the steps he should take to claim a share of the estate. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Ademption",
+          "Dependants Claims",
+          "Succession Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "The executors of a will have applied for a grant of probate. A caveator has filed an objection to the grant, alleging that the deceased lacked testamentary capacity at the time of the execution of the will and that the will was obtained through undue influence.\n\n(a) Explain the concept of testamentary capacity and the factors that the court will consider in determining whether the deceased had the capacity to make a will. (5 marks)\n(b) What is the procedure for resolving an objection to the grant of probate? (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Testamentary Capacity",
+          "Objections",
+          "Undue Influence"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Section 76 of the Law of Succession Act provides for the revocation or annulment of a grant. Explain the grounds upon which a grant of probate or letters of administration may be revoked or annulled. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Revocation of Grant",
+          "Succession Act"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "The deceased died in the United Kingdom, where he was domiciled. He left a will which was proved in the United Kingdom. The deceased owned immovable property in Kenya. The executors want to manage the property in Kenya.\n\n(a) Explain the procedure for resealing a foreign grant in Kenya. (6 marks)\n(b) What is the legal effect of resealing a foreign grant? (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Resealing of Grants",
+          "Foreign Grants"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "The Law of Succession Act defines a 'dependant' for the purposes of a claim for reasonable provision. Explain who is a 'dependant' under the Act and the factors that the court will consider in determining whether to make provision for a dependant. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Succession Act",
+          "Dependants Claims"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-103",
+    "unitName": "Legal Writing and Drafting",
+    "year": 2023,
+    "sitting": "supplementary",
+    "paperCode": "ATP 103",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE contains 20 marks. All other questions carry 10 marks each. Answers MUST be supported by relevant case law and statutory provisions where required.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "A. Draft a legislative proposal for a new Act of Parliament to regulate the use of plastic bags in Kenya. The proposal should include provisions for the prohibition of the manufacture, sale, and use of single-use plastic bags, penalties for non-compliance, and the powers of the relevant regulatory authority. (10 marks)\n\nB. Your client, ABC Ltd, wants to appoint an agent to handle its tax matters with the Kenya Revenue Authority. Prepare the necessary document to effect this appointment. (7 marks)\n\nC. Rewrite the following sentences to improve clarity and remove legalese:\n(i) The party of the first part hereby covenants with the party of the second part that it shall perform all its obligations hereunder with due diligence. (1 mark)\n(ii) In the event that the lessee fails to pay the rent as and when the same becomes due and payable, the lessor shall be at liberty to re-enter the premises. (1 mark)\n(iii) Notwithstanding anything to the contrary contained herein, the provisions of this clause shall survive the termination of this agreement. (1 mark)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Legislative Drafting",
+          "Agency",
+          "Plain English"
+        ],
+        "difficulty": "hard",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Draft a set of transition clauses for a bill that seeks to merge two government agencies into one. The clauses should provide for the transfer of staff, assets, liabilities, and ongoing contracts from the existing agencies to the new entity. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Legislative Drafting",
+          "Transition and Savings Clauses"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Your client, XYZ Ltd, is entering into a software license agreement with a vendor. The client wants to ensure that the vendor provides technical support and updates for the software. Draft a clause for the agreement that specifies the vendor's obligations in this regard, including response times for critical bugs and the frequency of updates. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Contract Drafting",
+          "Intellectual Property"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Identify and correct the errors in the following sentences related to punctuation, grammar, and style:\n(i) The court held that the defendants action was negligent, however the plaintiff was also found to be contributory negligent. (2 marks)\n(ii) Each of the partners are liable for the debts of the partnership, which was incurred during the course of business. (2 marks)\n(iii) The advocate who had represent the client in the high court, has now filed an appeal in the court of appeal. (2 marks)\n(iv) A person who is found guilty of an offence under this section, shall be liable to a fine not exceeding one hundred thousand shillings. (2 marks)\n(v) The contract was signed by both parties, whom were represented by their respective advocates. (2 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Legal Writing Style",
+          "Editing"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Draft a set of regulations under the Environmental Management and Coordination Act to provide for the management of electronic waste (e-waste). The regulations should cover the collection, storage, transportation, and disposal of e-waste, and the licensing of e-waste handlers. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Subsidiary Legislation",
+          "Environmental Law"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Your client, John Kamau, wants to change his name to John Kamau Wanjiku. Draft the necessary legal instrument to effect this change and explain the procedure for its registration. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Deed Poll",
+          "Registration of Persons"
+        ],
+        "difficulty": "easy",
+        "questionType": "drafting",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-104",
+    "unitName": "Trial Advocacy",
+    "year": 2023,
+    "sitting": "supplementary",
+    "paperCode": "ATP 104",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE contains 20 marks. All other questions carry 10 marks each. Answers MUST be supported by relevant case law and statutory provisions where required.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "You are representing the plaintiff in a civil suit for breach of contract. The trial is set to begin in two weeks. One of your key witnesses is an expert in the field of construction engineering. He has prepared a report that supports your client's claim for damages.\n\n(a) Explain the steps you will take to prepare your expert witness for trial. (5 marks)\n(b) Draft five (5) critical questions you will ask the expert witness in examination-in-chief. (5 marks)\n(c) The defendant's advocate has also engaged an expert witness who has prepared a report that contradicts your expert's findings. Draft five (5) critical questions you will ask the defendant's expert witness in cross-examination. (5 marks)\n(d) What are the ethical considerations that you must keep in mind when dealing with expert witnesses? (5 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Expert Witnesses",
+          "Examination-in-chief",
+          "Cross-examination",
+          "Ethics"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "The accused person has been charged with the offence of robbery with violence. The prosecution's case relies heavily on the evidence of identification by the complainant. The complainant alleges that she saw the accused person's face during the robbery, which occurred at night under a street lamp.\n\n(a) Prepare an opening statement for the defence. (5 marks)\n(b) Draft five (5) critical cross-examination questions for the complainant focusing on the issue of identification. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Opening Statement",
+          "Identification Evidence",
+          "Cross-examination"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Explain the concept of 'theory of the case' and its significance in trial advocacy. How do you develop a case theory for a criminal defence? (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Theory of the Case",
+          "Trial Advocacy"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "(a) Justify the use of Alternative Dispute Resolution (ADR) in civil litigation. (6 marks)\n(b) Explain the role of a mediator in a court-annexed mediation. (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Alternative Dispute Resolution",
+          "Mediation"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Prepare a set of skeleton arguments for a respondent in an appeal against a judgment of the High Court that awarded damages for defamation. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Appeals",
+          "Defamation",
+          "Skeleton Arguments"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Discuss the 'cab-rank rule' and its application in the Kenyan legal system. Under what circumstances may an advocate decline to represent a client? (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Cab Rank Rule",
+          "Ethics"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-105",
+    "unitName": "Professional Ethics",
+    "year": 2023,
+    "sitting": "supplementary",
+    "paperCode": "ATP 105",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE carries 20 marks. All other questions carry 10 marks each. Answers MUST be supported by relevant case law and statutory provisions where required.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "You are an advocate in a medium-sized law firm. A client, Mr. Kato, has approached you with a request to represent him in a property dispute. Mr. Kato informs you that his previous advocate, Ms. Jane, has refused to hand over his file and other documents because he owes her KSh. 50,000/= in legal fees. Mr. Kato wants you to take over the matter immediately and to file an application in court to compel Ms. Jane to release the documents. In the course of your discussions, Mr. Kato also reveals that he wants to use a forged title deed as evidence in the case.\n\n(a) Advise Mr. Kato on the procedure for changing advocates and the rights of a previous advocate regarding a lien over a client's file. (5 marks)\n(b) What are your ethical obligations upon learning that the client intends to use a forged document as evidence? (5 marks)\n(c) Discuss the duties that an advocate owes to the court in the conduct of litigation. (5 marks)\n(d) Explain the concept of 'advocate-client privilege' and its limitations. (5 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Change of Advocates",
+          "Advocate's Lien",
+          "Professional Misconduct",
+          "Advocate-Client Privilege"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "An advocate has been accused of professional misconduct for failing to account for client funds. The advocate used KSh. 1,000,000/= from a client's account to pay for his personal medical expenses, with the intention of replacing the funds once he received payment from another client. The funds have not been replaced.\n\n(a) Explain the rules governing the management of client accounts by advocates in Kenya. (5 marks)\n(b) What are the potential consequences of a finding of professional misconduct for an advocate? (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Client Account Rules",
+          "Professional Misconduct",
+          "Disciplinary Proceedings"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "(a) Highlight the circumstances under which an advocate may decline instructions from a potential client. (5 marks)\n(b) Explain the procedure for withdrawing from a case when the client fails to pay legal fees. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Instructions",
+          "Withdrawal from Representation"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "The Law Society of Kenya (LSK) Code of Standards of Professional Practice and Ethical Conduct provides for the rules governing advertising by advocates. Explain the rules regarding advertising and the rationale for these rules. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Advertising",
+          "Ethics",
+          "LSK Code of Conduct"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "A dispute has arisen between an advocate and a client regarding the amount of legal fees charged for a conveyancing transaction. The advocate and the client did not have a written agreement on the fees.\n\n(a) Explain the procedure for taxing a bill of costs between an advocate and a client. (6 marks)\n(b) What factors will a taxing officer consider in assessing the reasonableness of the fees? (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Advocates Remuneration Order",
+          "Taxation of Costs"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Discuss the role of the Advocates Complaints Commission and the Disciplinary Committee in maintaining the standards of the legal profession in Kenya. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Advocates Complaints Commission",
+          "Disciplinary Committee",
+          "Ethics"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-106",
+    "unitName": "Legal Practice Management",
+    "year": 2023,
+    "sitting": "supplementary",
+    "paperCode": "ATP 106",
+    "instructions": "Answer FIVE (5) questions; including question ONE which is COMPULSORY, ONE question from each of the Sections and a FIFTH question from any Section. Question ONE carries 20 marks. All other questions carry 10 marks each. Answers MUST be supported by relevant statutory provisions and case law where required.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "A. Joyride Hauliers operates in the transport business. On 1st January 2023, the company acquired a new truck to meet customer needs and to cater for increase in business. The following data relates to the initial cost and maintenance of the truck: Initial cost Sh. 12,000,000; Scrap value Sh. 2,000,000; Insurance premium p.a. Sh. 400,000; Annual road license fee Sh. 12,000; Replacement of tyres after every 25,000 kilometers Sh. 48,000; Maintenance cost after every 5,000 kms Sh. 15,000; Replacement of spare parts per service Sh. 8,000; Price of fuel per litre Sh. 60. Additional information: 1. The truck has an economic life of four years. 2. The truck has six tyres each costing Sh. 8,000. 3. Service is carried out after every 5,000 kms. 4. On average, the truck covers 20 kilometers per litre of fuel consumed. 5. The truck is expected to cover 100,000 kilometers in its life span. Required: (i) Calculate the annual depreciation charge for the truck using the straight-line method. (2 marks) (ii) Determine the total operating cost per kilometer for the truck. (5 marks) (iii) Explain the significance of budgeting in a business enterprise. (3 marks)\n\nB. You are the office manager of a law firm. The firm has recently experienced a high turnover of administrative staff. Some of the reasons given by the departing staff include poor communication, lack of training, and heavy workload. Advise the partners on the strategies to improve staff retention in the firm. (5 marks)\n\nC. Explain five (5) ways in which information technology can be used to improve the efficiency of a law office. (5 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Commercial Accounting",
+          "Human Resource Management",
+          "ICT in Law Office"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "A law firm wants to implement a system for managing client documents and records. The firm wants to ensure that the documents are easily accessible, secure, and that the system complies with data protection laws.\n\n(a) Explain the key components of an effective document management system for a law firm. (5 marks)\n(b) Propose three (3) measures to ensure the security of client information in a digital document management system. (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Office Practice",
+          "Data Protection",
+          "Information Management"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Discuss the importance of client relationship management (CRM) in a law firm. What are the key elements of an effective CRM strategy? (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Office Practice",
+          "Customer Service"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "The recruitment of staff is a critical function in any organization. Explain the steps in the recruitment and selection process for a law firm. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Human Resource Management"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "Discuss the role of performance appraisal in staff development and management. What are the common methods of performance appraisal? (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Human Resource Management"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Explain the concept of 'time management' for advocates. How can advocates effectively manage their time to balance their professional and personal lives? (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Office Practice",
+          "Time Management"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 7,
+        "subPart": null,
+        "questionText": "Explain the difference between 'management accounting' and 'financial accounting'. How is management accounting information used in the decision-making process of a law firm? (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Commercial Accounting"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-107",
+    "unitName": "Conveyancing",
+    "year": 2023,
+    "sitting": "supplementary",
+    "paperCode": "ATP 107",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE carries 20 marks. All other questions carry 10 marks each. Answers MUST be supported by relevant statutory provisions and case law where required.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Your client, Mr. Benson, is the registered owner of a parcel of land in Kiambu. He has entered into a sale agreement for the sale of the land to Ms. Jane for KSh. 10,000,000/=. The agreement provides for a 10% deposit upon signing and the balance on completion, which is 90 days from the date of the agreement. The agreement also provides for the issuance of a 21-day completion notice in case of default.\n\n(a) Advise Mr. Benson on the steps to be taken from the date of the agreement until the completion of the transaction. (6 marks)\n(b) Ms. Jane has paid the deposit but has failed to pay the balance of the purchase price on the completion date. Explain the procedure for issuing a completion notice and the consequences of failure to comply with the notice. (8 marks)\n(c) What are the remedies available to Mr. Benson in case of a breach of the agreement by Ms. Jane? (6 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Sale of Land",
+          "Completion Notice",
+          "Remedies for Breach"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "The government intends to acquire land for the construction of a public road. The land belongs to several individual owners. You are a legal officer at the National Land Commission.\n\n(a) Explain the procedure for the compulsory acquisition of land for a public purpose. (6 marks)\n(b) What factors are considered in determining the compensation to be paid to the affected landowners? (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Compulsory Acquisition",
+          "National Land Commission"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Your client wants to apply for a mortgage from a bank to purchase a residential house. The bank has issued a letter of offer which the client has accepted.\n\n(a) Explain the procedure for creating and registering a charge over land in Kenya. (6 marks)\n(b) What are the rights and duties of a chargor and a chargee under the Land Act? (4 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Charges",
+          "Land Act",
+          "Land Registration"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "Explain the concept of 'sectional properties' and the procedure for the registration of a sectional property plan. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Sectional Properties",
+          "Land Registration"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "The Land Registration Act provides for the registration of various interests in land. Explain the difference between 'absolute' and 'qualified' titles, and the significance of the register in land transactions. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Land Registration Act",
+          "Land Titles"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "Discuss the role of the Land Control Board in transactions involving agricultural land. What are the consequences of failing to obtain the consent of the Land Control Board for a transaction involving agricultural land? (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Land Control Board",
+          "Agricultural Land"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-108",
+    "unitName": "Commercial Transactions",
+    "year": 2023,
+    "sitting": "supplementary",
+    "paperCode": "ATP 108",
+    "instructions": "Answer FIVE (5) questions, including question ONE which is COMPULSORY. Question ONE carries 20 marks. All other questions carry 10 marks each. Answers MUST be supported by relevant statutory provisions and case law where required.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "(a) Your client, Mr. Kamau, wants to incorporate a private company to carry on a retail business. Advise him on the procedure for incorporation and the documents required. (6 marks)\n(b) Explain the difference between a 'shareholders' agreement' and the 'articles of association'. Why is it advisable for shareholders to have a shareholders' agreement? (6 marks)\n(c) The company wants to raise capital by issuing shares to the public. Advise the company on the legal requirements for a public offer of shares. (8 marks)",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": [
+          "Company Law",
+          "Incorporation",
+          "Shareholders' Agreement",
+          "Public Offer"
+        ],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "A dispute has arisen between the partners of a professional firm. One partner wants to dissolve the partnership. Advise the partners on the grounds and the procedure for the dissolution of a partnership. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Partnership Law",
+          "Dissolution"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Your client, a manufacturer, wants to enter into a distribution agreement with a distributor for the sale of its products in Kenya. Draft a set of clauses for the agreement that cover the following: (a) territory and exclusivity; (b) pricing and payment; (c) intellectual property rights; and (d) termination. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Contract Drafting",
+          "Commercial Agreements",
+          "Intellectual Property"
+        ],
+        "difficulty": "medium",
+        "questionType": "drafting",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 4,
+        "subPart": null,
+        "questionText": "The Competition Act regulates mergers and acquisitions in Kenya. Explain the definition of a 'merger' under the Act and the procedure for obtaining the approval of the Competition Authority for a merger. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Competition Law",
+          "Mergers and Acquisitions"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 5,
+        "subPart": null,
+        "questionText": "A company is unable to pay its debts and a creditor has filed a petition for the liquidation of the company.\n\n(a) Explain the circumstances under which a court may order the liquidation of a company. (5 marks)\n(b) What are the powers and duties of a liquidator? (5 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Insolvency",
+          "Liquidation",
+          "Company Law"
+        ],
+        "difficulty": "medium",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 6,
+        "subPart": null,
+        "questionText": "The Movable Property Security Rights Act provides for the creation and registration of security rights in movable property. Explain the procedure for the creation of a security right and the priority of security rights under the Act. (10 marks)",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": [
+          "Movable Property Security Rights Act",
+          "Banking Law"
+        ],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      }
+    ]
+  }
+]

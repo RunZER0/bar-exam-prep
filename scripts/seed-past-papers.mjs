@@ -128,6 +128,20 @@ async function main() {
       [paper.unitId, paper.year, sitting]
     );
 
+    // Parse duration to minutes (handles "3 hours", "180", 180, etc.)
+    let durationMinutes = null;
+    if (paper.duration != null) {
+      if (typeof paper.duration === 'number') {
+        durationMinutes = paper.duration;
+      } else if (typeof paper.duration === 'string') {
+        const hourMatch = paper.duration.match(/(\d+)\s*hour/i);
+        const minMatch = paper.duration.match(/(\d+)\s*min/i);
+        if (hourMatch) durationMinutes = parseInt(hourMatch[1]) * 60;
+        if (minMatch) durationMinutes = (durationMinutes || 0) + parseInt(minMatch[1]);
+        if (!hourMatch && !minMatch) durationMinutes = parseInt(paper.duration) || null;
+      }
+    }
+
     // Insert paper
     const paperResult = await client.query(
       `INSERT INTO past_papers (unit_id, unit_name, year, sitting, paper_code, instructions, total_marks, duration)
@@ -141,7 +155,7 @@ async function main() {
         paper.paperCode || null,
         paper.instructions || null,
         paper.totalMarks || null,
-        paper.duration || null,
+        durationMinutes,
       ]
     );
 

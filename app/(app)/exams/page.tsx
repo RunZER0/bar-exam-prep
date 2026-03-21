@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +10,8 @@ import {
   Building2, Handshake, Calculator, ClipboardCheck, Clock, ArrowRight, X,
   PenTool, CheckCircle, Sparkles, GraduationCap, Timer,
   FileQuestion, Edit3, ChevronRight, Target, Zap, Award, ArrowLeft,
+  ScrollText, Filter, BarChart3, Eye, Loader2, TrendingUp,
+  Calendar, Hash, ChevronDown,
 } from 'lucide-react';
 import PremiumGate from '@/components/PremiumGate';
 
@@ -17,6 +19,43 @@ const ICON_MAP: Record<string, any> = {
   Gavel, Scale, FileText, Shield, Building, Briefcase,
   Users, BookOpen, Building2, Handshake, Calculator, PenTool,
 };
+
+// ============================================================
+// PAST PAPER TYPES
+// ============================================================
+
+interface PastPaperEntry {
+  id: string;
+  unitId: string;
+  unitName: string;
+  year: number;
+  sitting: string;
+  paperCode: string | null;
+  totalMarks: number | null;
+  duration: string | null;
+  questionCount: number;
+}
+
+interface PastQuestion {
+  id: string;
+  questionNumber: number;
+  subPart: string | null;
+  questionText: string;
+  marks: number | null;
+  isCompulsory: boolean;
+  topics: string[];
+  difficulty: string | null;
+  questionType: string;
+  modelAnswer: string | null;
+}
+
+interface GeneratedQuestion {
+  question: string;
+  marks: number;
+  questionType: string;
+  modelAnswer: string;
+  topicsCovered: string[];
+}
 
 // ============================================================
 // EXAM CONFIGURATION
@@ -113,19 +152,42 @@ function AnimatedModal({ isOpen, onClose, children, size = 'md' }: AnimatedModal
 // MAIN COMPONENT
 // ============================================================
 
+// ============================================================
+// MAIN COMPONENT — TWO-TAB LAYOUT
+// ============================================================
+
+type PageTab = 'practice' | 'past-papers';
+type PastPapersView = 'browse' | 'paper' | 'analysis';
+
 export default function ExamsPage() {
   const router = useRouter();
   const { getIdToken } = useAuth();
   const { setAuthToken, onExamsPageVisit } = usePreloading();
   
-  // Selection flow state — 3 steps: paper → unit → confirm (exam type is always CLE)
+  // ── Top-level tab ──
+  const [activeTab, setActiveTab] = useState<PageTab>('practice');
+
+  // ── Practice exam selection flow ──
   const [step, setStep] = useState<'paper' | 'unit' | 'confirm'>('paper');
   const selectedType: ExamType = 'cle';
   const [selectedPaper, setSelectedPaper] = useState<PaperSize | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<typeof ATP_UNITS[number] | null>(null);
-
-  // Modal state
   const [modalOpen, setModalOpen] = useState(false);
+
+  // ── Past papers state ──
+  const [ppView, setPpView] = useState<PastPapersView>('browse');
+  const [papers, setPapers] = useState<PastPaperEntry[]>([]);
+  const [topicFrequency, setTopicFrequency] = useState<Record<string, number>>({});
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [ppLoading, setPpLoading] = useState(false);
+  const [ppFilterUnit, setPpFilterUnit] = useState('');
+  const [ppFilterYear, setPpFilterYear] = useState('');
+  const [activePaper, setActivePaper] = useState<PastPaperEntry | null>(null);
+  const [questions, setQuestions] = useState<PastQuestion[]>([]);
+  const [paperLoading, setPaperLoading] = useState(false);
+  const [generatingFor, setGeneratingFor] = useState<string | null>(null);
+  const [generated, setGenerated] = useState<Record<string, GeneratedQuestion>>({});
+  const [showAnswer, setShowAnswer] = useState<Record<string, boolean>>({});
 
   // Trigger preloading when page loads
   useEffect(() => {
@@ -134,7 +196,6 @@ export default function ExamsPage() {
         const token = await getIdToken();
         if (token) {
           setAuthToken(token);
-          // Start preloading likely exams in background
           onExamsPageVisit();
         }
       } catch (error) {
@@ -144,160 +205,645 @@ export default function ExamsPage() {
     initPreloading();
   }, [getIdToken, setAuthToken, onExamsPageVisit]);
 
+  // ── Past papers fetch ──
+  const fetchPapers = useCallback(async () => {
+    setPpLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (ppFilterUnit) params.set('unitId', ppFilterUnit);
+      if (ppFilterYear) params.set('year', ppFilterYear);
+      const res = await fetch(`/api/past-papers?${params.toString()}`);
+      if (!res.ok) throw new Error('Failed to fetch');
+      const data = await res.json();
+      setPapers(data.papers || []);
+      setTopicFrequency(data.topicFrequency || {});
+      setAvailableYears(data.availableYears || []);
+    } catch (err) {
+      console.error('Failed to fetch past papers:', err);
+    } finally {
+      setPpLoading(false);
+    }
+  }, [ppFilterUnit, ppFilterYear]);
+
+  useEffect(() => {
+    if (activeTab === 'past-papers') fetchPapers();
+  }, [activeTab, fetchPapers]);
+
+  const openPaper = async (paper: PastPaperEntry) => {
+    setPaperLoading(true);
+    setActivePaper(paper);
+    setPpView('paper');
+    try {
+      const res = await fetch(`/api/past-papers?paperId=${paper.id}`);
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      setQuestions(data.questions || []);
+    } catch (err) {
+      console.error('Failed to fetch questions:', err);
+    } finally {
+      setPaperLoading(false);
+    }
+  };
+
+  const generateSimilar = async (question: PastQuestion) => {
+    setGeneratingFor(question.id);
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/past-papers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: 'similar_question',
+          questionText: question.questionText,
+          unitName: activePaper?.unitName,
+          topics: question.topics,
+          marks: question.marks,
+          questionType: question.questionType,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      if (data.generatedQuestion) {
+        setGenerated(prev => ({ ...prev, [question.id]: data.generatedQuestion }));
+      }
+    } catch (err) {
+      console.error('Failed to generate similar question:', err);
+    } finally {
+      setGeneratingFor(null);
+    }
+  };
+
+  // ── Practice exam helpers ──
   const openModal = () => {
     setStep('paper');
     setSelectedPaper(null);
     setSelectedUnit(null);
     setModalOpen(true);
   };
-
-  const closeModal = () => {
-    setModalOpen(false);
-  };
-
-  const handlePaperSelect = (size: PaperSize) => {
-    setSelectedPaper(size);
-    setStep('unit');
-  };
-
-  const handleUnitSelect = (unit: typeof ATP_UNITS[number]) => {
-    setSelectedUnit(unit);
-    setStep('confirm');
-  };
-
+  const closeModal = () => setModalOpen(false);
+  const handlePaperSelect = (size: PaperSize) => { setSelectedPaper(size); setStep('unit'); };
+  const handleUnitSelect = (unit: typeof ATP_UNITS[number]) => { setSelectedUnit(unit); setStep('confirm'); };
   const handleStartExam = () => {
     if (selectedUnit && selectedPaper) {
       router.push(`/exams/${selectedUnit.id}?type=${selectedType}&paper=${selectedPaper}`);
     }
   };
-
   const goBack = () => {
     if (step === 'confirm') setStep('unit');
     else if (step === 'unit') setStep('paper');
     else closeModal();
   };
-
   const config = selectedPaper ? PAPER_SIZES[selectedType][selectedPaper] : null;
+
+  // ── Past papers helpers ──
+  const sortedTopics = Object.entries(topicFrequency).sort(([, a], [, b]) => b - a);
+  const maxFrequency = sortedTopics.length > 0 ? sortedTopics[0][1] : 1;
+  const papersByYear = papers.reduce<Record<number, PastPaperEntry[]>>((acc, p) => {
+    (acc[p.year] = acc[p.year] || []).push(p);
+    return acc;
+  }, {});
+  const sortedYears = Object.keys(papersByYear).map(Number).sort((a, b) => b - a);
 
   return (
     <PremiumGate feature="cle_exam">
-    <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-10">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Examinations</h1>
-          <p className="text-muted-foreground mt-1">
-            Test your mastery under timed conditions
-          </p>
+    <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
+
+      {/* ────────────────────────────────────────────────────────
+          HEADER + TAB SWITCHER
+         ──────────────────────────────────────────────────────── */}
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Examinations</h1>
+            <p className="text-muted-foreground mt-1">
+              {activeTab === 'practice'
+                ? 'Test your mastery under timed conditions'
+                : ppView === 'paper'
+                  ? `${activePaper?.unitName} — ${activePaper?.year}`
+                  : 'Browse KSL past examination papers (2010–2025)'
+              }
+            </p>
+          </div>
+          {activeTab === 'practice' && (
+            <button
+              onClick={openModal}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Sparkles className="h-4 w-4" />
+              Start New Exam
+            </button>
+          )}
+          {activeTab === 'past-papers' && ppView === 'paper' && (
+            <button
+              onClick={() => { setPpView('browse'); setActivePaper(null); setQuestions([]); setGenerated({}); setShowAnswer({}); }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-muted/50 hover:bg-muted transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Papers
+            </button>
+          )}
         </div>
-        <button
-          onClick={openModal}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Sparkles className="h-4 w-4" />
-          Start New Exam
-        </button>
+
+        {/* Tab bar */}
+        {!(activeTab === 'past-papers' && ppView === 'paper') && (
+          <div className="flex items-center gap-1 p-1 rounded-2xl bg-muted/30 w-fit">
+            {([
+              { key: 'practice' as PageTab, label: 'Practice Exams', icon: Edit3 },
+              { key: 'past-papers' as PageTab, label: 'Past Papers', icon: ScrollText },
+            ]).map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => { setActiveTab(tab.key); if (tab.key === 'past-papers') setPpView('browse'); }}
+                  className={`
+                    relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300
+                    ${isActive
+                      ? 'bg-background text-foreground shadow-sm shadow-black/5'
+                      : 'text-muted-foreground hover:text-foreground'
+                    }
+                  `}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Quick Stats — borderless gradient tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { icon: Target, value: '60', label: 'Max Marks', gradient: 'from-emerald-500/6 to-transparent', iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-600' },
-          { icon: Timer, value: '3h', label: 'CLE Time', gradient: 'from-sky-500/6 to-transparent', iconBg: 'bg-sky-500/10', iconColor: 'text-sky-600' },
-          { icon: FileQuestion, value: '3', label: 'Paper Sizes', gradient: 'from-violet-500/6 to-transparent', iconBg: 'bg-violet-500/10', iconColor: 'text-violet-600' },
-          { icon: GraduationCap, value: '12', label: 'ATP Units', gradient: 'from-amber-500/6 to-transparent', iconBg: 'bg-amber-500/10', iconColor: 'text-amber-600' },
-        ].map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.label} className={`rounded-2xl bg-gradient-to-br ${stat.gradient} p-5`}>
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-xl ${stat.iconBg}`}>
-                  <Icon className={`h-4 w-4 ${stat.iconColor}`} />
+      {/* ════════════════════════════════════════════════════════════════
+           PRACTICE EXAMS TAB
+         ════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'practice' && (
+        <div className="space-y-10 animate-in fade-in duration-300">
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { icon: Target, value: '60', label: 'Max Marks', gradient: 'from-emerald-500/6 to-transparent', iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-600' },
+              { icon: Timer, value: '3h', label: 'CLE Time', gradient: 'from-sky-500/6 to-transparent', iconBg: 'bg-sky-500/10', iconColor: 'text-sky-600' },
+              { icon: FileQuestion, value: '3', label: 'Paper Sizes', gradient: 'from-violet-500/6 to-transparent', iconBg: 'bg-violet-500/10', iconColor: 'text-violet-600' },
+              { icon: GraduationCap, value: '12', label: 'ATP Units', gradient: 'from-amber-500/6 to-transparent', iconBg: 'bg-amber-500/10', iconColor: 'text-amber-600' },
+            ].map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <div key={stat.label} className={`rounded-2xl bg-gradient-to-br ${stat.gradient} p-5`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-xl ${stat.iconBg}`}>
+                      <Icon className={`h-4 w-4 ${stat.iconColor}`} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{stat.value}</p>
+                      <p className="text-xs text-muted-foreground">{stat.label}</p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+              );
+            })}
+          </div>
+
+          {/* CLE Exam Format */}
+          <div className="rounded-2xl p-6 bg-gradient-to-br from-stone-500/5 via-stone-400/3 to-transparent dark:from-stone-400/5 dark:via-stone-400/3">
+            <div className="flex items-start gap-4 mb-5">
+              <div className="p-3 rounded-xl bg-stone-500/8 dark:bg-stone-400/8">
+                <Edit3 className="h-6 w-6 text-stone-600 dark:text-stone-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">CLE Standard Written Exam</h3>
+                <p className="text-sm text-muted-foreground">Written exam format with AI-powered grading and detailed feedback</p>
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {(['mini', 'semi', 'full'] as PaperSize[]).map((size) => {
+                const cfg = PAPER_SIZES.cle[size];
+                return (
+                  <button
+                    key={size}
+                    onClick={() => { setSelectedPaper(size); setStep('unit'); setModalOpen(true); }}
+                    className="group text-left p-4 rounded-xl bg-card/40 hover:bg-card/80 border border-border/20 hover:border-primary/20 transition-all"
+                  >
+                    <p className="font-medium text-sm">{cfg.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{cfg.marks} marks · Q1 + choose {cfg.optionalChoose}/{cfg.optionalCount} · {cfg.time} min</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ATP Units Grid */}
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Available Units</h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {ATP_UNITS.map((unit) => {
+                const Icon = ICON_MAP[unit.icon] || BookOpen;
+                return (
+                  <button
+                    key={unit.id}
+                    className="group text-left rounded-xl p-4 bg-gradient-to-br from-muted/40 to-transparent hover:from-primary/6 hover:to-transparent transition-all duration-300"
+                    onClick={() => { setSelectedUnit(unit); setStep('paper'); setModalOpen(true); }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-primary/8 shrink-0">
+                        <Icon className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{(unit as any).code}</p>
+                        <p className="font-medium text-sm truncate">{unit.name}</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-60 transition-opacity shrink-0 mt-1" />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════
+           PAST PAPERS TAB
+         ════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'past-papers' && (
+        <div className="animate-in fade-in duration-300">
+          {/* ── Browse / Analysis sub-navigation ── */}
+          {ppView !== 'paper' && (
+            <div className="space-y-6">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Sub-view pills */}
+                <div className="flex gap-1.5 p-0.5 rounded-xl bg-muted/20">
+                  {[
+                    { key: 'browse' as PastPapersView, label: 'Browse', icon: Eye },
+                    { key: 'analysis' as PastPapersView, label: 'Topic Analysis', icon: BarChart3 },
+                  ].map(v => {
+                    const Icon = v.icon;
+                    return (
+                      <button
+                        key={v.key}
+                        onClick={() => setPpView(v.key)}
+                        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                          ppView === v.key
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {v.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Filters */}
+                <div className="flex flex-wrap gap-2 ml-auto">
+                  <div className="relative">
+                    <select
+                      value={ppFilterUnit}
+                      onChange={(e) => setPpFilterUnit(e.target.value)}
+                      className="appearance-none pl-8 pr-7 py-1.5 rounded-lg bg-card border border-border/20 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                    >
+                      <option value="">All Units</option>
+                      {ATP_UNITS.map(u => (
+                        <option key={u.id} value={u.id}>{u.code} — {u.name}</option>
+                      ))}
+                    </select>
+                    <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={ppFilterYear}
+                      onChange={(e) => setPpFilterYear(e.target.value)}
+                      className="appearance-none pl-8 pr-7 py-1.5 rounded-lg bg-card border border-border/20 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                    >
+                      <option value="">All Years</option>
+                      {availableYears.map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                    <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+                  </div>
+                  {(ppFilterUnit || ppFilterYear) && (
+                    <button
+                      onClick={() => { setPpFilterUnit(''); setPpFilterYear(''); }}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-medium text-muted-foreground hover:bg-muted/40 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                      Clear
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
-          );
-        })}
-      </div>
+          )}
 
-      {/* CLE Exam Format — Paper Size Options */}
-      <div className="rounded-2xl p-6 bg-gradient-to-br from-stone-500/5 via-stone-400/3 to-transparent dark:from-stone-400/5 dark:via-stone-400/3">
-        <div className="flex items-start gap-4 mb-5">
-          <div className="p-3 rounded-xl bg-stone-500/8 dark:bg-stone-400/8">
-            <Edit3 className="h-6 w-6 text-stone-600 dark:text-stone-400" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold">CLE Standard Written Exam</h3>
-            <p className="text-sm text-muted-foreground">Written exam format with AI-powered grading and detailed feedback</p>
-          </div>
-        </div>
-        <div className="grid sm:grid-cols-3 gap-3">
-          {(['mini', 'semi', 'full'] as PaperSize[]).map((size) => {
-            const cfg = PAPER_SIZES.cle[size];
-            return (
-              <button
-                key={size}
-                onClick={() => {
-                  setSelectedPaper(size);
-                  setStep('unit');
-                  setModalOpen(true);
-                }}
-                className="group text-left p-4 rounded-xl bg-card/40 hover:bg-card/80 border border-border/20 hover:border-primary/20 transition-all"
-              >
-                <p className="font-medium text-sm">{cfg.label}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{cfg.marks} marks · Q1 + choose {cfg.optionalChoose}/{cfg.optionalCount} · {cfg.time} min</p>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+          {/* Loading */}
+          {ppLoading && (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-primary/60" />
+            </div>
+          )}
 
-      {/* ATP Units Grid — minimal tiles */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Available Units</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {ATP_UNITS.map((unit) => {
-            const Icon = ICON_MAP[unit.icon] || BookOpen;
-            return (
-              <button
-                key={unit.id}
-                className="group text-left rounded-xl p-4 bg-gradient-to-br from-muted/40 to-transparent hover:from-primary/6 hover:to-transparent transition-all duration-300"
-                onClick={() => {
-                  setSelectedUnit(unit);
-                  setStep('paper');
-                  setModalOpen(true);
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-primary/8 shrink-0">
-                    <Icon className="h-4 w-4 text-primary" />
+          {/* ── BROWSE VIEW ── */}
+          {!ppLoading && ppView === 'browse' && (
+            <div className="space-y-8 mt-6">
+              {papers.length === 0 ? (
+                <div className="text-center py-20">
+                  <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-muted/60 to-muted/20 flex items-center justify-center mb-4">
+                    <ScrollText className="h-8 w-8 text-muted-foreground/40" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{(unit as any).code}</p>
-                    <p className="font-medium text-sm truncate">{unit.name}</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-60 transition-opacity shrink-0 mt-1" />
+                  <p className="text-lg font-medium text-muted-foreground">No past papers yet</p>
+                  <p className="text-sm text-muted-foreground/70 mt-1">Papers will appear here once uploaded</p>
                 </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+              ) : (
+                <>
+                  {/* Stats ribbon */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { icon: ScrollText, value: papers.length.toString(), label: 'Papers', gradient: 'from-emerald-500/6 to-transparent', iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-600' },
+                      { icon: Calendar, value: availableYears.length > 0 ? `${availableYears[availableYears.length - 1]}–${availableYears[0]}` : '—', label: 'Year Range', gradient: 'from-sky-500/6 to-transparent', iconBg: 'bg-sky-500/10', iconColor: 'text-sky-600' },
+                      { icon: Hash, value: sortedTopics.length.toString(), label: 'Topics Covered', gradient: 'from-violet-500/6 to-transparent', iconBg: 'bg-violet-500/10', iconColor: 'text-violet-600' },
+                      { icon: TrendingUp, value: sortedTopics.length > 0 ? sortedTopics[0][0].slice(0, 18) : '—', label: 'Most Tested', gradient: 'from-amber-500/6 to-transparent', iconBg: 'bg-amber-500/10', iconColor: 'text-amber-600' },
+                    ].map(s => {
+                      const Icon = s.icon;
+                      return (
+                        <div key={s.label} className={`rounded-2xl bg-gradient-to-br ${s.gradient} p-4`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-xl ${s.iconBg}`}>
+                              <Icon className={`h-4 w-4 ${s.iconColor}`} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-lg font-bold truncate">{s.value}</p>
+                              <p className="text-[10px] text-muted-foreground">{s.label}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
 
-      {/* SELECTION MODAL — soft glow, no harsh outlines */}
+                  {/* Papers grouped by year */}
+                  {sortedYears.map(year => (
+                    <div key={year}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="h-px flex-1 bg-border/20" />
+                        <span className="text-xs font-bold text-muted-foreground tracking-widest uppercase">{year}</span>
+                        <div className="h-px flex-1 bg-border/20" />
+                      </div>
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {papersByYear[year].map(paper => {
+                          const unit = ATP_UNITS.find(u => u.id === paper.unitId);
+                          const Icon = unit ? (ICON_MAP[unit.icon] || BookOpen) : BookOpen;
+                          return (
+                            <button
+                              key={paper.id}
+                              onClick={() => openPaper(paper)}
+                              className="group text-left rounded-2xl p-4 bg-gradient-to-br from-muted/30 to-transparent hover:from-primary/5 hover:to-transparent border border-transparent hover:border-primary/10 transition-all duration-300 hover:shadow-md hover:shadow-primary/5"
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="p-2.5 rounded-xl bg-primary/6 group-hover:bg-primary/12 transition-colors shrink-0">
+                                  <Icon className="h-4 w-4 text-primary" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{unit?.code || paper.unitId}</p>
+                                  <p className="font-medium text-sm truncate mt-0.5">{paper.unitName}</p>
+                                  <div className="flex items-center gap-2.5 mt-2 text-[10px] text-muted-foreground">
+                                    {paper.totalMarks && (
+                                      <span className="flex items-center gap-0.5">
+                                        <Hash className="h-2.5 w-2.5" />{paper.totalMarks}m
+                                      </span>
+                                    )}
+                                    <span>{paper.questionCount} Qs</span>
+                                    {paper.sitting !== 'main' && (
+                                      <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-600 rounded text-[9px] font-semibold uppercase">
+                                        {paper.sitting}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary/60 transition-colors shrink-0 mt-0.5" />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ── TOPIC ANALYSIS VIEW ── */}
+          {!ppLoading && ppView === 'analysis' && (
+            <div className="mt-6">
+              {sortedTopics.length === 0 ? (
+                <div className="text-center py-20">
+                  <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-muted/60 to-muted/20 flex items-center justify-center mb-4">
+                    <BarChart3 className="h-8 w-8 text-muted-foreground/40" />
+                  </div>
+                  <p className="text-lg font-medium text-muted-foreground">No topic data yet</p>
+                  <p className="text-sm text-muted-foreground/70 mt-1">Topic analysis appears once papers are uploaded</p>
+                </div>
+              ) : (
+                <div className="rounded-2xl p-6 bg-gradient-to-br from-violet-500/4 via-transparent to-transparent">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold">Topic Frequency</h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      How often each topic has been tested across {papers.length} paper{papers.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <div className="space-y-2.5">
+                    {sortedTopics.slice(0, 30).map(([topic, freq], i) => (
+                      <div key={topic} className="group flex items-center gap-3">
+                        <span className="text-[10px] font-bold text-muted-foreground/40 w-5 text-right tabular-nums">{i + 1}</span>
+                        <span className="text-sm font-medium w-[180px] md:w-[280px] truncate shrink-0" title={topic}>
+                          {topic}
+                        </span>
+                        <div className="flex-1 h-7 bg-muted/15 rounded-lg overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-violet-500/80 to-purple-400/60 rounded-lg transition-all duration-700 ease-out flex items-center justify-end pr-2.5"
+                            style={{ width: `${Math.max((freq / maxFrequency) * 100, 10)}%` }}
+                          >
+                            <span className="text-[10px] font-bold text-white drop-shadow-sm">
+                              {freq}×
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {sortedTopics.length > 30 && (
+                    <p className="text-xs text-muted-foreground mt-4 text-center">
+                      Showing top 30 of {sortedTopics.length} topics
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── PAPER VIEWER ── */}
+          {ppView === 'paper' && activePaper && (
+            <div className="space-y-6">
+              {/* Paper info card */}
+              <div className="rounded-2xl p-5 bg-gradient-to-r from-primary/4 via-transparent to-transparent flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                {activePaper.paperCode && (
+                  <span className="font-semibold text-primary">{activePaper.paperCode}</span>
+                )}
+                {activePaper.totalMarks && (
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <Hash className="h-3.5 w-3.5" /> {activePaper.totalMarks} marks
+                  </span>
+                )}
+                {activePaper.duration && (
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" /> {activePaper.duration}
+                  </span>
+                )}
+                <span className="text-muted-foreground">
+                  {questions.length} questions
+                </span>
+              </div>
+
+              {paperLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary/60" />
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {questions.map((q) => {
+                    const gen = generated[q.id];
+                    return (
+                      <div key={q.id} className="rounded-2xl border border-border/15 overflow-hidden hover:border-border/30 transition-colors">
+                        {/* Question header */}
+                        <div className="px-5 pt-5 pb-3">
+                          <div className="flex items-center gap-2 mb-2.5 flex-wrap">
+                            <span className="text-xs font-bold text-primary bg-primary/8 px-2.5 py-1 rounded-lg">
+                              Q{q.questionNumber}{q.subPart ? `(${q.subPart})` : ''}
+                            </span>
+                            {q.marks && (
+                              <span className="text-[10px] font-medium text-muted-foreground bg-muted/40 px-2 py-0.5 rounded-md">
+                                {q.marks} marks
+                              </span>
+                            )}
+                            {q.isCompulsory && (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 bg-red-500/8 text-red-500 rounded-md uppercase tracking-wide">
+                                Compulsory
+                              </span>
+                            )}
+                            {q.questionType && q.questionType !== 'essay' && (
+                              <span className="text-[10px] font-medium px-2 py-0.5 bg-sky-500/8 text-sky-600 rounded-md capitalize">
+                                {q.questionType}
+                              </span>
+                            )}
+                          </div>
+                          {q.topics.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-3">
+                              {q.topics.map(t => (
+                                <span key={t} className="text-[9px] px-2 py-0.5 bg-violet-500/6 text-violet-600 dark:text-violet-400 rounded-full font-medium">
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Question body */}
+                        <div className="px-5 pb-4">
+                          <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap leading-relaxed">
+                            {q.questionText}
+                          </div>
+                        </div>
+
+                        {/* Model Answer */}
+                        {q.modelAnswer && (
+                          <div className="border-t border-border/10">
+                            <button
+                              onClick={() => setShowAnswer(prev => ({ ...prev, [q.id]: !prev[q.id] }))}
+                              className="w-full px-5 py-2.5 text-left text-xs font-semibold text-emerald-600 hover:bg-emerald-500/4 transition-colors flex items-center gap-2"
+                            >
+                              <CheckCircle className="h-3.5 w-3.5" />
+                              {showAnswer[q.id] ? 'Hide' : 'Show'} Model Answer
+                            </button>
+                            {showAnswer[q.id] && (
+                              <div className="px-5 pb-5 prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                                {q.modelAnswer}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="border-t border-border/8 px-5 py-2.5 bg-muted/5">
+                          <button
+                            onClick={() => generateSimilar(q)}
+                            disabled={generatingFor === q.id}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-primary/6 text-primary hover:bg-primary/12 transition-colors disabled:opacity-50"
+                          >
+                            {generatingFor === q.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3 w-3" />
+                            )}
+                            {generatingFor === q.id ? 'Generating…' : 'Generate Similar Question'}
+                          </button>
+                        </div>
+
+                        {/* AI Generated Question */}
+                        {gen && (
+                          <div className="border-t border-primary/8 bg-gradient-to-b from-primary/3 to-transparent px-5 py-4 space-y-3">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                              <Sparkles className="h-3.5 w-3.5" />
+                              AI-Generated Practice Question
+                              {gen.marks && <span className="text-muted-foreground font-normal">({gen.marks} marks)</span>}
+                            </div>
+                            <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                              {gen.question}
+                            </div>
+                            {gen.topicsCovered?.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {gen.topicsCovered.map(t => (
+                                  <span key={t} className="text-[9px] px-2 py-0.5 bg-primary/8 text-primary rounded-full font-medium">
+                                    {t}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {gen.modelAnswer && (
+                              <details className="group">
+                                <summary className="text-xs font-semibold text-emerald-600 cursor-pointer hover:underline flex items-center gap-1.5">
+                                  <CheckCircle className="h-3 w-3" />
+                                  View Model Answer
+                                </summary>
+                                <div className="mt-2 prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                                  {gen.modelAnswer}
+                                </div>
+                              </details>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════
+           EXAM SELECTION MODAL (shared)
+         ════════════════════════════════════════════════════════════════ */}
       <AnimatedModal isOpen={modalOpen} onClose={closeModal} size="lg">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border/30">
           <div className="flex items-center gap-3">
             {step !== 'paper' && (
-              <button
-                onClick={goBack}
-                className="p-2 -ml-2 rounded-lg hover:bg-muted/60 transition-colors"
-              >
+              <button onClick={goBack} className="p-2 -ml-2 rounded-lg hover:bg-muted/60 transition-colors">
                 <ArrowLeft className="h-5 w-5" />
               </button>
             )}
@@ -312,10 +858,7 @@ export default function ExamsPage() {
               </h3>
             </div>
           </div>
-          <button
-            onClick={closeModal}
-            className="p-2 rounded-lg hover:bg-muted/60 transition-colors"
-          >
+          <button onClick={closeModal} className="p-2 rounded-lg hover:bg-muted/60 transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -326,12 +869,7 @@ export default function ExamsPage() {
             {[1, 2, 3].map((s) => {
               const stepIndex = step === 'paper' ? 1 : step === 'unit' ? 2 : 3;
               return (
-                <div
-                  key={s}
-                  className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-                    s <= stepIndex ? 'bg-primary' : 'bg-muted/60'
-                  }`}
-                />
+                <div key={s} className={`h-1 flex-1 rounded-full transition-all duration-300 ${s <= stepIndex ? 'bg-primary' : 'bg-muted/60'}`} />
               );
             })}
           </div>
@@ -395,7 +933,7 @@ export default function ExamsPage() {
             </div>
           )}
 
-          {/* Step 3: Unit Selection */}
+          {/* Step 2: Unit Selection */}
           {step === 'unit' && (
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
@@ -438,17 +976,12 @@ export default function ExamsPage() {
                   <CheckCircle className="h-8 w-8 text-primary" />
                 </div>
                 <h4 className="font-semibold text-lg">Ready to Start?</h4>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Review your exam settings below
-                </p>
+                <p className="text-sm text-muted-foreground mt-1">Review your exam settings below</p>
               </div>
-
               <div className="rounded-2xl bg-gradient-to-br from-muted/40 to-transparent p-5 space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Exam Type</span>
-                  <span className="font-medium px-2 py-0.5 rounded-full text-xs bg-stone-500/10 text-stone-600 dark:bg-stone-400/10 dark:text-stone-400">
-                    CLE Standard
-                  </span>
+                  <span className="font-medium px-2 py-0.5 rounded-full text-xs bg-stone-500/10 text-stone-600 dark:bg-stone-400/10 dark:text-stone-400">CLE Standard</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Paper Size</span>
@@ -460,8 +993,8 @@ export default function ExamsPage() {
                 </div>
                 <div className="border-t border-border/20 pt-3 mt-3">
                   <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Structure</span>
-                  <span className="font-medium">Q1 compulsory + choose {config.optionalChoose}/{config.optionalCount}</span>
+                    <span className="text-muted-foreground">Structure</span>
+                    <span className="font-medium">Q1 compulsory + choose {config.optionalChoose}/{config.optionalCount}</span>
                   </div>
                   <div className="flex justify-between text-sm mt-1">
                     <span className="text-muted-foreground">Total Marks</span>
@@ -476,7 +1009,6 @@ export default function ExamsPage() {
                   </div>
                 </div>
               </div>
-
               <div className="flex gap-3">
                 <button onClick={goBack} className="flex-1 py-2.5 rounded-xl border border-border/30 hover:bg-muted/40 transition-colors font-medium text-sm">
                   Back
@@ -490,6 +1022,7 @@ export default function ExamsPage() {
           )}
         </div>
       </AnimatedModal>
+
     </div>
     </PremiumGate>
   );

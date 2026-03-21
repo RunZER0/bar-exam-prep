@@ -31,7 +31,6 @@ import {
   Target,
   Mic,
   Lock,
-  ScrollText,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -41,7 +40,6 @@ const NAV_ITEMS = [
   { href: '/drafting', label: 'Legal Drafting', icon: FileText },
   { href: '/study', label: 'Study', icon: BookOpen },
   { href: '/exams', label: 'Examinations', icon: ClipboardCheck },
-  { href: '/past-papers', label: 'Past Papers', icon: ScrollText },
   { href: '/oral-exams', label: 'Oral Exams', icon: Mic },
   { href: '/quizzes', label: 'Quizzes & Trivia', icon: Lightbulb },
   { href: '/community', label: 'Community', icon: Users },

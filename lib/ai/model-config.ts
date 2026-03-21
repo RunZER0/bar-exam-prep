@@ -24,6 +24,9 @@ export const FAST_MODEL = process.env.OPENAI_FAST_MODEL || 'gpt-5-mini';
 // === Minimum Floor Model — fast & cheap for streaming, oral exams ===
 export const MINI_MODEL = process.env.MINI_MODEL || 'gpt-5-mini';
 
+// === Frontier Model — GPT-5.4 for deep analysis / one-time generation tasks ===
+export const FRONTIER_MODEL = process.env.FRONTIER_MODEL || 'gpt-5.4';
+
 // === Quiz Model — GPT-5.4-mini for structured JSON quiz generation ===
 export const QUIZ_MODEL = process.env.QUIZ_MODEL || 'gpt-5.4-mini';
 

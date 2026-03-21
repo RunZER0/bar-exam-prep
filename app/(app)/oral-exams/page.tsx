@@ -268,14 +268,18 @@ export default function OralExamsPage() {
     const addHeader = () => {
       doc.setFillColor(24, 24, 27);
       doc.rect(0, 0, pageW, 28, 'F');
+      // Green accent circle (Ynai brand)
+      doc.setFillColor(34, 197, 94);
+      doc.circle(margin + 3, 14, 3, 'F');
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(18);
       doc.setTextColor(255, 255, 255);
-      doc.text('YNAI', margin, 16);
+      doc.text('YNAI', margin + 9, 16);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
+      doc.setTextColor(34, 197, 94);
+      doc.text('Study Smart', margin + 9, 23);
       doc.setTextColor(180, 180, 180);
-      doc.text('Session Transcript', margin, 23);
       doc.text(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), pageW - margin, 16, { align: 'right' });
       y = 38;
     };
@@ -285,7 +289,7 @@ export default function OralExamsPage() {
       doc.rect(0, pageH - 14, pageW, 14, 'F');
       doc.setFontSize(7);
       doc.setTextColor(140, 140, 140);
-      doc.text('Ynai — Empowering Future Advocates', margin, pageH - 6);
+      doc.text('Ynai — Study Smart', margin, pageH - 6);
       doc.text(`Page ${pn}`, pageW - margin, pageH - 6, { align: 'right' });
     };
 
@@ -1359,14 +1363,17 @@ export default function OralExamsPage() {
         // Ynai branding header
         doc.setFillColor(24, 24, 27); // zinc-900
         doc.rect(0, 0, pageW, 28, 'F');
+        // Green accent circle (Ynai brand)
+        doc.setFillColor(34, 197, 94);
+        doc.circle(margin + 3, 14, 3, 'F');
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(18);
         doc.setTextColor(255, 255, 255);
-        doc.text('YNAI', margin, 16);
+        doc.text('YNAI', margin + 9, 16);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
-        doc.setTextColor(180, 180, 180);
-        doc.text('Your Next-Gen AI Legal Tutor', margin, 23);
+        doc.setTextColor(34, 197, 94);
+        doc.text('Study Smart', margin + 9, 23);
         // Right side date
         doc.setFontSize(8);
         doc.setTextColor(180, 180, 180);
@@ -1379,7 +1386,7 @@ export default function OralExamsPage() {
         doc.rect(0, pageH - 14, pageW, 14, 'F');
         doc.setFontSize(7);
         doc.setTextColor(140, 140, 140);
-        doc.text('Ynai — Empowering Future Advocates', margin, pageH - 6);
+        doc.text('Ynai — Study Smart', margin, pageH - 6);
         doc.text(`Page ${pageNum}`, pageW - margin, pageH - 6, { align: 'right' });
       };
 

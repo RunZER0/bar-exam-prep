@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePreloading } from '@/lib/services/preloading';
@@ -838,8 +839,9 @@ export default function ExamsPage() {
 
               {!analysisLoading && !analysisReport && (
                 <div className="text-center py-16 space-y-4">
-                  <div className="mx-auto w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 flex items-center justify-center mb-6">
-                    <Brain className="h-10 w-10 text-indigo-500/60" />
+                  <div className="mx-auto flex flex-col items-center gap-2 mb-6">
+                    <Image src="/favicon-32x32.png" alt="Ynai" width={40} height={40} className="rounded-lg" />
+                    <span className="text-xs font-semibold tracking-widest uppercase text-primary/70">Study Smart</span>
                   </div>
                   <h3 className="text-xl font-bold">Deep Pattern Analysis</h3>
                   <p className="text-sm text-muted-foreground max-w-md mx-auto">
@@ -864,6 +866,20 @@ export default function ExamsPage() {
 
               {!analysisLoading && analysisReport && (
                 <div className="space-y-6">
+                  {/* Ynai Branding Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Image src="/favicon-32x32.png" alt="Ynai" width={28} height={28} className="rounded-md" />
+                      <div>
+                        <h3 className="text-sm font-bold leading-none">Ynai Deep Analysis</h3>
+                        <p className="text-[10px] font-medium tracking-widest uppercase text-primary/60 mt-0.5">Study Smart</p>
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Powered by GPT-5.4 &middot; {analysisReport.summary?.totalPapers || '—'} papers
+                    </div>
+                  </div>
+
                   {/* Section Navigation */}
                   <div className="flex flex-wrap gap-1.5 p-1 rounded-xl bg-muted/15">
                     {[

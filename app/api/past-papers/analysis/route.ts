@@ -4,7 +4,7 @@ import { pastPapers, pastPaperQuestions, pastPaperAnalysisCache } from '@/lib/db
 import { eq, desc, sql, count } from 'drizzle-orm';
 import { withAuth, type AuthUser } from '@/lib/auth/middleware';
 import OpenAI from 'openai';
-import { ORCHESTRATOR_MODEL, QUIZ_MODEL, AI_IDENTITY } from '@/lib/ai/model-config';
+import { ORCHESTRATOR_MODEL, FRONTIER_MODEL, QUIZ_MODEL, AI_IDENTITY } from '@/lib/ai/model-config';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -73,7 +73,8 @@ export const POST = withAuth(async (req: NextRequest, _user: AuthUser) => {
       const stats = computeRawStats(allPapers, allQuestions, paperMap);
 
       const completion = await openai.chat.completions.create({
-        model: ORCHESTRATOR_MODEL,
+        model: FRONTIER_MODEL,
+        reasoning_effort: 'high' as any,
         messages: [
           {
             role: 'system',
@@ -175,7 +176,7 @@ ${qs.map(q => `  Q${q.questionNumber}${q.subPart ? `(${q.subPart})` : ''} [${q.m
 Generate the comprehensive analysis JSON. Be thorough — identify every pattern, trend, correlation, and predictive insight possible. This is the definitive analytical resource for bar exam preparation.`
           }
         ],
-        max_completion_tokens: 16000,
+        max_completion_tokens: 65536,
         response_format: { type: 'json_object' },
       });
 
@@ -196,7 +197,7 @@ Generate the comprehensive analysis JSON. Be thorough — identify every pattern
         paperCount: allPapers.length,
         questionCount: allQuestions.length,
         generatedAt: new Date(),
-        modelUsed: ORCHESTRATOR_MODEL,
+        modelUsed: FRONTIER_MODEL,
       });
 
       return NextResponse.json({
@@ -204,7 +205,7 @@ Generate the comprehensive analysis JSON. Be thorough — identify every pattern
         paperCount: allPapers.length,
         questionCount: allQuestions.length,
         generatedAt: new Date().toISOString(),
-        modelUsed: ORCHESTRATOR_MODEL,
+        modelUsed: FRONTIER_MODEL,
         fromCache: false,
       });
     }

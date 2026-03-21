@@ -1,0 +1,70 @@
+[
+  {
+    "unitId": "atp-100",
+    "unitName": "Civil Litigation",
+    "year": 2024,
+    "sitting": "main",
+    "paperCode": "ATP 100",
+    "instructions": "Answer FIVE questions. Question 1 is COMPULSORY. Choose any other FOUR questions. Each question carries the marks indicated.",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Paste the FULL verbatim question text here exactly as it appears on the past paper.\n\nMultiple paragraphs are fine — just use \\n for line breaks.\n\nInclude any sub-parts (a), (b), (c) within the question text if they are part of one question.",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": ["Civil Procedure Rules", "Limitation of Actions", "Jurisdiction"],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 2,
+        "subPart": null,
+        "questionText": "Discuss the principles governing the grant of injunctive relief in civil litigation in Kenya. In your answer, address the requirements for interim, interlocutory, and permanent injunctions.",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": ["Injunctions", "Equitable Remedies"],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      },
+      {
+        "questionNumber": 3,
+        "subPart": null,
+        "questionText": "Another question here...",
+        "marks": 10,
+        "isCompulsory": false,
+        "topics": ["Topic A", "Topic B"],
+        "difficulty": "medium",
+        "questionType": "essay",
+        "modelAnswer": null
+      }
+    ]
+  },
+  {
+    "unitId": "atp-101",
+    "unitName": "Criminal Litigation",
+    "year": 2024,
+    "sitting": "main",
+    "paperCode": "ATP 101",
+    "instructions": "Answer FIVE questions...",
+    "totalMarks": 60,
+    "duration": "3 hours",
+    "questions": [
+      {
+        "questionNumber": 1,
+        "subPart": null,
+        "questionText": "Question text here...",
+        "marks": 20,
+        "isCompulsory": true,
+        "topics": ["Bail and Bond", "Criminal Procedure Code"],
+        "difficulty": "hard",
+        "questionType": "problem",
+        "modelAnswer": null
+      }
+    ]
+  }
+]

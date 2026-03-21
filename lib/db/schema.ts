@@ -577,6 +577,47 @@ export const directMessages = pgTable('direct_messages', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// ── Past Papers ──
+export const pastPapers = pgTable('past_papers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  unitId: text('unit_id').notNull(),           // e.g. 'atp-100'
+  unitName: text('unit_name').notNull(),        // e.g. 'Civil Litigation'
+  year: integer('year').notNull(),              // e.g. 2025
+  sitting: text('sitting').default('main'),     // 'main' | 'supplementary' | 'resit'
+  paperCode: text('paper_code'),                // The official paper code if any
+  instructions: text('instructions'),           // General instructions text
+  totalMarks: integer('total_marks'),
+  duration: integer('duration'),                // minutes
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const pastPaperQuestions = pgTable('past_paper_questions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  paperId: uuid('paper_id').references(() => pastPapers.id, { onDelete: 'cascade' }).notNull(),
+  questionNumber: integer('question_number').notNull(),   // 1, 2, 3...
+  subPart: text('sub_part'),                               // 'a', 'b', 'c' or null
+  questionText: text('question_text').notNull(),           // Verbatim question
+  marks: integer('marks'),                                 // Marks allocated
+  isCompulsory: boolean('is_compulsory').default(false).notNull(),
+  topics: jsonb('topics').$type<string[]>(),               // Tagged topics e.g. ['jurisdiction', 'pleadings']
+  difficulty: text('difficulty'),                           // 'easy' | 'medium' | 'hard'
+  questionType: text('question_type'),                     // 'essay' | 'problem' | 'drafting' | 'multiple_choice'
+  modelAnswer: text('model_answer'),                       // Optional model answer
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Past papers relations
+export const pastPapersRelations = relations(pastPapers, ({ many }) => ({
+  questions: many(pastPaperQuestions),
+}));
+
+export const pastPaperQuestionsRelations = relations(pastPaperQuestions, ({ one }) => ({
+  paper: one(pastPapers, {
+    fields: [pastPaperQuestions.paperId],
+    references: [pastPapers.id],
+  }),
+}));
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   profile: one(userProfiles),

@@ -40,9 +40,8 @@ export function useTimeTracker(section: string) {
   }, [user]);
 
   const reportVisit = useCallback(async (totalSeconds: number) => {
-    if (!user || visitReportedRef.current) return;
-    const minutes = Math.floor(totalSeconds / 60);
-    if (minutes < 5) return;
+    if (!user || visitReportedRef.current || totalSeconds < 30) return;
+    const minutes = Math.max(1, Math.floor(totalSeconds / 60));
     visitReportedRef.current = true;
     try {
       const token = await user.getIdToken();

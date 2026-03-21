@@ -157,58 +157,31 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="text-xl font-semibold mb-4">6. Third-Party Data Processors &amp; Cross-Border Transfers</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              We share limited data with the following third-party processors. Under Section 48 of the DPA, we ensure each provider offers adequate data protection safeguards:
+              We share limited data with carefully selected third-party processors to deliver our services. Under Section 48 of the DPA, we ensure each provider offers adequate data protection safeguards:
             </p>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-muted-foreground border-collapse mt-2">
-                <thead>
-                  <tr className="border-b border-border/50">
-                    <th className="text-left py-3 pr-4 font-semibold text-foreground">Provider</th>
-                    <th className="text-left py-3 pr-4 font-semibold text-foreground">Purpose</th>
-                    <th className="text-left py-3 pr-4 font-semibold text-foreground">Data Shared</th>
-                    <th className="text-left py-3 font-semibold text-foreground">Location</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-border/20">
-                    <td className="py-3 pr-4 font-medium">Google Firebase</td>
-                    <td className="py-3 pr-4">Authentication &amp; identity</td>
-                    <td className="py-3 pr-4">Email, display name, profile photo URL, auth tokens</td>
-                    <td className="py-3">United States</td>
-                  </tr>
-                  <tr className="border-b border-border/20">
-                    <td className="py-3 pr-4 font-medium">OpenAI</td>
-                    <td className="py-3 pr-4">AI tutoring, quiz generation, oral examinations, legal research, drafting assistance, email copywriting</td>
-                    <td className="py-3 pr-4"><strong>Anonymised interaction snapshots only</strong> — the text of your question/prompt, study context, and the legal topic. <strong>No name, email, student ID, or account identifiers are transmitted.</strong></td>
-                    <td className="py-3">United States</td>
-                  </tr>
-                  <tr className="border-b border-border/20">
-                    <td className="py-3 pr-4 font-medium">Paystack</td>
-                    <td className="py-3 pr-4">Payment processing (M-Pesa &amp; card)</td>
-                    <td className="py-3 pr-4">Email address, payment amount, transaction reference. Card/M-Pesa credentials go directly to Paystack and never reach our servers.</td>
-                    <td className="py-3">Nigeria / Kenya</td>
-                  </tr>
-                  <tr className="border-b border-border/20">
-                    <td className="py-3 pr-4 font-medium">Brevo (Sendinblue)</td>
-                    <td className="py-3 pr-4">Transactional &amp; engagement emails</td>
-                    <td className="py-3 pr-4">Email address, display name, and email content generated on our servers</td>
-                    <td className="py-3">European Union</td>
-                  </tr>
-                  <tr className="border-b border-border/20">
-                    <td className="py-3 pr-4 font-medium">Neon (PostgreSQL)</td>
-                    <td className="py-3 pr-4">Cloud database hosting</td>
-                    <td className="py-3 pr-4">All user data stored in encrypted-at-rest database</td>
-                    <td className="py-3">United States</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <ul className="list-disc pl-6 text-muted-foreground space-y-3">
+              <li>
+                <strong>Authentication Provider</strong> — We use a trusted identity platform to securely manage your login credentials and account verification. Data shared: email address, display name, and profile photo URL. <strong>We never see or store your password.</strong>
+              </li>
+              <li>
+                <strong>AI Processing Provider</strong> — Our AI-powered features (tutoring, quizzes, oral examinations, legal research, and drafting assistance) are powered by a leading AI service. <strong>Only anonymised interaction snapshots are sent</strong> — the text of your legal question or prompt and relevant study context. <strong>Your name, email, student number, and account identifiers are never transmitted.</strong> The AI provider does not use API-submitted data to train its models.
+              </li>
+              <li>
+                <strong>Payment Processor</strong> — Subscription payments (M-Pesa and card) are processed by a PCI-compliant payment provider. Data shared: email address, payment amount, and transaction reference. <strong>Your M-Pesa PIN, card number, and CVV never touch our servers</strong> — they go directly to the payment provider.
+              </li>
+              <li>
+                <strong>Email Delivery Provider</strong> — Transactional and engagement emails are dispatched through a professional email delivery service. Data shared: email address, display name, and email content generated on our servers.
+              </li>
+              <li>
+                <strong>Cloud Database Provider</strong> — Your data is stored in a managed, encrypted-at-rest cloud database hosted by a reputable infrastructure provider.
+              </li>
+            </ul>
 
             <div className="bg-primary/5 border border-primary/10 rounded-lg p-4 mt-6">
               <h4 className="text-sm font-semibold text-foreground mb-2">How AI Processing Works</h4>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                When you interact with any AI feature on Ynai, we send a <strong>snapshot</strong> of your interaction to OpenAI for processing. A snapshot contains only the academic content — for example: <em>&ldquo;Explain the doctrine of privity of contract under Kenyan law&rdquo;</em> or a legal drafting prompt. <strong>Your personal identifiers (name, email, student number, subscription details) are never included in any API request to OpenAI.</strong> OpenAI does not use data submitted via its API to train its models (per their data processing terms as of March 2026). We do not permit OpenAI to retain your interaction data beyond the period necessary to generate and return a response.
+                When you interact with any AI feature on Ynai, we send a <strong>snapshot</strong> of your interaction to our AI provider for processing. A snapshot contains only the academic content — for example: <em>&ldquo;Explain the doctrine of privity of contract under Kenyan law&rdquo;</em> or a legal drafting prompt. <strong>Your personal identifiers (name, email, student number, subscription details) are never included in any request to the AI provider.</strong> Our AI provider does not use data submitted via its API to train its models. We do not permit it to retain your interaction data beyond the period necessary to generate and return a response.
               </p>
             </div>
 

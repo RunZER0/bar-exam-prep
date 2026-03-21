@@ -79,20 +79,28 @@ function formatDate(dateString: string): string {
   if (hours < 24) return `${hours}h ago`;
   if (days === 1) return 'Yesterday';
   if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString('en-KE', { month: 'short', day: 'numeric', year: days > 365 ? 'numeric' : undefined });
+  // Display in Nairobi time
+  return date.toLocaleDateString('en-KE', { month: 'short', day: 'numeric', year: days > 365 ? 'numeric' : undefined, timeZone: 'Africa/Nairobi' });
 }
 
 function formatFullDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString('en-KE', {
-    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Africa/Nairobi',
   });
+}
+
+/** Convert a UTC date to Nairobi time (EAT, UTC+3) date string */
+function toNairobiDateKey(dateStr: string): string {
+  const d = new Date(dateStr);
+  // Shift to EAT (UTC+3) before extracting the date
+  const eat = new Date(d.getTime() + 3 * 60 * 60 * 1000);
+  return eat.toISOString().split('T')[0];
 }
 
 function groupByDate(activities: Activity[]): Record<string, Activity[]> {
   const groups: Record<string, Activity[]> = {};
   for (const a of activities) {
-    const d = new Date(a.date);
-    const key = d.toISOString().split('T')[0];
+    const key = toNairobiDateKey(a.date);
     if (!groups[key]) groups[key] = [];
     groups[key].push(a);
   }
@@ -101,9 +109,12 @@ function groupByDate(activities: Activity[]): Record<string, Activity[]> {
 
 function dateLabel(dateKey: string): string {
   const d = new Date(dateKey + 'T00:00:00');
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const diff = Math.round((now.getTime() - d.getTime()) / 86400000);
+  // Compare against today in Nairobi time (EAT, UTC+3)
+  const nowUtc = new Date();
+  const nairobiNow = new Date(nowUtc.getTime() + 3 * 60 * 60 * 1000);
+  const todayStr = nairobiNow.toISOString().split('T')[0];
+  const todayDate = new Date(todayStr + 'T00:00:00');
+  const diff = Math.round((todayDate.getTime() - d.getTime()) / 86400000);
   if (diff === 0) return 'Today';
   if (diff === 1) return 'Yesterday';
   if (diff < 7) return d.toLocaleDateString('en-KE', { weekday: 'long' });
@@ -263,7 +274,7 @@ export default function HistoryPage() {
             <History className="h-12 w-12 mx-auto text-muted-foreground/20" />
             <h3 className="text-lg font-medium text-muted-foreground">No activity yet</h3>
             <p className="text-sm text-muted-foreground/70 max-w-sm mx-auto">
-              Spend at least 5 minutes in any section and it will show up here automatically
+              Start studying, take a quiz, or explore any section and your activity will appear here
             </p>
             <div className="flex justify-center gap-2 pt-2">
               <button

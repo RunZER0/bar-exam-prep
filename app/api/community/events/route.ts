@@ -151,7 +151,7 @@ let _generatingDate: string | null = null;
 // Rotate challenge types across units each day so variety stays high
 const ROTATING_TYPES = ['drafting', 'trivia', 'research'] as const;
 
-async function ensureActiveChallenges(): Promise<void> {
+export async function ensureActiveChallenges(): Promise<void> {
   const now = new Date();
   const todayStr = getNairobiDateStr(); // Nairobi-time date
 

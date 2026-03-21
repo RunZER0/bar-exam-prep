@@ -11,6 +11,7 @@
  * - Weekly progress report emails (Sundays)
  * - Fun fact emails (Wednesdays & Saturdays)
  * - Trial expiry warning emails (24h before expiry)
+ * - Daily AI community challenges (generated at midnight Nairobi time)
  * - Push notifications
  * - Cleanup tasks
  */
@@ -18,6 +19,7 @@
 import { NextResponse } from 'next/server';
 import { processReminderTick, processWeeklyReports, processFunFactEmails, processTrialExpiryCheck } from '@/lib/services/notification-service';
 import { processRemindersWithPolicies } from '@/lib/services/reminder-policies';
+import { ensureActiveChallenges } from '@/app/api/community/events/route';
 import { verifyIdToken } from '@/lib/firebase/admin';
 import { headers } from 'next/headers';
 
@@ -112,6 +114,16 @@ export async function GET(request: Request) {
       trialExpiryResult.error = e instanceof Error ? e.message : 'Unknown error';
     }
 
+    // 6. Generate daily AI challenges at midnight Nairobi time (EAT, UTC+3)
+    let challengeResult: { generated: boolean; error?: string } = { generated: false };
+    try {
+      await ensureActiveChallenges();
+      challengeResult.generated = true;
+    } catch (e) {
+      console.error('[cron/tick] ensureActiveChallenges failed:', e);
+      challengeResult.error = e instanceof Error ? e.message : 'Unknown error';
+    }
+
     const duration = Date.now() - startTime;
 
     return NextResponse.json({
@@ -123,6 +135,7 @@ export async function GET(request: Request) {
       weeklyReports: weeklyResult,
       funFacts: funFactResult,
       trialExpiry: trialExpiryResult,
+      dailyChallenges: challengeResult,
     });
   } catch (error) {
     console.error('[cron/tick] Error:', error);

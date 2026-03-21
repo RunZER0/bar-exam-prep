@@ -39,14 +39,23 @@ export const GET = withAdminAuth(async (req: NextRequest, user) => {
       .select({ aiInteractions: count() })
       .from(chatHistory);
 
-    // Recent activity
-    const recentSessions = await db.query.practiceSessions.findMany({
-      orderBy: [desc(practiceSessions.createdAt)],
-      limit: 10,
-      with: {
-        user: true,
-      },
-    });
+    // Recent activity (explicit join — no relational query dependency)
+    const recentSessions = await db
+      .select({
+        id: practiceSessions.id,
+        competencyType: practiceSessions.competencyType,
+        totalQuestions: practiceSessions.totalQuestions,
+        completedQuestions: practiceSessions.completedQuestions,
+        score: practiceSessions.score,
+        isCompleted: practiceSessions.isCompleted,
+        createdAt: practiceSessions.createdAt,
+        userEmail: users.email,
+        userDisplayName: users.displayName,
+      })
+      .from(practiceSessions)
+      .leftJoin(users, sql`${practiceSessions.userId} = ${users.id}`)
+      .orderBy(desc(practiceSessions.createdAt))
+      .limit(10);
 
     // Competency distribution
     const competencyDistribution = await db

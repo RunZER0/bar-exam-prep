@@ -81,7 +81,7 @@ async function handleGet(req: NextRequest, user: AuthUser) {
       activeLinks,
       totalClicks,
       totalSignups,
-      conversionRate: totalClicks > 0 ? ((totalSignups / totalClicks) * 100).toFixed(1) : '0.0',
+      conversionRate: totalClicks > 0 ? Math.round(((totalSignups / totalClicks) * 100) * 10) / 10 : 0,
       dailySignups,
     },
   });

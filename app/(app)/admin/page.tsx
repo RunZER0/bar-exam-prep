@@ -1829,7 +1829,7 @@ export default function AdminPage() {
             { label: 'Total Links', value: stats?.totalLinks || 0, icon: Link2 },
             { label: 'Total Clicks', value: stats?.totalClicks || 0, icon: Eye },
             { label: 'Total Sign-ups', value: stats?.totalSignups || 0, icon: Users },
-            { label: 'Conversion Rate', value: `${(stats?.conversionRate || 0).toFixed(1)}%`, icon: TrendingUp },
+            { label: 'Conversion Rate', value: `${Number(stats?.conversionRate || 0).toFixed(1)}%`, icon: TrendingUp },
           ].map((s, i) => (
             <Card key={i}>
               <CardContent className="pt-6">

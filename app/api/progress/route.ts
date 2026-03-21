@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
-import { userProgress, practiceSessions, userResponses, topics, studyStreaks, userProfiles, quizHistory } from '@/lib/db/schema';
+import { userProgress, practiceSessions, topics, studyStreaks, userProfiles, quizHistory } from '@/lib/db/schema';
 import { eq, desc, sql, and, gte } from 'drizzle-orm';
 import { 
   calculateMasteryLevel, 
@@ -107,19 +107,7 @@ export const GET = withAuth(async (req: NextRequest, user) => {
       }
     }
 
-    // Get recent responses for pattern analysis
-    const responses = await db.query.userResponses.findMany({
-      where: eq(userResponses.userId, user.id),
-      orderBy: [desc(userResponses.createdAt)],
-      limit: 100,
-      with: {
-        question: {
-          with: {
-            topic: true,
-          },
-        },
-      },
-    });
+    // Recent responses — skip relational query (analytics derived from quizHistory instead)
 
     // Calculate overall statistics
     const totalQuestionsAttempted = progress.reduce(

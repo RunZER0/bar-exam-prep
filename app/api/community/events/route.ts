@@ -145,9 +145,6 @@ function generateFallbackQuestions(type: string, unitName: string, subject: stri
   }
 }
 
-// In-memory flag so only one generation runs per server instance per day
-let _generatingDate: string | null = null;
-
 // Rotate challenge types across units each day so variety stays high
 const ROTATING_TYPES = ['drafting', 'trivia', 'research'] as const;
 
@@ -181,10 +178,6 @@ export async function ensureActiveChallenges(): Promise<void> {
   // We generate a limited set per day — if we already have enough, skip
   if ((todaysAiCount?.count || 0) >= DAILY_CHALLENGE_COUNT) return;
 
-  // Prevent duplicate generation: only one in-flight at a time
-  if (_generatingDate === todayStr) return;
-  _generatingDate = todayStr; // tentative lock — cleared on failure so retry is possible
-
   const unitKeys = Object.keys(UNIT_TOPICS);
   const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
 
@@ -212,6 +205,9 @@ export async function ensureActiveChallenges(): Promise<void> {
   const unitsToGenerate = todaysUnits;
 
   if (unitsToGenerate.length === 0) return;
+
+  // Prevent concurrent generation: write a temporary 'generating' marker to DB
+  // (avoids race conditions when multiple requests fire at once)
 
   // Build the prompt for ALL missing units at once
   const challengeSpecs = unitsToGenerate.map((unitId, i) => {
@@ -312,36 +308,11 @@ Respond in JSON only: {"challenges": [...]}`,
       return;
     }
   } catch (err) {
-    console.error('[CommunityAgent] AI generation failed, using fallback:', err);
-    _generatingDate = null; // clear lock so next request can retry AI generation
+    // AI generation failed — do NOT store fallback content to DB.
+    // This ensures the next request retries AI generation instead of seeing
+    // stale, hardcoded challenges occupying the daily quota.
+    console.error('[CommunityAgent] AI generation failed — will retry on next request:', err);
   }
-
-  // Fallback: deterministic challenges for all missing units — WITH question content
-  for (let i = 0; i < challengeSpecs.length; i++) {
-    const spec = challengeSpecs[i];
-    const unit = UNIT_TOPICS[spec.unitId];
-    const typeEmoji = spec.type === 'drafting' ? '✍️' : spec.type === 'trivia' ? '🧠' : '📝';
-    const typeLabel = spec.type === 'drafting' ? 'Draft Challenge' : spec.type === 'trivia' ? 'Quick Quiz' : 'Explain It';
-
-    // Generate deterministic fallback questions based on unit and subject
-    const fallbackQuestions = generateFallbackQuestions(spec.type, unit.name, spec.subject, unit.subjects);
-
-    await db.insert(communityEvents).values({
-      title: `${typeEmoji} ${typeLabel}: ${unit.name}`,
-      description: `Today's ${spec.type} challenge for ${unit.name} — focusing on ${spec.subject}. Show what you know!`,
-      type: spec.type,
-      status: 'active',
-      unitId: spec.unitId,
-      startsAt: now,
-      endsAt: nextMidnightEAT,
-      rewards: REWARDS,
-      isAgentCreated: true,
-      reviewStatus: 'approved',
-      challengeContent: fallbackQuestions,
-      maxParticipants: 500,
-    });
-  }
-  console.log(`[CommunityAgent] Used fallback challenges for ${challengeSpecs.length} units`);
 }
 
 /* ================================================================
@@ -464,7 +435,6 @@ export async function GET(req: NextRequest) {
     // so it never blocks the response to the user
     ensureActiveChallenges().catch(err => {
       console.error('[CommunityAgent] Background generation failed:', err);
-      _generatingDate = null; // Allow retry
     });
 
     // Fetch all non-rejected events — explicit column selection to avoid

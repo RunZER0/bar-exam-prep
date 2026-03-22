@@ -17,6 +17,8 @@ import {
   Minus, Layers,
 } from 'lucide-react';
 import PremiumGate from '@/components/PremiumGate';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import FeatureLockedScreen from '@/components/FeatureLockedScreen';
 
 const ICON_MAP: Record<string, any> = {
   Gavel, Scale, FileText, Shield, Building, Briefcase,
@@ -226,6 +228,8 @@ export default function ExamsPage() {
   const router = useRouter();
   const { getIdToken } = useAuth();
   const { setAuthToken, onExamsPageVisit } = usePreloading();
+  const { tier } = useSubscription();
+  const isPaidTier = tier !== 'free_trial';
   
   // ── Top-level tab ──
   const [activeTab, setActiveTab] = useState<PageTab>('practice');
@@ -607,6 +611,10 @@ export default function ExamsPage() {
          ════════════════════════════════════════════════════════════════ */}
       {activeTab === 'past-papers' && (
         <div className="animate-in fade-in duration-300">
+          {!isPaidTier ? (
+            <FeatureLockedScreen feature="cle_exam" tier={tier} inline />
+          ) : (
+          <>
           {/* ── Browse / Analysis sub-navigation ── */}
           {ppView !== 'paper' && (
             <div className="space-y-6">
@@ -876,7 +884,7 @@ export default function ExamsPage() {
                       </div>
                     </div>
                     <div className="text-[10px] text-muted-foreground">
-                      Powered by GPT-5.4 &middot; {analysisReport.summary?.totalPapers || '—'} papers
+                      {analysisReport.summary?.totalPapers || '—'} papers &middot; {analysisReport.summary?.yearRange || '2018–2025'}
                     </div>
                   </div>
 
@@ -1648,6 +1656,8 @@ export default function ExamsPage() {
                 </div>
               )}
             </div>
+          )}
+          </>
           )}
         </div>
       )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ATP_UNITS } from '@/lib/constants/legal-content';
@@ -14,11 +14,14 @@ import {
   ScrollText, Filter, BarChart3, Eye, Loader2, TrendingUp,
   Calendar, Hash, ChevronDown, Brain, MessageCircle, Send,
   AlertTriangle, Lightbulb, Percent, PieChart, ArrowUpRight, ArrowDownRight,
-  Minus, Layers,
+  Minus, Layers, Bold, Italic, Underline as UnderlineIcon,
+  AlignLeft, AlignCenter, AlignRight, List, ListOrdered,
+  CheckCircle2, PenLine, RotateCcw,
 } from 'lucide-react';
 import PremiumGate from '@/components/PremiumGate';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import FeatureLockedScreen from '@/components/FeatureLockedScreen';
+import EngagingLoader from '@/components/EngagingLoader';
 
 const ICON_MAP: Record<string, any> = {
   Gavel, Scale, FileText, Shield, Building, Briefcase,
@@ -214,6 +217,68 @@ function AnimatedModal({ isOpen, onClose, children, size = 'md' }: AnimatedModal
 }
 
 // ============================================================
+// GRADE INTERFACES + HELPER COMPONENTS (for question attempts)
+// ============================================================
+
+interface GradeAnnotation {
+  category: string;
+  severity: 'good' | 'needs-improvement' | 'error';
+  text: string;
+  comment: string;
+}
+
+interface GradeResult {
+  overallScore: number;
+  grade: string;
+  summary: string;
+  categories: { structure: number; substance: number; legalAccuracy: number; language: number; formatting: number };
+  annotations: GradeAnnotation[];
+  strengths: string[];
+  improvements: string[];
+}
+
+function AnnotatedDraftQ({ text, annotations, activeIdx, onSelect }: {
+  text: string; annotations: GradeAnnotation[]; activeIdx: number | null; onSelect: (i: number | null) => void;
+}) {
+  if (!annotations || annotations.length === 0) return <span>{text}</span>;
+  const found = annotations
+    .map((a, i) => { const pos = text.indexOf(a.text); return pos >= 0 ? { ...a, i, start: pos, end: pos + a.text.length } : null; })
+    .filter(Boolean)
+    .sort((a, b) => a!.start - b!.start) as Array<GradeAnnotation & { i: number; start: number; end: number }>;
+  const segs: JSX.Element[] = [];
+  let cursor = 0;
+  for (const ann of found) {
+    if (ann.start < cursor) continue;
+    if (ann.start > cursor) segs.push(<span key={'t-' + cursor}>{text.slice(cursor, ann.start)}</span>);
+    const isActive = activeIdx === ann.i;
+    const col = ann.severity === 'good' ? 'green' : ann.severity === 'error' ? 'red' : 'amber';
+    const glow = col === 'green' ? 'rgba(74,222,128,0.12)' : col === 'red' ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)';
+    const activeGlow = col === 'green' ? 'rgba(74,222,128,0.22)' : col === 'red' ? 'rgba(248,113,113,0.22)' : 'rgba(251,191,36,0.22)';
+    const border = col === 'green' ? 'rgba(74,222,128,0.4)' : col === 'red' ? 'rgba(248,113,113,0.4)' : 'rgba(251,191,36,0.4)';
+    const activeBorder = col === 'green' ? 'rgba(74,222,128,0.7)' : col === 'red' ? 'rgba(248,113,113,0.7)' : 'rgba(251,191,36,0.7)';
+    segs.push(
+      <span key={'a-' + ann.i} onClick={() => onSelect(isActive ? null : ann.i)}
+        className="cursor-pointer transition-all duration-200 rounded-sm"
+        style={{ borderBottom: '1.5px solid ' + (isActive ? activeBorder : border), backgroundColor: isActive ? activeGlow : glow, boxShadow: isActive ? '0 0 8px ' + activeGlow : 'none' }}>
+        {text.slice(ann.start, ann.end)}
+      </span>
+    );
+    cursor = ann.end;
+  }
+  if (cursor < text.length) segs.push(<span key={'t-' + cursor}>{text.slice(cursor)}</span>);
+  return <>{segs}</>;
+}
+
+function ToolBtnQ({ icon: Icon, title, onClick }: { icon: any; title: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} title={title}
+      className="p-1.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
+      <Icon className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
+// ============================================================
 // MAIN COMPONENT
 // ============================================================
 
@@ -265,6 +330,18 @@ export default function ExamsPage() {
   const [analysisChatLoading, setAnalysisChatLoading] = useState(false);
   const [analysisAskCount, setAnalysisAskCount] = useState(0);
   const [analysisSection, setAnalysisSection] = useState<'overview' | 'topics' | 'trends' | 'predictions' | 'guidance' | 'chat'>('overview');
+
+  // ── Immersive question attempt ──
+  const [paperActionModal, setPaperActionModal] = useState<PastPaperEntry | null>(null);
+  const [examModeActive, setExamModeActive] = useState(false);
+  const [attemptQuestion, setAttemptQuestion] = useState<{
+    questionText: string; marks: number | null; questionType: string; unitName: string;
+  } | null>(null);
+  const [attemptPhase, setAttemptPhase] = useState<'drafting' | 'grading' | 'results'>('drafting');
+  const [attemptGrade, setAttemptGrade] = useState<GradeResult | null>(null);
+  const [attemptActiveAnn, setAttemptActiveAnn] = useState<number | null>(null);
+  const [attemptDraftText, setAttemptDraftText] = useState('');
+  const attemptDraftRef = useRef<HTMLDivElement>(null);
 
   // Trigger preloading when page loads
   useEffect(() => {
@@ -417,6 +494,52 @@ export default function ExamsPage() {
     }
   };
 
+  // ── Immersive question attempt helpers ──
+  const startAttempt = (questionText: string, marks: number | null, questionType: string, unitName: string) => {
+    setAttemptQuestion({ questionText, marks, questionType, unitName });
+    setAttemptPhase('drafting');
+    setAttemptGrade(null);
+    setAttemptDraftText('');
+    setAttemptActiveAnn(null);
+    setTimeout(() => { if (attemptDraftRef.current) attemptDraftRef.current.innerText = ''; }, 50);
+  };
+
+  const submitAttempt = async () => {
+    const text = attemptDraftRef.current?.innerText || '';
+    setAttemptDraftText(text);
+    setAttemptPhase('grading');
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/drafting/grade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          draft: text,
+          documentType: attemptQuestion?.questionType || 'essay question',
+          scenario: attemptQuestion?.questionText || '',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAttemptGrade({
+          overallScore: data.overallScore ?? 0,
+          grade: data.grade ?? '?',
+          summary: data.summary ?? '',
+          categories: data.categories ?? { structure: 0, substance: 0, legalAccuracy: 0, language: 0, formatting: 0 },
+          annotations: data.annotations ?? [],
+          strengths: data.strengths ?? [],
+          improvements: data.improvements ?? [],
+        });
+      }
+    } catch { /* silent */ }
+    setAttemptPhase('results');
+  };
+
+  const execAttemptCmd = (cmd: string, val?: string) => {
+    document.execCommand(cmd, false, val);
+    attemptDraftRef.current?.focus();
+  };
+
   // ── Practice exam helpers ──
   const openModal = () => {
     setStep('paper');
@@ -479,7 +602,7 @@ export default function ExamsPage() {
           )}
           {activeTab === 'past-papers' && ppView === 'paper' && (
             <button
-              onClick={() => { setPpView('browse'); setActivePaper(null); setQuestions([]); setGenerated({}); setShowAnswer({}); }}
+              onClick={() => { setPpView('browse'); setActivePaper(null); setQuestions([]); setGenerated({}); setShowAnswer({}); setExamModeActive(false); }}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-muted/50 hover:bg-muted transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -750,7 +873,7 @@ export default function ExamsPage() {
                           return (
                             <button
                               key={paper.id}
-                              onClick={() => openPaper(paper)}
+                              onClick={() => setPaperActionModal(paper)}
                               className="group text-left rounded-2xl p-4 bg-gradient-to-br from-muted/30 to-transparent hover:from-primary/5 hover:to-transparent border border-transparent hover:border-primary/10 transition-all duration-300 hover:shadow-md hover:shadow-primary/5"
                             >
                               <div className="flex items-start gap-3">
@@ -1513,6 +1636,14 @@ export default function ExamsPage() {
           {/* ── PAPER VIEWER ── */}
           {ppView === 'paper' && activePaper && (
             <div className="space-y-6">
+              {/* Exam mode banner */}
+              {examModeActive && (
+                <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-primary/8 border border-primary/20">
+                  <Timer className="h-4 w-4 text-primary shrink-0" />
+                  <p className="text-sm font-medium flex-1">Exam Mode — model answers hidden. Use &ldquo;Attempt Question&rdquo; to answer and get AI redline feedback.</p>
+                  <button onClick={() => setExamModeActive(false)} className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0">Exit Exam Mode</button>
+                </div>
+              )}
               {/* Paper info card */}
               <div className="rounded-2xl p-5 bg-gradient-to-r from-primary/4 via-transparent to-transparent flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
                 {activePaper.paperCode && (
@@ -1584,7 +1715,7 @@ export default function ExamsPage() {
                         </div>
 
                         {/* Model Answer */}
-                        {q.modelAnswer && (
+                        {q.modelAnswer && !examModeActive && (
                           <div className="border-t border-border/10">
                             <button
                               onClick={() => setShowAnswer(prev => ({ ...prev, [q.id]: !prev[q.id] }))}
@@ -1602,7 +1733,14 @@ export default function ExamsPage() {
                         )}
 
                         {/* Actions */}
-                        <div className="border-t border-border/8 px-5 py-2.5 bg-muted/5">
+                        <div className="border-t border-border/8 px-5 py-2.5 bg-muted/5 flex items-center gap-2 flex-wrap">
+                          <button
+                            onClick={() => startAttempt(q.questionText, q.marks, q.questionType, activePaper?.unitName || '')}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-emerald-500/8 text-emerald-600 hover:bg-emerald-500/14 transition-colors"
+                          >
+                            <PenLine className="h-3 w-3" />
+                            Attempt Question
+                          </button>
                           <button
                             onClick={() => generateSimilar(q)}
                             disabled={generatingFor === q.id}
@@ -1613,7 +1751,7 @@ export default function ExamsPage() {
                             ) : (
                               <Sparkles className="h-3 w-3" />
                             )}
-                            {generatingFor === q.id ? 'Generating…' : 'Generate Similar Question'}
+                            {generatingFor === q.id ? 'Generating…' : 'Get Similar Question'}
                           </button>
                         </div>
 
@@ -1648,6 +1786,13 @@ export default function ExamsPage() {
                                 </div>
                               </details>
                             )}
+                            <button
+                              onClick={() => startAttempt(gen.question, gen.marks, gen.questionType, activePaper?.unitName || '')}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-emerald-500/8 text-emerald-600 hover:bg-emerald-500/14 transition-colors mt-1"
+                            >
+                              <PenLine className="h-3 w-3" />
+                              Attempt this Question
+                            </button>
                           </div>
                         )}
                       </div>
@@ -1711,7 +1856,30 @@ export default function ExamsPage() {
                 <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-stone-500/10 text-stone-600 dark:bg-stone-400/10 dark:text-stone-400">
                   CLE Standard
                 </span>
-                <span>Select your paper size</span>
+                <span>Select your exam type</span>
+              </div>
+              {/* Real Past Paper shortcut */}
+              <button
+                onClick={() => { setActiveTab('past-papers'); closeModal(); }}
+                className="w-full p-4 rounded-2xl bg-gradient-to-r from-sky-500/8 to-transparent hover:from-sky-500/14 text-left transition-all duration-200 hover:shadow-md"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2.5 rounded-xl bg-sky-500/15 text-sky-600">
+                      <ScrollText className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Take a Real Past Paper</p>
+                      <p className="text-sm text-muted-foreground">97 real CLE papers (2018–2025) — attempt under exam conditions</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </div>
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="h-px flex-1 bg-border/20" />
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">or generate AI exam</span>
+                <div className="h-px flex-1 bg-border/20" />
               </div>
               <div className="grid gap-3">
                 {(['mini', 'semi', 'full'] as PaperSize[]).map((size) => {
@@ -1849,6 +2017,219 @@ export default function ExamsPage() {
           )}
         </div>
       </AnimatedModal>
+
+      {/* ── PAPER ACTION MODAL — Browse vs Take as Exam ── */}
+      <AnimatedModal isOpen={paperActionModal !== null} onClose={() => setPaperActionModal(null)} size="sm">
+        {paperActionModal && (() => {
+          const pUnit = ATP_UNITS.find(u => u.id === paperActionModal.unitId);
+          const PAIcon = pUnit ? (ICON_MAP[pUnit.icon] || BookOpen) : BookOpen;
+          return (
+            <div className="p-6 space-y-5">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-primary/8 shrink-0">
+                  <PAIcon className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{pUnit?.code || paperActionModal.unitId}</p>
+                  <p className="font-semibold">{paperActionModal.unitName}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {paperActionModal.year} · {paperActionModal.questionCount} questions{paperActionModal.totalMarks ? ` · ${paperActionModal.totalMarks} marks` : ''}
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">How would you like to approach this paper?</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => { openPaper(paperActionModal); setExamModeActive(false); setPaperActionModal(null); }}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/30 hover:bg-muted/50 transition-colors text-center"
+                >
+                  <Eye className="h-5 w-5 text-muted-foreground" />
+                  <span className="text-sm font-medium">Browse Paper</span>
+                  <span className="text-[10px] text-muted-foreground">Read questions &amp; model answers</span>
+                </button>
+                <button
+                  onClick={() => { openPaper(paperActionModal); setExamModeActive(true); setPaperActionModal(null); }}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-primary/8 hover:bg-primary/14 transition-colors text-center border border-primary/15"
+                >
+                  <Timer className="h-5 w-5 text-primary" />
+                  <span className="text-sm font-medium text-primary">Take as Exam</span>
+                  <span className="text-[10px] text-muted-foreground">Answer questions, get feedback</span>
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </AnimatedModal>
+
+      {/* ── IMMERSIVE QUESTION ATTEMPT OVERLAY ── */}
+      {attemptQuestion && (
+        <div className="fixed inset-0 z-[60] bg-background flex flex-col">
+          {/* Top bar */}
+          <div className="border-b border-border/20 bg-card/40 px-4 py-2.5 shrink-0">
+            <div className="max-w-7xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <button onClick={() => setAttemptQuestion(null)} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+                <div>
+                  <p className="text-sm font-semibold">Question Attempt — {attemptQuestion.unitName}</p>
+                  <p className="text-xs text-muted-foreground capitalize">
+                    {attemptQuestion.questionType}{attemptQuestion.marks ? ` · ${attemptQuestion.marks} marks` : ''}
+                  </p>
+                </div>
+              </div>
+              {attemptPhase === 'drafting' && (
+                <button onClick={submitAttempt}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+                  <Send className="h-3.5 w-3.5" /> Submit for Feedback
+                </button>
+              )}
+              {attemptPhase === 'results' && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setAttemptPhase('drafting'); setAttemptGrade(null); if (attemptDraftRef.current) attemptDraftRef.current.innerText = ''; }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-muted/40 hover:bg-muted transition-colors">
+                    <RotateCcw className="h-3.5 w-3.5" /> Try Again
+                  </button>
+                  <button onClick={() => setAttemptQuestion(null)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-muted/40 hover:bg-muted transition-colors">
+                    <X className="h-3.5 w-3.5" /> Close
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Drafting phase */}
+          {attemptPhase === 'drafting' && (
+            <div className="flex-1 flex overflow-hidden">
+              <div className="w-72 md:w-80 shrink-0 border-r border-border/20 flex flex-col bg-card/10">
+                <div className="p-5 flex-1 overflow-y-auto">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Question</h3>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{attemptQuestion.questionText}</p>
+                </div>
+              </div>
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="border-b border-border/15 px-4 py-1.5 flex items-center gap-0.5 bg-card/20 shrink-0">
+                  <ToolBtnQ icon={Bold} title="Bold" onClick={() => execAttemptCmd('bold')} />
+                  <ToolBtnQ icon={Italic} title="Italic" onClick={() => execAttemptCmd('italic')} />
+                  <ToolBtnQ icon={UnderlineIcon} title="Underline" onClick={() => execAttemptCmd('underline')} />
+                  <div className="w-px h-4 bg-border mx-1" />
+                  <ToolBtnQ icon={AlignLeft} title="Align Left" onClick={() => execAttemptCmd('justifyLeft')} />
+                  <ToolBtnQ icon={AlignCenter} title="Center" onClick={() => execAttemptCmd('justifyCenter')} />
+                  <ToolBtnQ icon={AlignRight} title="Align Right" onClick={() => execAttemptCmd('justifyRight')} />
+                  <div className="w-px h-4 bg-border mx-1" />
+                  <ToolBtnQ icon={List} title="Bullet List" onClick={() => execAttemptCmd('insertUnorderedList')} />
+                  <ToolBtnQ icon={ListOrdered} title="Numbered List" onClick={() => execAttemptCmd('insertOrderedList')} />
+                </div>
+                <div className="flex-1 overflow-auto p-8">
+                  <div
+                    ref={attemptDraftRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    className="min-h-full outline-none text-sm leading-relaxed font-[Georgia,serif] whitespace-pre-wrap empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/40 empty:before:pointer-events-none"
+                    data-placeholder="Begin your answer here…"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Grading phase */}
+          {attemptPhase === 'grading' && (
+            <div className="flex-1 flex items-center justify-center">
+              <EngagingLoader size="lg" message="Analyzing your answer and marking…" />
+            </div>
+          )}
+
+          {/* Results phase */}
+          {attemptPhase === 'results' && (
+            <div className="flex-1 flex overflow-hidden">
+              <div className="flex-1 p-6 overflow-y-auto space-y-4">
+                {attemptGrade ? (
+                  <>
+                    <div className="flex items-center gap-4">
+                      <div className={`text-4xl font-bold ${attemptGrade.overallScore >= 70 ? 'text-green-600' : attemptGrade.overallScore >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                        {attemptGrade.grade}
+                      </div>
+                      <div>
+                        <p className="text-xl font-bold">{attemptGrade.overallScore}%</p>
+                        <p className="text-xs text-muted-foreground">{attemptGrade.summary.slice(0, 120)}</p>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-border/20 p-5 bg-card/20 text-sm leading-relaxed whitespace-pre-wrap font-mono max-h-[55vh] overflow-y-auto">
+                      <AnnotatedDraftQ
+                        text={attemptDraftText}
+                        annotations={attemptGrade.annotations}
+                        activeIdx={attemptActiveAnn}
+                        onSelect={setAttemptActiveAnn}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-10">
+                    <p className="text-muted-foreground">Grading failed — please try again.</p>
+                  </div>
+                )}
+              </div>
+              {attemptGrade && (
+                <div className="w-72 shrink-0 border-l border-border/20 bg-card/10 p-5 space-y-4 overflow-y-auto">
+                  <div className="space-y-2">
+                    {Object.entries(attemptGrade.categories).map(([k, v]) => (
+                      <div key={k}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="capitalize">{k === 'legalAccuracy' ? 'Legal Accuracy' : k}</span>
+                          <span className="font-medium">{v}%</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-1.5">
+                          <div className={`h-1.5 rounded-full ${v >= 70 ? 'bg-green-500' : v >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
+                            style={{ width: v + '%' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {attemptActiveAnn !== null && attemptGrade.annotations[attemptActiveAnn] && (
+                    <div className="rounded-lg bg-muted/40 p-3">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className={`w-2 h-2 rounded-full ${
+                          attemptGrade.annotations[attemptActiveAnn].severity === 'good' ? 'bg-green-500'
+                          : attemptGrade.annotations[attemptActiveAnn].severity === 'error' ? 'bg-red-500' : 'bg-amber-500'
+                        }`} />
+                        <span className="text-xs font-medium capitalize">{attemptGrade.annotations[attemptActiveAnn].category}</span>
+                      </div>
+                      <p className="text-xs text-foreground/80">{attemptGrade.annotations[attemptActiveAnn].comment}</p>
+                    </div>
+                  )}
+                  {attemptGrade.strengths.length > 0 && (
+                    <div>
+                      <h5 className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1.5">Strengths</h5>
+                      <ul className="space-y-1">
+                        {attemptGrade.strengths.map((s, i) => (
+                          <li key={i} className="text-xs flex items-start gap-1.5">
+                            <CheckCircle2 className="h-3 w-3 text-green-500 mt-0.5 shrink-0" /> {s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {attemptGrade.improvements.length > 0 && (
+                    <div>
+                      <h5 className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-1.5">Improvements</h5>
+                      <ul className="space-y-1">
+                        {attemptGrade.improvements.map((s, i) => (
+                          <li key={i} className="text-xs flex items-start gap-1.5">
+                            <AlertTriangle className="h-3 w-3 text-amber-500 mt-0.5 shrink-0" /> {s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
     </div>
     </PremiumGate>

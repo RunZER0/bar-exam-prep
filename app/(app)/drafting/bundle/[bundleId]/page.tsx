@@ -136,6 +136,8 @@ export default function BundlePage() {
   const [activeAnns, setActiveAnns] = useState<Record<number, number | null>>({});
   const [featureLimitHit, setFeatureLimitHit] = useState<any>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const savedStateSnapshotRef = useRef<any>(null);
 
   const draftRef = useRef<HTMLDivElement>(null);
   const storageKey = `ynai-bundle-${bundleId}`;
@@ -152,22 +154,38 @@ export default function BundlePage() {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.scenario) setScenario(parsed.scenario);
-        if (parsed.docDrafts && Array.isArray(parsed.docDrafts)) {
-          setDocDrafts(prev => prev.map((dd, i) => ({
-            ...dd,
-            draft: parsed.docDrafts[i]?.draft || '',
-            locked: parsed.docDrafts[i]?.locked || false,
-          })));
-        }
-        if (parsed.currentDocIdx !== undefined) setCurrentDocIdx(parsed.currentDocIdx);
-        if (parsed.scenario && parsed.docDrafts?.some((d: any) => d.draft || d.locked)) {
-          setPhase('drafting');
+        const hasProgress = parsed.scenario && parsed.docDrafts?.some((d: any) => d.draft?.trim() || d.locked);
+        if (hasProgress) {
+          savedStateSnapshotRef.current = parsed;
+          setShowResumeDialog(true);
+          return;
         }
       }
     } catch { /* ignore corrupt storage */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleResume = () => {
+    const parsed = savedStateSnapshotRef.current;
+    if (!parsed) return;
+    if (parsed.scenario) setScenario(parsed.scenario);
+    if (parsed.docDrafts && Array.isArray(parsed.docDrafts)) {
+      setDocDrafts(prev => prev.map((dd, i) => ({
+        ...dd,
+        draft: parsed.docDrafts[i]?.draft || '',
+        locked: parsed.docDrafts[i]?.locked || false,
+      })));
+    }
+    if (parsed.currentDocIdx !== undefined) setCurrentDocIdx(parsed.currentDocIdx);
+    setPhase('drafting');
+    setShowResumeDialog(false);
+  };
+
+  const handleStartNew = () => {
+    try { localStorage.removeItem(storageKey); } catch {}
+    savedStateSnapshotRef.current = null;
+    setShowResumeDialog(false);
+  };
 
   // ── Auto-save every 5 seconds during drafting ──
   useEffect(() => {
@@ -394,8 +412,50 @@ export default function BundlePage() {
 
   /* ════════ SETUP PHASE ════════ */
   if (phase === 'setup') {
+    if (loadingScenario) {
+      return (
+        <PremiumGate feature="drafting">
+          <div className="flex items-center justify-center min-h-[70vh]">
+            <EngagingLoader size="lg" message="Generating your scenario — this typically takes 15–30 seconds…" />
+          </div>
+        </PremiumGate>
+      );
+    }
     return (
       <PremiumGate feature="drafting">
+        {/* Resume / Start New dialog */}
+        {showResumeDialog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-background rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5 animate-in zoom-in-95 duration-200">
+              <div className="flex flex-col items-center gap-2 text-center">
+                <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow border border-primary/20 mb-1">
+                  <img src="/favicon-32x32.png" alt="Ynai" className="w-10 h-10" />
+                </div>
+                <h3 className="text-lg font-bold">Welcome back</h3>
+                <p className="text-sm text-muted-foreground">
+                  You have unfinished work on <strong className="text-foreground">{bundle.name}</strong>.
+                  {savedStateSnapshotRef.current?.currentDocIdx !== undefined && (
+                    <> You were on document {Math.min((savedStateSnapshotRef.current.currentDocIdx ?? 0) + 1, bundleDocs.length)} of {bundleDocs.length}.</>
+                  )}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={handleStartNew}
+                  className="py-3 px-4 rounded-xl border border-border/40 hover:bg-muted/40 transition-colors text-sm font-medium"
+                >
+                  Start New
+                </button>
+                <button
+                  onClick={handleResume}
+                  className="py-3 px-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium"
+                >
+                  Resume
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="p-6 md:p-10 max-w-4xl mx-auto space-y-8 animate-content-enter">
           {featureLimitHit && (
             <TrialLimitReached
@@ -454,11 +514,7 @@ export default function BundlePage() {
           </div>
 
           <Button onClick={generateScenario} disabled={loadingScenario} size="lg" className="w-full gap-2">
-            {loadingScenario ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Generating Scenario...</>
-            ) : (
-              <><PenLine className="h-4 w-4" /> Start Bundle Drafting</>
-            )}
+            <PenLine className="h-4 w-4" /> Start Bundle Drafting
           </Button>
         </div>
       </PremiumGate>

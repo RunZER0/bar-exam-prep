@@ -199,6 +199,8 @@ export default function AdminPage() {
   const [timelines, setTimelines] = useState<KslTimeline[]>([]);
   const [roomRequests, setRoomRequests] = useState<RoomRequest[]>([]);
   const [communityLoading, setCommunityLoading] = useState(false);
+  const [challengeStats, setChallengeStats] = useState<{ aiChallenges: any[]; peerChallenges: any[]; total: number } | null>(null);
+  const [challengeActionLoading, setChallengeActionLoading] = useState(false);
   const [ragEntries, setRagEntries] = useState<RagEntry[]>([]);
   const [users, setUsers] = useState<UserData[]>([]);
   const [topics, setTopics] = useState<TopicData[]>([]);
@@ -356,10 +358,17 @@ export default function AdminPage() {
     setCommunityLoading(true);
     try {
       const headers = await getHeaders();
-      const res = await fetch('/api/admin/community?status=pending', { headers });
-      if (res.ok) {
-        const data = await res.json();
+      const [roomRes, challengeRes] = await Promise.all([
+        fetch('/api/admin/community?status=pending', { headers }),
+        fetch('/api/admin/challenges', { headers }),
+      ]);
+      if (roomRes.ok) {
+        const data = await roomRes.json();
         setRoomRequests(data.requests || []);
+      }
+      if (challengeRes.ok) {
+        const data = await challengeRes.json();
+        setChallengeStats(data);
       }
     } catch {
       setError('Failed to load community requests');
@@ -367,6 +376,42 @@ export default function AdminPage() {
       setCommunityLoading(false);
     }
   }, [getHeaders]);
+
+  const handleClearChallenges = async (type: 'peer' | 'ai' | 'all') => {
+    if (!confirm(`Clear ${type === 'peer' ? 'all peer-submitted' : type === 'ai' ? 'all AI (expire for re-generation)' : 'ALL'} challenges?`)) return;
+    setChallengeActionLoading(true);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch(`/api/admin/challenges?type=${type}`, { method: 'DELETE', headers });
+      const data = await res.json();
+      if (res.ok) {
+        setSuccess(data.message || 'Done');
+        await fetchCommunityRequests();
+      } else {
+        setError(data.error || 'Failed');
+      }
+    } catch { setError('Request failed'); }
+    finally { setChallengeActionLoading(false); }
+  };
+
+  const handleForceRegenerate = async () => {
+    setChallengeActionLoading(true);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/admin/challenges', {
+        method: 'POST', headers,
+        body: JSON.stringify({ action: 'force-regenerate' }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSuccess(data.message || 'AI challenges will regenerate on next community page load.');
+        await fetchCommunityRequests();
+      } else {
+        setError(data.error || 'Failed');
+      }
+    } catch { setError('Request failed'); }
+    finally { setChallengeActionLoading(false); }
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -1674,6 +1719,88 @@ export default function AdminPage() {
             <RefreshCw className="h-4 w-4 mr-2" /> Refresh
           </Button>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-amber-500" />
+              Challenge Management
+            </CardTitle>
+            <CardDescription>
+              Clear peer-submitted challenges or force-regenerate today&apos;s AI challenges.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {challengeStats ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-sm mb-4">
+                <div className="rounded-lg bg-muted/40 p-3 text-center">
+                  <p className="text-2xl font-bold text-primary">{challengeStats.aiChallenges.filter((c: any) => c.status === 'active').length}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Active AI Challenges</p>
+                </div>
+                <div className="rounded-lg bg-muted/40 p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-500">{challengeStats.peerChallenges.filter((c: any) => c.status === 'active').length}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Active Peer Challenges</p>
+                </div>
+                <div className="rounded-lg bg-muted/40 p-3 text-center">
+                  <p className="text-2xl font-bold">{challengeStats.aiChallenges.length}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Total AI (all time)</p>
+                </div>
+                <div className="rounded-lg bg-muted/40 p-3 text-center">
+                  <p className="text-2xl font-bold">{challengeStats.peerChallenges.length}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Total Peer (all time)</p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Loading challenge stats…</p>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm" variant="destructive"
+                disabled={challengeActionLoading}
+                onClick={() => handleClearChallenges('peer')}
+              >
+                {challengeActionLoading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+                Clear Peer Challenges
+              </Button>
+              <Button
+                size="sm" variant="outline"
+                disabled={challengeActionLoading}
+                onClick={() => handleForceRegenerate()}
+                className="border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
+              >
+                {challengeActionLoading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+                Force Regenerate AI Challenges
+              </Button>
+              <Button
+                size="sm" variant="outline"
+                disabled={challengeActionLoading}
+                onClick={() => handleClearChallenges('all')}
+                className="border-red-500/30 text-red-600 hover:bg-red-500/10"
+              >
+                {challengeActionLoading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+                Clear All
+              </Button>
+            </div>
+
+            {challengeStats && challengeStats.peerChallenges.length > 0 && (
+              <div className="mt-2 space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Peer Challenges in DB</p>
+                {challengeStats.peerChallenges.map((c: any) => (
+                  <div key={c.id} className="flex items-center justify-between text-sm px-3 py-2 rounded-lg bg-muted/30 border border-border/20">
+                    <div>
+                      <span className="font-medium">{c.title}</span>
+                      {c.submitterName && <span className="text-xs text-muted-foreground ml-2">by {c.submitterName}</span>}
+                    </div>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${c.status === 'active' ? 'bg-green-500/10 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+                      {c.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

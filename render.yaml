@@ -51,3 +51,13 @@ services:
         sync: false
       - key: CRON_SECRET
         sync: false
+
+crons:
+  - name: daily-challenges
+    runtime: node
+    schedule: "10 21 * * *"  # 00:10 EAT (UTC+3) every day
+    buildCommand: "echo ready"
+    startCommand: >
+      curl -s -o /dev/null -w "%{http_code}"
+      -H "Authorization: Bearer $CRON_SECRET"
+      https://ynai.onrender.com/api/cron/challenges
